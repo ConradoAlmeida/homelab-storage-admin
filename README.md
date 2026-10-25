@@ -132,10 +132,16 @@ uv run manage.py runserver 0.0.0.0:8000
 
 O container também usa uv (`ghcr.io/astral-sh/uv`) e não tem `requirements.txt`.
 
-> No host do Pi, o banco do app fica em
-> `/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3`. Para rodar um comando
-> Django no host contra esse banco, use
-> `DJANGO_SQLITE_PATH=/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3 uv run manage.py ...`.
+> No host do Pi, `data` é um symlink para
+> `/mnt/nas/apps/homelab-storage-admin/data`, então `uv run manage.py ...` usa o
+> banco real. Se o symlink não existir num clone novo:
+>
+> ```bash
+> mkdir -p /mnt/nas/apps/homelab-storage-admin/data
+> ln -sfn /mnt/nas/apps/homelab-storage-admin/data data
+> ```
+>
+> Alternativa: `DJANGO_SQLITE_PATH=/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3 uv run manage.py ...`.
 > O caminho recomendado para operações do dia a dia é dentro do container
 > (`docker compose exec web ...`), que já enxerga o banco certo.
 
@@ -143,7 +149,8 @@ O container também usa uv (`ghcr.io/astral-sh/uv`) e não tem `requirements.txt
 
 O `entrypoint.sh` cria o usuário `admin` automaticamente a partir do `.env` na
 primeira subida. Por isso, rodar `createsuperuser` com `admin` falha com
-`That username is already taken`. Para trocar a senha:
+`That username is already taken`. Superusuários atuais no Pi: `admin` e
+`conrado`. Para trocar a senha:
 
 ```bash
 docker compose exec web python manage.py changepassword admin
