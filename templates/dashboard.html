@@ -133,12 +133,12 @@
     <div class="card">
       <p class="muted" style="margin-top:0">Acesso rápido aos serviços da casa.</p>
       <div class="row">
-        <a class="btn small" href="http://192.168.0.150:8096" target="_blank" rel="noopener">Jellyfin</a>
+        <a class="btn small" href="http://jellyfin.homelab.lan" target="_blank" rel="noopener">Jellyfin</a>
         <a class="btn small" href="https://cockpit.homelab.lan" target="_blank" rel="noopener">Cockpit</a>
         <a class="btn small" href="http://dockge.homelab.lan" target="_blank" rel="noopener">Dockge</a>
         <a class="btn small" href="http://pihole.homelab.lan/admin/" target="_blank" rel="noopener">Pi-hole</a>
       </div>
-      <p class="muted" style="font-size:12px;margin:10px 0 0">Jellyfin usa o IP para funcionar mesmo sem DNS .lan.</p>
+      <p class="muted" style="font-size:12px;margin:10px 0 0">Jellyfin via Caddy; fallback: <a href="http://192.168.0.150:8096" target="_blank" rel="noopener">IP:8096</a>.</p>
     </div>
   </div>
 </div>
