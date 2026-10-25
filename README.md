@@ -101,8 +101,8 @@ git remote set-url --push origin git@github.com:ConradoAlmeida/homelab-storage-a
 
 ```bash
 git clone https://github.com/ConradoAlmeida/homelab-storage-admin.git \
-  /home/conrado/homelab-storage-admin
-cd /home/conrado/homelab-storage-admin
+  /opt/stacks/homelab-storage-admin
+cd /opt/stacks/homelab-storage-admin
 cp .env.example .env
 chmod 600 .env
 # edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF
@@ -113,7 +113,7 @@ sudo ./install-agent.sh
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
 
 ```bash
-cd /home/conrado/homelab-storage-admin
+cd /opt/stacks/homelab-storage-admin
 ./deploy.sh
 ```
 
