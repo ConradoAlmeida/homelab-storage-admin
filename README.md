@@ -238,8 +238,9 @@ Regras de standby:
 - lista discos com modelo, serial, tamanho, filesystem/label, montagem e se já há backup;
 - recusa disco do sistema, membro de RAID, montado ou com holders;
 - disco vazio pede `FORMATAR /dev/sdX`;
-- disco com dados pede **aviso extra** + `APAGAR /dev/sdX`;
+- disco com **filesystem existente** (mesmo vazio) pede **aviso extra** + `APAGAR /dev/sdX`;
 - disco já configurado pede **aviso extra** + `RECONFIGURAR /dev/sdX`;
+- o destino é mostrado como **ext4 (recomendado)**; nesta versão é fixo em ext4;
 - sempre exige a senha do app;
 - o agente revalida estado, frase e `allow_existing` antes de qualquer `wipefs`.
 

@@ -24,7 +24,8 @@
     <tr><th>Serial</th><td class="mono">{{ selected.serial|default:"—" }}</td></tr>
     <tr><th>Tamanho</th><td>{{ selected.size|default:"—" }}</td></tr>
     <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
-    <tr><th>Backup</th><td>{% if selected.configured %}<span class="state-bad">já configurado</span>{% elif selected.has_data %}<span class="state-standby">com dados</span>{% else %}vazio{% endif %}</td></tr>
+    <tr><th>Backup</th><td>{% if selected.configured %}<span class="state-bad">já configurado</span>{% elif selected.has_filesystem %}<span class="state-standby">com filesystem</span>{% else %}vazio{% endif %}</td></tr>
+    <tr><th>Sistema de arquivos de destino</th><td><strong>ext4 (recomendado)</strong></td></tr>
   </tbody>
 </table>
 
@@ -46,10 +47,14 @@
     <input id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
     <p class="muted" style="font-size:12px">Montagem: <code>/mnt/backup/{{ default_label }}</code> · repositório: <code>/mnt/backup/{{ default_label }}/restic</code></p>
 
+    <label for="filesystem">Sistema de arquivos de destino</label>
+    <input id="filesystem" value="ext4 (recomendado)" readonly>
+    <p class="muted" style="font-size:12px">ext4 é recomendado para restic em HDD 2,5"; nesta versão o destino é fixo em ext4.</p>
+
     {% if selected.extra_confirmation %}
       <div class="danger-zone">
         <strong>Confirmação extra obrigatória</strong>
-        <p class="muted">Este disco contém dados ou já está configurado. Ao continuar, o conteúdo será apagado.</p>
+        <p class="muted">Este disco contém um filesystem existente ou já está configurado. Ao continuar, o conteúdo será apagado.</p>
         <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px">
           <input type="checkbox" name="acknowledge" value="1" required style="width:auto;margin-top:3px">
           <span>Entendo que o conteúdo deste disco será apagado e não poderá ser recuperado.</span>

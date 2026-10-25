@@ -7,8 +7,8 @@
   <span>3. Confirmação</span>
 </div>
 
-<h1>Este disco não está vazio</h1>
-<p class="muted">Você selecionou <strong>{{ selected.path }}</strong> ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}).</p>
+<h1>{% if selected.configured %}Este disco já está configurado{% else %}Este disco já tem um filesystem{% endif %}</h1>
+<p class="muted">Você selecionou <strong>{{ selected.path }}</strong> ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}). Ele contém um filesystem existente{% if selected.fstype %} ({{ selected.fstype }}{% if selected.label %} · {{ selected.label }}{% endif %}){% endif %}. O wizard não lê o conteúdo para não acordar o disco; pode estar vazio, mas a formatação apaga o filesystem de qualquer forma.</p>
 
 <div class="alert danger">
   <strong>Nada foi apagado ainda.</strong>
@@ -18,6 +18,8 @@
 </div>
 
 <div class="card">
+  <p><strong>Sistema de arquivos de destino: ext4 (recomendado)</strong></p>
+  <p class="muted">O restic já faz deduplicação, criptografia e verificação; ext4 é mais simples e evita CoW/fragmentação em HDD 2,5". Nesta versão o destino é fixo em ext4.</p>
   <p>Se continuar, o wizard vai pedir:</p>
   <ul style="margin:8px 0 0 18px">
     <li>a frase <code class="phrase">{{ selected.required_phrase }}</code>;</li>

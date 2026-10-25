@@ -914,6 +914,7 @@ def _backup_disks(config: dict) -> list[dict]:
         fstype = fstypes[0] if fstypes else None
         label = labels[0] if labels else None
         has_data = bool(fstypes or uuids or children)
+        has_filesystem = bool(fstypes or uuids or children)
         system = name.startswith("mmcblk") or any(
             mount == "/" or mount.startswith("/boot") for mount in mounts
         )
@@ -945,7 +946,7 @@ def _backup_disks(config: dict) -> list[dict]:
             reason = "montado em " + ", ".join(mounts)
         if configured:
             required = f"RECONFIGURAR {path}"
-        elif has_data:
+        elif has_filesystem:
             required = f"APAGAR {path}"
         else:
             required = f"FORMATAR {path}"
@@ -956,7 +957,7 @@ def _backup_disks(config: dict) -> list[dict]:
             if jobs:
                 warning += ": " + ", ".join(job.get("name", "?") for job in jobs)
             warnings.append(warning)
-        if has_data:
+        if has_filesystem:
             detail = f"Contém filesystem {fstype or 'desconhecido'}"
             if label:
                 detail += f" (label {label})"
@@ -977,12 +978,13 @@ def _backup_disks(config: dict) -> list[dict]:
                 "uuid": uuid,
                 "mounts": mounts,
                 "has_data": has_data,
+                "has_filesystem": has_filesystem,
                 "configured": configured,
                 "jobs": [job.get("name") for job in jobs],
                 "candidate": candidate,
                 "reason": reason,
                 "required_phrase": required,
-                "extra_confirmation": configured or has_data,
+                "extra_confirmation": configured or has_filesystem,
                 "warnings": warnings,
             }
         )

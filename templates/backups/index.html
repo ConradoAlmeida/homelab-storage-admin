@@ -43,8 +43,8 @@
             {% if disk.configured %}
               <span class="badge snap">configurado</span>
               {% if disk.jobs %}<div class="muted" style="font-size:11px">{{ disk.jobs|join:", " }}</div>{% endif %}
-            {% elif disk.has_data %}
-              <span class="badge snap">com dados</span>
+            {% elif disk.has_filesystem %}
+              <span class="badge snap">com filesystem</span>
             {% else %}
               <span class="muted">—</span>
             {% endif %}
@@ -52,7 +52,7 @@
           <td class="file-actions">
             {% if disk.candidate %}
               <a class="btn small {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
-                {% if disk.configured %}Reconfigurar{% elif disk.has_data %}Preparar (apaga dados){% else %}Preparar{% endif %}
+                {% if disk.configured %}Reconfigurar{% elif disk.has_filesystem %}Preparar (apaga FS){% else %}Preparar{% endif %}
               </a>
             {% else %}
               <span class="muted" style="font-size:12px">indisponível</span>
@@ -87,7 +87,7 @@
 
   <div class="alert">
     <strong>Fluxo seguro:</strong> o wizard só mostra o resumo. A formatação exige senha do app + frase digitada.
-    Disco com dados ou já configurado pede uma confirmação extra antes de continuar.
+    Disco com filesystem existente ou já configurado pede uma confirmação extra antes de continuar.
   </div>
 {% endif %}
 {% endblock %}
