@@ -323,8 +323,9 @@ de um prefixo permitido.
 - “Versões” por arquivo, comparando live + snapshots;
 - tudo somente leitura; restauração ainda não implementada.
 
-O container precisa de `/mnt/nas` montado read-only. O app não escreve nos dados
-por esse caminho; qualquer escrita continua no agente root.
+O container precisa do `STORAGE_ROOT` montado read-only (no Pi, `/mnt/nas`;
+no moya, `/srv/samba` e `/mnt/data`). O app não escreve nos dados por esse
+caminho; qualquer escrita continua no agente root.
 
 ## 6.5 Discos e SMART
 
