@@ -21,6 +21,7 @@ em disco.
 | Criar share no `smb.conf` | Shares → Novo share |
 | Navegar histórico/snapshots | Histórico (`/history/`) — read-only |
 | Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
+| Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
@@ -231,6 +232,24 @@ Regras de standby:
 - a página não inicia teste nem SMART completo sozinha.
 - No **Active Cooler oficial**, `0 rpm` com `PWM 0%` significa fan parado; a curva começa por volta de 50 °C. A UI mostra o zero explicitamente, em vez de “—”.
 
+## 6.6 Backups — preparação de disco
+
+`/backups/` começa pelo wizard de disco:
+- lista discos com modelo, serial, tamanho, filesystem/label, montagem e se já há backup;
+- recusa disco do sistema, membro de RAID, montado ou com holders;
+- disco vazio pede `FORMATAR /dev/sdX`;
+- disco com dados pede **aviso extra** + `APAGAR /dev/sdX`;
+- disco já configurado pede **aviso extra** + `RECONFIGURAR /dev/sdX`;
+- sempre exige a senha do app;
+- o agente revalida estado, frase e `allow_existing` antes de qualquer `wipefs`.
+
+O wizard formata ext4, cria entrada no fstab por UUID, monta em
+`/mnt/backup/<label>`, inicializa o restic e mostra a senha de recuperação
+**uma única vez**. O arquivo root-only fica em `/etc/homelab-backup/secrets/`.
+
+Ainda não há cadastro de job/periodicidade nesta etapa; o disco preparado fica
+registrado em `/etc/homelab-backup/config.json` para a próxima fase.
+
 ## 7. Samba
 
 O app escreve seções no `/etc/samba/smb.conf`, roda `testparm -s` e recarrega
@@ -298,6 +317,7 @@ homelab-storage-admin/
 ├── core/              # views, forms, models, cliente do agente
 ├── history/           # navegador read-only de snapshots/versoes
 ├── storage/           # temperatura/estado/SMART sob demanda (standby-safe)
+├── backups/           # wizard de disco + (proximo) jobs restic
 ├── templates/         # UI escura, sem dependências externas
 ├── docker-compose.yml
 ├── install-agent.sh

@@ -1072,10 +1072,15 @@ def op_backup_disk_setup(
         f"UUID={uuid} {mountpoint} ext4 "
         "defaults,noatime,nofail,x-systemd.device-timeout=10s 0 2\n"
     )
-    if line not in text:
-        if text and not text.endswith("\n"):
-            text += "\n"
-        fstab.write_text(text + line)
+    lines = []
+    for existing in text.splitlines():
+        fields = existing.split()
+        if fields and not existing.lstrip().startswith("#") and len(fields) >= 2:
+            if fields[1] == mountpoint or fields[0] == f"UUID={uuid}":
+                continue
+        lines.append(existing)
+    body = "\n".join(lines).rstrip()
+    fstab.write_text((body + "\n" if body else "") + line)
     run(["systemctl", "daemon-reload"], timeout=30)
     run(["mount", mountpoint], timeout=60)
 
