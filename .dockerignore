@@ -1,0 +1,9 @@
+.git
+.cursor
+.env
+data
+**/__pycache__
+*.pyc
+staticfiles
+*.sqlite3
+.venv

@@ -1,0 +1,23 @@
+[Unit]
+Description=Homelab Storage Admin Agent
+After=network.target smbd.service
+Wants=smbd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/homelab-storage-agent
+Restart=on-failure
+RestartSec=2
+RuntimeDirectory=homelab-storage-admin
+RuntimeDirectoryMode=0755
+# Preserva o diretorio: o container tem bind mount nele e perderia o socket
+RuntimeDirectoryPreserve=yes
+Environment=STORAGE_ROOT=/mnt/nas
+Environment=SNAPSHOT_ROOT=/mnt/nas/.snapshots
+Environment=ALLOWED_PATH_PREFIXES=/mnt/nas/
+Environment=DF_MOUNTS=/,/mnt/nas
+Environment=SHARE_OWNER=conrado
+# Environment=SNAPSHOT_DENYLIST=share1,share2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Homelab Storage Admin - snapshot Btrfs diario
+After=homelab-storage-agent.service
+Requires=homelab-storage-agent.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-storage-snapshot

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Homelab Storage{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+{% if agent_error %}
+  <div class="card" style="border-color:#7f1d1d">
+    <strong>Agente indisponivel</strong>
+    <p class="muted">{{ agent_error }}</p>
+    <p class="muted">Instale/ative o agente no host com <code>sudo ./install-agent.sh</code>.</p>
+  </div>
+{% else %}
+
+<h2>Espaco em disco</h2>
+<div class="cards">
+  {% for v in volumes %}
+    <div class="card">
+      <div class="label">{{ v.mount }}</div>
+      <div class="value">{{ v.free|filesizeformat }} livres</div>
+      <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
+      <div class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}"><span style="width: {{ v.percent }}%"></span></div>
+    </div>
+  {% empty %}
+    <div class="empty">Nenhum volume retornado.</div>
+  {% endfor %}
+</div>
+
+<h2>Shares</h2>
+<p class="muted">Dados atuais + snapshots Btrfs. Como os snapshots compartilham extents, os tamanhos sao aproximados.</p>
+{% if shares %}
+<table>
+  <thead><tr><th>Share</th><th>Caminho</th><th>Dados</th><th>Snapshots</th><th>Total</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for s in shares %}
+      <tr>
+        <td><strong>{{ s.name }}</strong></td>
+        <td class="muted">{{ s.path }}</td>
+        <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
+        <td class="muted">
+          {% if s.size_snapshots != None %}
+            {{ s.size_snapshots|filesizeformat }}
+            {% if s.snapshot_count != None %}<div style="font-size:12px">{{ s.snapshot_count }} versoes</div>{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if s.size_total != None %}
+            <strong>{{ s.size_total|filesizeformat }}</strong>
+            {% if s.volume_percent != None %}
+              <div class="muted" style="font-size:12px">{{ s.volume_percent }}% do volume</div>
+              <div class="bar {% if s.volume_percent >= 90 %}err{% elif s.volume_percent >= 75 %}warn{% endif %}"><span style="width: {{ s.volume_percent }}%"></span></div>
+            {% endif %}
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td>{% if s.read_only %}<span class="tag">somente leitura</span>{% else %}<span class="tag ok">leitura/escrita</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty">Nenhum share encontrado.</div>{% endif %}
+
+<h2>Snapshots</h2>
+{% if snapshots %}
+<table>
+  <thead><tr><th>Share</th><th>Politica</th><th>Versoes</th><th>Tamanho aprox.</th></tr></thead>
+  <tbody>
+    {% for s in snapshots %}
+      <tr>
+        <td><strong>{{ s.share }}</strong></td>
+        <td>{% if s.enabled %}<span class="tag ok">ativa (keep={{ s.keep }})</span>{% else %}<span class="tag off">desativada</span>{% endif %}</td>
+        <td>{{ s.count }}</td>
+        <td class="muted">{{ s.size|filesizeformat }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty">Nenhuma politica configurada.</div>{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Snapshots - Homelab Storage{% endblock %}
+{% block content %}
+<h1>Snapshots (Previous Versions)</h1>
+<p class="muted">Snapshots nativos do Btrfs: cada share com politica ativa e um subvolume, e as versoes sao subvolumes somente leitura. O tamanho e <strong>aproximado</strong>, porque extents compartilhados contam uma vez no volume.</p>
+
+{% if agent_error %}
+  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
+{% elif shares %}
+  {% for s in shares %}
+    <div class="card" style="margin-bottom:18px">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <strong style="font-size:16px">{{ s.share }}</strong>
+          <div class="muted" style="font-size:13px">
+            {{ s.path }} &middot;
+            {% if s.enabled %}<span class="tag ok">politica ativa (keep={{ s.keep }})</span>{% else %}<span class="tag off">politica desativada</span>{% endif %}
+            &middot; {{ s.count }} versoes &middot; ~{{ s.size|filesizeformat }} aprox.
+          </div>
+        </div>
+        {% if s.enabled %}
+          <form method="post" action="{% url 'snapshot_create' %}">
+            {% csrf_token %}
+            <input type="hidden" name="share" value="{{ s.share }}">
+            <button class="btn primary" type="submit">Criar snapshot agora</button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if s.snapshots %}
+        <table style="margin-top:14px">
+          <thead><tr><th>Snapshot</th><th>Data</th><th></th></tr></thead>
+          <tbody>
+            {% for snap in s.snapshots %}
+              <tr>
+                <td><code>{{ snap.name }}</code></td>
+                <td class="muted">{{ snap.mtime }}</td>
+                <td style="text-align:right">
+                  <form method="post" action="{% url 'snapshot_delete' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="share" value="{{ s.share }}">
+                    <input type="hidden" name="name" value="{{ snap.name }}">
+                    <button class="btn small danger" type="submit">Remover</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty" style="margin-top:14px">Nenhum snapshot existente.</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">Nenhuma politica de snapshot configurada.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Usuarios - Homelab Storage{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between; margin-bottom:18px">
+  <h1 style="margin:0">Usuarios Samba</h1>
+  <a class="btn primary" href="{% url 'user_create' %}">Novo usuario</a>
+</div>
+
+{% if agent_error %}
+  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
+{% elif users %}
+<table>
+  <thead><tr><th>Usuario</th><th>Nome</th><th>Grupos</th><th>Status</th><th>Acoes</th></tr></thead>
+  <tbody>
+    {% for u in users %}
+      <tr>
+        <td><strong>{{ u.username }}</strong></td>
+        <td class="muted">{{ u.fullname|default:"-" }}</td>
+        <td>{% for g in u.groups %}<span class="tag">{{ g }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td>
+        <td>{% if u.enabled %}<span class="tag ok">ativo</span>{% else %}<span class="tag off">desativado</span>{% endif %}</td>
+        <td>
+          <div class="row">
+            <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
+            <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
+            <form method="post" action="{% url 'user_toggle' %}">
+              {% csrf_token %}
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
+              <button class="btn small {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <div class="empty">Nenhum usuario Samba cadastrado.</div>
+{% endif %}
+{% endblock %}

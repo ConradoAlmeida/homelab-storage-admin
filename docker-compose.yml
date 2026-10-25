@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    container_name: homelab-storage-admin
+    restart: unless-stopped
+    # Bind apenas na LAN. Se o IP do Pi mudar, ajuste aqui e no .env.
+    ports:
+      - "192.168.0.150:8060:8000"
+    env_file:
+      - .env
+    environment:
+      - AGENT_SOCKET=/run/homelab-storage-admin/agent.sock
+    volumes:
+      - ./data:/app/data
+      - /run/homelab-storage-admin:/run/homelab-storage-admin:ro

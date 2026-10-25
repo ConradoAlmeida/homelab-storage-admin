@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Homelab Storage{% endblock %}</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#1e293b; --line:#334155; --txt:#e2e8f0; --muted:#94a3b8; --acc:#38bdf8; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--txt); }
+    a { color:var(--acc); text-decoration:none; }
+    header { display:flex; align-items:center; gap:24px; padding:14px 24px; background:var(--panel); border-bottom:1px solid var(--line); }
+    header .brand { font-weight:700; letter-spacing:.3px; }
+    header nav { display:flex; gap:18px; flex:1; }
+    header nav a { color:var(--muted); font-size:14px; }
+    header nav a.active, header nav a:hover { color:var(--txt); }
+    header .user { color:var(--muted); font-size:13px; display:flex; gap:12px; align-items:center; }
+    main { max-width:1200px; margin:0 auto; padding:24px; }
+    h1 { font-size:22px; margin:0 0 18px; }
+    h2 { font-size:16px; margin:26px 0 10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+    .card .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+    .card .value { font-size:26px; font-weight:700; margin:6px 0; }
+    .card .sub { color:var(--muted); font-size:13px; }
+    .bar { height:8px; background:#0b1220; border-radius:99px; overflow:hidden; margin-top:10px; }
+    .bar > span { display:block; height:100%; background:var(--ok); }
+    .bar.warn > span { background:var(--warn); }
+    .bar.err > span { background:var(--err); }
+    table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+    th, td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); font-size:14px; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+    tr:last-child td { border-bottom:none; }
+    .tag { display:inline-block; padding:2px 8px; border-radius:99px; font-size:12px; border:1px solid var(--line); color:var(--muted); }
+    .tag.ok { color:var(--ok); border-color:#14532d; }
+    .tag.off { color:var(--err); border-color:#7f1d1d; }
+    .btn { display:inline-block; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); cursor:pointer; font-size:13px; }
+    .btn:hover { border-color:var(--acc); }
+    .btn.primary { background:var(--acc); color:#04121c; border-color:var(--acc); font-weight:600; }
+    .btn.danger { color:var(--err); border-color:#7f1d1d; }
+    .btn.small { padding:4px 9px; font-size:12px; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .muted { color:var(--muted); }
+    .messages { list-style:none; padding:0; margin:0 0 18px; }
+    .messages li { padding:10px 14px; border-radius:8px; margin-bottom:8px; background:var(--panel); border:1px solid var(--line); }
+    .messages li.success { border-color:#14532d; }
+    .messages li.error { border-color:#7f1d1d; }
+    form.stack { max-width:560px; display:grid; gap:14px; }
+    form.stack label { font-size:13px; color:var(--muted); display:block; margin-bottom:4px; }
+    form.stack input[type=text], form.stack input[type=password], form.stack input[type=number] { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); }
+    form.stack ul { list-style:none; padding:0; margin:0; display:flex; gap:12px; flex-wrap:wrap; }
+    form.stack ul li label { color:var(--txt); font-size:13px; display:flex; gap:6px; align-items:center; }
+    .help { font-size:12px; color:var(--muted); margin-top:4px; }
+    .errorlist { color:var(--err); font-size:13px; padding-left:18px; }
+    .empty { padding:18px; color:var(--muted); text-align:center; background:var(--panel); border:1px dashed var(--line); border-radius:10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">HOMELAB Storage</div>
+    <nav>
+      <a href="{% url 'dashboard' %}">Dashboard</a>
+      <a href="{% url 'users' %}">Usuarios</a>
+      <a href="{% url 'shares' %}">Shares</a>
+      <a href="{% url 'snapshots' %}">Snapshots</a>
+    </nav>
+    <div class="user">
+      <span>{{ request.user.username }}</span>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
+    </div>
+  </header>
+  <main>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

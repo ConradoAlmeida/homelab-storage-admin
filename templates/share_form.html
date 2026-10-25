@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Novo share - Homelab Storage{% endblock %}
+{% block content %}
+<h1>Novo compartilhamento</h1>
+<form class="stack" method="post">
+  {% csrf_token %}
+  {% for field in form %}
+    <div>
+      <label>{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      {{ field.errors }}
+    </div>
+  {% endfor %}
+  <div class="help">
+    O agente cria o diretorio, os grupos <code>&lt;nome&gt;_ro</code>, <code>&lt;nome&gt;_rw</code> e
+    <code>&lt;nome&gt;</code>, valida com <code>testparm</code> e recarrega o Samba.
+  </div>
+  <div class="row">
+    <button class="btn primary" type="submit">Criar share</button>
+    <a class="btn" href="{% url 'shares' %}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
