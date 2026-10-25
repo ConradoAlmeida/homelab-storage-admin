@@ -27,6 +27,7 @@ em disco.
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
+| Cópia fria USB | Backups → Cópia fria (USB) — restic copy + check + eject |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
