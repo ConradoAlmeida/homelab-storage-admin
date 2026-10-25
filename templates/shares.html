@@ -10,12 +10,20 @@
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif shares %}
 <table>
-  <thead><tr><th>Share</th><th>Caminho</th><th>Dados</th><th>Snapshots</th><th>Total</th><th>Usuarios/Grupos</th><th>Acesso</th></tr></thead>
+  <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Tam. snapshots</th><th>Total</th><th>Usuarios/Grupos</th><th>Acesso</th></tr></thead>
   <tbody>
     {% for s in shares %}
       <tr>
         <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.comment %}<div class="muted" style="font-size:12px">{{ s.comment }}</div>{% endif %}</td>
         <td class="muted">{{ s.path }}</td>
+        <td>
+          {% if s.snapshot_enabled %}
+            <span class="tag ok">sim · keep {{ s.snapshot_keep }}</span>
+            <div class="muted" style="font-size:12px">{{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
+          {% else %}
+            <span class="tag off">não configurado</span>
+          {% endif %}
+        </td>
         <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
         <td class="muted">{% if s.size_snapshots != None %}{{ s.size_snapshots|filesizeformat }}{% else %}—{% endif %}</td>
         <td>{% if s.size_total != None %}<strong>{{ s.size_total|filesizeformat }}</strong>{% else %}—{% endif %}</td>

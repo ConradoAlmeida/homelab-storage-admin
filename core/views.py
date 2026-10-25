@@ -83,6 +83,11 @@ def dashboard(request):
         job["source_count"] = len(job.get("sources") or [])
 
     snapshots = context["snapshots"]
+    snap_by_name = {item.get("share"): item for item in snapshots}
+    for share in context["shares"]:
+        snap = snap_by_name.get(share.get("name"))
+        share["snapshot_enabled"] = bool(snap and snap.get("enabled"))
+        share["snapshot_keep"] = snap.get("keep") if snap else None
     total_count = sum(int(item.get("count") or 0) for item in snapshots)
     total_size = sum(int(item.get("size") or 0) for item in snapshots)
     latest = None
@@ -204,7 +209,16 @@ def user_toggle(request):
 def shares(request):
     context = {"agent_error": None, "shares": []}
     try:
-        context["shares"] = agent.list_shares(include_size=True)
+        shares = agent.list_shares(include_size=True)
+        snap_by_name = {
+            item.get("share"): item for item in agent.snapshot_usage()
+        }
+        for share in shares:
+            snap = snap_by_name.get(share.get("name"))
+            share["snapshot_enabled"] = bool(snap and snap.get("enabled"))
+            share["snapshot_keep"] = snap.get("keep") if snap else None
+            share["snapshot_count"] = snap.get("count") if snap else 0
+        context["shares"] = shares
     except AgentError as exc:
         context["agent_error"] = str(exc)
     return render(request, "shares.html", context)
@@ -241,7 +255,31 @@ def share_create(request):
 def snapshots(request):
     context = {"agent_error": None, "shares": []}
     try:
-        context["shares"] = agent.snapshot_usage()
+        policies = {
+            item.get("share"): item for item in agent.snapshot_usage()
+        }
+        shares = agent.list_shares(include_size=False)
+        result = []
+        seen = set()
+        for share in shares:
+            name = share.get("name")
+            item = policies.get(name)
+            if item is None:
+                item = {
+                    "share": name,
+                    "path": share.get("path"),
+                    "enabled": False,
+                    "keep": 0,
+                    "count": 0,
+                    "size": 0,
+                    "snapshots": [],
+                }
+            result.append(item)
+            seen.add(name)
+        for name, item in policies.items():
+            if name not in seen:
+                result.append(item)
+        context["shares"] = sorted(result, key=lambda item: item.get("share", ""))
     except AgentError as exc:
         context["agent_error"] = str(exc)
     return render(request, "snapshots.html", context)

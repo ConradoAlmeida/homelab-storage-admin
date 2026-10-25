@@ -146,7 +146,7 @@
     <p><strong>{{ shares|length }}</strong> share{{ shares|length|pluralize }} configurado{{ shares|length|pluralize }}.</p>
     <p class="muted">
       {% for s in shares %}
-        <span class="badge" style="margin:2px 4px 2px 0">{{ s.name }}{% if not s.browseable %} · privado{% endif %}{% if s.read_only %} · RO{% endif %}</span>
+        <span class="badge" style="margin:2px 4px 2px 0">{{ s.name }}{% if not s.browseable %} · privado{% endif %}{% if s.read_only %} · RO{% endif %}{% if s.snapshot_enabled %} · snap{% else %} · sem snap{% endif %}</span>
       {% endfor %}
     </p>
     <a class="btn small" href="{% url 'shares' %}">Gerenciar shares</a>

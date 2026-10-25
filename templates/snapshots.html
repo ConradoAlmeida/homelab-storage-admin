@@ -2,7 +2,7 @@
 {% block title %}Snapshots - Homelab Storage{% endblock %}
 {% block content %}
 <h1>Snapshots (Previous Versions)</h1>
-<p class="muted">Snapshots nativos do Btrfs: cada share com politica ativa e um subvolume, e as versoes sao subvolumes somente leitura. O tamanho e <strong>aproximado</strong>, porque extents compartilhados contam uma vez no volume.</p>
+<p class="muted">Snapshots nativos do Btrfs: cada share com politica ativa e um subvolume, e as versoes sao subvolumes somente leitura. O tamanho e <strong>aproximado</strong>, porque extents compartilhados contam uma vez no volume. Shares sem politica aparecem como <strong>não configurado</strong>.</p>
 
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
@@ -14,7 +14,7 @@
           <strong style="font-size:16px">{{ s.share }}</strong>
           <div class="muted" style="font-size:13px">
             {{ s.path }} &middot;
-            {% if s.enabled %}<span class="tag ok">politica ativa (keep={{ s.keep }})</span>{% else %}<span class="tag off">politica desativada</span>{% endif %}
+            {% if s.enabled %}<span class="tag ok">politica ativa (keep={{ s.keep }})</span>{% else %}<span class="tag off">não configurado</span>{% endif %}
             &middot; {{ s.count }} versoes &middot; ~{{ s.size|filesizeformat }} aprox.
           </div>
         </div>
@@ -49,7 +49,7 @@
           </tbody>
         </table>
       {% else %}
-        <div class="empty" style="margin-top:14px">Nenhum snapshot existente.</div>
+        <div class="empty" style="margin-top:14px">{% if s.enabled %}Nenhum snapshot existente.{% else %}Sem política de snapshot configurada para este share.{% endif %}</div>
       {% endif %}
     </div>
   {% endfor %}
