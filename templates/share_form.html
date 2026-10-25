@@ -6,14 +6,14 @@
   {% csrf_token %}
   {% for field in form %}
     <div>
-      <label>{{ field.label }}</label>
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field }}
       {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
       {{ field.errors }}
     </div>
   {% endfor %}
   <div class="help">
-    O agente cria o diretorio, os grupos <code>&lt;nome&gt;_ro</code>, <code>&lt;nome&gt;_rw</code> e
+    O agente cria o diretório, os grupos <code>&lt;nome&gt;_ro</code>, <code>&lt;nome&gt;_rw</code> e
     <code>&lt;nome&gt;</code>, valida com <code>testparm</code> e recarrega o Samba.
   </div>
   <div class="row">

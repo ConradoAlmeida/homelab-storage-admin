@@ -7,7 +7,7 @@
   {% for field in form %}
     {% if field.is_hidden %}{{ field }}{% else %}
       <div>
-        <label>{{ field.label }}</label>
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
         {{ field.errors }}
       </div>

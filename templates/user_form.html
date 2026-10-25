@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Novo usuario - Homelab Storage{% endblock %}
+{% block title %}Novo usuário - Homelab Storage{% endblock %}
 {% block content %}
-<h1>Novo usuario Samba</h1>
+<h1>Novo usuário Samba</h1>
 <form class="stack" method="post">
   {% csrf_token %}
   {% for field in form %}
     <div>
-      <label>{{ field.label }}</label>
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
       {{ field }}
       {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
       {{ field.errors }}
     </div>
   {% endfor %}
   <div class="row">
-    <button class="btn primary" type="submit">Criar usuario</button>
+    <button class="btn primary" type="submit">Criar usuário</button>
     <a class="btn" href="{% url 'users' %}">Cancelar</a>
   </div>
 </form>
