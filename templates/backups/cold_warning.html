@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Aviso - Cópia fria USB{% endblock %}
+{% block content %}
+<div class="wizard-steps">
+  <span class="on">1. Drive</span>
+  <span class="on">2. Aviso</span>
+  <span>3. Confirmação</span>
+</div>
+
+<h1>Este drive já tem conteúdo</h1>
+<p class="muted">Você selecionou <strong>{{ selected.path }}</strong> ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}).</p>
+
+<div class="alert danger">
+  <strong>Nada foi apagado ainda.</strong>
+  <ul style="margin:10px 0 0 18px">
+    {% for warning in selected.warnings %}<li>{{ warning }}</li>{% endfor %}
+  </ul>
+</div>
+
+<div class="card">
+  <p><strong>Destino: ext4 + repositório restic no USB.</strong></p>
+  <p class="muted">O drive será formatado e o repo frio será criado. Se continuar, o wizard pedirá a frase <code class="phrase">{{ selected.required_phrase }}</code>, a senha do app e a confirmação extra.</p>
+</div>
+
+<div class="row" style="gap:8px;margin-top:16px">
+  <a class="btn danger" href="?device={{ selected.path|urlencode }}&confirm=1">Continuar mesmo assim</a>
+  <a class="btn small" href="{% url 'cold_index' %}">Cancelar</a>
+</div>
+{% endblock %}

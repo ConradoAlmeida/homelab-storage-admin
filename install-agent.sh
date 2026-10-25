@@ -25,12 +25,14 @@ echo "==> Instalando binarios"
 install -m 0755 "$HERE/agent/homelab-storage-agent.py" /usr/local/sbin/homelab-storage-agent
 install -m 0755 "$HERE/agent/homelab-storage-snapshot.py" /usr/local/sbin/homelab-storage-snapshot
 install -m 0755 "$HERE/agent/homelab-restic-backup.py" /usr/local/sbin/homelab-restic-backup
+install -m 0755 "$HERE/agent/homelab-cold-copy.py" /usr/local/sbin/homelab-cold-copy
 
 echo "==> Instalando unidades systemd"
 install -m 0644 "$HERE/agent/homelab-storage-agent.service" /etc/systemd/system/homelab-storage-agent.service
 install -m 0644 "$HERE/agent/homelab-storage-snapshot.service" /etc/systemd/system/homelab-storage-snapshot.service
 install -m 0644 "$HERE/agent/homelab-storage-snapshot.timer" /etc/systemd/system/homelab-storage-snapshot.timer
 install -m 0644 "$HERE/agent/homelab-restic-backup@.service" /etc/systemd/system/homelab-restic-backup@.service
+install -m 0644 "$HERE/agent/homelab-cold-copy.service" /etc/systemd/system/homelab-cold-copy.service
 
 echo "==> Configuracao"
 mkdir -p /etc/homelab-storage-agent /etc/homelab-backup/status /etc/homelab-backup/secrets /var/log/homelab-restic

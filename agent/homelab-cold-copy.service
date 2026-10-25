@@ -1,0 +1,10 @@
+[Unit]
+Description=Homelab cold copy restic to USB
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-cold-copy
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=12h

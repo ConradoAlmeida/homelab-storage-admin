@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Preparar drive frio - Backups{% endblock %}
+{% block content %}
+<div class="wizard-steps">
+  <span class="on">1. Drive</span>
+  {% if selected.extra_confirmation %}<span class="on">2. Aviso</span>{% endif %}
+  <span class="on">3. Confirmação</span>
+</div>
+
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+  <div>
+    <h1 style="margin-bottom:4px">Preparar {{ selected.path }}</h1>
+    <p class="muted">Formatar ext4, montar em <code>/mnt/coldcopy</code> e criar o repo restic frio.</p>
+  </div>
+  <a class="btn small" href="{% url 'cold_index' %}">← Voltar</a>
+</div>
+
+{% if error %}<div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>{% endif %}
+
+<table class="file-table" style="margin-top:12px">
+  <tbody>
+    <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
+    <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
+    <tr><th>Serial</th><td class="mono">{{ selected.serial|default:"—" }}</td></tr>
+    <tr><th>Tamanho</th><td>{{ selected.size|default:"—" }}</td></tr>
+    <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
+    <tr><th>Destino</th><td><strong>ext4</strong> · mount <code>/mnt/coldcopy</code></td></tr>
+  </tbody>
+</table>
+
+{% if selected.warnings %}
+  <div class="alert danger"><strong>Atenção</strong><ul style="margin:8px 0 0 18px">{% for warning in selected.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+{% if not selected.candidate %}
+  <div class="alert danger"><strong>Drive indisponível:</strong> {{ selected.reason }}. Desmonte/ejecte antes de tentar.</div>
+{% else %}
+  <form method="post" action="{% url 'cold_prepare' %}" class="card" style="max-width:640px">
+    {% csrf_token %}
+    <input type="hidden" name="device" value="{{ selected.path }}">
+
+    <label for="label">Label do drive</label>
+    <input id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
+    <p class="muted" style="font-size:12px">O repo ficará em <code>/mnt/coldcopy/restic</code>. A senha é a mesma do restic primário.</p>
+
+    {% if selected.extra_confirmation %}
+      <div class="danger-zone">
+        <strong>Confirmação extra obrigatória</strong>
+        <p class="muted">O drive tem dados ou já é um repo frio. O conteúdo será apagado.</p>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px">
+          <input type="checkbox" name="acknowledge" value="1" required style="width:auto;margin-top:3px">
+          <span>Entendo que o conteúdo deste drive será apagado.</span>
+        </label>
+      </div>
+    {% endif %}
+
+    <label for="confirmation">Frase de confirmação</label>
+    <p class="muted" style="font-size:12px">Digite exatamente:</p>
+    <p><code class="phrase">{{ selected.required_phrase }}</code></p>
+    <input id="confirmation" name="confirmation" autocomplete="off" required>
+
+    <label for="password">Senha do app</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+    <div style="margin-top:16px">
+      <button class="btn danger" type="submit">Preparar drive</button>
+      <a class="btn small" href="{% url 'cold_index' %}">Cancelar</a>
+    </div>
+  </form>
+{% endif %}
+{% endblock %}

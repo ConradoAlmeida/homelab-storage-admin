@@ -29,6 +29,9 @@ BACKUP_CONFIG = os.environ.get("BACKUP_CONFIG", "/etc/homelab-backup/config.json
 BACKUP_SECRETS = os.environ.get("BACKUP_SECRETS", "/etc/homelab-backup/secrets")
 BACKUP_STATUS_DIR = os.environ.get("BACKUP_STATUS_DIR", "/etc/homelab-backup/status")
 BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
+COLD_CONFIG = os.environ.get("COLD_CONFIG", "/etc/homelab-backup/cold.json")
+COLD_STATUS = os.environ.get("COLD_STATUS", "/etc/homelab-backup/cold-status.json")
+COLD_MOUNT = os.environ.get("COLD_MOUNT", "/mnt/coldcopy")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
 
 USER_RE = re.compile(r"^[a-z][a-z0-9._-]{2,31}$")
@@ -36,6 +39,7 @@ SHARE_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 GROUP_RE = re.compile(r"^[a-z][a-z0-9._-]{1,31}$")
 SNAP_RE = re.compile(r"^@GMT-\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}$")
 BACKUP_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
+COLD_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F-]{16,64}$")
 JOB_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -1481,6 +1485,295 @@ def op_backup_job_run(name: str, **_):
     return {"name": name, "started": True}
 
 
+def _load_cold_config() -> dict:
+    path = Path(COLD_CONFIG)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentError(f"Configuracao de copia fria invalida: {exc}") from exc
+    return data if isinstance(data, dict) else {}
+
+
+def _save_cold_config(data: dict) -> None:
+    path = Path(COLD_CONFIG)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+
+
+def _read_cold_status() -> dict:
+    path = Path(COLD_STATUS)
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_cold_status(data: dict) -> None:
+    path = Path(COLD_STATUS)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+
+
+def _primary_backup_disk() -> dict:
+    config = _load_backup_config()
+    disks = config.get("disks", [])
+    if not disks:
+        raise AgentError("Nenhum disco de backup primario configurado")
+    return disks[0]
+
+
+def _usb_disks(cold: dict) -> list[dict]:
+    raw = run(
+        [
+            "lsblk",
+            "-J",
+            "-o",
+            "NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL,SERIAL,TRAN,RM,HOTPLUG",
+        ]
+    )
+    data = json.loads(raw)
+    disks = []
+
+    def descendants(device: dict) -> list[dict]:
+        result = []
+        for child in device.get("children") or []:
+            result.append(child)
+            result.extend(descendants(child))
+        return result
+
+    for device in data.get("blockdevices", []):
+        name = device.get("name", "")
+        tran = (device.get("tran") or "").lower()
+        rm = bool(device.get("rm"))
+        hotplug = bool(device.get("hotplug"))
+        if device.get("type") != "disk" or not (tran == "usb" or rm or hotplug):
+            continue
+        path = f"/dev/{name}"
+        mounts = _collect_mounts(device)
+        children = descendants(device)
+        all_parts = [device] + children
+        fstypes = [item.get("fstype") for item in all_parts if item.get("fstype")]
+        labels = [item.get("label") for item in all_parts if item.get("label")]
+        uuids = [item.get("uuid") for item in all_parts if item.get("uuid")]
+        partitions = [f"/dev/{item['name']}" for item in children if item.get("name")]
+        serial = (device.get("serial") or "").strip()
+        model = (device.get("model") or "").strip()
+        uuid = uuids[0] if uuids else None
+        fstype = fstypes[0] if fstypes else None
+        label = labels[0] if labels else None
+        has_filesystem = bool(fstypes or uuids or children)
+        configured = bool(
+            cold
+            and (
+                (cold.get("serial") and cold.get("serial") == serial)
+                or cold.get("device") == path
+                or (cold.get("uuid") and cold.get("uuid") == uuid)
+            )
+        )
+        system = name.startswith("mmcblk") or any(
+            mount == "/" or mount.startswith("/boot") for mount in mounts
+        )
+        raid = any(item == "linux_raid_member" for item in fstypes)
+        candidate = not system and not raid and not mounts
+        reason = ""
+        if system:
+            reason = "disco do sistema"
+        elif raid:
+            reason = "membro de RAID"
+        elif mounts:
+            reason = "montado em " + ", ".join(mounts)
+        if configured:
+            required = f"RECONFIGURAR {path}"
+        elif has_filesystem:
+            required = f"APAGAR {path}"
+        else:
+            required = f"FORMATAR {path}"
+        warnings = []
+        if configured:
+            warnings.append("Drive já configurado para copia fria")
+        if has_filesystem:
+            detail = f"Contém filesystem {fstype or 'desconhecido'}"
+            if label:
+                detail += f" (label {label})"
+            warnings.append(detail)
+        if not candidate:
+            warnings.append(f"Indisponível: {reason}")
+        disks.append(
+            {
+                "name": name,
+                "path": path,
+                "size": device.get("size"),
+                "model": model,
+                "serial": serial,
+                "tran": device.get("tran"),
+                "fstype": fstype,
+                "label": label,
+                "uuid": uuid,
+                "partition": partitions[0] if partitions else None,
+                "mounts": mounts,
+                "has_filesystem": has_filesystem,
+                "configured": configured,
+                "candidate": candidate,
+                "reason": reason,
+                "required_phrase": required,
+                "extra_confirmation": configured or has_filesystem,
+                "warnings": warnings,
+            }
+        )
+    return sorted(disks, key=lambda item: item["name"])
+
+
+def op_cold_overview(**_):
+    cold = _load_cold_config()
+    primary = None
+    primary_error = None
+    try:
+        primary = _primary_backup_disk()
+    except AgentError as exc:
+        primary_error = str(exc)
+    return {
+        "disks": _usb_disks(cold),
+        "config": cold,
+        "status": _read_cold_status(),
+        "primary": primary,
+        "primary_error": primary_error,
+        "mount": COLD_MOUNT,
+    }
+
+
+def op_cold_prepare(
+    device: str,
+    label: str,
+    confirmation: str,
+    allow_existing: bool = False,
+    **_,
+):
+    device = (device or "").strip()
+    label = (label or "").strip().lower()
+    confirmation = (confirmation or "").strip()
+    if not re.match(r"^/dev/sd[a-z]$", device):
+        raise AgentError("Dispositivo USB invalido (use /dev/sdX)")
+    if not COLD_LABEL_RE.match(label):
+        raise AgentError("Label invalida (1-16 caracteres: a-z, 0-9, _ ou -)")
+    primary = _primary_backup_disk()
+    key_file = Path(primary.get("key_file") or "")
+    if not key_file.is_file():
+        raise AgentError("Senha do restic primario ausente")
+    cold = _load_cold_config()
+    disk = next((item for item in _usb_disks(cold) if item["path"] == device), None)
+    if disk is None:
+        raise AgentError(f"Disco USB nao encontrado: {device}")
+    if not disk["candidate"]:
+        raise AgentError(f"Disco USB indisponivel: {disk['reason']}")
+    if disk["extra_confirmation"] and not allow_existing:
+        raise AgentError("Confirmacao extra obrigatoria para drive nao vazio/configurado")
+    if confirmation != disk["required_phrase"]:
+        raise AgentError(
+            f"Confirmacao incorreta. Digite exatamente: {disk['required_phrase']}"
+        )
+    if os.path.ismount(COLD_MOUNT):
+        raise AgentError(f"{COLD_MOUNT} ja esta montado; ejetar antes")
+    Path(COLD_MOUNT).mkdir(parents=True, exist_ok=True)
+    run(["wipefs", "-a", device], timeout=60)
+    run(
+        [
+            "parted",
+            "-s",
+            device,
+            "mklabel",
+            "gpt",
+            "mkpart",
+            "primary",
+            "ext4",
+            "1MiB",
+            "100%",
+        ],
+        timeout=120,
+    )
+    run(["udevadm", "settle"], timeout=30)
+    partition = f"{device}1"
+    if not os.path.exists(partition):
+        raise AgentError(f"Particao nao criada: {partition}")
+    run(["mkfs.ext4", "-F", "-L", label, partition], timeout=600)
+    run(["udevadm", "settle"], timeout=30)
+    uuid = run(["blkid", "-s", "UUID", "-o", "value", partition]).strip()
+    if not UUID_RE.match(uuid):
+        raise AgentError(f"UUID invalido apos formatar: {uuid!r}")
+    run(["mount", partition, COLD_MOUNT], timeout=60)
+    repo = f"{COLD_MOUNT}/restic"
+    Path(repo).mkdir(parents=True, exist_ok=True)
+    os.chmod(repo, 0o700)
+    run(
+        ["restic", "-r", repo, "--password-file", str(key_file), "init"],
+        timeout=300,
+    )
+    config = {
+        "device": device,
+        "partition": partition,
+        "serial": disk.get("serial"),
+        "uuid": uuid,
+        "label": label,
+        "mountpoint": COLD_MOUNT,
+        "repo": repo,
+        "key_file": str(key_file),
+        "source_uuid": primary.get("uuid"),
+        "configured_at": dt.datetime.now().isoformat(timespec="seconds"),
+    }
+    _save_cold_config(config)
+    _write_cold_status(
+        {"status": "prepared", "at": config["configured_at"], "message": "repo frio criado"}
+    )
+    log(f"COLD_PREPARE {device} {label} {uuid}")
+    return config
+
+
+def op_cold_copy(**_):
+    cold = _load_cold_config()
+    if not cold:
+        raise AgentError("Nenhum drive de copia fria configurado")
+    primary = _primary_backup_disk()
+    key_file = Path(cold.get("key_file") or "")
+    if not key_file.is_file():
+        raise AgentError("Senha do restic frio ausente")
+    disks = _usb_disks(cold)
+    disk = next((item for item in disks if item.get("configured")), None)
+    if disk is None:
+        raise AgentError("Drive de copia fria nao conectado")
+    if not Path("/etc/systemd/system/homelab-cold-copy.service").is_file():
+        raise AgentError("Servico homelab-cold-copy ausente; rode sudo ./install-agent.sh")
+    rc, _, _ = run_optional(
+        ["systemctl", "is-active", "--quiet", "homelab-cold-copy.service"], timeout=10
+    )
+    if rc == 0:
+        raise AgentError("Copia fria ja esta em execucao")
+    run(["systemctl", "start", "--no-block", "homelab-cold-copy.service"], timeout=30)
+    log(f"COLD_COPY_START {cold.get('device')}")
+    return {"started": True, "device": cold.get("device")}
+
+
+def op_cold_eject(**_):
+    rc, _, _ = run_optional(
+        ["systemctl", "is-active", "--quiet", "homelab-cold-copy.service"], timeout=10
+    )
+    if rc == 0:
+        raise AgentError("Copia fria em execucao; aguarde terminar antes de ejetar")
+    if os.path.ismount(COLD_MOUNT):
+        run_optional(["sync"], timeout=60)
+        run(["umount", COLD_MOUNT], timeout=60)
+    return {"mounted": os.path.ismount(COLD_MOUNT), "mount": COLD_MOUNT}
+
+
 OPS = {
     "ping": op_ping,
     "df": op_df,
@@ -1506,6 +1799,10 @@ OPS = {
     "backup_job_toggle": op_backup_job_toggle,
     "backup_job_delete": op_backup_job_delete,
     "backup_job_run": op_backup_job_run,
+    "cold_overview": op_cold_overview,
+    "cold_prepare": op_cold_prepare,
+    "cold_copy": op_cold_copy,
+    "cold_eject": op_cold_eject,
 }
 
 

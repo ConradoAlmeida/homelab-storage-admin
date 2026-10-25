@@ -142,5 +142,24 @@ class AgentClient:
     def backup_job_run(self, name):
         return self.call("backup_job_run", timeout=30, name=name)
 
+    def cold_overview(self):
+        return self.call("cold_overview", timeout=60)
+
+    def cold_prepare(self, device, label, confirmation, allow_existing=False):
+        return self.call(
+            "cold_prepare",
+            timeout=900,
+            device=device,
+            label=label,
+            confirmation=confirmation,
+            allow_existing=allow_existing,
+        )
+
+    def cold_copy(self):
+        return self.call("cold_copy", timeout=3900)
+
+    def cold_eject(self):
+        return self.call("cold_eject", timeout=60)
+
 
 agent = AgentClient()

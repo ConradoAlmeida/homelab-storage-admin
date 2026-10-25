@@ -374,3 +374,136 @@ def job_delete(request, name):
             request, f"Job {name} excluído. O repositório restic foi mantido."
         )
     return redirect("backup_index")
+
+
+@login_required
+def cold_index(request):
+    context = {"overview": None, "error": None}
+    try:
+        context["overview"] = agent.cold_overview()
+    except AgentError as exc:
+        context["error"] = str(exc)
+    return render(request, "backups/cold_index.html", context)
+
+
+@login_required
+def cold_prepare(request):
+    try:
+        overview = agent.cold_overview()
+    except AgentError as exc:
+        return render(
+            request,
+            "backups/cold_prepare.html",
+            {"overview": None, "selected": None, "error": str(exc)},
+        )
+    device = (request.POST.get("device") or request.GET.get("device") or "").strip()
+    if not device:
+        return redirect("cold_index")
+    selected = next(
+        (disk for disk in overview.get("disks", []) if disk["path"] == device), None
+    )
+    if selected is None:
+        return render(
+            request,
+            "backups/cold_prepare.html",
+            {"overview": overview, "selected": None, "error": f"Drive não encontrado: {device}"},
+        )
+
+    error = None
+    if request.method == "POST":
+        password = request.POST.get("password") or ""
+        label = (request.POST.get("label") or "").strip().lower()
+        confirmation = request.POST.get("confirmation") or ""
+        acknowledge = request.POST.get("acknowledge") == "1"
+        if not selected["candidate"]:
+            error = f"Drive indisponível: {selected['reason']}"
+        elif not request.user.check_password(password):
+            error = "Senha do app incorreta."
+        elif selected["extra_confirmation"] and not acknowledge:
+            error = "Marque a confirmação extra para drive não vazio/configurado."
+        elif not LABEL_RE.match(label):
+            error = "Label inválida: use 1–16 caracteres a-z, 0-9, _ ou -."
+        else:
+            try:
+                result = agent.cold_prepare(
+                    device,
+                    label,
+                    confirmation,
+                    allow_existing=selected["extra_confirmation"],
+                )
+            except AgentError as exc:
+                error = str(exc)
+            else:
+                AuditLog.objects.create(
+                    actor=request.user,
+                    action="cold_prepare",
+                    target=device,
+                    detail=f"label={label}",
+                    ip=request.META.get("REMOTE_ADDR"),
+                )
+                return render(
+                    request,
+                    "backups/cold_result.html",
+                    {"result": result, "disk": selected, "action": "prepared"},
+                )
+
+    if (
+        request.method == "GET"
+        and selected["extra_confirmation"]
+        and selected["candidate"]
+        and request.GET.get("confirm") != "1"
+    ):
+        return render(
+            request,
+            "backups/cold_warning.html",
+            {"overview": overview, "selected": selected},
+        )
+
+    return render(
+        request,
+        "backups/cold_prepare.html",
+        {
+            "overview": overview,
+            "selected": selected,
+            "error": error,
+            "default_label": _default_label(selected),
+        },
+    )
+
+
+@login_required
+@require_POST
+def cold_copy(request):
+    try:
+        result = agent.cold_copy()
+    except AgentError as exc:
+        messages.error(request, str(exc))
+    else:
+        AuditLog.objects.create(
+            actor=request.user,
+            action="cold_copy",
+            target=result.get("device", ""),
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(
+            request,
+            "Cópia fria iniciada em segundo plano. Atualize a página para acompanhar o status.",
+        )
+    return redirect("cold_index")
+
+
+@login_required
+@require_POST
+def cold_eject(request):
+    try:
+        agent.cold_eject()
+    except AgentError as exc:
+        messages.error(request, str(exc))
+    else:
+        AuditLog.objects.create(
+            actor=request.user,
+            action="cold_eject",
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(request, "Drive frio ejetado. Pode desconectar com segurança.")
+    return redirect("cold_index")
