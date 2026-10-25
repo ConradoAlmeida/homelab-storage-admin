@@ -32,7 +32,10 @@
         {% elif overview.status.status == 'prepared' %}<span class="tag ok">preparado</span>
         {% else %}<span class="muted">—</span>{% endif %}
       </div>
-      <div class="sub">{{ overview.status.finished_at|default:overview.status.started_at|default:"nunca" }}{% if overview.status.snapshots %} · {{ overview.status.snapshots }} snapshots{% endif %}</div>
+      <div class="sub">
+        {% if overview.status.finished_at %}{{ overview.status.finished_at }}{% elif overview.status.started_at %}{{ overview.status.started_at }}{% else %}nunca{% endif %}
+        {% if overview.status.snapshots %} · {{ overview.status.snapshots }} snapshots{% endif %}
+      </div>
     </div>
   </div>
 
