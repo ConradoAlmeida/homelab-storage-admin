@@ -11,5 +11,5 @@ services:
     environment:
       - AGENT_SOCKET=/run/homelab-storage-admin/agent.sock
     volumes:
-      - ./data:/app/data
+      - /mnt/nas/apps/homelab-storage-admin/data:/app/data
       - /run/homelab-storage-admin:/run/homelab-storage-admin:ro

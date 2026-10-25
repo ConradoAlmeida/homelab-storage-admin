@@ -54,6 +54,8 @@ Ele só pede operações conhecidas ao agente, que valida cada argumento.
 ### Layout Btrfs
 
 - `/mnt/nas` é o subvolume `@data` do array (RAID1 degradado + Btrfs).
+- O banco SQLite e os dados do app ficam em
+  `/mnt/nas/apps/homelab-storage-admin/data` (bind mount), fora do microSD.
 - Cada share que terá snapshots é um **subvolume Btrfs** próprio:
   `/mnt/nas/documentos`, `/mnt/nas/midia`, etc.
 - Os snapshots ficam fora do share, em
