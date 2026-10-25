@@ -586,7 +586,6 @@ def op_snapshot_create(share: str, **_):
     except AgentError:
         _btrfs_delete(dest)
         raise
-    os.chmod(dest, 0o755)
 
     keep = max(1, int(load_policies()[share].get("keep", 7)))
     names = _snapshot_list(snapdir)
