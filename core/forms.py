@@ -64,6 +64,12 @@ class ShareCreateForm(forms.Form):
     snapshot_keep = forms.IntegerField(
         label="Versoes a manter", min_value=1, max_value=168, initial=7, required=False
     )
+    private = forms.BooleanField(
+        label="Privado (oculto na rede)",
+        required=False,
+        initial=False,
+        help_text="Adiciona browseable = no; o acesso continua restrito pelos grupos <share>_ro/_rw.",
+    )
 
     def clean_path(self):
         path = self.cleaned_data["path"].strip().rstrip("/")

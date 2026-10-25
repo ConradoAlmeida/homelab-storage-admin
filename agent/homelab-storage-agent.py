@@ -350,6 +350,7 @@ def op_list_shares(include_size=False, **_):
             "read_only": parser.getboolean(section, "read only", fallback=False),
             "write_list": parser.get(section, "write list", fallback=""),
             "force_group": parser.get(section, "force group", fallback=""),
+            "browseable": parser.getboolean(section, "browseable", fallback=True),
         }
         if include_size:
             live = _dir_size_bytes(path, exclude=".snapshots")
@@ -393,7 +394,7 @@ def _ensure_subvolume(path: str) -> None:
     run(["btrfs", "subvolume", "create", path])
 
 
-def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_keep=7, **_):
+def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_keep=7, private=False, **_):
     if not SHARE_RE.match(name or ""):
         raise AgentError("Nome de share invalido (1-32: A-Z a-z 0-9 _ -)")
     if name.lower() in RESERVED_SHARES:
@@ -445,6 +446,8 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
         f"    force directory mode = 2775\n"
         f"    hide dot files = yes\n"
     )
+    if private:
+        section += "    browseable = no\n"
     if snapshot:
         section += (
             "    vfs objects = shadow_copy2\n"

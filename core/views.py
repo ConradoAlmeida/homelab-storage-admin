@@ -166,12 +166,13 @@ def share_create(request):
                 comment=data.get("comment", ""),
                 snapshot=data.get("snapshot", False),
                 snapshot_keep=data.get("snapshot_keep") or 7,
+                private=data.get("private", False),
             )
             _audit(
                 request,
                 "share.create",
                 data["name"],
-                f"path={data['path']} snapshot={data.get('snapshot', False)}",
+                f"path={data['path']} snapshot={data.get('snapshot', False)} private={data.get('private', False)}",
             )
             messages.success(request, f"Share {data['name']} criado.")
             return redirect("shares")

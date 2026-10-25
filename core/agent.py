@@ -80,7 +80,7 @@ class AgentClient:
         timeout = 180 if include_size else None
         return self.call("list_shares", timeout=timeout, include_size=include_size)
 
-    def create_share(self, name, path, comment="", snapshot=False, snapshot_keep=7):
+    def create_share(self, name, path, comment="", snapshot=False, snapshot_keep=7, private=False):
         return self.call(
             "create_share",
             name=name,
@@ -88,6 +88,7 @@ class AgentClient:
             comment=comment,
             snapshot=snapshot,
             snapshot_keep=snapshot_keep,
+            private=private,
         )
 
     def snapshot_usage(self):

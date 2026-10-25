@@ -19,6 +19,7 @@ em disco.
 | Editar grupos | Usuários → Grupos |
 | Ativar/desativar acesso | Usuários → botão Ativar/Desativar |
 | Criar share no `smb.conf` | Shares → Novo share |
+| Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
 | Criar/remover snapshot Btrfs | Snapshots |
 
@@ -205,7 +206,9 @@ backup `.bak-AAAAMMDD-HHMMSS`.
 
 Cada share novo cria os grupos `<share>`, `<share>_ro` e `<share>_rw`, com
 permissões `2775`. O dono padrão é `conrado` (ajustável em
-`SHARE_OWNER` no service do agente).
+`SHARE_OWNER` no service do agente). O checkbox **Privado** adiciona
+`browseable = no`; a restrição real continua sendo o grupo `<share>_rw`
+(adicione só o dono nele).
 
 Para gerenciar senhas Samba fora do app: `sudo smbpasswd -a usuario`.
 
