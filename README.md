@@ -91,9 +91,17 @@ existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
 Caddy, DNS, Jellyfin ou o data-root do Docker. O Jellyfin é um vizinho: só
 aparece como atalho no dashboard e como share Samba `jellyfin` (sem snapshot/restic).
 
-No moyaserver, instale o agente já com o perfil correto:
+No moyaserver, primeira instalação:
 
 ```bash
+cd /opt/stacks/homelab-storage-admin
+cp .env.example .env
+chmod 600 .env
+# edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF do moya
+mkdir -p data
+if [ ! -f data/services.ini ]; then
+  cp services.ini.example data/services.ini   # edite a lista de atalhos
+fi
 sudo env HOST_ENV_PROFILE=moya ./install-agent.sh
 ./deploy.sh
 ```
@@ -203,6 +211,67 @@ cd /opt/stacks/homelab-storage-admin
 ```
 
 Se o agente mudou, o `deploy.sh` avisa; rode `sudo ./install-agent.sh`.
+
+### Checklist de deploy seguro
+
+Vale para Pi e moya. A ordem importa:
+
+1. **Backup dos configs do host** (root):
+   ```bash
+   STAMP=$(date +%Y%m%d-%H%M)
+   sudo tar -czf /root/homelab-pre-deploy-$STAMP.tgz \
+     /etc/systemd/system/homelab-*.service \
+     /etc/systemd/system/homelab-*.timer \
+     /etc/samba/smb.conf \
+     /opt/stacks/homelab-storage-admin/.env
+   ```
+2. **Perfil e agente**:
+   - Pi: `sudo ./install-agent.sh`
+   - Moya: `sudo env HOST_ENV_PROFILE=moya ./install-agent.sh`
+   - O script cria `host.env` só se não existir; nunca sobrescreve.
+3. **App**:
+   ```bash
+   ./deploy.sh
+   ```
+   O `deploy.sh` exige `host.env`, lê `COMPOSE_OVERLAY` e aborta se o overlay
+   não existir.
+4. **Atalhos** (opcional, sem restart):
+   ```bash
+   cp services.ini.example data/services.ini
+   # edite data/services.ini
+   ```
+5. **Smoke**:
+   ```bash
+   sudo systemctl is-active homelab-storage-agent
+   curl -fsS -o /dev/null -w '%{http_code}\n' http://192.168.0.150:8060/login/
+   cd /opt/stacks/homelab-storage-admin
+   set -a; . /etc/homelab-storage-admin/host.env; set +a
+   docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
+   docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" logs --tail=80 web
+   ```
+   No moya, use `http://127.0.0.1:8060/login/`.
+
+### Rollback
+
+Se o smoke falhar:
+
+```bash
+cd /opt/stacks/homelab-storage-admin
+git reset --hard <commit-anterior>
+sudo ./install-agent.sh
+set -a; . /etc/homelab-storage-admin/host.env; set +a
+docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" up -d --build
+```
+
+Se o problema for só unidade/Samba, restaure o tar do passo 1:
+
+```bash
+sudo tar -xzf /root/homelab-pre-deploy-<stamp>.tgz -C /
+sudo systemctl daemon-reload
+sudo systemctl restart homelab-storage-agent smbd
+```
+
+O rollback não mexe em `/mnt/nas`, snapshots, banco ou dados de share.
 
 ### Desenvolvimento local (uv)
 
