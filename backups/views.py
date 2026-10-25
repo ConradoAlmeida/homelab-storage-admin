@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from core.agent import AgentError, agent
+from core.models import AuditLog
 
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 
@@ -105,3 +106,47 @@ def disk_wizard(request):
             "default_label": _default_label(selected),
         },
     )
+
+
+@login_required
+def credentials(request):
+    context = {
+        "overview": None,
+        "disks": [],
+        "result": None,
+        "error": None,
+        "selected_uuid": (request.GET.get("uuid") or "").strip(),
+    }
+    try:
+        overview = agent.backup_overview()
+    except AgentError as exc:
+        context["error"] = str(exc)
+        return render(request, "backups/credentials.html", context)
+    context["overview"] = overview
+    context["disks"] = [
+        disk for disk in overview.get("disks", []) if disk.get("configured")
+    ]
+
+    if request.method == "POST":
+        uuid = (request.POST.get("uuid") or "").strip()
+        password = request.POST.get("password") or ""
+        context["selected_uuid"] = uuid
+        if not uuid:
+            context["error"] = "Selecione um disco configurado."
+        elif not request.user.check_password(password):
+            context["error"] = "Senha do app incorreta."
+        else:
+            try:
+                result = agent.backup_secret(uuid)
+            except AgentError as exc:
+                context["error"] = str(exc)
+            else:
+                context["result"] = result
+                AuditLog.objects.create(
+                    actor=request.user,
+                    action="backup_secret_reveal",
+                    target=uuid,
+                    detail=f"label={result.get('label', '')}",
+                    ip=request.META.get("REMOTE_ADDR"),
+                )
+    return render(request, "backups/credentials.html", context)

@@ -6,7 +6,10 @@
     <h1 style="margin-bottom:4px">Backups</h1>
     <p class="muted">Discos de destino e jobs restic. Nada é apagado ao abrir o wizard.</p>
   </div>
-  <a class="btn small" href="#discos">Escolher disco</a>
+  <div>
+    <a class="btn small" href="{% url 'backup_credentials' %}">Credenciais</a>
+    <a class="btn small" href="#discos">Escolher disco</a>
+  </div>
 </div>
 
 {% if error %}
@@ -50,6 +53,9 @@
             {% endif %}
           </td>
           <td class="file-actions">
+            {% if disk.configured %}
+              <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ disk.uuid|urlencode }}">Ver senha</a>
+            {% endif %}
             {% if disk.candidate %}
               <a class="btn small {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
                 {% if disk.configured %}Reconfigurar{% elif disk.has_filesystem %}Preparar (apaga FS){% else %}Preparar{% endif %}

@@ -981,6 +981,8 @@ def _backup_disks(config: dict) -> list[dict]:
                 "has_filesystem": has_filesystem,
                 "configured": configured,
                 "jobs": [job.get("name") for job in jobs],
+                "repo": (configured_entry or {}).get("repo"),
+                "mountpoint": (configured_entry or {}).get("mountpoint"),
                 "candidate": candidate,
                 "reason": reason,
                 "required_phrase": required,
@@ -1140,6 +1142,37 @@ def op_backup_disk_setup(
     }
 
 
+def op_backup_secret(uuid: str, **_):
+    config = _load_backup_config()
+    entry = next(
+        (item for item in config.get("disks", []) if item.get("uuid") == uuid),
+        None,
+    )
+    if entry is None:
+        raise AgentError("Disco de backup nao encontrado")
+    key_file = Path(entry.get("key_file") or "")
+    secret_root = Path(BACKUP_SECRETS).resolve()
+    try:
+        real = key_file.resolve()
+    except OSError as exc:
+        raise AgentError(f"Caminho de segredo invalido: {exc}") from exc
+    if secret_root not in real.parents:
+        raise AgentError("Caminho de segredo fora do diretorio permitido")
+    if not real.is_file():
+        raise AgentError("Arquivo de senha do restic nao encontrado")
+    password = real.read_text().strip()
+    if not password:
+        raise AgentError("Senha do restic vazia")
+    log(f"BACKUP_SECRET_REVEAL {uuid}")
+    return {
+        "uuid": uuid,
+        "label": entry.get("label"),
+        "device": entry.get("device"),
+        "repo": entry.get("repo"),
+        "password": password,
+    }
+
+
 OPS = {
     "ping": op_ping,
     "df": op_df,
@@ -1160,6 +1193,7 @@ OPS = {
     "storage_smart_test": op_storage_smart_test,
     "backup_overview": op_backup_overview,
     "backup_disk_setup": op_backup_disk_setup,
+    "backup_secret": op_backup_secret,
 }
 
 

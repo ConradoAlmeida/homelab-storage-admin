@@ -39,7 +39,7 @@
 {% if not selected.candidate %}
   <div class="alert danger"><strong>Disco indisponível:</strong> {{ selected.reason }}. Desmonte/remova o RAID antes de tentar de novo.</div>
 {% else %}
-  <form method="post" action="{% url 'backup_disk_wizard' %}" class="card" style="max-width:640px">
+  <form method="post" action="{% url 'backup_disk_wizard' %}" class="card" id="disk-setup-form" style="max-width:640px">
     {% csrf_token %}
     <input type="hidden" name="device" value="{{ selected.path }}">
 
@@ -71,9 +71,34 @@
     <input id="password" name="password" type="password" autocomplete="current-password" required>
 
     <div style="margin-top:16px">
-      <button class="btn danger" type="submit">Preparar disco</button>
+      <button class="btn danger" id="disk-setup-submit" type="submit">Preparar disco</button>
       <a class="btn small" href="{% url 'backup_index' %}">Cancelar</a>
     </div>
+    <p class="muted" style="font-size:12px;margin-top:10px">A formatação, montagem e criação do repo restic podem levar alguns minutos. O loading fica ativo até o fim; não feche a aba.</p>
   </form>
 {% endif %}
+
+<div id="busy-overlay" class="busy-overlay" hidden>
+  <div class="busy-card">
+    <div class="spinner"></div>
+    <strong>Preparando o disco...</strong>
+    <p>Formatando, montando e inicializando o restic. Isso pode levar alguns minutos; não feche esta aba.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('disk-setup-form');
+  const overlay = document.getElementById('busy-overlay');
+  const button = document.getElementById('disk-setup-submit');
+  if (!form || !overlay) return;
+  form.addEventListener('submit', function () {
+    overlay.hidden = false;
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Preparando...';
+    }
+  });
+})();
+</script>
 {% endblock %}

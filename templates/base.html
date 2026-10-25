@@ -98,6 +98,12 @@
     .wizard-steps { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 18px; color:var(--muted); font-size:12px; }
     .wizard-steps span { padding:4px 9px; border:1px solid var(--line); border-radius:99px; }
     .wizard-steps span.on { color:var(--txt); border-color:var(--acc); }
+    .busy-overlay { position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(2,6,23,.86); }
+    .busy-overlay[hidden] { display:none; }
+    .busy-card { width:min(430px,100%); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+    .busy-card p { color:var(--muted); margin:10px 0 0; }
+    .spinner { width:40px; height:40px; margin:0 auto 14px; border:3px solid var(--line); border-top-color:var(--acc); border-radius:50%; animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
