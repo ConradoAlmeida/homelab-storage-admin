@@ -175,7 +175,11 @@
       <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
     </nav>
     <div class="user">
-      <span>{{ request.user.username }}</span>
+      {% if request.user.is_staff %}
+        <a class="btn small" href="{% url 'admin:index' %}" title="Abrir painel Django admin">{{ request.user.username }}</a>
+      {% else %}
+        <span>{{ request.user.username }}</span>
+      {% endif %}
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
     </div>
   </header>
