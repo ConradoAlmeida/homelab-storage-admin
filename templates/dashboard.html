@@ -4,27 +4,28 @@
 <h1>Dashboard</h1>
 <p class="muted">Visão geral do host, discos, backup e shares.</p>
 
+<h2 style="margin-top:0">Serviços</h2>
 <div class="service-cards">
   <a class="service-card jellyfin" href="http://jellyfin.homelab.lan" target="_blank" rel="noopener">
-    <strong>Jellyfin</strong><span>Mídia · filmes e séries</span>
+    <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg></span>
+    <span class="service-body"><strong>Jellyfin</strong><small>Mídia · filmes e séries</small></span>
+    <span class="service-arrow">↗</span>
   </a>
   <a class="service-card cockpit" href="https://cockpit.homelab.lan" target="_blank" rel="noopener">
-    <strong>Cockpit</strong><span>Host · sistema e logs</span>
+    <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1.5"/></svg></span>
+    <span class="service-body"><strong>Cockpit</strong><small>Host · sistema e logs</small></span>
+    <span class="service-arrow">↗</span>
   </a>
   <a class="service-card dockge" href="http://dockge.homelab.lan" target="_blank" rel="noopener">
-    <strong>Dockge</strong><span>Containers · stacks</span>
+    <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg></span>
+    <span class="service-body"><strong>Dockge</strong><small>Containers · stacks</small></span>
+    <span class="service-arrow">↗</span>
   </a>
   <a class="service-card pihole" href="http://pihole.homelab.lan/admin/" target="_blank" rel="noopener">
-    <strong>Pi-hole</strong><span>DNS · anúncios</span>
+    <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+    <span class="service-body"><strong>Pi-hole</strong><small>DNS · anúncios</small></span>
+    <span class="service-arrow">↗</span>
   </a>
-</div>
-
-<div class="quick-links">
-  <a class="btn small" href="{% url 'history_index' %}">Explorar</a>
-  <a class="btn small" href="{% url 'storage_index' %}">Discos</a>
-  <a class="btn small" href="{% url 'backup_index' %}">Backups</a>
-  <a class="btn small" href="{% url 'shares' %}">Shares</a>
-  <a class="btn small" href="{% url 'snapshots' %}">Versões</a>
 </div>
 
 {% if agent_error %}
