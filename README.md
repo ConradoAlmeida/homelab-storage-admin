@@ -21,6 +21,7 @@ em disco.
 | Criar share no `smb.conf` | Shares → Novo share |
 | Navegar histórico/snapshots | Histórico (`/history/`) — read-only |
 | Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
+| Visão geral do host | Dashboard — sistema, todos os discos, volumes, RAID/Btrfs, backup e resumo de snapshots |
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
 | Consultar senha do restic | Backups → Credenciais — exige senha do app |
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
