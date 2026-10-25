@@ -23,6 +23,7 @@ em disco.
 | Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
 | Consultar senha do restic | Backups → Credenciais — exige senha do app |
+| Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
@@ -252,8 +253,34 @@ pode ser consultada em **Backups → Credenciais**, mediante a senha do app
 (com registro no audit log). O submit mostra um loading em tela cheia enquanto
 formata/monta/inicializa; a requisição usa timeout de 900 s no Gunicorn.
 
-Ainda não há cadastro de job/periodicidade nesta etapa; o disco preparado fica
-registrado em `/etc/homelab-backup/config.json` para a próxima fase.
+O disco preparado fica registrado em `/etc/homelab-backup/config.json`; o
+cadastro de jobs usa esse registro na seção 6.7.
+
+## 6.7 Jobs de backup
+
+`/backups/jobs/new/` e `/backups/jobs/<nome>/edit/` configuram:
+- nome do job e disco de destino;
+- fontes (shares) e exclusões (`--exclude`);
+- periodicidade **diário**, **semanal** ou **mensal**, com horário;
+- retenção diária/semanal/mensal;
+- ativo/desativado.
+
+Ao salvar, o agente grava o job em `/etc/homelab-backup/config.json` e cria/atualiza
+um timer systemd `homelab-restic-backup-<job>.timer`. O serviço
+`homelab-restic-backup@<job>.service` executa
+`/usr/local/sbin/homelab-restic-backup <job>` como root.
+
+O executor:
+- valida mountpoint, repo e senha root-only;
+- roda `restic backup` com as fontes e exclusões;
+- aplica `forget --keep-daily/--keep-weekly/--keep-monthly --prune`;
+- grava status em `/etc/homelab-backup/status/<job>.json` e log em
+  `/var/log/homelab-restic/<job>.log`;
+- usa cache do restic no próprio disco de backup (`.restic-cache`).
+
+Na tela de jobs: **Rodar agora** (systemd, sem bloquear a requisição),
+**Ativar/Desativar**, **Editar** e **Excluir** (o repositório restic é mantido).
+A tabela mostra último status e próxima execução.
 
 ## 7. Samba
 

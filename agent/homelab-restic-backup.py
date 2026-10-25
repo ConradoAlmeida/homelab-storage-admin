@@ -102,6 +102,12 @@ def main() -> int:
             {"job": name, "status": "failed", "finished_at": now(), "message": "restic nao instalado"},
         )
         return 1
+    try:
+        cache_dir = Path(disk["mountpoint"]) / ".restic-cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["RESTIC_CACHE_DIR"] = str(cache_dir)
+    except OSError:
+        pass
 
     source_paths = [str(item) for item in job.get("source_paths", []) if item]
     if not source_paths:
