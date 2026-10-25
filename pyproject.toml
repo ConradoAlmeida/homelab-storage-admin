@@ -1,0 +1,13 @@
+[project]
+name = "homelab-storage-admin"
+version = "0.1.0"
+description = "Painel de administração do NAS do homelab"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.2,<5.3",
+    "gunicorn>=23.0",
+]
+
+[tool.uv]
+package = false

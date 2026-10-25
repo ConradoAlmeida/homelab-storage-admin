@@ -119,6 +119,34 @@ cd /opt/stacks/homelab-storage-admin
 
 Se o agente mudou, o `deploy.sh` avisa; rode `sudo ./install-agent.sh`.
 
+### Desenvolvimento local (uv)
+
+O projeto usa **uv** e Python **3.12**; o `uv.lock` é versionado:
+
+```bash
+uv sync
+uv run manage.py check
+uv run manage.py runserver 0.0.0.0:8000
+```
+
+O container também usa uv (`ghcr.io/astral-sh/uv`) e não tem `requirements.txt`.
+
+### Superusuário
+
+O `entrypoint.sh` cria o usuário `admin` automaticamente a partir do `.env` na
+primeira subida. Por isso, rodar `createsuperuser` com `admin` falha com
+`That username is already taken`. Para trocar a senha:
+
+```bash
+docker compose exec web python manage.py changepassword admin
+```
+
+Para criar outro superusuário:
+
+```bash
+docker compose exec -it web python manage.py createsuperuser --username outro
+```
+
 ---
 
 ## 5. Variáveis do `.env`
