@@ -10,7 +10,11 @@
   <h2>Sistema</h2>
   <div class="metric-grid">
     {% for z in overview.system.zones %}
-      <div class="metric"><span>{{ z.type }}</span><strong>{{ z.temp|floatformat:1 }} °C</strong></div>
+      <div class="metric">
+        <span>{% if 'cpu' in z.type %}CPU{% else %}{{ z.type }}{% endif %}</span>
+        <strong>{{ z.temp|floatformat:1 }} °C{% if 'cpu' in z.type and overview.system.cpu_percent is not None %} · {{ overview.system.cpu_percent }}%{% endif %}</strong>
+        {% if 'cpu' in z.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
+      </div>
     {% endfor %}
     {% for f in overview.system.fans %}
       <div class="metric">
@@ -20,7 +24,6 @@
       </div>
     {% endfor %}
     <div class="metric"><span>Load (1/5/15)</span><strong style="font-size:15px">{{ overview.system.load.l1|floatformat:2 }} / {{ overview.system.load.l5|floatformat:2 }} / {{ overview.system.load.l15|floatformat:2 }}</strong></div>
-    <div class="metric"><span>Uso de CPU</span><strong>{% if overview.system.cpu_percent is not None %}{{ overview.system.cpu_percent }}%{% else %}—{% endif %}</strong></div>
     <div class="metric"><span>RAM disponível</span><strong>{{ overview.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ overview.system.mem_total_mb|default:"—" }} MB</div></div>
   </div>
 

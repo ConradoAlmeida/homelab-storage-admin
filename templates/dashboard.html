@@ -39,7 +39,11 @@
 <h2>Sistema e rede</h2>
 <div class="metric-grid">
   {% for zone in storage.system.zones %}
-    <div class="metric"><span>{{ zone.type }}</span><strong>{{ zone.temp|floatformat:1 }} °C</strong></div>
+    <div class="metric">
+      <span>{% if 'cpu' in zone.type %}CPU{% else %}{{ zone.type }}{% endif %}</span>
+      <strong>{{ zone.temp|floatformat:1 }} °C{% if 'cpu' in zone.type and storage.system.cpu_percent is not None %} · {{ storage.system.cpu_percent }}%{% endif %}</strong>
+      {% if 'cpu' in zone.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
+    </div>
   {% endfor %}
   {% for fan in storage.system.fans %}
     <div class="metric">
@@ -49,7 +53,6 @@
     </div>
   {% endfor %}
   <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px">{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
-  <div class="metric"><span>Uso de CPU</span><strong>{% if storage.system.cpu_percent is not None %}{{ storage.system.cpu_percent }}%{% else %}—{% endif %}</strong></div>
   <div class="metric"><span>RAM disponível</span><strong>{{ storage.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ storage.system.mem_total_mb|default:"—" }} MB</div></div>
   <div class="metric net" id="network-metrics">
     <span>Rede · <span id="net-iface">—</span> <span id="net-state" class="muted"></span></span>
