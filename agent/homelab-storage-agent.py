@@ -22,7 +22,10 @@ import time
 import traceback
 from pathlib import Path
 
-SOCKET_PATH = os.environ.get("SOCKET_PATH", "/run/homelab-storage-admin/agent.sock")
+SOCKET_PATH = os.environ.get(
+    "AGENT_SOCKET",
+    os.environ.get("SOCKET_PATH", "/run/homelab-storage-admin/agent.sock"),
+)
 SMB_CONF = os.environ.get("SMB_CONF", "/etc/samba/smb.conf")
 CONFIG_DIR = os.environ.get("CONFIG_DIR", "/etc/homelab-storage-agent")
 SNAP_CONFIG = os.environ.get("SNAP_CONFIG", f"{CONFIG_DIR}/snapshots.json")
@@ -57,10 +60,14 @@ DF_MOUNTS = tuple(
 STORAGE_ROOT = os.environ.get("STORAGE_ROOT", "/mnt/nas")
 SNAPSHOT_ROOT = os.environ.get("SNAPSHOT_ROOT", "/mnt/nas/.snapshots")
 SHARE_OWNER = os.environ.get("SHARE_OWNER", "conrado")
+SNAPSHOT_BACKEND = os.environ.get("SNAPSHOT_BACKEND", "auto").strip().lower()
 DENY_SNAPSHOT = {
     s.strip() for s in os.environ.get("SNAPSHOT_DENYLIST", "").split(",") if s.strip()
 }
 RESERVED_SHARES = {"global", "homes", "printers", "print$"}
+BLOCK_DEVICE_RE = re.compile(
+    r"^/dev/(?:sd[a-z]+|nvme\d+n\d+|mmcblk\d+|vd[a-z]+|xvd[a-z]+)$"
+)
 
 # A politica e criada pelo app; o agente so mantem o estado em disco.
 DEFAULT_POLICY: dict = {}
@@ -114,6 +121,77 @@ def run_optional(args: list[str], timeout: int = 15) -> tuple[int, str, str]:
         return 127, "", str(exc)
     except subprocess.TimeoutExpired as exc:
         return 124, "", f"timeout: {exc}"
+
+
+def _existing_parent(path: str) -> str:
+    """Retorna o diretorio existente mais proximo (para detectar fstype)."""
+    current = Path(path or "/")
+    while not current.exists() and current != current.parent:
+        current = current.parent
+    return str(current)
+
+
+def _fstype(path: str) -> str | None:
+    target = _existing_parent(path)
+    rc, out, _ = run_optional(
+        ["findmnt", "-n", "-o", "FSTYPE", "--target", target], timeout=5
+    )
+    if rc == 0:
+        value = out.strip().splitlines()
+        if value:
+            return value[0].strip()
+    # fallback para ambientes sem findmnt (inclusive testes/containers)
+    rc, out, _ = run_optional(["stat", "-f", "-c", "%T", target], timeout=5)
+    if rc == 0 and out.strip():
+        return out.strip().splitlines()[0].strip()
+    return None
+
+
+def snapshot_backend_for(path: str, configured: str | None = None) -> str:
+    """Resolve o backend de snapshot para um caminho.
+
+    ``auto`` escolhe btrfs quando o filesystem e Btrfs e rsync nos demais.
+    """
+    mode = (configured or SNAPSHOT_BACKEND or "auto").strip().lower()
+    if mode == "none":
+        return "none"
+    if mode == "rsync":
+        return "rsync"
+    if mode == "btrfs":
+        return "btrfs" if _fstype(path) == "btrfs" else "none"
+    if mode != "auto":
+        raise AgentError(f"SNAPSHOT_BACKEND invalido: {mode}")
+    return "btrfs" if _fstype(path) == "btrfs" else "rsync"
+
+
+def snapshot_dir_for(share: str, path: str, backend: str) -> str:
+    if backend == "btrfs":
+        return os.path.join(SNAPSHOT_ROOT, share)
+    if backend == "rsync":
+        return os.path.join(path, ".snapshots")
+    return ""
+
+
+def detect_hwmon_fans(base: str = "/sys/class/hwmon") -> bool:
+    for hw in Path(base).glob("hwmon*"):
+        if (hw / "fan1_input").exists() or (hw / "pwm1").exists():
+            return True
+    return False
+
+
+def host_capabilities() -> dict:
+    fstype = _fstype(STORAGE_ROOT)
+    return {
+        "btrfs": bool(shutil.which("btrfs")),
+        "restic": bool(shutil.which("restic")),
+        "smartctl": bool(shutil.which("smartctl")),
+        "hdparm": bool(shutil.which("hdparm")),
+        "mdadm": bool(shutil.which("mdadm")),
+        "hwmon_fans": detect_hwmon_fans(),
+        "storage_root_mounted": os.path.ismount(STORAGE_ROOT),
+        "storage_root_fstype": fstype,
+        "snapshot_backend": snapshot_backend_for(STORAGE_ROOT),
+    }
 
 
 def _disk_state(device: str) -> str:
@@ -264,7 +342,8 @@ def op_storage_overview(**_):
             continue
         path = f"/dev/{name}"
         state = _disk_state(path)
-        smart = _smart_summary(path) if name.startswith("sd") else {"state": "unavailable"}
+        smart_capable = name.startswith(("sd", "nvme", "vd", "xvd", "mmcblk"))
+        smart = _smart_summary(path) if smart_capable else {"state": "unavailable"}
         disks.append(
             {
                 "name": name,
@@ -289,12 +368,19 @@ def op_storage_overview(**_):
     raid["detail"] = out if rc == 0 else ""
 
     btrfs = {}
-    rc, out, _ = run_optional(["btrfs", "filesystem", "usage", "--raw", "/mnt/nas"], timeout=15)
-    btrfs["usage"] = out if rc == 0 else ""
-    rc, out, _ = run_optional(["btrfs", "device", "stats", "/mnt/nas"], timeout=15)
-    btrfs["stats"] = out if rc == 0 else ""
-    rc, out, _ = run_optional(["btrfs", "scrub", "status", "-d", "/mnt/nas"], timeout=15)
-    btrfs["scrub"] = out if rc == 0 else ""
+    if shutil.which("btrfs"):
+        rc, out, _ = run_optional(
+            ["btrfs", "filesystem", "usage", "--raw", STORAGE_ROOT], timeout=15
+        )
+        btrfs["usage"] = out if rc == 0 else ""
+        rc, out, _ = run_optional(
+            ["btrfs", "device", "stats", STORAGE_ROOT], timeout=15
+        )
+        btrfs["stats"] = out if rc == 0 else ""
+        rc, out, _ = run_optional(
+            ["btrfs", "scrub", "status", "-d", STORAGE_ROOT], timeout=15
+        )
+        btrfs["scrub"] = out if rc == 0 else ""
 
     return {
         "system": _system_info(),
@@ -305,7 +391,7 @@ def op_storage_overview(**_):
 
 
 def op_storage_smart(device: str, **_):
-    if not re.match(r"^/dev/sd[a-z]$", device or ""):
+    if not BLOCK_DEVICE_RE.match(device or ""):
         raise AgentError("Dispositivo invalido")
     if not os.path.exists(device):
         raise AgentError(f"Dispositivo nao encontrado: {device}")
@@ -324,7 +410,7 @@ def op_storage_smart(device: str, **_):
 
 
 def op_storage_smart_test(device: str, kind: str = "short", **_):
-    if not re.match(r"^/dev/sd[a-z]$", device or ""):
+    if not BLOCK_DEVICE_RE.match(device or ""):
         raise AgentError("Dispositivo invalido")
     if kind not in ("short", "long"):
         raise AgentError("Tipo de teste invalido (short/long)")
@@ -414,12 +500,20 @@ def samba_enabled(username: str) -> bool:
 
 
 def op_ping(**_):
-    return {"pong": True, "agent": "homelab-storage-agent"}
+    return {
+        "pong": True,
+        "agent": "homelab-storage-agent",
+        "capabilities": host_capabilities(),
+    }
+
+
+def op_host_capabilities(**_):
+    return host_capabilities()
 
 
 def op_df(**_):
     mounts = list(DF_MOUNTS)
-    backup_root = Path("/mnt/backup")
+    backup_root = Path(BACKUP_ROOT)
     if backup_root.is_dir():
         for path in sorted(backup_root.iterdir()):
             if path.is_dir() and os.path.ismount(path):
@@ -594,6 +688,19 @@ def _btrfs_du_bytes(path: str) -> int:
     return 0
 
 
+def _snapshot_extra_bytes(path: str, snapdir: str) -> int:
+    """Espaco adicional ocupado por snapshots rsync dentro do share.
+
+    O ``du`` conta hardlinks uma unica vez; a diferenca entre o total do
+    share e o live (sem ``.snapshots``) e o extra atribuido aos snapshots.
+    """
+    if not snapdir or not os.path.isdir(snapdir):
+        return 0
+    total = _dir_size_bytes(path)
+    live = _dir_size_bytes(path, exclude=".snapshots")
+    return max(0, total - live)
+
+
 def op_list_shares(include_size=False, **_):
     parser = _parse_smb_conf()
     shares = []
@@ -603,6 +710,8 @@ def op_list_shares(include_size=False, **_):
         if parser.getboolean(section, "printable", fallback=False):
             continue
         path = parser.get(section, "path", fallback="")
+        backend = snapshot_backend_for(path) if path else "none"
+        snapdir = snapshot_dir_for(section, path, backend) if backend != "none" else ""
         item = {
             "name": section,
             "path": path,
@@ -612,13 +721,20 @@ def op_list_shares(include_size=False, **_):
             "write_list": parser.get(section, "write list", fallback=""),
             "force_group": parser.get(section, "force group", fallback=""),
             "browseable": parser.getboolean(section, "browseable", fallback=True),
+            "backend": backend,
+            "snapdir": snapdir,
         }
         if include_size:
             live = _dir_size_bytes(path, exclude=".snapshots")
-            snapdir = os.path.join(SNAPSHOT_ROOT, section)
+            if backend == "btrfs":
+                snapshots = _btrfs_du_bytes(snapdir)
+            elif backend == "rsync":
+                snapshots = _snapshot_extra_bytes(path, snapdir)
+            else:
+                snapshots = 0
             item["size"] = live
-            item["size_snapshots"] = _btrfs_du_bytes(snapdir)
-            item["size_total"] = live + item["size_snapshots"]
+            item["size_snapshots"] = snapshots
+            item["size_total"] = live + snapshots
         shares.append(item)
     return sorted(shares, key=lambda item: item["name"])
 
@@ -664,8 +780,6 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
         raise AgentError(f"Snapshot nao permitido para {name} (denylist)")
     path = _validate_share_path(path)
 
-    if not os.path.ismount(STORAGE_ROOT):
-        raise AgentError(f"{STORAGE_ROOT} nao esta montado; monte o Btrfs antes de criar shares")
     if os.path.abspath(path) == os.path.abspath(STORAGE_ROOT):
         raise AgentError("Nao crie share na raiz do volume; use um subdiretorio/subvolume")
     if os.path.abspath(path).startswith(os.path.abspath(SNAPSHOT_ROOT) + os.sep):
@@ -675,9 +789,25 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
     if parser.has_section(name):
         raise AgentError(f"Share ja existe: {name}")
 
+    backend = "none"
+    snapdir = ""
     if snapshot:
-        _ensure_subvolume(path)
-        snapdir = os.path.join(SNAPSHOT_ROOT, name)
+        backend = snapshot_backend_for(path)
+        if backend == "none":
+            raise AgentError(
+                f"Snapshots indisponiveis para {path}; backend={SNAPSHOT_BACKEND}"
+            )
+        if backend == "btrfs":
+            if not os.path.ismount(STORAGE_ROOT):
+                raise AgentError(
+                    f"{STORAGE_ROOT} nao esta montado; monte o Btrfs antes de criar snapshots"
+                )
+            _ensure_subvolume(path)
+        else:
+            if not shutil.which("rsync"):
+                raise AgentError("rsync nao encontrado; snapshots rsync indisponiveis")
+            os.makedirs(path, exist_ok=True)
+        snapdir = snapshot_dir_for(name, path, backend)
         os.makedirs(snapdir, exist_ok=True)
         os.chmod(snapdir, 0o755)
     else:
@@ -712,7 +842,7 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
     if snapshot:
         section += (
             "    vfs objects = shadow_copy2\n"
-            f"    shadow:snapdir = {SNAPSHOT_ROOT}/{name}\n"
+            f"    shadow:snapdir = {snapdir}\n"
             f"    shadow:basedir = {path}\n"
             "    shadow:format = @GMT-%Y.%m.%d-%H.%M.%S\n"
             "    shadow:sort = desc\n"
@@ -737,7 +867,13 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
 
     if snapshot:
         policy = load_policies()
-        policy[name] = {"path": path, "enabled": True, "keep": int(snapshot_keep or 7)}
+        policy[name] = {
+            "path": path,
+            "enabled": True,
+            "keep": int(snapshot_keep or 7),
+            "backend": backend,
+            "snapdir": snapdir,
+        }
         save_policies(policy)
 
     log(f"CREATE_SHARE {name} path={path}")
@@ -761,7 +897,7 @@ def save_policies(policy: dict) -> None:
     os.replace(tmp, SNAP_CONFIG)
 
 
-def _snapshot_dir(share: str) -> tuple[str, str]:
+def _snapshot_dir(share: str) -> tuple[str, str, str]:
     policy = load_policies()
     if share not in policy:
         raise AgentError(f"Share sem politica de snapshot: {share}")
@@ -770,18 +906,22 @@ def _snapshot_dir(share: str) -> tuple[str, str]:
     if not policy[share].get("enabled"):
         raise AgentError(f"Politica de snapshot desativada para {share}")
     src = policy[share]["path"]
-    if not os.path.ismount(STORAGE_ROOT):
-        raise AgentError(f"{STORAGE_ROOT} nao esta montado; snapshots abortados")
-    try:
-        run(["btrfs", "subvolume", "show", src], timeout=10)
-    except AgentError as exc:
-        raise AgentError(
-            f"{src} nao e um subvolume Btrfs; recrie o share com snapshot habilitado"
-        ) from exc
-    snapdir = os.path.join(SNAPSHOT_ROOT, share)
+    backend = policy[share].get("backend") or snapshot_backend_for(src)
+    if backend == "none":
+        raise AgentError(f"Snapshots indisponiveis para {share}")
+    if backend == "btrfs":
+        if not os.path.ismount(STORAGE_ROOT):
+            raise AgentError(f"{STORAGE_ROOT} nao esta montado; snapshots abortados")
+        try:
+            run(["btrfs", "subvolume", "show", src], timeout=10)
+        except AgentError as exc:
+            raise AgentError(
+                f"{src} nao e um subvolume Btrfs; recrie o share com snapshot habilitado"
+            ) from exc
+    snapdir = policy[share].get("snapdir") or snapshot_dir_for(share, src, backend)
     os.makedirs(snapdir, exist_ok=True)
     os.chmod(snapdir, 0o755)
-    return src, snapdir
+    return src, snapdir, backend
 
 
 def _snapshot_list(snapdir: str) -> list[str]:
@@ -799,17 +939,32 @@ def _btrfs_delete(path: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
+def _delete_snapshot(path: str, backend: str) -> None:
+    if backend == "btrfs":
+        _btrfs_delete(path)
+    else:
+        shutil.rmtree(path, ignore_errors=True)
+
+
 def op_snapshot_usage(**_):
     policy = load_policies()
     result = []
     for share, cfg in sorted(policy.items()):
         src = cfg.get("path", "")
         enabled = bool(cfg.get("enabled"))
-        snapdir = os.path.join(SNAPSHOT_ROOT, share) if src else ""
+        backend = cfg.get("backend") or (snapshot_backend_for(src) if src else "none")
+        snapdir = cfg.get("snapdir") or (
+            snapshot_dir_for(share, src, backend) if src and backend != "none" else ""
+        )
         # Nunca varre share desativado.
         names = _snapshot_list(snapdir) if (enabled and snapdir) else []
-        # Btrfs compartilha extents entre snapshots; o numero e aproximado.
-        total_size = _btrfs_du_bytes(snapdir) if (enabled and snapdir) else 0
+        if enabled and snapdir and backend == "btrfs":
+            # Btrfs compartilha extents entre snapshots; o numero e aproximado.
+            total_size = _btrfs_du_bytes(snapdir)
+        elif enabled and snapdir and backend == "rsync":
+            total_size = _snapshot_extra_bytes(src, snapdir)
+        else:
+            total_size = 0
         snapshots = []
         for name in reversed(names):
             try:
@@ -826,6 +981,8 @@ def op_snapshot_usage(**_):
                 "keep": int(cfg.get("keep", 0)),
                 "count": len(names),
                 "size": total_size,
+                "backend": backend,
+                "snapdir": snapdir,
                 "snapshots": snapshots,
             }
         )
@@ -833,12 +990,17 @@ def op_snapshot_usage(**_):
 
 
 def op_snapshot_list(share: str, **_):
-    _, snapdir = _snapshot_dir(share)
-    return {"share": share, "snapshots": _snapshot_list(snapdir)}
+    _, snapdir, backend = _snapshot_dir(share)
+    return {
+        "share": share,
+        "backend": backend,
+        "snapdir": snapdir,
+        "snapshots": _snapshot_list(snapdir),
+    }
 
 
 def op_snapshot_create(share: str, **_):
-    src, snapdir = _snapshot_dir(share)
+    src, snapdir, backend = _snapshot_dir(share)
     names = _snapshot_list(snapdir)
     stamp = dt.datetime.now().strftime("@GMT-%Y.%m.%d-%H.%M.%S")
     dest = os.path.join(snapdir, stamp)
@@ -846,31 +1008,46 @@ def op_snapshot_create(share: str, **_):
         raise AgentError(f"Snapshot ja existe: {stamp}")
 
     try:
-        run(["btrfs", "subvolume", "snapshot", "-r", src, dest], timeout=1800)
+        if backend == "btrfs":
+            run(["btrfs", "subvolume", "snapshot", "-r", src, dest], timeout=1800)
+        else:
+            if not shutil.which("rsync"):
+                raise AgentError("rsync nao encontrado; snapshots rsync indisponiveis")
+            args = [
+                "rsync",
+                "-aHAX",
+                "--numeric-ids",
+                "--delete",
+                "--exclude=.snapshots",
+            ]
+            if names:
+                args.append(f"--link-dest={os.path.join(snapdir, names[-1])}")
+            args.extend([f"{src}/", f"{dest}/"])
+            run(args, timeout=1800)
     except AgentError:
-        _btrfs_delete(dest)
+        _delete_snapshot(dest, backend)
         raise
 
     keep = max(1, int(load_policies()[share].get("keep", 7)))
     names = _snapshot_list(snapdir)
     for old in names[: max(0, len(names) - keep)]:
-        _btrfs_delete(os.path.join(snapdir, old))
+        _delete_snapshot(os.path.join(snapdir, old), backend)
         log(f"PRUNE {share}/{old}")
     log(f"SNAPSHOT {share} {stamp}")
-    return {"share": share, "name": stamp}
+    return {"share": share, "name": stamp, "backend": backend}
 
 
 def op_snapshot_delete(share: str, name: str, **_):
     if not SNAP_RE.match(name or ""):
         raise AgentError("Nome de snapshot invalido")
-    _, snapdir = _snapshot_dir(share)
+    _, snapdir, backend = _snapshot_dir(share)
     target = os.path.join(snapdir, name)
     real = os.path.realpath(target)
     if os.path.dirname(real) != os.path.realpath(snapdir):
         raise AgentError("Caminho de snapshot invalido")
     if not os.path.isdir(real):
         raise AgentError(f"Snapshot nao encontrado: {name}")
-    _btrfs_delete(real)
+    _delete_snapshot(real, backend)
     log(f"DELETE_SNAPSHOT {share}/{name}")
     return {"share": share, "name": name}
 
@@ -949,9 +1126,7 @@ def _backup_disks(config: dict) -> list[dict]:
         label = labels[0] if labels else None
         has_data = bool(fstypes or uuids or children)
         has_filesystem = bool(fstypes or uuids or children)
-        system = name.startswith("mmcblk") or any(
-            mount == "/" or mount.startswith("/boot") for mount in mounts
-        )
+        system = any(mount == "/" for mount in mounts)
         raid = any(item == "linux_raid_member" for item in fstypes) or any(
             child.get("name", "").startswith("md") for child in children
         )
@@ -1047,8 +1222,8 @@ def op_backup_disk_setup(
     device = (device or "").strip()
     label = (label or "").strip().lower()
     confirmation = (confirmation or "").strip()
-    if not re.match(r"^/dev/sd[a-z]$", device):
-        raise AgentError("Dispositivo invalido (use /dev/sdX)")
+    if not BLOCK_DEVICE_RE.match(device):
+        raise AgentError("Dispositivo invalido (use /dev/sdX, /dev/nvmeXnY ou similar)")
     if not BACKUP_LABEL_RE.match(label):
         raise AgentError("Label invalida (1-16 caracteres: a-z, 0-9, _ ou -)")
     if not shutil.which("restic"):
@@ -1601,9 +1776,7 @@ def _usb_disks(cold: dict) -> list[dict]:
                 or (cold.get("uuid") and cold.get("uuid") == uuid)
             )
         )
-        system = name.startswith("mmcblk") or any(
-            mount == "/" or mount.startswith("/boot") for mount in mounts
-        )
+        system = any(mount == "/" for mount in mounts)
         if system:
             continue
         raid = any(item == "linux_raid_member" for item in fstypes)
@@ -1684,8 +1857,8 @@ def op_cold_prepare(
     device = (device or "").strip()
     label = (label or "").strip().lower()
     confirmation = (confirmation or "").strip()
-    if not re.match(r"^/dev/sd[a-z]$", device):
-        raise AgentError("Dispositivo USB invalido (use /dev/sdX)")
+    if not BLOCK_DEVICE_RE.match(device):
+        raise AgentError("Dispositivo USB invalido (use /dev/sdX, /dev/nvmeXnY ou similar)")
     if not COLD_LABEL_RE.match(label):
         raise AgentError("Label invalida (1-16 caracteres: a-z, 0-9, _ ou -)")
     primary = _primary_backup_disk()
@@ -1902,6 +2075,7 @@ def op_network_metrics(**_):
 
 OPS = {
     "ping": op_ping,
+    "host_capabilities": op_host_capabilities,
     "df": op_df,
     "list_users": op_list_users,
     "list_groups": op_list_groups,

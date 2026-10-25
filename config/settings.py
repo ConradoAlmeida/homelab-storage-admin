@@ -8,7 +8,7 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = [
     h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
     if h.strip()
 ]
 CSRF_TRUSTED_ORIGINS = [
@@ -16,16 +16,29 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Layout do NAS (precisa bater com o agente)
+SITE_NAME = os.environ.get("SITE_NAME", "Homelab Storage")
 STORAGE_ROOT = os.environ.get("STORAGE_ROOT", "/mnt/nas")
 SNAPSHOT_ROOT = os.environ.get("SNAPSHOT_ROOT", "/mnt/nas/.snapshots")
+BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
 ALLOWED_PATH_PREFIXES = tuple(
     p.strip().rstrip("/") + "/"
     for p in os.environ.get("ALLOWED_PATH_PREFIXES", f"{STORAGE_ROOT}/").split(",")
     if p.strip()
 )
 DF_MOUNTS = tuple(
-    m.strip() for m in os.environ.get("DF_MOUNTS", "/,/mnt/nas").split(",") if m.strip()
+    m.strip()
+    for m in os.environ.get("DF_MOUNTS", f"/,{STORAGE_ROOT}").split(",")
+    if m.strip()
 )
+SNAPSHOT_BACKEND = os.environ.get("SNAPSHOT_BACKEND", "auto").strip().lower()
+SNAPSHOT_DENYLIST = tuple(
+    s.strip()
+    for s in os.environ.get("SNAPSHOT_DENYLIST", "").split(",")
+    if s.strip()
+)
+BIND_ADDR = os.environ.get("BIND_ADDR", "127.0.0.1")
+BIND_PORT = int(os.environ.get("BIND_PORT", "8060"))
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR / "data")))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -63,6 +76,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.homelab",
             ],
         },
     },
@@ -74,7 +88,7 @@ SQLITE_PATH = os.environ.get("DJANGO_SQLITE_PATH")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": SQLITE_PATH or (BASE_DIR / "data" / "db.sqlite3"),
+        "NAME": SQLITE_PATH or (DATA_DIR / "db.sqlite3"),
     }
 }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Homelab Storage{% endblock %}</title>
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <style>
     :root { --bg:#0f172a; --panel:#1e293b; --line:#334155; --txt:#e2e8f0; --muted:#94a3b8; --acc:#38bdf8; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
     * { box-sizing: border-box; }
@@ -164,7 +164,7 @@
 <body>
   <a class="skip" href="#main">Ir para o conteúdo</a>
   <header>
-    <a class="brand" href="{% url 'dashboard' %}">HOMELAB Storage</a>
+    <a class="brand" href="{% url 'dashboard' %}">{{ site_name }}</a>
     <nav aria-label="Principal">
       <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
       <a href="{% url 'users' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}">Usuários</a>
@@ -172,7 +172,9 @@
       <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Versões</a>
       <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Explorar</a>
       <a href="{% url 'storage_index' %}" class="{% if '/storage/' in request.path %}active{% endif %}">Discos</a>
-      <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
+      {% if capabilities.restic %}
+        <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
+      {% endif %}
     </nav>
     <div class="user">
       {% if request.user.is_staff %}

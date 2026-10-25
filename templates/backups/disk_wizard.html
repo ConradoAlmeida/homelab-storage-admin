@@ -45,7 +45,7 @@
 
     <label for="label">Label do disco</label>
     <input id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
-    <p class="muted" style="font-size:12px">Montagem: <code>/mnt/backup/{{ default_label }}</code> · repositório: <code>/mnt/backup/{{ default_label }}/restic</code></p>
+    <p class="muted" style="font-size:12px">Montagem: <code>{{ backup_root }}/{{ default_label }}</code> · repositório: <code>{{ backup_root }}/{{ default_label }}/restic</code></p>
 
     <label for="filesystem">Sistema de arquivos de destino</label>
     <input id="filesystem" value="ext4 (recomendado)" readonly>

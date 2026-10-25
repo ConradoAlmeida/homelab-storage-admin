@@ -14,6 +14,21 @@ fi
 echo "==> git pull --ff-only origin main"
 git pull --ff-only origin main
 
+HOST_ENV=/etc/homelab-storage-admin/host.env
+if [[ ! -f "$HOST_ENV" ]]; then
+  echo "ERRO: $HOST_ENV nao existe. Rode antes: sudo ./install-agent.sh" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+set -a
+. "$HOST_ENV"
+set +a
+
+COMPOSE_FILES=(-f docker-compose.yml)
+if [[ -f docker-compose.homelab.yml ]]; then
+  COMPOSE_FILES+=(-f docker-compose.homelab.yml)
+fi
+
 chmod +x install-agent.sh entrypoint.sh deploy.sh
 
 NEED_AGENT=0
@@ -34,10 +49,10 @@ if [[ ! -f /etc/systemd/system/homelab-storage-snapshot.service ]] || ! cmp -s a
 fi
 
 echo "==> docker compose up -d --build"
-docker compose up -d --build
+docker compose "${COMPOSE_FILES[@]}" up -d --build
 
 echo "==> status"
-docker compose ps
+docker compose "${COMPOSE_FILES[@]}" ps
 
 if [[ "$NEED_AGENT" -eq 1 ]]; then
   echo

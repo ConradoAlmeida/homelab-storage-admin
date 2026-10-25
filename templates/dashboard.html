@@ -45,13 +45,15 @@
       {% if 'cpu' in zone.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
     </div>
   {% endfor %}
-  {% for fan in storage.system.fans %}
-    <div class="metric">
-      <span>Fan {{ fan.name }}</span>
-      <strong>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
-      <div class="muted" style="font-size:11px">PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}</div>
-    </div>
-  {% endfor %}
+  {% if capabilities.hwmon_fans %}
+    {% for fan in storage.system.fans %}
+      <div class="metric">
+        <span>Fan {{ fan.name }}</span>
+        <strong>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
+        <div class="muted" style="font-size:11px">PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}</div>
+      </div>
+    {% endfor %}
+  {% endif %}
   <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px">{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
   <div class="metric"><span>RAM disponível</span><strong>{{ storage.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ storage.system.mem_total_mb|default:"—" }} MB</div></div>
   <div class="metric net" id="network-metrics">
@@ -160,6 +162,7 @@
   </tbody>
 </table></div>
 
+{% if capabilities.restic %}
 <h2>Backups</h2>
 {% if not backups.restic %}
   <div class="alert danger"><strong>restic não encontrado no host.</strong></div>
@@ -191,25 +194,33 @@
 {% else %}
   <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
 {% endif %}
+{% endif %}
 
-<h2>RAID e Btrfs</h2>
+<h2>RAID{% if capabilities.btrfs %} e Btrfs{% endif %}</h2>
 <div class="card">
   <p>RAID: <span class="badge {% if raid_status == 'degradado' %}snap{% elif raid_status == 'ok' %}live{% endif %}">{{ raid_status }}</span></p>
   <pre class="pre">{{ storage.raid.mdstat|default:"—" }}</pre>
-  {% if storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
+  {% if capabilities.btrfs and storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
 </div>
 
 <h2>Shares</h2>
 {% if shares %}
-  <div class="card">
-    <p><strong>{{ shares|length }}</strong> share{{ shares|length|pluralize }} configurado{{ shares|length|pluralize }}.</p>
-    <p class="muted">
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Share</th><th>Backend</th><th>Dados</th><th>Extra snapshots</th><th>Total</th><th>Snapshots</th><th></th></tr></thead>
+    <tbody>
       {% for s in shares %}
-        <span class="badge" style="margin:2px 4px 2px 0">{{ s.name }}{% if not s.browseable %} · privado{% endif %}{% if s.read_only %} · RO{% endif %}{% if s.snapshot_enabled %} · snap{% else %} · sem snap{% endif %}</span>
+        <tr>
+          <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.read_only %} <span class="tag">RO</span>{% endif %}</td>
+          <td class="muted">{{ s.backend|default:"—" }}</td>
+          <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
+          <td class="muted">{% if s.size_snapshots != None %}{{ s.size_snapshots|filesizeformat }}{% else %}—{% endif %}</td>
+          <td>{% if s.size_total != None %}<strong>{{ s.size_total|filesizeformat }}</strong>{% else %}—{% endif %}</td>
+          <td>{% if s.snapshot_enabled %}<span class="tag ok">{{ s.snapshot_count }} · keep {{ s.snapshot_keep }}</span>{% else %}<span class="tag off">sem snap</span>{% endif %}</td>
+          <td class="file-actions"><a class="btn small" href="{% url 'shares' %}">Gerenciar</a></td>
+        </tr>
       {% endfor %}
-    </p>
-    <a class="btn small" href="{% url 'shares' %}">Gerenciar shares</a>
-  </div>
+    </tbody>
+  </table></div>
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>
 {% endif %}

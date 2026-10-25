@@ -1,0 +1,9 @@
+# Overlay do moyaserver: Samba em /srv/samba e dados em /mnt/data.
+# BIND_ADDR=127.0.0.1 vem do host.env.moya.example; use um proxy local.
+services:
+  web:
+    volumes:
+      - ./data:/app/data
+      - /srv/samba:/srv/samba:ro
+      - /mnt/data:/mnt/data:ro
+      - /run/homelab-storage-admin:/run/homelab-storage-admin:ro

@@ -52,14 +52,14 @@ class ShareCreateForm(forms.Form):
     path = forms.CharField(
         label="Caminho",
         max_length=255,
-        help_text="Ex.: /mnt/nas/documentos",
+        help_text="",
     )
     comment = forms.CharField(label="Descricao", required=False)
     snapshot = forms.BooleanField(
-        label="Criar como subvolume Btrfs e incluir na politica de snapshots",
+        label="Criar com snapshot e incluir na politica de versoes",
         required=False,
         initial=False,
-        help_text="Necessario para snapshots nativos e Versoes anteriores no Windows.",
+        help_text="Btrfs usa subvolume; ext4 usa snapshots rsync com hardlinks.",
     )
     snapshot_keep = forms.IntegerField(
         label="Versoes a manter", min_value=1, max_value=168, initial=7, required=False
@@ -70,6 +70,12 @@ class ShareCreateForm(forms.Form):
         initial=False,
         help_text="Adiciona browseable = no; o acesso continua restrito pelos grupos <share>_ro/_rw.",
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        prefixes = settings.ALLOWED_PATH_PREFIXES
+        if prefixes:
+            self.fields["path"].help_text = f"Ex.: {prefixes[0]}documentos"
 
     def clean_path(self):
         path = self.cleaned_data["path"].strip().rstrip("/")

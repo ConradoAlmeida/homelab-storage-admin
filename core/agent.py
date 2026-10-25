@@ -55,6 +55,9 @@ class AgentClient:
     def ping(self):
         return self.call("ping")
 
+    def host_capabilities(self):
+        return self.call("host_capabilities", timeout=20)
+
     def df(self):
         return self.call("df")
 

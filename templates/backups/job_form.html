@@ -42,7 +42,7 @@
       <span class="muted">Nenhum share encontrado.</span>
     {% endfor %}
   </div>
-  <p class="muted" style="font-size:12px">O histórico Btrfs em <code>/mnt/nas/.snapshots</code> não entra no backup; o restic cria snapshots próprios no disco de backup.</p>
+  <p class="muted" style="font-size:12px">O diretório de snapshots em <code>{{ snapshot_root }}</code> não entra no backup; o restic cria snapshots próprios no disco de backup.</p>
 
   <label for="excludes">Exclusões (uma por linha)</label>
   <textarea id="excludes" name="excludes" rows="14" placeholder="*.tmp&#10;@eaDir">{{ form.excludes_text }}</textarea>

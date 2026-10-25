@@ -3,14 +3,22 @@ services:
     build: .
     container_name: homelab-storage-admin
     restart: unless-stopped
-    # Bind apenas na LAN. Se o IP do Pi mudar, ajuste aqui e no .env.
+    # O perfil do host define BIND_ADDR/BIND_PORT; o default nao expoe na LAN.
     ports:
-      - "192.168.0.150:8060:8000"
+      - "${BIND_ADDR:-127.0.0.1}:${BIND_PORT:-8060}:8000"
     env_file:
       - .env
     environment:
-      - AGENT_SOCKET=/run/homelab-storage-admin/agent.sock
+      - AGENT_SOCKET=${AGENT_SOCKET:-/run/homelab-storage-admin/agent.sock}
+      - SITE_NAME=${SITE_NAME:-Homelab Storage}
+      - STORAGE_ROOT=${STORAGE_ROOT:-/mnt/nas}
+      - SNAPSHOT_ROOT=${SNAPSHOT_ROOT:-/mnt/nas/.snapshots}
+      - ALLOWED_PATH_PREFIXES=${ALLOWED_PATH_PREFIXES:-/mnt/nas/}
+      - DF_MOUNTS=${DF_MOUNTS:-/,/mnt/nas}
+      - BACKUP_ROOT=${BACKUP_ROOT:-/mnt/backup}
+      - SNAPSHOT_BACKEND=${SNAPSHOT_BACKEND:-auto}
+      - SNAPSHOT_DENYLIST=${SNAPSHOT_DENYLIST:-}
     volumes:
-      - /mnt/nas/apps/homelab-storage-admin/data:/app/data
-      - /mnt/nas:/mnt/nas:ro
-      - /run/homelab-storage-admin:/run/homelab-storage-admin:ro
+      - "${DATA_DIR:-./data}:/app/data"
+      - "${STORAGE_ROOT:-/mnt/nas}:${STORAGE_ROOT:-/mnt/nas}:ro"
+      - "${AGENT_SOCKET_DIR:-/run/homelab-storage-admin}:/run/homelab-storage-admin:ro"

@@ -12,12 +12,8 @@ RuntimeDirectory=homelab-storage-admin
 RuntimeDirectoryMode=0755
 # Preserva o diretorio: o container tem bind mount nele e perderia o socket
 RuntimeDirectoryPreserve=yes
-Environment=STORAGE_ROOT=/mnt/nas
-Environment=SNAPSHOT_ROOT=/mnt/nas/.snapshots
-Environment=ALLOWED_PATH_PREFIXES=/mnt/nas/
-Environment=DF_MOUNTS=/,/mnt/nas
-Environment=SHARE_OWNER=conrado
-# Environment=SNAPSHOT_DENYLIST=share1,share2
+# Perfil do host. O arquivo e opcional para nao impedir o boot se faltar.
+EnvironmentFile=-/etc/homelab-storage-admin/host.env
 
 [Install]
 WantedBy=multi-user.target

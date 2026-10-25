@@ -1,8 +1,9 @@
 # Homelab Storage Admin
 
 Painel web para administrar o NAS do homelab (`homelab`, Raspberry Pi 5) sem
-decorar comandos: usuários e grupos do Samba, shares, snapshots Btrfs e espaço
-em disco.
+decorar comandos: usuários e grupos do Samba, shares, snapshots Btrfs ou rsync
+e espaço em disco. O mesmo código atende o Pi, o moyaserver e um
+Ubuntu+Samba via perfil de host.
 
 > **Nunca comite `.env`.** Este repositório não contém senhas. A senha do admin
 > é definida no `.env` do servidor (modo `600`) e trocada com
@@ -62,6 +63,38 @@ homelab-storage-agent (systemd, root no host)
 O container **não** tem root no host, não monta `/etc/samba` e não executa shell.
 Ele só pede operações conhecidas ao agente, que valida cada argumento.
 
+### Perfis de host
+
+O perfil fica em `/etc/homelab-storage-admin/host.env` e é lido pelo agente
+(`EnvironmentFile` do systemd) e pelo `deploy.sh` (variáveis do Compose). O
+`install-agent.sh` copia um exemplo **apenas se o arquivo não existir**; nunca
+sobrescreve um perfil existente.
+
+| Perfil | Exemplo | Overlay | Storage | Snapshots |
+|---|---|---|---|---|
+| Pi (default) | `host.env.example` | `docker-compose.homelab.yml` | `/mnt/nas` | `auto` (Btrfs no Pi) |
+| moyaserver | `host.env.moya.example` | `docker-compose.moya.yml` | `/srv/samba` + `/mnt/data` | `rsync` |
+| mínimo | sem Btrfs/restic | `docker-compose.yml` | conforme `host.env` | `none`/`rsync` |
+
+Variáveis principais: `SITE_NAME`, `STORAGE_ROOT`, `SNAPSHOT_ROOT`,
+`ALLOWED_PATH_PREFIXES`, `DF_MOUNTS`, `SHARE_OWNER`, `SNAPSHOT_DENYLIST`,
+`SNAPSHOT_BACKEND=auto|btrfs|rsync|none`, `BACKUP_ROOT`, `AGENT_SOCKET`,
+`BIND_ADDR`, `BIND_PORT`, `DATA_DIR`.
+
+O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
+filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não
+existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
+Caddy, DNS ou o data-root do Docker.
+
+No moyaserver, depois de instalar o agente:
+
+```bash
+sudo cp host.env.moya.example /etc/homelab-storage-admin/host.env
+docker compose -f docker-compose.yml -f docker-compose.moya.yml up -d --build
+```
+
+O bind fica em `127.0.0.1:8060`; publique com o proxy que já existe no host.
+
 ### Layout Btrfs
 
 - `/mnt/nas` é o subvolume `@data` do array (RAID1 degradado + Btrfs).
@@ -87,7 +120,9 @@ snapshotado pelo Btrfs. Recrie-o como subvolume com a opção de snapshot marcad
 - Ubuntu Server 26.04.1 LTS (arm64), kernel com Btrfs e suporte ao HAT.
 - Array montado em `/mnt/nas` (ver `HOMELAB.md`).
 - Docker + Compose.
-- Samba instalado: `sudo apt install samba samba-common-bin btrfs-progs`.
+- Samba instalado: `sudo apt install samba samba-common-bin` (obrigatório).
+- Opcionais: `btrfs-progs`, `restic`, `smartmontools`, `hdparm`, `mdadm`.
+  Sem eles o install não aborta; o recurso correspondente é escondido.
 - Usuário `conrado` com sudo e no grupo `docker`.
 - `smbd` rodando: `sudo systemctl enable --now smbd`.
 
@@ -120,11 +155,13 @@ cd /opt/stacks/homelab-storage-admin
 cp .env.example .env
 chmod 600 .env
 # edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF
-docker compose up -d --build
-sudo ./install-agent.sh
+sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
+./deploy.sh               # usa host.env + docker-compose.homelab.yml
 ```
 
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
+O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
+rode antes `sudo ./install-agent.sh`.
 
 ```bash
 cd /opt/stacks/homelab-storage-admin
@@ -138,11 +175,16 @@ Se o agente mudou, o `deploy.sh` avisa; rode `sudo ./install-agent.sh`.
 O projeto usa **uv** e Python **3.12**; o `uv.lock` é versionado:
 
 ```bash
-uv sync
+uv sync --dev
 uv run manage.py migrate
 uv run manage.py check
+uv run pytest
 uv run manage.py runserver 0.0.0.0:8000
 ```
+
+A suíte normal roda sem root, sem Btrfs, sem Samba e sem hardware. Testes que
+exigem loop devices/Btrfs real são marcados `lab` e devem rodar só em uma VM
+descartável. O CI roda `manage.py check` + `pytest`.
 
 O container também usa uv (`ghcr.io/astral-sh/uv`) e não tem `requirements.txt`.
 
@@ -193,6 +235,26 @@ docker compose exec -it web python manage.py createsuperuser --username outro
 
 Gere a chave com `openssl rand -hex 32`.
 
+### Perfil do host (`host.env`)
+
+| Variável | Default do Pi | Função |
+|---|---|---|
+| `SITE_NAME` | `Homelab Storage` | nome na UI/admin |
+| `STORAGE_ROOT` | `/mnt/nas` | raiz dos shares/volume principal |
+| `SNAPSHOT_ROOT` | `/mnt/nas/.snapshots` | snapdir Btrfs |
+| `ALLOWED_PATH_PREFIXES` | `/mnt/nas/` | prefixos aceitos (vírgula) |
+| `DF_MOUNTS` | `/,/mnt/nas,/mnt/backup` | mounts do `df` |
+| `SHARE_OWNER` | `conrado` | dono dos shares |
+| `SNAPSHOT_DENYLIST` | vazio | shares que nunca recebem snapshot |
+| `SNAPSHOT_BACKEND` | `auto` | `auto`, `btrfs`, `rsync` ou `none` |
+| `BACKUP_ROOT` | `/mnt/backup` | raiz dos discos restic |
+| `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
+| `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
+| `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
+
+O unit `homelab-storage-agent.service` e o socket **não são renomeados**. O
+`deploy.sh` carrega esse arquivo e usa o overlay do host.
+
 ---
 
 ## 6. Snapshots
@@ -201,13 +263,20 @@ Gere a chave com `openssl rand -hex 32`.
 - **Diário:** `homelab-storage-snapshot.timer` roda às 03:00 e cria um snapshot
   para cada share com política ativa.
 - **Retenção:** campo `keep` da política (padrão 7).
-- **Tamanho:** `btrfs filesystem du` é aproximado, porque snapshots compartilham
-  extents. O número no dashboard é uma referência, não a soma exata.
+- **Backend:** `auto` usa Btrfs quando o filesystem é Btrfs; senão usa `rsync`.
+  `SNAPSHOT_BACKEND=btrfs|rsync|none` força o modo.
+- **Btrfs:** snapdir em `SNAPSHOT_ROOT/<share>`, `btrfs subvolume snapshot -r`.
+- **rsync:** snapdir em `<path>/.snapshots`, `rsync -aHAX --link-dest` com
+  hardlinks; exclusão de `.snapshots` evita recursão.
+- **Tamanho:** Btrfs usa `btrfs filesystem du` (aproximado por extents
+  compartilhados). rsync usa live sem `.snapshots` + extra = `du(share) - live`.
 - **Restauração:** copie do snapshot para o share ou use a aba Versões anteriores
   no Windows. Para rollback completo, pare o Samba e recrie o subvolume.
 
-O agente exige que o share seja um subvolume Btrfs e que `/mnt/nas` esteja
-montado; se o mount cair, ele aborta em vez de escrever no microSD.
+No backend Btrfs o agente exige que o share seja um subvolume e que
+`STORAGE_ROOT` esteja montado; se o mount cair, ele aborta em vez de escrever no
+microSD. No backend rsync não há essa exigência, mas o path precisa estar dentro
+de um prefixo permitido.
 
 ---
 

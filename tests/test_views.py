@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+
+import backups.views as backup_views
+import core.context_processors as context_processors
+import core.views as core_views
+import storage.views as storage_views
+
+
+def fake_agent(capabilities=None):
+    agent = Mock()
+    agent.df.return_value = {"volumes": []}
+    agent.list_shares.return_value = []
+    agent.snapshot_usage.return_value = []
+    agent.storage_overview.return_value = {
+        "system": {
+            "zones": [],
+            "fans": [],
+            "load": {"l1": 0, "l5": 0, "l15": 0},
+            "cpu_percent": None,
+            "mem_total_mb": 1024,
+            "mem_available_mb": 512,
+        },
+        "disks": [],
+        "raid": {"mdstat": "", "detail": ""},
+        "btrfs": {"usage": "", "stats": "", "scrub": ""},
+    }
+    agent.backup_overview.return_value = {
+        "disks": [],
+        "jobs": [],
+        "restic": False,
+    }
+    agent.host_capabilities.return_value = capabilities or {
+        "btrfs": False,
+        "restic": False,
+        "smartctl": False,
+        "hdparm": False,
+        "mdadm": False,
+        "hwmon_fans": False,
+        "storage_root_mounted": False,
+        "storage_root_fstype": "ext4",
+        "snapshot_backend": "none",
+    }
+    return agent
+
+
+class ViewSmokeTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="tester", password="test-password"
+        )
+        self.client.force_login(self.user)
+        fake = fake_agent()
+        for module in (core_views, storage_views, backup_views, context_processors):
+            patcher = patch.object(module, "agent", fake)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        context_processors._cached_caps = None
+        context_processors._cached_at = 0.0
+
+    def test_dashboard_renders_without_optional_capabilities(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "restic não encontrado")
+
+    def test_storage_renders_without_btrfs_or_smartctl(self):
+        response = self.client.get("/storage/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Btrfs")
+
+    def test_backups_renders_empty_state_without_restic(self):
+        response = self.client.get("/backups/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "restic não encontrado")
+
+    def test_nav_hides_backups_without_restic(self):
+        response = self.client.get("/")
+        self.assertNotContains(response, 'href="/backups/"')

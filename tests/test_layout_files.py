@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from .conftest import ROOT, parse_env_file
+
+
+def read(path: str) -> str:
+    return (ROOT / path).read_text()
+
+
+def test_generic_compose_has_no_pi_ip():
+    text = read("docker-compose.yml")
+    assert "192.168.0.150" not in text
+    assert "BIND_ADDR" in text
+    assert "AGENT_SOCKET" in text
+
+
+def test_homelab_overlay_keeps_current_paths():
+    text = read("docker-compose.homelab.yml")
+    assert "/mnt/nas/apps/homelab-storage-admin/data:/app/data" in text
+    assert "/mnt/nas:/mnt/nas:ro" in text
+    assert "/run/homelab-storage-admin:/run/homelab-storage-admin:ro" in text
+
+
+def test_host_env_example_is_pi_profile():
+    values = parse_env_file(ROOT / "host.env.example")
+    assert values["STORAGE_ROOT"] == "/mnt/nas"
+    assert values["ALLOWED_PATH_PREFIXES"] == "/mnt/nas/"
+    assert values["BIND_ADDR"] == "192.168.0.150"
+    assert values["SNAPSHOT_BACKEND"] == "auto"
+
+
+def test_install_agent_makes_btrfs_and_restic_optional():
+    text = read("install-agent.sh")
+    required_block = text.split("Checando dependencias obrigatorias", 1)[1].split(
+        "Dependencias opcionais", 1
+    )[0]
+    assert "btrfs" not in required_block
+    assert "restic" not in required_block
+    optional_block = text.split("Dependencias opcionais", 1)[1]
+    assert "btrfs" in optional_block
+    assert "restic" in optional_block
+    assert "host.env" in text
+    assert "! -f \"$HOST_ENV\"" in text
+
+
+def test_unit_uses_host_env_and_preserves_socket_name():
+    text = read("agent/homelab-storage-agent.service")
+    assert "EnvironmentFile=-/etc/homelab-storage-admin/host.env" in text
+    assert "RuntimeDirectory=homelab-storage-admin" in text
+    assert "Environment=STORAGE_ROOT" not in text
+
+
+def test_deploy_loads_host_env_and_overlay():
+    text = read("deploy.sh")
+    assert "/etc/homelab-storage-admin/host.env" in text
+    assert "docker-compose.homelab.yml" in text
+    assert 'docker compose "${COMPOSE_FILES[@]}" up -d --build' in text

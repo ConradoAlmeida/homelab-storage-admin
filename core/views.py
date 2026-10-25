@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -6,6 +7,7 @@ from django.views.decorators.http import require_POST
 
 from .agent import AgentError, agent
 from .forms import GroupsForm, PasswordForm, ShareCreateForm, UserCreateForm
+from .hostinfo import disk_role, volume_for
 from .models import AuditLog
 
 
@@ -21,13 +23,6 @@ def _audit(request, action, target="", detail=""):
 
 def _error(request, exc):
     messages.error(request, str(exc))
-
-
-def _volume_for(path, volumes):
-    matches = [vol for vol in volumes if path == vol["mount"] or path.startswith(vol["mount"].rstrip("/") + "/")]
-    if not matches:
-        return None
-    return max(matches, key=lambda vol: len(vol["mount"]))
 
 
 @login_required
@@ -46,7 +41,7 @@ def dashboard(request):
     try:
         data = agent.df()
         context["volumes"] = data.get("volumes", [])
-        context["shares"] = agent.list_shares(include_size=False)
+        context["shares"] = agent.list_shares(include_size=True)
         context["snapshots"] = agent.snapshot_usage()
         storage = agent.storage_overview()
         backups = agent.backup_overview()
@@ -59,18 +54,11 @@ def dashboard(request):
         mounts = disk.get("mounts") or []
         volume = None
         for mount in mounts:
-            volume = _volume_for(mount, volumes)
+            volume = volume_for(mount, volumes)
             if volume:
                 break
         disk["volume"] = volume
-        if disk.get("name", "").startswith("mmcblk"):
-            disk["role"] = "sistema"
-        elif any(mount == "/mnt/backup" or mount.startswith("/mnt/backup/") for mount in mounts):
-            disk["role"] = "backup"
-        elif any(mount == "/mnt/nas" or mount.startswith("/mnt/nas/") for mount in mounts):
-            disk["role"] = "dados/RAID"
-        else:
-            disk["role"] = "—"
+        disk["role"] = disk_role(disk, settings.STORAGE_ROOT, settings.BACKUP_ROOT)
 
     backup_disks = backups.get("disks", [])
     backup_jobs = backups.get("jobs", [])
@@ -80,7 +68,7 @@ def dashboard(request):
             None,
         )
         mount = (disk or {}).get("mountpoint")
-        job["volume"] = _volume_for(mount, volumes) if mount else None
+        job["volume"] = volume_for(mount, volumes) if mount else None
         job["source_count"] = len(job.get("sources") or [])
 
     snapshots = context["snapshots"]
@@ -89,6 +77,7 @@ def dashboard(request):
         snap = snap_by_name.get(share.get("name"))
         share["snapshot_enabled"] = bool(snap and snap.get("enabled"))
         share["snapshot_keep"] = snap.get("keep") if snap else None
+        share["snapshot_count"] = int(snap.get("count") or 0) if snap else 0
     total_count = sum(int(item.get("count") or 0) for item in snapshots)
     total_size = sum(int(item.get("size") or 0) for item in snapshots)
     latest = None

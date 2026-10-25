@@ -28,8 +28,17 @@ def _share(share: str) -> dict:
     raise Http404("Share nao encontrado")
 
 
+def _snapdir(share: str) -> Path:
+    info = _share(share)
+    snapdir = info.get("snapdir")
+    if snapdir:
+        return Path(snapdir)
+    # Compatibilidade com agentes antigos que ainda nao devolvem snapdir.
+    return Path(settings.SNAPSHOT_ROOT) / share
+
+
 def _snapshots(share: str) -> list[dict]:
-    root = Path(settings.SNAPSHOT_ROOT) / share
+    root = _snapdir(share)
     if not root.is_dir():
         return []
     result = []
@@ -51,7 +60,10 @@ def _base(share: str, snapshot: str) -> Path:
         return Path(info["path"])
     if not SNAP_RE.match(snapshot):
         raise Http404("Snapshot invalido")
-    return Path(settings.SNAPSHOT_ROOT) / share / snapshot
+    snapdir = info.get("snapdir")
+    if not snapdir:
+        raise Http404("Share sem snapshots")
+    return Path(snapdir) / snapshot
 
 
 def _safe_target(base: Path, rel: str) -> Path:
@@ -149,9 +161,10 @@ def browse(request, share: str, snapshot: str, filepath: str = ""):
     paginator = Paginator(entries, 100)
     page_obj = paginator.get_page(request.GET.get("page"))
     snapshots = _snapshots(share)
+    snapdir = info.get("snapdir")
     for snap in snapshots:
-        candidate = Path(settings.SNAPSHOT_ROOT) / share / snap["name"] / filepath
-        same_path = bool(filepath) and candidate.exists()
+        candidate = Path(snapdir) / snap["name"] / filepath if snapdir else None
+        same_path = bool(filepath) and candidate is not None and candidate.exists()
         snap["url"] = _url_browse(share, snap["name"], filepath if same_path else "")
 
     parts = [part for part in filepath.split("/") if part]
@@ -204,8 +217,11 @@ def versions(request, share: str, filepath: str):
     live_target = _safe_target(live_base, filepath)
 
     result = []
+    snapdir = info.get("snapdir")
     for snap in _snapshots(share):
-        snap_base = Path(settings.SNAPSHOT_ROOT) / share / snap["name"]
+        snap_base = Path(snapdir) / snap["name"] if snapdir else None
+        if snap_base is None:
+            continue
         try:
             candidate = _safe_target(snap_base, filepath)
         except Http404:

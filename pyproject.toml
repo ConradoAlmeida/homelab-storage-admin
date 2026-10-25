@@ -12,3 +12,19 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "*_tests.py", "tests.py"]
+testpaths = ["tests", "core/tests", "history"]
+addopts = "-ra --strict-markers"
+markers = [
+    "lab: testes que exigem root/loop devices e rodam apenas em VM descartavel",
+    "hardware: testes passivos que so fazem sentido no host real",
+]

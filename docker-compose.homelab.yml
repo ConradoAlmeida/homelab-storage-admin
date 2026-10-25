@@ -1,0 +1,8 @@
+# Overlay do Pi (homelab). Mantem os caminhos atuais do /mnt/nas.
+# Use junto com host.env: deploy.sh carrega /etc/homelab-storage-admin/host.env.
+services:
+  web:
+    volumes:
+      - /mnt/nas/apps/homelab-storage-admin/data:/app/data
+      - /mnt/nas:/mnt/nas:ro
+      - /run/homelab-storage-admin:/run/homelab-storage-admin:ro

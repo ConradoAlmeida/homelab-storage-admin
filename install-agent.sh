@@ -9,16 +9,40 @@ fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "==> Checando dependencias"
-for cmd in btrfs pdbedit smbpasswd smbcontrol testparm restic parted mkfs.ext4; do
+HOST_ENV=/etc/homelab-storage-admin/host.env
+mkdir -p /etc/homelab-storage-admin
+if [[ ! -f "$HOST_ENV" ]]; then
+  install -m 0644 "$HERE/host.env.example" "$HOST_ENV"
+  echo "==> Criado $HOST_ENV a partir do exemplo (Pi)."
+else
+  echo "==> Mantendo $HOST_ENV existente."
+fi
+
+# Samba e ferramentas de disco sao obrigatorios; o resto e detectado pelo app.
+echo "==> Checando dependencias obrigatorias"
+for cmd in pdbedit smbpasswd smbcontrol testparm parted mkfs.ext4; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin btrfs-progs restic parted e2fsprogs" >&2
+    echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin parted e2fsprogs" >&2
     exit 1
   fi
 done
 
-if ! mountpoint -q /mnt/nas; then
-  echo "AVISO: /mnt/nas nao esta montado. Monte o Btrfs antes de usar shares/snapshots." >&2
+echo "==> Dependencias opcionais"
+for cmd in btrfs restic smartctl hdparm mdadm; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
+  fi
+done
+
+# shellcheck disable=SC1090
+if [[ -f "$HOST_ENV" ]]; then
+  set -a
+  . "$HOST_ENV"
+  set +a
+fi
+STORAGE_ROOT="${STORAGE_ROOT:-/mnt/nas}"
+if ! mountpoint -q "$STORAGE_ROOT"; then
+  echo "AVISO: $STORAGE_ROOT nao esta montado. Shares/snapshots Btrfs ficam limitados." >&2
 fi
 
 echo "==> Instalando binarios"
