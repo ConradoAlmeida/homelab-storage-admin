@@ -44,8 +44,13 @@
   </div>
 
   <label for="excludes">Exclusões (uma por linha)</label>
-  <textarea id="excludes" name="excludes" rows="4" placeholder="*.tmp&#10;@eaDir">{{ form.excludes_text }}</textarea>
-  <p class="muted" style="font-size:12px">Padrões passados ao restic com <code>--exclude</code>. Deixe vazio se não precisar.</p>
+  <textarea id="excludes" name="excludes" rows="14" placeholder="*.tmp&#10;@eaDir">{{ form.excludes_text }}</textarea>
+  <p class="muted" style="font-size:12px">Padrões passados ao restic com <code>--iexclude</code> (case-insensitive). A lista padrão cobre temporários, locks, downloads parciais e backups auxiliares de CAD/design — SolidWorks, Blender, FreeCAD, Inkscape, GIMP, Krita, AutoCAD, SketchUp, Rhino e InDesign. Os arquivos reais (ex.: <code>.sldprt</code>, <code>.blend</code>, <code>.FCStd</code>, <code>.svg</code>, <code>.dwg</code>) <strong>não</strong> são excluídos.</p>
+  <div class="row" style="gap:8px;align-items:center;margin-bottom:6px">
+    <button type="button" class="btn small" id="restore-excludes">Restaurar lista padrão</button>
+    <span class="muted" style="font-size:12px">Revise e remova o que não quiser.</span>
+  </div>
+  <textarea id="default-excludes" hidden>{{ default_excludes_text }}</textarea>
 
   <h2 style="margin-top:22px">Periodicidade</h2>
   <label for="frequency">Frequência</label>
@@ -87,4 +92,16 @@
     <a class="btn small" href="{% url 'backup_index' %}">Cancelar</a>
   </div>
 </form>
+
+<script>
+(function () {
+  const button = document.getElementById('restore-excludes');
+  const textarea = document.getElementById('excludes');
+  const defaults = document.getElementById('default-excludes');
+  if (!button || !textarea || !defaults) return;
+  button.addEventListener('click', function () {
+    textarea.value = defaults.value;
+  });
+})();
+</script>
 {% endblock %}

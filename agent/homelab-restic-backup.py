@@ -149,7 +149,7 @@ def main() -> int:
     ]
     for pattern in job.get("excludes", []):
         if pattern:
-            args.extend(["--exclude", str(pattern)])
+            args.extend(["--iexclude", str(pattern)])
 
     proc = run(args)
     log(name, f"backup rc={proc.returncode}\n{tail(proc)}")

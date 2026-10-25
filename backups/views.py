@@ -8,6 +8,8 @@ from django.views.decorators.http import require_POST
 from core.agent import AgentError, agent
 from core.models import AuditLog
 
+from .defaults import DEFAULT_EXCLUDES_TEXT
+
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 WEEKDAYS = [
     (0, "Segunda"),
@@ -169,7 +171,7 @@ def _default_job_form(overview: dict) -> dict:
         "name": "",
         "disk_uuid": disks[0]["uuid"] if disks else "",
         "sources": [],
-        "excludes_text": "",
+        "excludes_text": DEFAULT_EXCLUDES_TEXT,
         "frequency": "daily",
         "time": "03:30",
         "weekday": 0,
@@ -307,6 +309,7 @@ def job_form(request, name=None):
             "job": job,
             "form": form,
             "error": error,
+            "default_excludes_text": DEFAULT_EXCLUDES_TEXT,
         },
     )
 
