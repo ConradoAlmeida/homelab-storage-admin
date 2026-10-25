@@ -19,6 +19,8 @@ em disco.
 | Editar grupos | Usuários → Grupos |
 | Ativar/desativar acesso | Usuários → botão Ativar/Desativar |
 | Criar share no `smb.conf` | Shares → Novo share |
+| Navegar histórico/snapshots | Histórico (`/history/`) — read-only |
+| Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
 | Criar/remover snapshot Btrfs | Snapshots |
@@ -55,6 +57,7 @@ Ele só pede operações conhecidas ao agente, que valida cada argumento.
 ### Layout Btrfs
 
 - `/mnt/nas` é o subvolume `@data` do array (RAID1 degradado + Btrfs).
+- O container monta `/mnt/nas` **read-only** para o navegador de histórico; escritas continuam só pelo agente root.
 - O banco SQLite e os dados do app ficam em
   `/mnt/nas/apps/homelab-storage-admin/data` (bind mount), fora do microSD.
 - Cada share que terá snapshots é um **subvolume Btrfs** próprio:
@@ -198,6 +201,17 @@ montado; se o mount cair, ele aborta em vez de escrever no microSD.
 
 ---
 
+### Histórico (read-only)
+
+`/history/` navega os shares e snapshots `@GMT-...`:
+- live e cada snapshot, com breadcrumb;
+- lista de pastas/arquivos, paginação e download;
+- “Versões” por arquivo, comparando live + snapshots;
+- tudo somente leitura; restauração ainda não implementada.
+
+O container precisa de `/mnt/nas` montado read-only. O app não escreve nos dados
+por esse caminho; qualquer escrita continua no agente root.
+
 ## 7. Samba
 
 O app escreve seções no `/etc/samba/smb.conf`, roda `testparm -s` e recarrega
@@ -263,6 +277,7 @@ homelab-storage-admin/
 │   └── homelab-storage-snapshot.timer
 ├── config/            # settings Django (env)
 ├── core/              # views, forms, models, cliente do agente
+├── history/           # navegador read-only de snapshots/versoes
 ├── templates/         # UI escura, sem dependências externas
 ├── docker-compose.yml
 ├── install-agent.sh
