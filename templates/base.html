@@ -148,7 +148,7 @@
     <a class="brand" href="{% url 'dashboard' %}">HOMELAB Storage</a>
     <nav aria-label="Principal">
       <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
-      <a href="{% url 'users' %}" class="{% if '/users/' in request.path %}active{% endif %}">Usuários</a>
+      <a href="{% url 'users' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}">Usuários</a>
       <a href="{% url 'shares' %}" class="{% if '/shares/' in request.path %}active{% endif %}">Shares</a>
       <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Versões</a>
       <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Explorar</a>
