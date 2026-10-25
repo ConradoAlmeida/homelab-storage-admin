@@ -186,7 +186,14 @@ def _system_info() -> dict:
         except (OSError, ValueError):
             pass
         if fan is not None or pwm is not None:
-            fans.append({"name": name, "rpm": fan, "pwm": pwm})
+            fans.append(
+                {
+                    "name": name,
+                    "rpm": fan,
+                    "pwm": pwm,
+                    "pwm_percent": round(pwm / 255 * 100) if pwm is not None else None,
+                }
+            )
 
     mem = {}
     try:

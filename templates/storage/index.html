@@ -13,7 +13,11 @@
       <div class="metric"><span>{{ z.type }}</span><strong>{{ z.temp|floatformat:1 }} °C</strong></div>
     {% endfor %}
     {% for f in overview.system.fans %}
-      <div class="metric"><span>Fan {{ f.name }}</span><strong>{{ f.rpm|default:"—" }} rpm</strong><div class="muted" style="font-size:11px">PWM {{ f.pwm|default:"—" }}</div></div>
+      <div class="metric">
+        <span>Fan {{ f.name }}</span>
+        <strong>{% if f.rpm is not None %}{{ f.rpm }} rpm{% if f.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
+        <div class="muted" style="font-size:11px">PWM {% if f.pwm_percent is not None %}{{ f.pwm_percent }}%{% else %}—{% endif %}{% if f.rpm == 0 %} · curva começa ~50 °C{% endif %}</div>
+      </div>
     {% endfor %}
     <div class="metric"><span>Load (1/5/15)</span><strong style="font-size:15px">{{ overview.system.load.l1|floatformat:2 }} / {{ overview.system.load.l5|floatformat:2 }} / {{ overview.system.load.l15|floatformat:2 }}</strong></div>
     <div class="metric"><span>RAM disponível</span><strong>{{ overview.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ overview.system.mem_total_mb|default:"—" }} MB</div></div>
