@@ -125,11 +125,19 @@ O projeto usa **uv** e Python **3.12**; o `uv.lock` é versionado:
 
 ```bash
 uv sync
+uv run manage.py migrate
 uv run manage.py check
 uv run manage.py runserver 0.0.0.0:8000
 ```
 
 O container também usa uv (`ghcr.io/astral-sh/uv`) e não tem `requirements.txt`.
+
+> No host do Pi, o banco do app fica em
+> `/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3`. Para rodar um comando
+> Django no host contra esse banco, use
+> `DJANGO_SQLITE_PATH=/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3 uv run manage.py ...`.
+> O caminho recomendado para operações do dia a dia é dentro do container
+> (`docker compose exec web ...`), que já enxerga o banco certo.
 
 ### Superusuário
 
@@ -159,6 +167,7 @@ docker compose exec -it web python manage.py createsuperuser --username outro
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `http://192.168.0.150:8060,...` | origens confiáveis |
 | `DJANGO_SUPERUSER_*` | admin / senha / e-mail | criado só se não existir |
 | `DJANGO_SECURE_COOKIES` | `0` | `1` atrás de HTTPS |
+| `DJANGO_SQLITE_PATH` | (vazio) | opcional; no host do Pi aponte para `/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3` |
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket do agente |
 
 Gere a chave com `openssl rand -hex 32`.
