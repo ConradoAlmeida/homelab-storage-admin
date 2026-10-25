@@ -17,7 +17,7 @@
 
 {% if error %}<div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>{% endif %}
 
-<table class="file-table" style="margin-top:12px">
+<div class="table-wrap"><table class="file-table" style="margin-top:12px">
   <tbody>
     <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
     <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
@@ -26,7 +26,7 @@
     <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
     <tr><th>Destino</th><td><strong>ext4</strong> · mount <code>/mnt/coldcopy</code></td></tr>
   </tbody>
-</table>
+</table></div>
 
 {% if selected.warnings %}
   <div class="alert danger"><strong>Atenção</strong><ul style="margin:8px 0 0 18px">{% for warning in selected.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div>

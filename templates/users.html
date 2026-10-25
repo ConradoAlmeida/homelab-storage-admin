@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Usuarios - Homelab Storage{% endblock %}
+{% block title %}Usuários - Homelab Storage{% endblock %}
 {% block content %}
 <div class="row" style="justify-content:space-between; margin-bottom:18px">
-  <h1 style="margin:0">Usuarios Samba</h1>
-  <a class="btn primary" href="{% url 'user_create' %}">Novo usuario</a>
+  <h1 style="margin:0">Usuários Samba</h1>
+  <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
 </div>
 
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif users %}
-<table>
-  <thead><tr><th>Usuario</th><th>Nome</th><th>Grupos</th><th>Status</th><th>Acoes</th></tr></thead>
+<div class="table-wrap"><table>
+  <thead><tr><th>Usuário</th><th>Nome</th><th>Grupos</th><th>Status</th><th>Ações</th></tr></thead>
   <tbody>
     {% for u in users %}
       <tr>
@@ -33,7 +33,7 @@
       </tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 {% else %}
   <div class="empty">Nenhum usuario Samba cadastrado.</div>
 {% endif %}

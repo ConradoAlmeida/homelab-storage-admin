@@ -39,7 +39,7 @@
           </div>
 
           {% if s.snapshots %}
-            <table class="file-table">
+            <div class="table-wrap"><table class="file-table">
               <thead><tr><th>Snapshot</th><th>Data</th><th></th></tr></thead>
               <tbody>
                 {% for snap in s.snapshots %}
@@ -58,7 +58,7 @@
                   </tr>
                 {% endfor %}
               </tbody>
-            </table>
+            </table></div>
           {% else %}
             <div class="empty">Nenhum snapshot existente.</div>
           {% endif %}

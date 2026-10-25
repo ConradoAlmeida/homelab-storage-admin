@@ -9,13 +9,18 @@
     * { box-sizing: border-box; }
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--txt); }
     a { color:var(--acc); text-decoration:none; }
-    header { display:flex; align-items:center; gap:24px; padding:14px 24px; background:var(--panel); border-bottom:1px solid var(--line); }
-    header .brand { font-weight:700; letter-spacing:.3px; }
-    header nav { display:flex; gap:18px; flex:1; }
-    header nav a { color:var(--muted); font-size:14px; }
-    header nav a.active, header nav a:hover { color:var(--txt); }
-    header .user { color:var(--muted); font-size:13px; display:flex; gap:12px; align-items:center; }
-    main { max-width:1200px; margin:0 auto; padding:24px; }
+    a:hover { text-decoration:underline; }
+    header { position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:20px; padding:12px 24px; background:rgba(30,41,59,.96); border-bottom:1px solid var(--line); backdrop-filter:blur(8px); }
+    header .brand { font-weight:700; letter-spacing:.3px; color:var(--txt); white-space:nowrap; }
+    header .brand:hover { text-decoration:none; color:var(--acc); }
+    header nav { display:flex; gap:14px; flex:1; flex-wrap:wrap; }
+    header nav a { color:var(--muted); font-size:14px; padding:5px 1px; border-bottom:2px solid transparent; }
+    header nav a.active, header nav a:hover { color:var(--txt); text-decoration:none; }
+    header nav a.active { border-bottom-color:var(--acc); }
+    header .user { color:var(--muted); font-size:13px; display:flex; gap:10px; align-items:center; margin-left:auto; }
+    main { max-width:1280px; margin:0 auto; padding:24px; }
+    .skip { position:absolute; left:-9999px; top:8px; background:var(--acc); color:#04121c; padding:8px 12px; border-radius:6px; z-index:999; }
+    .skip:focus { left:8px; }
     h1 { font-size:22px; margin:0 0 18px; }
     h2 { font-size:16px; margin:26px 0 10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
     .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
@@ -31,6 +36,11 @@
     th, td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); font-size:14px; }
     th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
     tr:last-child td { border-bottom:none; }
+    tbody tr:hover td { background:rgba(56,189,248,.04); }
+    details.card summary:hover { background:rgba(56,189,248,.04); }
+    input::placeholder, textarea::placeholder { color:#64748b; }
+    textarea { resize:vertical; min-height:90px; }
+    button { font:inherit; }
     .tag { display:inline-block; padding:2px 8px; border-radius:99px; font-size:12px; border:1px solid var(--line); color:var(--muted); }
     .tag.ok { color:var(--ok); border-color:#14532d; }
     .tag.off { color:var(--err); border-color:#7f1d1d; }
@@ -39,6 +49,17 @@
     .btn.primary { background:var(--acc); color:#04121c; border-color:var(--acc); font-weight:600; }
     .btn.danger { color:var(--err); border-color:#7f1d1d; }
     .btn.small { padding:4px 9px; font-size:12px; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .btn:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+    input:not([type=checkbox]):not([type=radio]), select, textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); font:inherit; }
+    input:not([type=checkbox]):not([type=radio]):focus, select:focus, textarea:focus { outline:none; border-color:var(--acc); box-shadow:0 0 0 3px rgba(56,189,248,.12); }
+    input[type=checkbox], input[type=radio] { accent-color:var(--acc); }
+    input[readonly] { opacity:.8; }
+    label { color:var(--muted); font-size:13px; }
+    .table-wrap { width:100%; overflow-x:auto; border-radius:10px; }
+    .table-wrap table { min-width:720px; }
+    .page-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+    .page-head h1 { margin:0; }
     .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .muted { color:var(--muted); }
     .messages { list-style:none; padding:0; margin:0 0 18px; }
@@ -86,7 +107,7 @@
     .disk-actions form { display:inline; }
     .state-standby { color:var(--warn); }
     .state-ok { color:var(--ok); }
-    .state-bad { color:var(--bad); }
+    .state-bad { color:var(--err); }
     details.card { padding:0; overflow:hidden; }
     details.card summary { cursor:pointer; padding:14px 18px; color:var(--txt); }
     details.card .pre { margin:0 14px 14px; }
@@ -108,26 +129,38 @@
     .dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:start; }
     .dash-grid .card { min-width:0; }
     @media (max-width: 900px) { .dash-grid { grid-template-columns:1fr; } }
+    @media (max-width: 720px) {
+      header { flex-wrap:wrap; gap:10px; padding:10px 14px; }
+      header nav { order:3; width:100%; gap:10px; overflow-x:auto; flex-wrap:nowrap; padding-bottom:2px; }
+      header nav a { white-space:nowrap; }
+      header .user { margin-left:0; }
+      main { padding:16px; }
+      .page-head { margin-bottom:12px; }
+      th, td { padding:8px; font-size:13px; }
+      .file-actions { white-space:normal; }
+      .file-actions .btn { margin:2px 0 2px 4px; }
+    }
   </style>
 </head>
 <body>
+  <a class="skip" href="#main">Ir para o conteúdo</a>
   <header>
-    <div class="brand">HOMELAB Storage</div>
-    <nav>
-      <a href="{% url 'dashboard' %}">Dashboard</a>
-      <a href="{% url 'users' %}">Usuarios</a>
-      <a href="{% url 'shares' %}">Shares</a>
-      <a href="{% url 'snapshots' %}">Versões</a>
-      <a href="{% url 'history_index' %}">Explorar</a>
-      <a href="{% url 'storage_index' %}">Discos</a>
-      <a href="{% url 'backup_index' %}">Backups</a>
+    <a class="brand" href="{% url 'dashboard' %}">HOMELAB Storage</a>
+    <nav aria-label="Principal">
+      <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+      <a href="{% url 'users' %}" class="{% if '/users/' in request.path %}active{% endif %}">Usuários</a>
+      <a href="{% url 'shares' %}" class="{% if '/shares/' in request.path %}active{% endif %}">Shares</a>
+      <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Versões</a>
+      <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Explorar</a>
+      <a href="{% url 'storage_index' %}" class="{% if '/storage/' in request.path %}active{% endif %}">Discos</a>
+      <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
     </nav>
     <div class="user">
       <span>{{ request.user.username }}</span>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
     </div>
   </header>
-  <main>
+  <main id="main">
     {% if messages %}
       <ul class="messages">
         {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}

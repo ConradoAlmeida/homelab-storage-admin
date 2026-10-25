@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ filename }} - Versoes{% endblock %}
+{% block title %}{{ filename }} - Versões{% endblock %}
 {% block content %}
 <div class="row" style="justify-content:space-between;align-items:flex-start">
   <div>
@@ -11,7 +11,7 @@
 
 <p class="muted" style="margin-top:16px">Versões encontradas nos snapshots. Restaurar/“copiar como” entra na próxima etapa; por enquanto o acesso é somente leitura.</p>
 
-<table class="file-table" style="margin-top:12px">
+<div class="table-wrap"><table class="file-table" style="margin-top:12px">
   <thead><tr><th>Versão</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
   <tbody>
     {% if live %}
@@ -33,5 +33,5 @@
       <tr><td colspan="4"><div class="empty">Nenhuma versão em snapshot encontrada.</div></td></tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 {% endblock %}

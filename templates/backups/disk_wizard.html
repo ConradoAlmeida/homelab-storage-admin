@@ -17,7 +17,7 @@
 
 {% if error %}<div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>{% endif %}
 
-<table class="file-table" style="margin-top:12px">
+<div class="table-wrap"><table class="file-table" style="margin-top:12px">
   <tbody>
     <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
     <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
@@ -27,7 +27,7 @@
     <tr><th>Backup</th><td>{% if selected.configured %}<span class="state-bad">já configurado</span>{% elif selected.has_filesystem %}<span class="state-standby">com filesystem</span>{% else %}vazio{% endif %}</td></tr>
     <tr><th>Sistema de arquivos de destino</th><td><strong>ext4 (recomendado)</strong></td></tr>
   </tbody>
-</table>
+</table></div>
 
 {% if selected.warnings %}
   <div class="alert danger">

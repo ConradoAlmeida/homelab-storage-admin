@@ -22,7 +22,7 @@
   {% endif %}
 
   <h2 id="discos">Discos</h2>
-  <table class="file-table">
+  <div class="table-wrap"><table class="file-table">
     <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Backup</th><th></th></tr></thead>
     <tbody>
       {% for disk in overview.disks %}
@@ -71,11 +71,11 @@
         <tr><td colspan="6"><div class="empty">Nenhum disco encontrado.</div></td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 
   <h2>Jobs de backup</h2>
   {% if overview.jobs %}
-    <table class="file-table">
+    <div class="table-wrap"><table class="file-table">
       <thead><tr><th>Job</th><th>Destino</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th></th></tr></thead>
       <tbody>
         {% for job in overview.jobs %}
@@ -113,7 +113,7 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <div class="empty">Nenhum job ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
   {% endif %}

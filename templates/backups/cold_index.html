@@ -41,7 +41,7 @@
 
   <h2>Drives USB detectados</h2>
   {% if overview.disks %}
-    <table class="file-table">
+    <div class="table-wrap"><table class="file-table">
       <thead><tr><th>Drive</th><th>Modelo / serial</th><th>Tamanho</th><th>FS / label</th><th>Estado</th><th></th></tr></thead>
       <tbody>
         {% for disk in overview.disks %}
@@ -70,7 +70,7 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <div class="empty">Nenhum drive USB detectado. Conecte o drive e atualize esta página.</div>
   {% endif %}

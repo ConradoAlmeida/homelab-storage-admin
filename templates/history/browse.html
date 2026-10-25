@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ share.name }} - Historico{% endblock %}
+{% block title %}{{ share.name }} - Explorar{% endblock %}
 {% block content %}
 <div class="history-shell">
   <aside class="history-sidebar">
@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <table class="file-table">
+    <div class="table-wrap"><table class="file-table">
       <thead><tr><th>Nome</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
       <tbody>
         {% for e in entries %}
@@ -78,7 +78,7 @@
           <tr><td colspan="4"><div class="empty">Pasta vazia.</div></td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
 
     {% if page_obj.has_other_pages %}
       <div class="pager">

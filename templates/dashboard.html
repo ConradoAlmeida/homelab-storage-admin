@@ -37,7 +37,7 @@
 </div>
 
 <h2>Discos</h2>
-<table class="file-table">
+<div class="table-wrap"><table class="file-table">
   <thead><tr><th>Disco</th><th>Papel</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Temp. / SMART</th><th>Montagem / uso</th><th></th></tr></thead>
   <tbody>
     {% for disk in storage.disks %}
@@ -71,7 +71,7 @@
       <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 
 <h2>Volumes</h2>
 <div class="cards">
@@ -92,7 +92,7 @@
   <div class="alert danger"><strong>restic não encontrado no host.</strong></div>
 {% endif %}
 {% if backup_jobs %}
-  <table class="file-table">
+  <div class="table-wrap"><table class="file-table">
     <thead><tr><th>Job</th><th>Status</th><th>Periodicidade</th><th>Próxima</th><th>Fontes</th><th>Destino</th><th></th></tr></thead>
     <tbody>
       {% for job in backup_jobs %}
@@ -114,7 +114,7 @@
         </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 {% else %}
   <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
 {% endif %}
@@ -129,13 +129,16 @@
     </div>
   </div>
   <div>
-    <h2>Versões Btrfs</h2>
+    <h2>Serviços</h2>
     <div class="card">
-      <p><strong>{{ snapshots_summary.count }}</strong> snapshot{{ snapshots_summary.count|pluralize }} em <strong>{{ snapshots_summary.enabled }}</strong> de {{ snapshots_summary.policies }} políticas ativas.</p>
-      <p class="muted">Tamanho aproximado: {{ snapshots_summary.size|filesizeformat }} (extents compartilhados).</p>
-      {% if snapshots_summary.latest %}<p class="muted">Último: {{ snapshots_summary.latest.mtime|default:snapshots_summary.latest.name }}</p>{% endif %}
-      <a class="btn small" href="{% url 'snapshots' %}">Gerenciar versões</a>
-      <a class="btn small" href="{% url 'history_index' %}">Explorar arquivos</a>
+      <p class="muted" style="margin-top:0">Acesso rápido aos serviços da casa.</p>
+      <div class="row">
+        <a class="btn small" href="http://192.168.0.150:8096" target="_blank" rel="noopener">Jellyfin</a>
+        <a class="btn small" href="https://cockpit.homelab.lan" target="_blank" rel="noopener">Cockpit</a>
+        <a class="btn small" href="http://dockge.homelab.lan" target="_blank" rel="noopener">Dockge</a>
+        <a class="btn small" href="http://pihole.homelab.lan/admin/" target="_blank" rel="noopener">Pi-hole</a>
+      </div>
+      <p class="muted" style="font-size:12px;margin:10px 0 0">Jellyfin usa o IP para funcionar mesmo sem DNS .lan.</p>
     </div>
   </div>
 </div>

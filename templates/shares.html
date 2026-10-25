@@ -9,8 +9,8 @@
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif shares %}
-<table>
-  <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Tam. snapshots</th><th>Total</th><th>Usuarios/Grupos</th><th>Acesso</th></tr></thead>
+<div class="table-wrap"><table>
+  <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Tam. snapshots</th><th>Total</th><th>Usuários/Grupos</th><th>Acesso</th></tr></thead>
   <tbody>
     {% for s in shares %}
       <tr>
@@ -32,7 +32,7 @@
       </tr>
     {% endfor %}
   </tbody>
-</table>
+</table></div>
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>
 {% endif %}

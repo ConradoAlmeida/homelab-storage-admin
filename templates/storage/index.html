@@ -24,7 +24,7 @@
   </div>
 
   <h2>Discos</h2>
-  <table class="file-table">
+  <div class="table-wrap"><table class="file-table">
     <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho / montagem</th><th>Estado</th><th>Temp.</th><th>SMART</th><th></th></tr></thead>
     <tbody>
       {% for disk in overview.disks %}
@@ -81,7 +81,7 @@
         <tr><td colspan="7"><div class="empty">Nenhum disco encontrado.</div></td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 
   <h2>RAID e Btrfs</h2>
   <details class="card" open>

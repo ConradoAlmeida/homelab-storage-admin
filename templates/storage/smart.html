@@ -26,7 +26,7 @@
     </div>
 
     {% if result.attributes %}
-      <table class="file-table">
+      <div class="table-wrap"><table class="file-table">
         <thead><tr><th>ID</th><th>Atributo</th><th>Valor</th><th>Pior</th><th>Limite</th><th>Raw</th></tr></thead>
         <tbody>
           {% for id, attr in result.attributes.items %}
@@ -40,7 +40,7 @@
             </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     {% else %}
       <div class="empty">Este dispositivo não expôs atributos ATA SMART.</div>
     {% endif %}
