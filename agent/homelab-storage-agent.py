@@ -13,6 +13,7 @@ import json
 import os
 import pwd
 import re
+import secrets
 import shutil
 import socketserver
 import subprocess
@@ -24,12 +25,17 @@ SOCKET_PATH = os.environ.get("SOCKET_PATH", "/run/homelab-storage-admin/agent.so
 SMB_CONF = os.environ.get("SMB_CONF", "/etc/samba/smb.conf")
 CONFIG_DIR = os.environ.get("CONFIG_DIR", "/etc/homelab-storage-agent")
 SNAP_CONFIG = os.environ.get("SNAP_CONFIG", f"{CONFIG_DIR}/snapshots.json")
+BACKUP_CONFIG = os.environ.get("BACKUP_CONFIG", "/etc/homelab-backup/config.json")
+BACKUP_SECRETS = os.environ.get("BACKUP_SECRETS", "/etc/homelab-backup/secrets")
+BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
 
 USER_RE = re.compile(r"^[a-z][a-z0-9._-]{2,31}$")
 SHARE_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 GROUP_RE = re.compile(r"^[a-z][a-z0-9._-]{1,31}$")
 SNAP_RE = re.compile(r"^@GMT-\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}$")
+BACKUP_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
+UUID_RE = re.compile(r"^[0-9a-fA-F-]{16,64}$")
 
 ALLOWED_PATH_PREFIXES = tuple(
     p.strip().rstrip("/") + "/"
@@ -835,6 +841,298 @@ def op_snapshot_delete(share: str, name: str, **_):
     return {"share": share, "name": name}
 
 
+def _load_backup_config() -> dict:
+    path = Path(BACKUP_CONFIG)
+    if not path.exists():
+        return {"disks": [], "jobs": []}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentError(f"Configuracao de backup invalida: {exc}") from exc
+    if not isinstance(data, dict):
+        raise AgentError("Configuracao de backup invalida")
+    data.setdefault("disks", [])
+    data.setdefault("jobs", [])
+    return data
+
+
+def _save_backup_config(data: dict) -> None:
+    path = Path(BACKUP_CONFIG)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+
+
+def _backup_jobs_for_disk(config: dict, disk: dict) -> list[dict]:
+    jobs = []
+    for job in config.get("jobs", []):
+        if (
+            job.get("disk_uuid") == disk.get("uuid")
+            or job.get("disk_serial") == disk.get("serial")
+            or job.get("device") == disk.get("device")
+        ):
+            jobs.append(job)
+    return jobs
+
+
+def _backup_disks(config: dict) -> list[dict]:
+    raw = run(
+        [
+            "lsblk",
+            "-J",
+            "-o",
+            "NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL,SERIAL,TRAN",
+        ]
+    )
+    data = json.loads(raw)
+    disks = []
+
+    def descendants(device: dict) -> list[dict]:
+        result = []
+        for child in device.get("children") or []:
+            result.append(child)
+            result.extend(descendants(child))
+        return result
+
+    for device in data.get("blockdevices", []):
+        name = device.get("name", "")
+        if device.get("type") != "disk" or name.startswith("loop"):
+            continue
+        path = f"/dev/{name}"
+        mounts = _collect_mounts(device)
+        children = descendants(device)
+        all_parts = [device] + children
+        fstypes = [item.get("fstype") for item in all_parts if item.get("fstype")]
+        labels = [item.get("label") for item in all_parts if item.get("label")]
+        uuids = [item.get("uuid") for item in all_parts if item.get("uuid")]
+        serial = (device.get("serial") or "").strip()
+        model = (device.get("model") or "").strip()
+        uuid = uuids[0] if uuids else None
+        fstype = fstypes[0] if fstypes else None
+        label = labels[0] if labels else None
+        has_data = bool(fstypes or uuids or children)
+        system = name.startswith("mmcblk") or any(
+            mount == "/" or mount.startswith("/boot") for mount in mounts
+        )
+        raid = any(item == "linux_raid_member" for item in fstypes) or any(
+            child.get("name", "").startswith("md") for child in children
+        )
+        configured_entry = None
+        for entry in config.get("disks", []):
+            if (
+                (entry.get("serial") and entry.get("serial") == serial)
+                or entry.get("device") == path
+                or (entry.get("uuid") and entry.get("uuid") == uuid)
+            ):
+                configured_entry = entry
+                break
+        configured = configured_entry is not None
+        jobs = _backup_jobs_for_disk(
+            config,
+            configured_entry
+            or {"uuid": uuid, "serial": serial, "device": path},
+        )
+        candidate = not system and not raid and not mounts
+        reason = ""
+        if system:
+            reason = "disco do sistema"
+        elif raid:
+            reason = "membro de RAID"
+        elif mounts:
+            reason = "montado em " + ", ".join(mounts)
+        if configured:
+            required = f"RECONFIGURAR {path}"
+        elif has_data:
+            required = f"APAGAR {path}"
+        else:
+            required = f"FORMATAR {path}"
+
+        warnings = []
+        if configured:
+            warning = "Disco já configurado no backup"
+            if jobs:
+                warning += ": " + ", ".join(job.get("name", "?") for job in jobs)
+            warnings.append(warning)
+        if has_data:
+            detail = f"Contém filesystem {fstype or 'desconhecido'}"
+            if label:
+                detail += f" (label {label})"
+            warnings.append(detail)
+        if not candidate:
+            warnings.append(f"Indisponível: {reason}")
+
+        disks.append(
+            {
+                "name": name,
+                "path": path,
+                "size": device.get("size"),
+                "model": model,
+                "serial": serial,
+                "tran": device.get("tran"),
+                "fstype": fstype,
+                "label": label,
+                "uuid": uuid,
+                "mounts": mounts,
+                "has_data": has_data,
+                "configured": configured,
+                "jobs": [job.get("name") for job in jobs],
+                "candidate": candidate,
+                "reason": reason,
+                "required_phrase": required,
+                "extra_confirmation": configured or has_data,
+                "warnings": warnings,
+            }
+        )
+    return sorted(disks, key=lambda item: item["name"])
+
+
+def op_backup_overview(**_):
+    config = _load_backup_config()
+    return {
+        "disks": _backup_disks(config),
+        "jobs": config.get("jobs", []),
+        "backup_root": BACKUP_ROOT,
+        "restic": shutil.which("restic") is not None,
+    }
+
+
+def op_backup_disk_setup(
+    device: str,
+    label: str,
+    confirmation: str,
+    allow_existing: bool = False,
+    **_,
+):
+    device = (device or "").strip()
+    label = (label or "").strip().lower()
+    confirmation = (confirmation or "").strip()
+    if not re.match(r"^/dev/sd[a-z]$", device):
+        raise AgentError("Dispositivo invalido (use /dev/sdX)")
+    if not BACKUP_LABEL_RE.match(label):
+        raise AgentError("Label invalida (1-16 caracteres: a-z, 0-9, _ ou -)")
+    if not shutil.which("restic"):
+        raise AgentError("restic nao esta instalado no host")
+    if not shutil.which("parted"):
+        raise AgentError("parted nao esta instalado no host")
+
+    config = _load_backup_config()
+    disk = next((item for item in _backup_disks(config) if item["path"] == device), None)
+    if disk is None:
+        raise AgentError(f"Disco nao encontrado: {device}")
+    if not disk["candidate"]:
+        raise AgentError(f"Disco indisponivel: {disk['reason']}")
+    if disk["extra_confirmation"] and not allow_existing:
+        raise AgentError("Confirmacao extra obrigatoria para disco nao vazio/configurado")
+    if confirmation != disk["required_phrase"]:
+        raise AgentError(
+            f"Confirmacao incorreta. Digite exatamente: {disk['required_phrase']}"
+        )
+
+    holders = Path(f"/sys/block/{disk['name']}/holders")
+    if holders.is_dir() and any(holders.iterdir()):
+        raise AgentError("Disco possui holders ativos; nao vou formatar")
+
+    mountpoint = f"{BACKUP_ROOT}/{label}"
+    repo = f"{mountpoint}/restic"
+    Path(BACKUP_ROOT).mkdir(parents=True, exist_ok=True)
+    Path(mountpoint).mkdir(parents=True, exist_ok=True)
+
+    run(["wipefs", "-a", device], timeout=60)
+    run(
+        [
+            "parted",
+            "-s",
+            device,
+            "mklabel",
+            "gpt",
+            "mkpart",
+            "primary",
+            "ext4",
+            "1MiB",
+            "100%",
+        ],
+        timeout=120,
+    )
+    run(["udevadm", "settle"], timeout=30)
+    partition = f"{device}1"
+    if not os.path.exists(partition):
+        raise AgentError(f"Particao nao criada: {partition}")
+    run(["mkfs.ext4", "-F", "-L", label, partition], timeout=600)
+    run(["udevadm", "settle"], timeout=30)
+    uuid = run(["blkid", "-s", "UUID", "-o", "value", partition]).strip()
+    if not UUID_RE.match(uuid):
+        raise AgentError(f"UUID invalido apos formatar: {uuid!r}")
+
+    fstab = Path("/etc/fstab")
+    text = fstab.read_text()
+    line = (
+        f"UUID={uuid} {mountpoint} ext4 "
+        "defaults,noatime,nofail,x-systemd.device-timeout=10s 0 2\n"
+    )
+    if line not in text:
+        if text and not text.endswith("\n"):
+            text += "\n"
+        fstab.write_text(text + line)
+    run(["systemctl", "daemon-reload"], timeout=30)
+    run(["mount", mountpoint], timeout=60)
+
+    Path(repo).mkdir(parents=True, exist_ok=True)
+    os.chmod(repo, 0o700)
+    secret_dir = Path(BACKUP_SECRETS)
+    secret_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(secret_dir, 0o700)
+    recovery_password = secrets.token_urlsafe(32)
+    key_file = secret_dir / f"{uuid}.key"
+    key_file.write_text(recovery_password + "\n")
+    os.chmod(key_file, 0o600)
+    run(
+        [
+            "restic",
+            "-r",
+            repo,
+            "--password-file",
+            str(key_file),
+            "init",
+        ],
+        timeout=300,
+    )
+
+    entry = {
+        "device": device,
+        "serial": disk.get("serial"),
+        "uuid": uuid,
+        "label": label,
+        "mountpoint": mountpoint,
+        "repo": repo,
+        "key_file": str(key_file),
+        "configured_at": dt.datetime.now().isoformat(timespec="seconds"),
+    }
+    config["disks"] = [
+        item
+        for item in config.get("disks", [])
+        if not (
+            item.get("uuid") == uuid
+            or item.get("device") == device
+            or (disk.get("serial") and item.get("serial") == disk.get("serial"))
+        )
+    ]
+    config["disks"].append(entry)
+    _save_backup_config(config)
+    log(f"BACKUP_DISK_SETUP {device} {label} {uuid}")
+    return {
+        "device": device,
+        "label": label,
+        "uuid": uuid,
+        "mountpoint": mountpoint,
+        "repo": repo,
+        "key_file": str(key_file),
+        "recovery_password": recovery_password,
+    }
+
+
 OPS = {
     "ping": op_ping,
     "df": op_df,
@@ -853,6 +1151,8 @@ OPS = {
     "storage_overview": op_storage_overview,
     "storage_smart": op_storage_smart,
     "storage_smart_test": op_storage_smart_test,
+    "backup_overview": op_backup_overview,
+    "backup_disk_setup": op_backup_disk_setup,
 }
 
 

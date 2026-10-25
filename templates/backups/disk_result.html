@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Disco preparado - Backups{% endblock %}
+{% block content %}
+<h1>Disco preparado</h1>
+<div class="alert" style="border-color:#14532d">
+  <strong>{{ result.device }}</strong> formatado como ext4, montado em <code>{{ result.mountpoint }}</code> e com repositório restic em <code>{{ result.repo }}</code>.
+</div>
+
+<div class="danger-zone">
+  <strong>Guarde a senha de recuperação do restic agora</strong>
+  <p class="muted">Ela não será mostrada novamente. Sem ela, o backup não pode ser restaurado.</p>
+  <pre class="pre">{{ result.recovery_password }}</pre>
+  <p class="muted" style="font-size:12px">Arquivo root-only no host: <code>{{ result.key_file }}</code></p>
+</div>
+
+<p class="muted">Próxima etapa: cadastrar o job de backup (fontes, periodicidade e retenção).</p>
+<a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+{% endblock %}

@@ -90,6 +90,14 @@
     details.card { padding:0; overflow:hidden; }
     details.card summary { cursor:pointer; padding:14px 18px; color:var(--txt); }
     details.card .pre { margin:0 14px 14px; }
+    .alert { padding:12px 14px; border-radius:9px; border:1px solid var(--line); background:var(--panel); margin:12px 0; }
+    .alert.danger { border-color:#7f1d1d; background:#1a0b0b; }
+    .alert.warn { border-color:#78350f; background:#1a1207; }
+    .danger-zone { border:1px solid #7f1d1d; background:#140909; border-radius:10px; padding:14px; margin:14px 0; }
+    code.phrase { display:inline-block; padding:4px 8px; border-radius:6px; background:#070b12; border:1px solid var(--line); color:var(--warn); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .wizard-steps { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 18px; color:var(--muted); font-size:12px; }
+    .wizard-steps span { padding:4px 9px; border:1px solid var(--line); border-radius:99px; }
+    .wizard-steps span.on { color:var(--txt); border-color:var(--acc); }
   </style>
 </head>
 <body>
@@ -102,6 +110,7 @@
       <a href="{% url 'snapshots' %}">Snapshots</a>
       <a href="{% url 'history_index' %}">Histórico</a>
       <a href="{% url 'storage_index' %}">Discos</a>
+      <a href="{% url 'backup_index' %}">Backups</a>
     </nav>
     <div class="user">
       <span>{{ request.user.username }}</span>

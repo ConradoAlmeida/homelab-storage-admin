@@ -114,5 +114,18 @@ class AgentClient:
     def storage_smart_test(self, device, kind="short"):
         return self.call("storage_smart_test", timeout=90, device=device, kind=kind)
 
+    def backup_overview(self):
+        return self.call("backup_overview", timeout=60)
+
+    def backup_disk_setup(self, device, label, confirmation, allow_existing=False):
+        return self.call(
+            "backup_disk_setup",
+            timeout=900,
+            device=device,
+            label=label,
+            confirmation=confirmation,
+            allow_existing=allow_existing,
+        )
+
 
 agent = AgentClient()
