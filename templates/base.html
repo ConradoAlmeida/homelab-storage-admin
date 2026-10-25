@@ -100,7 +100,10 @@
     }
     .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:10px; margin:12px 0 18px; }
     .metric { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
-    .metric span { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+    .metric > span { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+    .metric.net { grid-column:span 2; }
+    .metric.net .net-rates { font-size:15px; }
+    .metric.net #net-iface, .metric.net #net-state { text-transform:none; letter-spacing:normal; }
     .metric strong { font-size:19px; font-weight:650; }
     .pre { background:#070b12; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12px; line-height:1.45; color:#cbd5e1; max-height:340px; }
     .mono { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -154,6 +157,7 @@
       th, td { padding:8px; font-size:13px; }
       .file-actions { white-space:normal; }
       .file-actions .btn { margin:2px 0 2px 4px; }
+      .metric.net { grid-column:auto; }
     }
   </style>
 </head>

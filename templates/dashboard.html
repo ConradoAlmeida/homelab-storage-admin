@@ -36,7 +36,7 @@
   </div>
 {% else %}
 
-<h2>Sistema</h2>
+<h2>Sistema e rede</h2>
 <div class="metric-grid">
   {% for zone in storage.system.zones %}
     <div class="metric"><span>{{ zone.type }}</span><strong>{{ zone.temp|floatformat:1 }} °C</strong></div>
@@ -51,16 +51,14 @@
   <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px">{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
   <div class="metric"><span>Uso de CPU</span><strong>{% if storage.system.cpu_percent is not None %}{{ storage.system.cpu_percent }}%{% else %}—{% endif %}</strong></div>
   <div class="metric"><span>RAM disponível</span><strong>{{ storage.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ storage.system.mem_total_mb|default:"—" }} MB</div></div>
+  <div class="metric net" id="network-metrics">
+    <span>Rede · <span id="net-iface">—</span> <span id="net-state" class="muted"></span></span>
+    <strong class="net-rates"><span id="net-rx">—</span> <span class="muted">↓</span> · <span id="net-tx">—</span> <span class="muted">↑</span></strong>
+    <div class="muted" style="font-size:11px"><span id="net-link">—</span> · <span id="net-signal">—</span></div>
+    <div class="muted" style="font-size:11px"><span id="net-rx-sub">—</span> ↓ · <span id="net-tx-sub">—</span> ↑</div>
+  </div>
 </div>
-
-<h2>Rede</h2>
-<div class="metric-grid" id="network-metrics">
-  <div class="metric"><span>Interface</span><strong id="net-iface">—</strong><div class="muted" id="net-state" style="font-size:11px">aguardando</div></div>
-  <div class="metric"><span>Download</span><strong id="net-rx">—</strong><div class="muted" id="net-rx-sub" style="font-size:11px">—</div></div>
-  <div class="metric"><span>Upload</span><strong id="net-tx">—</strong><div class="muted" id="net-tx-sub" style="font-size:11px">—</div></div>
-  <div class="metric"><span>Link / sinal</span><strong id="net-link">—</strong><div class="muted" id="net-signal" style="font-size:11px">—</div></div>
-</div>
-<p class="muted" style="font-size:12px;margin-top:-8px">Amostra de 0,5 s a cada 3 s; mede o tráfego total do host.</p>
+<p class="muted" style="font-size:12px;margin-top:-8px">Rede: amostra de 0,5 s a cada 3 s; mede o tráfego total do host.</p>
 
 <script>
 (function () {
@@ -90,9 +88,9 @@
       document.getElementById("net-iface").textContent = net.name;
       document.getElementById("net-state").textContent = net.state + (net.ssid ? " · " + net.ssid : "");
       document.getElementById("net-rx").textContent = fmtRate(net.rx_mbps);
-      document.getElementById("net-rx-sub").textContent = Number(net.rx_mb_s).toFixed(2) + " MB/s · total " + fmtBytes(net.rx_total);
+      document.getElementById("net-rx-sub").textContent = Number(net.rx_mb_s).toFixed(2) + " MB/s";
       document.getElementById("net-tx").textContent = fmtRate(net.tx_mbps);
-      document.getElementById("net-tx-sub").textContent = Number(net.tx_mb_s).toFixed(2) + " MB/s · total " + fmtBytes(net.tx_total);
+      document.getElementById("net-tx-sub").textContent = Number(net.tx_mb_s).toFixed(2) + " MB/s";
       const link = net.speed_mbps ? net.speed_mbps + " Mbps" : (net.link_rx_mbps ? net.link_rx_mbps + " Mbps" : "—");
       document.getElementById("net-link").textContent = link;
       document.getElementById("net-signal").textContent = net.signal_dbm !== null && net.signal_dbm !== undefined ? net.signal_dbm + " dBm" : (net.mac || "—");
