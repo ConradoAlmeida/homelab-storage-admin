@@ -17,6 +17,7 @@ DEFAULT_EXCLUDES = [
     "@eaDir",
     "#recycle",
     ".recycle",
+    ".snapshots",
     "*.crdownload",
     "*.part",
     "*.partial",

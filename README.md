@@ -261,7 +261,7 @@ cadastro de jobs usa esse registro na seção 6.7.
 `/backups/jobs/new/` e `/backups/jobs/<nome>/edit/` configuram:
 - nome do job e disco de destino;
 - fontes (shares) e exclusões (`--iexclude`, case-insensitive);
-- exclusões **pré-preenchidas** com temporários, locks, downloads parciais e backups auxiliares de CAD/design (SolidWorks, Blender, FreeCAD, Inkscape, GIMP, Krita, AutoCAD, SketchUp, Rhino, InDesign); os arquivos reais não entram na lista; botão **Restaurar lista padrão**;
+- exclusões **pré-preenchidas** com temporários, locks, downloads parciais e backups auxiliares de CAD/design (SolidWorks, Blender, FreeCAD, Inkscape, GIMP, Krita, AutoCAD, SketchUp, Rhino, InDesign); os arquivos reais não entram na lista; botão **Restaurar lista padrão**; `.snapshots` também fica de fora;
 - periodicidade **diário**, **semanal** ou **mensal**, com horário;
 - retenção diária/semanal/mensal;
 - ativo/desativado.
