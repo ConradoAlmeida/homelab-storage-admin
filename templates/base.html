@@ -104,6 +104,10 @@
     .busy-card p { color:var(--muted); margin:10px 0 0; }
     .spinner { width:40px; height:40px; margin:0 auto 14px; border:3px solid var(--line); border-top-color:var(--acc); border-radius:50%; animation:spin 1s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
+    .quick-links { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 18px; }
+    .dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:start; }
+    .dash-grid .card { min-width:0; }
+    @media (max-width: 900px) { .dash-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>

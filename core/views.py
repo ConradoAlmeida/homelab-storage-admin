@@ -31,25 +31,81 @@ def _volume_for(path, volumes):
 
 @login_required
 def dashboard(request):
-    context = {"agent_error": None, "volumes": [], "shares": [], "snapshots": []}
+    context = {
+        "agent_error": None,
+        "volumes": [],
+        "shares": [],
+        "snapshots": [],
+        "storage": None,
+        "backups": None,
+        "backup_jobs": [],
+        "snapshots_summary": {},
+        "raid_status": "—",
+    }
     try:
         data = agent.df()
         context["volumes"] = data.get("volumes", [])
-        shares = agent.list_shares(include_size=True)
-        snapshots = agent.snapshot_usage()
-        snap_by_path = {item.get("path"): item for item in snapshots}
-        for share in shares:
-            snap = snap_by_path.get(share.get("path") or "")
-            share["snapshot_count"] = snap.get("count") if snap else None
-            vol = _volume_for(share.get("path") or "", context["volumes"])
-            total = share.get("size_total")
-            share["volume_percent"] = (
-                round(total / vol["total"] * 100, 1) if vol and vol.get("total") and total else None
-            )
-        context["shares"] = shares
-        context["snapshots"] = snapshots
+        context["shares"] = agent.list_shares(include_size=False)
+        context["snapshots"] = agent.snapshot_usage()
+        storage = agent.storage_overview()
+        backups = agent.backup_overview()
     except AgentError as exc:
         context["agent_error"] = str(exc)
+        return render(request, "dashboard.html", context)
+
+    volumes = context["volumes"]
+    for disk in storage.get("disks", []):
+        mounts = disk.get("mounts") or []
+        volume = None
+        for mount in mounts:
+            volume = _volume_for(mount, volumes)
+            if volume:
+                break
+        disk["volume"] = volume
+        if disk.get("name", "").startswith("mmcblk"):
+            disk["role"] = "sistema"
+        elif any(mount == "/mnt/backup" or mount.startswith("/mnt/backup/") for mount in mounts):
+            disk["role"] = "backup"
+        elif any(mount == "/mnt/nas" or mount.startswith("/mnt/nas/") for mount in mounts):
+            disk["role"] = "dados/RAID"
+        else:
+            disk["role"] = "—"
+
+    backup_disks = backups.get("disks", [])
+    backup_jobs = backups.get("jobs", [])
+    for job in backup_jobs:
+        disk = next(
+            (item for item in backup_disks if item.get("uuid") == job.get("disk_uuid")),
+            None,
+        )
+        mount = (disk or {}).get("mountpoint")
+        job["volume"] = _volume_for(mount, volumes) if mount else None
+        job["source_count"] = len(job.get("sources") or [])
+
+    snapshots = context["snapshots"]
+    total_count = sum(int(item.get("count") or 0) for item in snapshots)
+    total_size = sum(int(item.get("size") or 0) for item in snapshots)
+    latest = None
+    for item in snapshots:
+        for snap in item.get("snapshots") or []:
+            if latest is None or snap.get("name", "") > latest.get("name", ""):
+                latest = snap
+    context["snapshots_summary"] = {
+        "policies": len(snapshots),
+        "enabled": sum(1 for item in snapshots if item.get("enabled")),
+        "count": total_count,
+        "size": total_size,
+        "latest": latest,
+    }
+
+    mdstat = (storage.get("raid") or {}).get("mdstat", "")
+    if "[U_]" in mdstat or "[_U]" in mdstat:
+        context["raid_status"] = "degradado"
+    elif "[UU]" in mdstat:
+        context["raid_status"] = "ok"
+    context["storage"] = storage
+    context["backups"] = backups
+    context["backup_jobs"] = backup_jobs
     return render(request, "dashboard.html", context)
 
 

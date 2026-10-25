@@ -394,8 +394,14 @@ def op_ping(**_):
 
 
 def op_df(**_):
+    mounts = list(DF_MOUNTS)
+    backup_root = Path("/mnt/backup")
+    if backup_root.is_dir():
+        for path in sorted(backup_root.iterdir()):
+            if path.is_dir() and os.path.ismount(path):
+                mounts.append(str(path))
     volumes = []
-    for mount in DF_MOUNTS:
+    for mount in dict.fromkeys(mounts):
         if not os.path.ismount(mount) and mount != "/":
             continue
         try:

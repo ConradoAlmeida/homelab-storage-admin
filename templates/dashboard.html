@@ -2,16 +2,78 @@
 {% block title %}Dashboard - Homelab Storage{% endblock %}
 {% block content %}
 <h1>Dashboard</h1>
+<p class="muted">Visão geral do host, discos, backup e shares.</p>
+
+<div class="quick-links">
+  <a class="btn small" href="{% url 'history_index' %}">Histórico</a>
+  <a class="btn small" href="{% url 'storage_index' %}">Discos</a>
+  <a class="btn small" href="{% url 'backup_index' %}">Backups</a>
+  <a class="btn small" href="{% url 'shares' %}">Shares</a>
+  <a class="btn small" href="{% url 'snapshots' %}">Snapshots</a>
+</div>
 
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d">
-    <strong>Agente indisponivel</strong>
+    <strong>Agente indisponível</strong>
     <p class="muted">{{ agent_error }}</p>
     <p class="muted">Instale/ative o agente no host com <code>sudo ./install-agent.sh</code>.</p>
   </div>
 {% else %}
 
-<h2>Espaco em disco</h2>
+<h2>Sistema</h2>
+<div class="metric-grid">
+  {% for zone in storage.system.zones %}
+    <div class="metric"><span>{{ zone.type }}</span><strong>{{ zone.temp|floatformat:1 }} °C</strong></div>
+  {% endfor %}
+  {% for fan in storage.system.fans %}
+    <div class="metric">
+      <span>Fan {{ fan.name }}</span>
+      <strong>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
+      <div class="muted" style="font-size:11px">PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}</div>
+    </div>
+  {% endfor %}
+  <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px">{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
+  <div class="metric"><span>RAM disponível</span><strong>{{ storage.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ storage.system.mem_total_mb|default:"—" }} MB</div></div>
+</div>
+
+<h2>Discos</h2>
+<table class="file-table">
+  <thead><tr><th>Disco</th><th>Papel</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Temp. / SMART</th><th>Montagem / uso</th><th></th></tr></thead>
+  <tbody>
+    {% for disk in storage.disks %}
+      <tr>
+        <td><strong>{{ disk.name }}</strong><div class="muted mono" style="font-size:11px">{{ disk.path }}</div></td>
+        <td>{{ disk.role }}</td>
+        <td>{{ disk.model|default:"—" }}<div class="muted mono" style="font-size:11px">{{ disk.serial|default:"—" }}</div></td>
+        <td>{{ disk.size|default:"—" }}<div class="muted" style="font-size:11px">{{ disk.fstype|default:"sem FS" }}</div></td>
+        <td>
+          <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
+          {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted" style="font-size:11px">não acordado</div>{% endif %}
+        </td>
+        <td>
+          {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
+          <div>
+            {% if disk.smart.health == 'PASSED' %}<span class="state-ok">PASSED</span>
+            {% elif disk.smart.health == 'FAILED' %}<span class="state-bad">FAILED</span>
+            {% else %}<span class="muted">sem SMART</span>{% endif %}
+          </div>
+        </td>
+        <td>
+          {% if disk.mounts %}<span class="muted">{{ disk.mounts|join:", " }}</span>{% else %}<span class="muted">sem montagem</span>{% endif %}
+          {% if disk.volume %}
+            <div class="muted" style="font-size:11px">{{ disk.volume.free|filesizeformat }} livres de {{ disk.volume.total|filesizeformat }} ({{ disk.volume.percent }}%)</div>
+            <div class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}"><span style="width: {{ disk.volume.percent }}%"></span></div>
+          {% endif %}
+        </td>
+        <td class="file-actions"><a class="btn small" href="{% url 'storage_index' %}">Detalhes</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Volumes</h2>
 <div class="cards">
   {% for v in volumes %}
     <div class="card">
@@ -25,55 +87,73 @@
   {% endfor %}
 </div>
 
-<h2>Shares</h2>
-<p class="muted">Dados atuais + snapshots Btrfs. Como os snapshots compartilham extents, os tamanhos sao aproximados.</p>
-{% if shares %}
-<table>
-  <thead><tr><th>Share</th><th>Caminho</th><th>Dados</th><th>Snapshots</th><th>Total</th><th>Status</th></tr></thead>
-  <tbody>
-    {% for s in shares %}
-      <tr>
-        <td><strong>{{ s.name }}</strong></td>
-        <td class="muted">{{ s.path }}</td>
-        <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
-        <td class="muted">
-          {% if s.size_snapshots != None %}
-            {{ s.size_snapshots|filesizeformat }}
-            {% if s.snapshot_count != None %}<div style="font-size:12px">{{ s.snapshot_count }} versoes</div>{% endif %}
-          {% else %}—{% endif %}
-        </td>
-        <td>
-          {% if s.size_total != None %}
-            <strong>{{ s.size_total|filesizeformat }}</strong>
-            {% if s.volume_percent != None %}
-              <div class="muted" style="font-size:12px">{{ s.volume_percent }}% do volume</div>
-              <div class="bar {% if s.volume_percent >= 90 %}err{% elif s.volume_percent >= 75 %}warn{% endif %}"><span style="width: {{ s.volume_percent }}%"></span></div>
-            {% endif %}
-          {% else %}<span class="muted">—</span>{% endif %}
-        </td>
-        <td>{% if s.read_only %}<span class="tag">somente leitura</span>{% else %}<span class="tag ok">leitura/escrita</span>{% endif %}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% else %}<div class="empty">Nenhum share encontrado.</div>{% endif %}
+<h2>Backups</h2>
+{% if not backups.restic %}
+  <div class="alert danger"><strong>restic não encontrado no host.</strong></div>
+{% endif %}
+{% if backup_jobs %}
+  <table class="file-table">
+    <thead><tr><th>Job</th><th>Status</th><th>Periodicidade</th><th>Próxima</th><th>Fontes</th><th>Destino</th><th></th></tr></thead>
+    <tbody>
+      {% for job in backup_jobs %}
+        <tr>
+          <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted" style="font-size:11px">desativado</div>{% endif %}</td>
+          <td>
+            {% if job.status.status == 'success' %}<span class="state-ok">success</span>
+            {% elif job.status.status == 'failed' %}<span class="state-bad">failed</span>
+            {% elif job.status.status == 'warning' %}<span class="state-standby">warning</span>
+            {% elif job.status.status == 'running' %}<span class="badge live">rodando</span>
+            {% else %}<span class="muted">—</span>{% endif %}
+            {% if job.last_run_label %}<div class="muted" style="font-size:11px">{{ job.last_run_label }}</div>{% endif %}
+          </td>
+          <td>{{ job.schedule.label|default:"—" }}</td>
+          <td class="muted">{{ job.next_run_label|default:"—" }}</td>
+          <td class="muted">{{ job.source_count }} share{{ job.source_count|pluralize }}</td>
+          <td>{{ job.disk_label }}{% if job.volume %}<div class="muted" style="font-size:11px">{{ job.volume.free|filesizeformat }} livres</div>{% endif %}</td>
+          <td class="file-actions"><a class="btn small" href="{% url 'backup_index' %}">Gerenciar</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
+{% endif %}
 
-<h2>Snapshots</h2>
-{% if snapshots %}
-<table>
-  <thead><tr><th>Share</th><th>Politica</th><th>Versoes</th><th>Tamanho aprox.</th></tr></thead>
-  <tbody>
-    {% for s in snapshots %}
-      <tr>
-        <td><strong>{{ s.share }}</strong></td>
-        <td>{% if s.enabled %}<span class="tag ok">ativa (keep={{ s.keep }})</span>{% else %}<span class="tag off">desativada</span>{% endif %}</td>
-        <td>{{ s.count }}</td>
-        <td class="muted">{{ s.size|filesizeformat }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% else %}<div class="empty">Nenhuma politica configurada.</div>{% endif %}
+<div class="dash-grid">
+  <div>
+    <h2>RAID e Btrfs</h2>
+    <div class="card">
+      <p>RAID: <span class="badge {% if raid_status == 'degradado' %}snap{% elif raid_status == 'ok' %}live{% endif %}">{{ raid_status }}</span></p>
+      <pre class="pre">{{ storage.raid.mdstat|default:"—" }}</pre>
+      {% if storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
+    </div>
+  </div>
+  <div>
+    <h2>Snapshots Btrfs</h2>
+    <div class="card">
+      <p><strong>{{ snapshots_summary.count }}</strong> snapshot{{ snapshots_summary.count|pluralize }} em <strong>{{ snapshots_summary.enabled }}</strong> de {{ snapshots_summary.policies }} políticas ativas.</p>
+      <p class="muted">Tamanho aproximado: {{ snapshots_summary.size|filesizeformat }} (extents compartilhados).</p>
+      {% if snapshots_summary.latest %}<p class="muted">Último: {{ snapshots_summary.latest.mtime|default:snapshots_summary.latest.name }}</p>{% endif %}
+      <a class="btn small" href="{% url 'snapshots' %}">Ver políticas</a>
+      <a class="btn small" href="{% url 'history_index' %}">Abrir histórico</a>
+    </div>
+  </div>
+</div>
+
+<h2>Shares</h2>
+{% if shares %}
+  <div class="card">
+    <p><strong>{{ shares|length }}</strong> share{{ shares|length|pluralize }} configurado{{ shares|length|pluralize }}.</p>
+    <p class="muted">
+      {% for s in shares %}
+        <span class="badge" style="margin:2px 4px 2px 0">{{ s.name }}{% if not s.browseable %} · privado{% endif %}{% if s.read_only %} · RO{% endif %}</span>
+      {% endfor %}
+    </p>
+    <a class="btn small" href="{% url 'shares' %}">Gerenciar shares</a>
+  </div>
+{% else %}
+  <div class="empty">Nenhum share encontrado.</div>
+{% endif %}
 
 {% endif %}
 {% endblock %}
