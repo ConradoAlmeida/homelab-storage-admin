@@ -114,7 +114,7 @@ def _disk_state(device: str) -> str:
 
 def _smart_summary(device: str) -> dict:
     rc, out, err = run_optional(
-        ["smartctl", "-n", "standby", "-A", "-j", device], timeout=15
+        ["smartctl", "-n", "standby", "-H", "-A", "-j", device], timeout=15
     )
     if rc == 2:
         return {"state": "standby", "skipped": True}
@@ -136,12 +136,16 @@ def _smart_summary(device: str) -> dict:
         }
 
     passed = (data.get("smart_status") or {}).get("passed")
+    if "passed" in (data.get("smart_status") or {}):
+        health = "PASSED" if passed else "FAILED"
+    else:
+        health = "UNKNOWN"
     return {
         "state": "active",
         "model": data.get("model_name"),
         "serial": data.get("serial_number"),
         "temperature": (data.get("temperature") or {}).get("current"),
-        "health": "PASSED" if passed else "FAILED",
+        "health": health,
         "power_on_hours": (data.get("power_on_time") or {}).get("hours"),
         "attributes": attributes,
     }
