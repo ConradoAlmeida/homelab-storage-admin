@@ -22,6 +22,7 @@ em disco.
 | Navegar histórico/snapshots | Histórico (`/history/`) — read-only |
 | Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
+| Consultar senha do restic | Backups → Credenciais — exige senha do app |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
@@ -245,8 +246,11 @@ Regras de standby:
 - o agente revalida estado, frase e `allow_existing` antes de qualquer `wipefs`.
 
 O wizard formata ext4, cria entrada no fstab por UUID, monta em
-`/mnt/backup/<label>`, inicializa o restic e mostra a senha de recuperação
-**uma única vez**. O arquivo root-only fica em `/etc/homelab-backup/secrets/`.
+`/mnt/backup/<label>`, inicializa o restic e mostra a senha de recuperação.
+A senha fica em arquivo root-only em `/etc/homelab-backup/secrets/` e também
+pode ser consultada em **Backups → Credenciais**, mediante a senha do app
+(com registro no audit log). O submit mostra um loading em tela cheia enquanto
+formata/monta/inicializa; a requisição usa timeout de 900 s no Gunicorn.
 
 Ainda não há cadastro de job/periodicidade nesta etapa; o disco preparado fica
 registrado em `/etc/homelab-backup/config.json` para a próxima fase.
