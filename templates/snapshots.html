@@ -1,59 +1,74 @@
 {% extends "base.html" %}
-{% block title %}Snapshots - Homelab Storage{% endblock %}
+{% block title %}Versões Btrfs - Homelab Storage{% endblock %}
 {% block content %}
-<h1>Snapshots (Previous Versions)</h1>
-<p class="muted">Snapshots nativos do Btrfs: cada share com politica ativa e um subvolume, e as versoes sao subvolumes somente leitura. O tamanho e <strong>aproximado</strong>, porque extents compartilhados contam uma vez no volume. Shares sem politica aparecem como <strong>não configurado</strong>.</p>
+<h1>Versões Btrfs</h1>
+<p class="muted">Gerencie as políticas e snapshots dos shares. O tamanho é aproximado porque extents compartilhados contam uma vez. Abra um share para criar, explorar ou remover versões.</p>
 
 {% if agent_error %}
-  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif shares %}
+  <div class="metric-grid">
+    <div class="metric"><span>Shares com política</span><strong>{{ summary.enabled }}/{{ summary.total }}</strong></div>
+    <div class="metric"><span>Snapshots</span><strong>{{ summary.count }}</strong></div>
+    <div class="metric"><span>Tamanho aprox.</span><strong>{{ summary.size|filesizeformat }}</strong></div>
+  </div>
+
   {% for s in shares %}
-    <div class="card" style="margin-bottom:18px">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <strong style="font-size:16px">{{ s.share }}</strong>
-          <div class="muted" style="font-size:13px">
-            {{ s.path }} &middot;
-            {% if s.enabled %}<span class="tag ok">politica ativa (keep={{ s.keep }})</span>{% else %}<span class="tag off">não configurado</span>{% endif %}
-            &middot; {{ s.count }} versoes &middot; ~{{ s.size|filesizeformat }} aprox.
+    <details class="card" style="margin-bottom:10px">
+      <summary>
+        <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><strong>{{ s.share }}</strong><span class="muted" style="font-size:12px"> · {{ s.path }}</span></div>
+          <div>
+            {% if s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>{% else %}<span class="tag off">não configurado</span>{% endif %}
+            <span class="muted" style="font-size:12px"> · {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}</span>
           </div>
         </div>
+      </summary>
+
+      <div style="padding:0 16px 16px">
         {% if s.enabled %}
-          <form method="post" action="{% url 'snapshot_create' %}">
-            {% csrf_token %}
-            <input type="hidden" name="share" value="{{ s.share }}">
-            <button class="btn primary" type="submit">Criar snapshot agora</button>
-          </form>
+          <div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <form method="post" action="{% url 'snapshot_create' %}">
+              {% csrf_token %}
+              <input type="hidden" name="share" value="{{ s.share }}">
+              <button class="btn small" type="submit">Criar snapshot agora</button>
+            </form>
+            {% if s.snapshots %}
+              <span class="muted" style="font-size:12px">Mais recente: {{ s.snapshots.0.mtime }}</span>
+            {% endif %}
+          </div>
+
+          {% if s.snapshots %}
+            <table class="file-table">
+              <thead><tr><th>Snapshot</th><th>Data</th><th></th></tr></thead>
+              <tbody>
+                {% for snap in s.snapshots %}
+                  <tr>
+                    <td><code>{{ snap.name }}</code></td>
+                    <td class="muted">{{ snap.mtime }}</td>
+                    <td class="file-actions">
+                      <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Explorar</a>
+                      <form method="post" action="{% url 'snapshot_delete' %}" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="share" value="{{ s.share }}">
+                        <input type="hidden" name="name" value="{{ snap.name }}">
+                        <button class="btn small danger" type="submit">Remover</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="empty">Nenhum snapshot existente.</div>
+          {% endif %}
+        {% else %}
+          <div class="empty">Sem política de snapshot configurada para este share.</div>
         {% endif %}
       </div>
-
-      {% if s.snapshots %}
-        <table style="margin-top:14px">
-          <thead><tr><th>Snapshot</th><th>Data</th><th></th></tr></thead>
-          <tbody>
-            {% for snap in s.snapshots %}
-              <tr>
-                <td><code>{{ snap.name }}</code></td>
-                <td class="muted">{{ snap.mtime }}</td>
-                <td style="text-align:right">
-                  <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Explorar</a>
-                  <form method="post" action="{% url 'snapshot_delete' %}" style="display:inline">
-                    {% csrf_token %}
-                    <input type="hidden" name="share" value="{{ s.share }}">
-                    <input type="hidden" name="name" value="{{ snap.name }}">
-                    <button class="btn small danger" type="submit">Remover</button>
-                  </form>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="empty" style="margin-top:14px">{% if s.enabled %}Nenhum snapshot existente.{% else %}Sem política de snapshot configurada para este share.{% endif %}</div>
-      {% endif %}
-    </div>
+    </details>
   {% endfor %}
 {% else %}
-  <div class="empty">Nenhuma politica de snapshot configurada.</div>
+  <div class="empty">Nenhum share encontrado.</div>
 {% endif %}
 {% endblock %}

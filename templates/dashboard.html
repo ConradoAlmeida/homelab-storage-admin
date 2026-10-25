@@ -5,11 +5,11 @@
 <p class="muted">Visão geral do host, discos, backup e shares.</p>
 
 <div class="quick-links">
-  <a class="btn small" href="{% url 'history_index' %}">Histórico</a>
+  <a class="btn small" href="{% url 'history_index' %}">Explorar</a>
   <a class="btn small" href="{% url 'storage_index' %}">Discos</a>
   <a class="btn small" href="{% url 'backup_index' %}">Backups</a>
   <a class="btn small" href="{% url 'shares' %}">Shares</a>
-  <a class="btn small" href="{% url 'snapshots' %}">Snapshots</a>
+  <a class="btn small" href="{% url 'snapshots' %}">Versões</a>
 </div>
 
 {% if agent_error %}
@@ -129,13 +129,13 @@
     </div>
   </div>
   <div>
-    <h2>Snapshots Btrfs</h2>
+    <h2>Versões Btrfs</h2>
     <div class="card">
       <p><strong>{{ snapshots_summary.count }}</strong> snapshot{{ snapshots_summary.count|pluralize }} em <strong>{{ snapshots_summary.enabled }}</strong> de {{ snapshots_summary.policies }} políticas ativas.</p>
       <p class="muted">Tamanho aproximado: {{ snapshots_summary.size|filesizeformat }} (extents compartilhados).</p>
       {% if snapshots_summary.latest %}<p class="muted">Último: {{ snapshots_summary.latest.mtime|default:snapshots_summary.latest.name }}</p>{% endif %}
-      <a class="btn small" href="{% url 'snapshots' %}">Ver políticas</a>
-      <a class="btn small" href="{% url 'history_index' %}">Abrir histórico</a>
+      <a class="btn small" href="{% url 'snapshots' %}">Gerenciar versões</a>
+      <a class="btn small" href="{% url 'history_index' %}">Explorar arquivos</a>
     </div>
   </div>
 </div>

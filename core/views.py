@@ -280,6 +280,12 @@ def snapshots(request):
             if name not in seen:
                 result.append(item)
         context["shares"] = sorted(result, key=lambda item: item.get("share", ""))
+        context["summary"] = {
+            "total": len(result),
+            "enabled": sum(1 for item in result if item.get("enabled")),
+            "count": sum(int(item.get("count") or 0) for item in result),
+            "size": sum(int(item.get("size") or 0) for item in result),
+        }
     except AgentError as exc:
         context["agent_error"] = str(exc)
     return render(request, "snapshots.html", context)

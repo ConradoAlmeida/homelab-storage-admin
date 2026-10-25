@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Historico - Homelab Storage{% endblock %}
+{% block title %}Explorar arquivos - Homelab Storage{% endblock %}
 {% block content %}
-<h1>Histórico de arquivos</h1>
-<p class="muted">Navegue pelas versões diárias dos shares. Tudo é somente leitura; a restauração entra numa próxima etapa.</p>
+<h1>Explorar arquivos</h1>
+<p class="muted">Navegue pelas versões anteriores dos shares. Tudo é somente leitura; a restauração entra numa próxima etapa.</p>
 
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
