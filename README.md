@@ -35,7 +35,11 @@ Ubuntu+Samba via perfil de host.
 | Criar/remover snapshot Btrfs | Snapshots |
 
 Fora do escopo: Active Directory (o Samba é `tdbsam` standalone), autoatendimento
-de senha e backup externo (use `restic` no host).
+de senha, backup externo (use `restic` no host) e o **Jellyfin**. O Jellyfin tem
+stack, bibliotecas, plugins, transcoding e config próprios em `/opt/stacks/jellyfin`;
+este repo não instala, atualiza, configura nem faz backup dele. O dashboard só
+mostra um atalho, e o share Samba `jellyfin` é gerenciado como share comum (sem
+snapshot/restic).
 
 ---
 
@@ -84,7 +88,8 @@ Variáveis principais: `SITE_NAME`, `STORAGE_ROOT`, `SNAPSHOT_ROOT`,
 O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
 filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não
 existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
-Caddy, DNS ou o data-root do Docker.
+Caddy, DNS, Jellyfin ou o data-root do Docker. O Jellyfin é um vizinho: só
+aparece como atalho no dashboard e como share Samba `jellyfin` (sem snapshot/restic).
 
 No moyaserver, depois de instalar o agente:
 
