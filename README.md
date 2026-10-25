@@ -171,8 +171,8 @@ docker compose exec -it web python manage.py createsuperuser --username outro
 |---|---|---|
 | `DJANGO_SECRET_KEY` | 64 hex | assinatura de sessão/CSRF |
 | `DJANGO_DEBUG` | `0` | nunca `1` em produção |
-| `DJANGO_ALLOWED_HOSTS` | `192.168.0.150,homelab,homelab.local` | Host headers aceitos |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | `http://192.168.0.150:8060,...` | origens confiáveis |
+| `DJANGO_ALLOWED_HOSTS` | `192.168.0.150,homelab,homelab.lan,storage.homelab.lan` | Host headers aceitos |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | `http://storage.homelab.lan:8060,...` | origens confiáveis |
 | `DJANGO_SUPERUSER_*` | admin / senha / e-mail | criado só se não existir |
 | `DJANGO_SECURE_COOKIES` | `0` | `1` atrás de HTTPS |
 | `DJANGO_SQLITE_PATH` | (vazio) | opcional; no host do Pi aponte para `/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3` |
