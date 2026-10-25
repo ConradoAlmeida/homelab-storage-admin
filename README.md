@@ -24,6 +24,8 @@ em disco.
 | Visão geral do host | Dashboard — sistema, todos os discos, volumes, RAID/Btrfs, backup e resumo de snapshots |
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
 | Consultar senha do restic | Backups → Credenciais — exige senha do app |
+| Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
+
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
