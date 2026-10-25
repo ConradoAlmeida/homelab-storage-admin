@@ -1584,6 +1584,8 @@ def _usb_disks(cold: dict) -> list[dict]:
         system = name.startswith("mmcblk") or any(
             mount == "/" or mount.startswith("/boot") for mount in mounts
         )
+        if system:
+            continue
         raid = any(item == "linux_raid_member" for item in fstypes)
         candidate = not system and not raid and not mounts
         reason = ""
