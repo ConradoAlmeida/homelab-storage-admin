@@ -39,6 +39,7 @@ SNAPSHOT_DENYLIST = tuple(
 BIND_ADDR = os.environ.get("BIND_ADDR", "127.0.0.1")
 BIND_PORT = int(os.environ.get("BIND_PORT", "8060"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR / "data")))
+SERVICES_FILE = Path(os.environ.get("SERVICES_FILE", str(DATA_DIR / "services.ini")))
 
 INSTALLED_APPS = [
     "django.contrib.admin",

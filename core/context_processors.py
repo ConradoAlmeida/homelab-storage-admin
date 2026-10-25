@@ -12,6 +12,7 @@ import time
 from django.conf import settings
 
 from .agent import AgentError, agent
+from .services import load_services
 
 _CACHE_SECONDS = 30
 _cached_at = 0.0
@@ -33,4 +34,5 @@ def homelab(request):
         "storage_root": settings.STORAGE_ROOT,
         "snapshot_root": settings.SNAPSHOT_ROOT,
         "backup_root": settings.BACKUP_ROOT,
+        "services": load_services(settings.SERVICES_FILE),
     }

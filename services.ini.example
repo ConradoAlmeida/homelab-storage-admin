@@ -1,0 +1,38 @@
+# Atalhos exibidos no dashboard. Copie para o DATA_DIR do host como
+# services.ini e edite a lista. Servico sem url valida nao aparece.
+#
+# Campos: name, description, url, icon, color, order.
+# Icones conhecidos: jellyfin, cockpit, dockge, pihole; outros usam o icone
+# generico. Nao ha descoberta nem health check.
+
+[jellyfin]
+name = Jellyfin
+description = Midia · filmes e series
+url = http://jellyfin.homelab.lan
+icon = jellyfin
+color = #a78bfa
+order = 10
+
+[cockpit]
+name = Cockpit
+description = Host · sistema e logs
+url = https://cockpit.homelab.lan
+icon = cockpit
+color = #2dd4bf
+order = 20
+
+[dockge]
+name = Dockge
+description = Containers · stacks
+url = http://dockge.homelab.lan
+icon = dockge
+color = #fbbf24
+order = 30
+
+[pihole]
+name = Pi-hole
+description = DNS · anuncios
+url = http://pihole.homelab.lan/admin/
+icon = pihole
+color = #fb7185
+order = 40

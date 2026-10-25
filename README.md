@@ -100,6 +100,33 @@ docker compose -f docker-compose.yml -f docker-compose.moya.yml up -d --build
 
 O bind fica em `127.0.0.1:8060`; publique com o proxy que já existe no host.
 
+### Atalhos de serviços (curadoria por host)
+
+O dashboard **não descobre** serviços e **não faz health check**. Ele mostra
+somente o que estiver no `services.ini` do host, em `DATA_DIR/services.ini`
+(no Pi: `/mnt/nas/apps/homelab-storage-admin/data/services.ini`). O arquivo é
+lido a cada request; editou, aparece sem restart.
+
+Use `services.ini.example` como base:
+
+```ini
+[jellyfin]
+name = Jellyfin
+description = Midia · filmes e series
+url = http://jellyfin.homelab.lan
+icon = jellyfin
+color = #a78bfa
+order = 10
+```
+
+- `url` precisa ser `http://` ou `https://`; inválida é ignorada.
+- `icon`: `jellyfin`, `cockpit`, `dockge`, `pihole` ou `generic`.
+- `color`: hexadecimal `#rrggbb`; inválida cai no azul padrão.
+- `order`: inteiro; menor aparece primeiro.
+- Sem arquivo ou arquivo vazio: nenhum card é exibido.
+- O moya escolhe a própria lista; o Pi mantém a lista atual.
+- Não há descoberta automática, probe, health check ou criação de containers.
+
 ### Layout Btrfs
 
 - `/mnt/nas` é o subvolume `@data` do array (RAID1 degradado + Btrfs).
