@@ -10,6 +10,7 @@ def test_moya_example_profile():
     assert values["SNAPSHOT_DENYLIST"] == "Veronte_Images"
     assert values["SNAPSHOT_BACKEND"] == "rsync"
     assert values["DATA_DIR"] == "./data"
+    assert values["COMPOSE_OVERLAY"] == "docker-compose.moya.yml"
 
 
 def test_moya_overlay_does_not_use_pi_paths_or_ip():

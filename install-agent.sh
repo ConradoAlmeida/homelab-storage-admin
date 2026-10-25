@@ -10,12 +10,21 @@ fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 HOST_ENV=/etc/homelab-storage-admin/host.env
+HOST_ENV_PROFILE="${HOST_ENV_PROFILE:-pi}"
+case "$HOST_ENV_PROFILE" in
+  pi) HOST_ENV_EXAMPLE="$HERE/host.env.example" ;;
+  moya) HOST_ENV_EXAMPLE="$HERE/host.env.moya.example" ;;
+  *)
+    echo "ERRO: HOST_ENV_PROFILE invalido: $HOST_ENV_PROFILE (use pi ou moya)" >&2
+    exit 1
+    ;;
+esac
 mkdir -p /etc/homelab-storage-admin
 if [[ ! -f "$HOST_ENV" ]]; then
-  install -m 0644 "$HERE/host.env.example" "$HOST_ENV"
-  echo "==> Criado $HOST_ENV a partir do exemplo (Pi)."
+  install -m 0644 "$HOST_ENV_EXAMPLE" "$HOST_ENV"
+  echo "==> Criado $HOST_ENV a partir do perfil '$HOST_ENV_PROFILE'."
 else
-  echo "==> Mantendo $HOST_ENV existente."
+  echo "==> Mantendo $HOST_ENV existente (perfil '$HOST_ENV_PROFILE' nao sobrescrito)."
 fi
 
 # Samba e ferramentas de disco sao obrigatorios; o resto e detectado pelo app.

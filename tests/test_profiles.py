@@ -41,6 +41,7 @@ def test_pi_profile_fixture_matches_defaults(profile_env):
     assert pi["ALLOWED_PATH_PREFIXES"] == "/mnt/nas/"
     assert pi["BIND_ADDR"] == "192.168.0.150"
     assert pi["BIND_PORT"] == "8060"
+    assert pi["COMPOSE_OVERLAY"] == "docker-compose.homelab.yml"
 
 
 def test_moya_profile(profile_env):
@@ -49,6 +50,7 @@ def test_moya_profile(profile_env):
     assert moya["BIND_ADDR"] == "127.0.0.1"
     assert moya["SNAPSHOT_DENYLIST"] == "Veronte_Images"
     assert moya["SNAPSHOT_BACKEND"] == "rsync"
+    assert moya["COMPOSE_OVERLAY"] == "docker-compose.moya.yml"
 
 
 def test_minimal_profile_has_no_optional_backend(profile_env):

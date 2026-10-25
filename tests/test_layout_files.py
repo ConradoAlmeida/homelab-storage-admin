@@ -29,6 +29,7 @@ def test_host_env_example_is_pi_profile():
     assert values["ALLOWED_PATH_PREFIXES"] == "/mnt/nas/"
     assert values["BIND_ADDR"] == "192.168.0.150"
     assert values["SNAPSHOT_BACKEND"] == "auto"
+    assert values["COMPOSE_OVERLAY"] == "docker-compose.homelab.yml"
 
 
 def test_install_agent_makes_btrfs_and_restic_optional():
@@ -52,8 +53,16 @@ def test_unit_uses_host_env_and_preserves_socket_name():
     assert "Environment=STORAGE_ROOT" not in text
 
 
-def test_deploy_loads_host_env_and_overlay():
+def test_deploy_loads_host_env_and_selected_overlay():
     text = read("deploy.sh")
     assert "/etc/homelab-storage-admin/host.env" in text
-    assert "docker-compose.homelab.yml" in text
+    assert "COMPOSE_OVERLAY" in text
+    assert "docker-compose.homelab.yml" not in text
     assert 'docker compose "${COMPOSE_FILES[@]}" up -d --build' in text
+
+
+def test_install_agent_selects_profile():
+    text = read("install-agent.sh")
+    assert "HOST_ENV_PROFILE" in text
+    assert "host.env.moya.example" in text
+    assert "host.env.example" in text

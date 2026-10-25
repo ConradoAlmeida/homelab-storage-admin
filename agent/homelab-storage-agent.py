@@ -330,6 +330,19 @@ def _system_info() -> dict:
     }
 
 
+def _md_names(mdstat: str) -> list[str]:
+    return re.findall(r"^(md\d+)\s*:", mdstat or "", flags=re.MULTILINE)
+
+
+def _md_details(mdstat: str) -> str:
+    details = []
+    for name in _md_names(mdstat):
+        rc, out, _ = run_optional(["mdadm", "--detail", f"/dev/{name}"], timeout=10)
+        if rc == 0 and out.strip():
+            details.append(out.strip())
+    return "\n\n".join(details)
+
+
 def op_storage_overview(**_):
     raw = run(
         ["lsblk", "-J", "-o", "NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL,SERIAL,TRAN"]
@@ -364,8 +377,7 @@ def op_storage_overview(**_):
         raid["mdstat"] = Path("/proc/mdstat").read_text()
     except OSError:
         raid["mdstat"] = ""
-    rc, out, _ = run_optional(["mdadm", "--detail", "/dev/md0"], timeout=10)
-    raid["detail"] = out if rc == 0 else ""
+    raid["detail"] = _md_details(raid["mdstat"])
 
     btrfs = {}
     if shutil.which("btrfs"):
@@ -710,8 +722,12 @@ def op_list_shares(include_size=False, **_):
         if parser.getboolean(section, "printable", fallback=False):
             continue
         path = parser.get(section, "path", fallback="")
-        backend = snapshot_backend_for(path) if path else "none"
-        snapdir = snapshot_dir_for(section, path, backend) if backend != "none" else ""
+        if section in DENY_SNAPSHOT:
+            backend = "none"
+            snapdir = ""
+        else:
+            backend = snapshot_backend_for(path) if path else "none"
+            snapdir = snapshot_dir_for(section, path, backend) if backend != "none" else ""
         item = {
             "name": section,
             "path": path,
@@ -951,6 +967,22 @@ def op_snapshot_usage(**_):
     result = []
     for share, cfg in sorted(policy.items()):
         src = cfg.get("path", "")
+        if share in DENY_SNAPSHOT:
+            # Denylist: nao varre o snapdir nem devolve snapshots.
+            result.append(
+                {
+                    "share": share,
+                    "path": src,
+                    "enabled": False,
+                    "keep": int(cfg.get("keep", 0)),
+                    "count": 0,
+                    "size": 0,
+                    "backend": "none",
+                    "snapdir": "",
+                    "snapshots": [],
+                }
+            )
+            continue
         enabled = bool(cfg.get("enabled"))
         backend = cfg.get("backend") or (snapshot_backend_for(src) if src else "none")
         snapdir = cfg.get("snapdir") or (

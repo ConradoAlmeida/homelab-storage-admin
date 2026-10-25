@@ -95,3 +95,20 @@ def test_snapshot_delete_rejects_traversal(agent_module):
     policy(agent)
     with pytest.raises(agent.AgentError):
         agent.op_snapshot_delete("docs", "../fora")
+
+
+def test_denylist_usage_does_not_scan_snapdir(agent_module, monkeypatch):
+    agent = agent_module
+    share, snapdir = policy(agent)
+    agent.DENY_SNAPSHOT = {"docs"}
+    monkeypatch.setattr(
+        agent,
+        "_snapshot_list",
+        lambda path: pytest.fail("denylist nao pode varrer snapdir"),
+    )
+    usage = agent.op_snapshot_usage()
+    assert usage[0]["share"] == "docs"
+    assert usage[0]["enabled"] is False
+    assert usage[0]["count"] == 0
+    assert usage[0]["backend"] == "none"
+    assert usage[0]["snapdir"] == ""

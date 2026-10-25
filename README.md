@@ -91,14 +91,16 @@ existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
 Caddy, DNS, Jellyfin ou o data-root do Docker. O Jellyfin é um vizinho: só
 aparece como atalho no dashboard e como share Samba `jellyfin` (sem snapshot/restic).
 
-No moyaserver, depois de instalar o agente:
+No moyaserver, instale o agente já com o perfil correto:
 
 ```bash
-sudo cp host.env.moya.example /etc/homelab-storage-admin/host.env
-docker compose -f docker-compose.yml -f docker-compose.moya.yml up -d --build
+sudo env HOST_ENV_PROFILE=moya ./install-agent.sh
+./deploy.sh
 ```
 
-O bind fica em `127.0.0.1:8060`; publique com o proxy que já existe no host.
+O `deploy.sh` usa o `COMPOSE_OVERLAY` definido no `host.env`
+(`docker-compose.moya.yml`). O bind fica em `127.0.0.1:8060`; publique com o
+proxy que já existe no host.
 
 ### Atalhos de serviços (curadoria por host)
 
@@ -188,7 +190,7 @@ cp .env.example .env
 chmod 600 .env
 # edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF
 sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
-./deploy.sh               # usa host.env + docker-compose.homelab.yml
+./deploy.sh               # usa host.env + COMPOSE_OVERLAY
 ```
 
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
@@ -282,6 +284,7 @@ Gere a chave com `openssl rand -hex 32`.
 | `BACKUP_ROOT` | `/mnt/backup` | raiz dos discos restic |
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
+| `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 
 O unit `homelab-storage-agent.service` e o socket **não são renomeados**. O

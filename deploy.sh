@@ -25,8 +25,12 @@ set -a
 set +a
 
 COMPOSE_FILES=(-f docker-compose.yml)
-if [[ -f docker-compose.homelab.yml ]]; then
-  COMPOSE_FILES+=(-f docker-compose.homelab.yml)
+if [[ -n "${COMPOSE_OVERLAY:-}" ]]; then
+  if [[ ! -f "$COMPOSE_OVERLAY" ]]; then
+    echo "ERRO: COMPOSE_OVERLAY nao encontrado: $COMPOSE_OVERLAY" >&2
+    exit 1
+  fi
+  COMPOSE_FILES+=(-f "$COMPOSE_OVERLAY")
 fi
 
 chmod +x install-agent.sh entrypoint.sh deploy.sh

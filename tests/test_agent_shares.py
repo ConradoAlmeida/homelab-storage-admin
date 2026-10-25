@@ -72,6 +72,20 @@ def test_denylist_blocks_snapshot_before_any_operation(agent_module, monkeypatch
         agent.op_create_share("Veronte_Images", str(path), snapshot=True)
 
 
+def test_denylisted_share_does_not_expose_snapdir(agent_module, monkeypatch):
+    agent = agent_module
+    agent.DENY_SNAPSHOT = {"Veronte_Images"}
+    parser = configparser.ConfigParser()
+    parser.read_string(
+        "[Veronte_Images]\n"
+        "path = " + str(Path(agent.STORAGE_ROOT) / "Veronte_Images") + "\n"
+    )
+    monkeypatch.setattr(agent, "_parse_smb_conf", lambda: parser)
+    shares = agent.op_list_shares(include_size=False)
+    assert shares[0]["backend"] == "none"
+    assert shares[0]["snapdir"] == ""
+
+
 def test_list_shares_returns_backend_and_snapdir(agent_module, monkeypatch):
     agent = agent_module
     parser = configparser.ConfigParser()

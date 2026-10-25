@@ -63,6 +63,11 @@ def test_ping_includes_capabilities(agent, monkeypatch):
     assert agent.op_ping()["capabilities"] == {"btrfs": True}
 
 
+def test_md_names_are_discovered_from_mdstat(agent):
+    mdstat = "Personalities : [raid1]\nmd0 : active raid1 sda1[0]\n\nmd127 : active raid5 sdb1[0]\n"
+    assert agent._md_names(mdstat) == ["md0", "md127"]
+
+
 def test_backend_auto_and_explicit(agent, monkeypatch):
     monkeypatch.setattr(agent, "_fstype", lambda path: "btrfs")
     assert agent.snapshot_backend_for("/mnt/nas/docs", "auto") == "btrfs"
