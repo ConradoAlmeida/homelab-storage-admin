@@ -17,6 +17,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Layout do NAS (precisa bater com o agente)
 STORAGE_ROOT = os.environ.get("STORAGE_ROOT", "/mnt/nas")
+SNAPSHOT_ROOT = os.environ.get("SNAPSHOT_ROOT", "/mnt/nas/.snapshots")
 ALLOWED_PATH_PREFIXES = tuple(
     p.strip().rstrip("/") + "/"
     for p in os.environ.get("ALLOWED_PATH_PREFIXES", f"{STORAGE_ROOT}/").split(",")
@@ -34,6 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "core",
+    "history",
 ]
 
 MIDDLEWARE = [

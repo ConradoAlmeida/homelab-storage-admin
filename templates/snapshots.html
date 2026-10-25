@@ -36,7 +36,8 @@
                 <td><code>{{ snap.name }}</code></td>
                 <td class="muted">{{ snap.mtime }}</td>
                 <td style="text-align:right">
-                  <form method="post" action="{% url 'snapshot_delete' %}">
+                  <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Explorar</a>
+                  <form method="post" action="{% url 'snapshot_delete' %}" style="display:inline">
                     {% csrf_token %}
                     <input type="hidden" name="share" value="{{ s.share }}">
                     <input type="hidden" name="name" value="{{ snap.name }}">

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ filename }} - Versoes{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+  <div>
+    <h1 style="margin-bottom:4px">{{ filename }}</h1>
+    <div class="muted" style="font-size:13px">{{ share.name }} · {{ filepath }}</div>
+  </div>
+  <a class="btn small" href="{{ browse_url }}">← Voltar à pasta</a>
+</div>
+
+<p class="muted" style="margin-top:16px">Versões encontradas nos snapshots. Restaurar/“copiar como” entra na próxima etapa; por enquanto o acesso é somente leitura.</p>
+
+<table class="file-table" style="margin-top:12px">
+  <thead><tr><th>Versão</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
+  <tbody>
+    {% if live %}
+      <tr>
+        <td><strong>Versão atual</strong></td>
+        <td class="muted">{{ live.size|filesizeformat }}</td>
+        <td class="muted">{{ live.mtime|date:"d/m/Y H:i" }}</td>
+        <td class="file-actions"><a class="btn small" href="{{ live.url }}">Baixar</a></td>
+      </tr>
+    {% endif %}
+    {% for v in versions %}
+      <tr>
+        <td><span class="badge snap">{{ v.label }}</span></td>
+        <td class="muted">{{ v.size|filesizeformat }}</td>
+        <td class="muted">{{ v.mtime|date:"d/m/Y H:i" }}</td>
+        <td class="file-actions"><a class="btn small" href="{{ v.url }}">Baixar</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4"><div class="empty">Nenhuma versão em snapshot encontrada.</div></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

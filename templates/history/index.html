@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Historico - Homelab Storage{% endblock %}
+{% block content %}
+<h1>Histórico de arquivos</h1>
+<p class="muted">Navegue pelas versões diárias dos shares. Tudo é somente leitura; a restauração entra numa próxima etapa.</p>
+
+{% if agent_error %}
+  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
+{% elif shares %}
+<table class="file-table">
+  <thead><tr><th>Share</th><th>Versões</th><th>Última</th><th></th></tr></thead>
+  <tbody>
+    {% for s in shares %}
+      <tr>
+        <td>
+          <strong>{{ s.name }}</strong>
+          {% if not s.browseable %} <span class="tag">privado</span>{% endif %}
+          <div class="muted" style="font-size:12px">{{ s.path }}</div>
+        </td>
+        <td class="muted">{{ s.snapshot_count }}</td>
+        <td class="muted">{{ s.last_snapshot|default:"—" }}</td>
+        <td class="file-actions"><a class="btn small" href="{{ s.url }}">Explorar</a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <div class="empty">Nenhum share encontrado.</div>
+{% endif %}
+{% endblock %}

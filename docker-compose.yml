@@ -12,4 +12,5 @@ services:
       - AGENT_SOCKET=/run/homelab-storage-admin/agent.sock
     volumes:
       - /mnt/nas/apps/homelab-storage-admin/data:/app/data
+      - /mnt/nas:/mnt/nas:ro
       - /run/homelab-storage-admin:/run/homelab-storage-admin:ro

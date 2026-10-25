@@ -53,6 +53,30 @@
     .help { font-size:12px; color:var(--muted); margin-top:4px; }
     .errorlist { color:var(--err); font-size:13px; padding-left:18px; }
     .empty { padding:18px; color:var(--muted); text-align:center; background:var(--panel); border:1px dashed var(--line); border-radius:10px; }
+    .history-shell { display:grid; grid-template-columns:250px minmax(0,1fr); gap:18px; align-items:start; }
+    .history-sidebar { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; position:sticky; top:18px; }
+    .history-sidebar h2 { margin:4px 0 8px; font-size:11px; }
+    .history-sidebar a { display:block; padding:7px 9px; border-radius:7px; color:var(--muted); font-size:13px; }
+    .history-sidebar a:hover, .history-sidebar a.active { background:#0b1220; color:var(--txt); }
+    .history-main { min-width:0; }
+    .crumbs { display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:13px; margin:10px 0 14px; }
+    .crumbs .sep { color:var(--muted); }
+    .crumbs a { color:var(--acc); }
+    .file-table td, .file-table th { vertical-align:middle; }
+    .file-name { display:flex; align-items:center; gap:9px; min-width:0; }
+    .file-name a { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .file-icon { width:18px; height:18px; flex:0 0 18px; color:var(--muted); }
+    .file-icon svg { width:18px; height:18px; display:block; }
+    .file-actions { text-align:right; white-space:nowrap; }
+    .file-actions .btn { margin-left:4px; }
+    .pager { display:flex; gap:10px; align-items:center; justify-content:center; margin:18px 0; color:var(--muted); font-size:13px; }
+    .badge { display:inline-block; padding:3px 9px; border-radius:99px; border:1px solid var(--line); font-size:12px; color:var(--muted); }
+    .badge.live { color:var(--ok); border-color:#14532d; }
+    .badge.snap { color:var(--warn); border-color:#78350f; }
+    @media (max-width: 900px) {
+      .history-shell { grid-template-columns:1fr; }
+      .history-sidebar { position:static; }
+    }
   </style>
 </head>
 <body>
@@ -63,6 +87,7 @@
       <a href="{% url 'users' %}">Usuarios</a>
       <a href="{% url 'shares' %}">Shares</a>
       <a href="{% url 'snapshots' %}">Snapshots</a>
+      <a href="{% url 'history_index' %}">Histórico</a>
     </nav>
     <div class="user">
       <span>{{ request.user.username }}</span>

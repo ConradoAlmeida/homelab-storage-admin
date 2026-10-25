@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ share.name }} - Historico{% endblock %}
+{% block content %}
+<div class="history-shell">
+  <aside class="history-sidebar">
+    <h2>Share</h2>
+    <a href="{% url 'history_index' %}">← Todos os shares</a>
+    <a href="{{ live_url }}" class="{% if not is_snapshot %}active{% endif %}">Versão atual</a>
+
+    <h2 style="margin-top:16px">Snapshots</h2>
+    {% for snap in snapshots %}
+      <a href="{{ snap.url }}" class="{% if snapshot == snap.name %}active{% endif %}">{{ snap.label }}</a>
+    {% empty %}
+      <div class="muted" style="font-size:12px;padding:6px 9px">Sem snapshots</div>
+    {% endfor %}
+  </aside>
+
+  <main class="history-main">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h1 style="margin-bottom:4px">{{ share.name }}</h1>
+        <div class="muted" style="font-size:13px">{{ share.path }}</div>
+      </div>
+      <div>
+        {% if is_snapshot %}
+          <span class="badge snap">snapshot {{ snapshot }}</span>
+        {% else %}
+          <span class="badge live">versão atual</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <nav class="crumbs">
+      {% for c in crumbs %}
+        <a href="{{ c.url }}">{{ c.name }}</a>
+        {% if not forloop.last %}<span class="sep">/</span>{% endif %}
+      {% endfor %}
+    </nav>
+
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <div>
+        {% if parent_url %}<a class="btn small" href="{{ parent_url }}">↑ Subir</a>{% endif %}
+      </div>
+      <div class="muted" style="font-size:12px">
+        {{ page_obj.paginator.count }} item{{ page_obj.paginator.count|pluralize }}
+      </div>
+    </div>
+
+    <table class="file-table">
+      <thead><tr><th>Nome</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
+      <tbody>
+        {% for e in entries %}
+          <tr>
+            <td>
+              <div class="file-name">
+                <span class="file-icon">
+                  {% if e.is_dir %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  {% else %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>
+                  {% endif %}
+                </span>
+                <a href="{{ e.url }}">{{ e.name }}</a>
+              </div>
+            </td>
+            <td class="muted">{% if e.is_dir %}—{% else %}{{ e.size|filesizeformat }}{% endif %}</td>
+            <td class="muted">{{ e.mtime|date:"d/m/Y H:i" }}</td>
+            <td class="file-actions">
+              {% if e.is_dir %}
+                <a class="btn small" href="{{ e.url }}">Abrir</a>
+              {% else %}
+                <a class="btn small" href="{{ e.url }}">Baixar</a>
+                <a class="btn small" href="{{ e.versions_url }}">Versões</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4"><div class="empty">Pasta vazia.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if page_obj.has_other_pages %}
+      <div class="pager">
+        {% if page_obj.has_previous %}<a class="btn small" href="?page={{ page_obj.previous_page_number }}">← Anterior</a>{% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a class="btn small" href="?page={{ page_obj.next_page_number }}">Próxima →</a>{% endif %}
+      </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
