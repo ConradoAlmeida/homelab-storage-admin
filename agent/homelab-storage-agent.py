@@ -337,7 +337,9 @@ def op_list_shares(include_size=False, **_):
     parser = _parse_smb_conf()
     shares = []
     for section in parser.sections():
-        if section.lower() == "global":
+        if section.lower() == "global" or section.lower() in RESERVED_SHARES:
+            continue
+        if parser.getboolean(section, "printable", fallback=False):
             continue
         path = parser.get(section, "path", fallback="")
         item = {
