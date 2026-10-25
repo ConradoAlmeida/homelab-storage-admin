@@ -4,6 +4,21 @@
 <h1>Dashboard</h1>
 <p class="muted">Visão geral do host, discos, backup e shares.</p>
 
+<div class="service-cards">
+  <a class="service-card jellyfin" href="http://jellyfin.homelab.lan" target="_blank" rel="noopener">
+    <strong>Jellyfin</strong><span>Mídia · filmes e séries</span>
+  </a>
+  <a class="service-card cockpit" href="https://cockpit.homelab.lan" target="_blank" rel="noopener">
+    <strong>Cockpit</strong><span>Host · sistema e logs</span>
+  </a>
+  <a class="service-card dockge" href="http://dockge.homelab.lan" target="_blank" rel="noopener">
+    <strong>Dockge</strong><span>Containers · stacks</span>
+  </a>
+  <a class="service-card pihole" href="http://pihole.homelab.lan/admin/" target="_blank" rel="noopener">
+    <strong>Pi-hole</strong><span>DNS · anúncios</span>
+  </a>
+</div>
+
 <div class="quick-links">
   <a class="btn small" href="{% url 'history_index' %}">Explorar</a>
   <a class="btn small" href="{% url 'storage_index' %}">Discos</a>
@@ -119,28 +134,11 @@
   <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
 {% endif %}
 
-<div class="dash-grid">
-  <div>
-    <h2>RAID e Btrfs</h2>
-    <div class="card">
-      <p>RAID: <span class="badge {% if raid_status == 'degradado' %}snap{% elif raid_status == 'ok' %}live{% endif %}">{{ raid_status }}</span></p>
-      <pre class="pre">{{ storage.raid.mdstat|default:"—" }}</pre>
-      {% if storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
-    </div>
-  </div>
-  <div>
-    <h2>Serviços</h2>
-    <div class="card">
-      <p class="muted" style="margin-top:0">Acesso rápido aos serviços da casa.</p>
-      <div class="row">
-        <a class="btn small" href="http://jellyfin.homelab.lan" target="_blank" rel="noopener">Jellyfin</a>
-        <a class="btn small" href="https://cockpit.homelab.lan" target="_blank" rel="noopener">Cockpit</a>
-        <a class="btn small" href="http://dockge.homelab.lan" target="_blank" rel="noopener">Dockge</a>
-        <a class="btn small" href="http://pihole.homelab.lan/admin/" target="_blank" rel="noopener">Pi-hole</a>
-      </div>
-      <p class="muted" style="font-size:12px;margin:10px 0 0">Jellyfin via Caddy; fallback: <a href="http://192.168.0.150:8096" target="_blank" rel="noopener">IP:8096</a>.</p>
-    </div>
-  </div>
+<h2>RAID e Btrfs</h2>
+<div class="card">
+  <p>RAID: <span class="badge {% if raid_status == 'degradado' %}snap{% elif raid_status == 'ok' %}live{% endif %}">{{ raid_status }}</span></p>
+  <pre class="pre">{{ storage.raid.mdstat|default:"—" }}</pre>
+  {% if storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
 </div>
 
 <h2>Shares</h2>

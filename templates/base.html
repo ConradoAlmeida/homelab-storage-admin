@@ -126,6 +126,16 @@
     .spinner { width:40px; height:40px; margin:0 auto 14px; border:3px solid var(--line); border-top-color:var(--acc); border-radius:50%; animation:spin 1s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .quick-links { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 18px; }
+    .service-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:12px; margin:12px 0 16px; }
+    .service-card { display:flex; flex-direction:column; justify-content:space-between; min-height:86px; padding:14px; border-radius:12px; color:#fff; border:1px solid rgba(255,255,255,.16); box-shadow:0 8px 24px rgba(0,0,0,.18); transition:transform .15s, filter .15s; }
+    .service-card:hover { transform:translateY(-2px); filter:brightness(1.08); text-decoration:none; }
+    .service-card:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+    .service-card strong { font-size:16px; }
+    .service-card span { font-size:12px; opacity:.86; }
+    .service-card.jellyfin { background:linear-gradient(135deg,#6d28d9,#4c1d95); }
+    .service-card.cockpit { background:linear-gradient(135deg,#0f766e,#115e59); }
+    .service-card.dockge { background:linear-gradient(135deg,#b45309,#7c2d12); }
+    .service-card.pihole { background:linear-gradient(135deg,#b91c1c,#7f1d1d); }
     .dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:start; }
     .dash-grid .card { min-width:0; }
     @media (max-width: 900px) { .dash-grid { grid-template-columns:1fr; } }
