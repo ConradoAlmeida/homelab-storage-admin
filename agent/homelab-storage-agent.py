@@ -27,6 +27,7 @@ CONFIG_DIR = os.environ.get("CONFIG_DIR", "/etc/homelab-storage-agent")
 SNAP_CONFIG = os.environ.get("SNAP_CONFIG", f"{CONFIG_DIR}/snapshots.json")
 BACKUP_CONFIG = os.environ.get("BACKUP_CONFIG", "/etc/homelab-backup/config.json")
 BACKUP_SECRETS = os.environ.get("BACKUP_SECRETS", "/etc/homelab-backup/secrets")
+BACKUP_STATUS_DIR = os.environ.get("BACKUP_STATUS_DIR", "/etc/homelab-backup/status")
 BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
 
@@ -36,6 +37,9 @@ GROUP_RE = re.compile(r"^[a-z][a-z0-9._-]{1,31}$")
 SNAP_RE = re.compile(r"^@GMT-\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}$")
 BACKUP_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F-]{16,64}$")
+JOB_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
+TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 ALLOWED_PATH_PREFIXES = tuple(
     p.strip().rstrip("/") + "/"
@@ -997,7 +1001,7 @@ def op_backup_overview(**_):
     config = _load_backup_config()
     return {
         "disks": _backup_disks(config),
-        "jobs": config.get("jobs", []),
+        "jobs": _backup_jobs(config),
         "backup_root": BACKUP_ROOT,
         "restic": shutil.which("restic") is not None,
     }
@@ -1173,6 +1177,304 @@ def op_backup_secret(uuid: str, **_):
     }
 
 
+def _read_backup_status(name: str) -> dict:
+    path = Path(BACKUP_STATUS_DIR) / f"{name}.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _next_run(schedule: dict | None) -> str | None:
+    if not schedule:
+        return None
+    try:
+        hour, minute = [int(part) for part in schedule["time"].split(":")]
+    except (KeyError, ValueError, AttributeError):
+        return None
+    now = dt.datetime.now()
+    frequency = schedule.get("frequency")
+    if frequency == "daily":
+        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if candidate <= now:
+            candidate += dt.timedelta(days=1)
+    elif frequency == "weekly":
+        try:
+            weekday = int(schedule.get("weekday", 0))
+        except (TypeError, ValueError):
+            return None
+        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        candidate += dt.timedelta(days=(weekday - now.weekday()) % 7)
+        if candidate <= now:
+            candidate += dt.timedelta(days=7)
+    elif frequency == "monthly":
+        try:
+            monthday = int(schedule.get("monthday", 1))
+        except (TypeError, ValueError):
+            return None
+        candidate = now.replace(
+            day=monthday, hour=hour, minute=minute, second=0, microsecond=0
+        )
+        if candidate <= now:
+            year = now.year + (1 if now.month == 12 else 0)
+            month = 1 if now.month == 12 else now.month + 1
+            candidate = candidate.replace(year=year, month=month)
+    else:
+        return None
+    return candidate.isoformat(timespec="minutes")
+
+
+def _backup_jobs(config: dict) -> list[dict]:
+    jobs = []
+    disks = {item.get("uuid"): item for item in config.get("disks", [])}
+    for job in config.get("jobs", []):
+        item = dict(job)
+        status = _read_backup_status(job.get("name", ""))
+        item["status"] = status
+        item["last_run_label"] = (
+            status.get("finished_at") or status.get("started_at") or ""
+        ).replace("T", " ")[:16]
+        next_run = _next_run(job.get("schedule")) if job.get("enabled") else None
+        item["next_run"] = next_run
+        item["next_run_label"] = (next_run or "").replace("T", " ")[:16]
+        disk = disks.get(job.get("disk_uuid"))
+        item["disk_label"] = (disk or {}).get("label") or (disk or {}).get("device") or "—"
+        jobs.append(item)
+    return sorted(jobs, key=lambda item: item.get("name", ""))
+
+
+def _apply_backup_timer(name: str, enabled: bool, on_calendar: str) -> None:
+    service_template = Path("/etc/systemd/system/homelab-restic-backup@.service")
+    if not service_template.is_file():
+        raise AgentError(
+            "Servico homelab-restic-backup@.service ausente; rode sudo ./install-agent.sh"
+        )
+    timer_name = f"homelab-restic-backup-{name}.timer"
+    timer_path = Path("/etc/systemd/system") / timer_name
+    if enabled:
+        timer_path.write_text(
+            "[Unit]\n"
+            f"Description=Homelab restic backup timer {name}\n\n"
+            "[Timer]\n"
+            f"OnCalendar={on_calendar}\n"
+            "Persistent=true\n"
+            f"Unit=homelab-restic-backup@{name}.service\n\n"
+            "[Install]\n"
+            "WantedBy=timers.target\n"
+        )
+        os.chmod(timer_path, 0o644)
+        run(["systemctl", "daemon-reload"], timeout=30)
+        try:
+            run(["systemctl", "enable", "--now", timer_name], timeout=30)
+        except AgentError:
+            timer_path.unlink(missing_ok=True)
+            run_optional(["systemctl", "daemon-reload"], timeout=30)
+            raise
+    else:
+        run_optional(["systemctl", "disable", "--now", timer_name], timeout=30)
+        timer_path.unlink(missing_ok=True)
+        run(["systemctl", "daemon-reload"], timeout=30)
+
+
+def op_backup_job_save(job: dict, **_):
+    if not isinstance(job, dict):
+        raise AgentError("Job invalido")
+    name = (job.get("name") or "").strip().lower()
+    if not JOB_RE.match(name):
+        raise AgentError("Nome do job invalido (a-z, 0-9, _ ou -, ate 32)")
+    config = _load_backup_config()
+    disk_uuid = (job.get("disk_uuid") or "").strip()
+    disk = next(
+        (item for item in config.get("disks", []) if item.get("uuid") == disk_uuid),
+        None,
+    )
+    if disk is None:
+        raise AgentError("Selecione um disco de backup configurado")
+
+    shares = {item["name"]: item["path"] for item in op_list_shares()}
+    source_names = job.get("sources") or []
+    if not isinstance(source_names, list):
+        raise AgentError("Fontes invalidas")
+    source_names = [str(item) for item in source_names]
+    source_paths = []
+    for share_name in source_names:
+        path = shares.get(share_name)
+        if not path:
+            raise AgentError(f"Share nao encontrado: {share_name}")
+        if not os.path.isdir(path):
+            raise AgentError(f"Pasta do share nao existe: {path}")
+        source_paths.append(path)
+    if not source_paths:
+        raise AgentError("Selecione pelo menos uma fonte")
+
+    raw_excludes = job.get("excludes") or []
+    if isinstance(raw_excludes, str):
+        raw_excludes = raw_excludes.splitlines()
+    if not isinstance(raw_excludes, list):
+        raise AgentError("Exclusoes invalidas")
+    excludes = []
+    for item in raw_excludes:
+        value = str(item).strip()
+        if not value:
+            continue
+        if "\n" in value or "\r" in value or "\0" in value:
+            raise AgentError("Exclusao invalida")
+        excludes.append(value)
+    if len(excludes) > 100:
+        raise AgentError("Maximo de 100 exclusoes")
+
+    schedule = job.get("schedule") or {}
+    frequency = schedule.get("frequency")
+    time_value = (schedule.get("time") or "").strip()
+    if not TIME_RE.match(time_value):
+        raise AgentError("Horario invalido (use HH:MM)")
+    if frequency == "daily":
+        on_calendar = f"*-*-* {time_value}:00"
+        schedule_label = f"Diário {time_value}"
+        weekday = None
+        monthday = None
+    elif frequency == "weekly":
+        try:
+            weekday = int(schedule.get("weekday", 0))
+        except (TypeError, ValueError) as exc:
+            raise AgentError("Dia da semana invalido") from exc
+        if weekday < 0 or weekday > 6:
+            raise AgentError("Dia da semana invalido")
+        on_calendar = f"{WEEKDAYS[weekday]} *-*-* {time_value}:00"
+        schedule_label = f"Semanal {WEEKDAYS[weekday]} {time_value}"
+        monthday = None
+    elif frequency == "monthly":
+        try:
+            monthday = int(schedule.get("monthday", 1))
+        except (TypeError, ValueError) as exc:
+            raise AgentError("Dia do mes invalido") from exc
+        if monthday < 1 or monthday > 28:
+            raise AgentError("Dia do mes deve ficar entre 1 e 28")
+        on_calendar = f"*-*-{monthday:02d} {time_value}:00"
+        schedule_label = f"Mensal dia {monthday} {time_value}"
+        weekday = None
+    else:
+        raise AgentError("Periodicidade invalida")
+
+    retention = job.get("retention") or {}
+    clean_retention = {}
+    for key in ("daily", "weekly", "monthly"):
+        try:
+            value = int(retention.get(key) or 0)
+        except (TypeError, ValueError) as exc:
+            raise AgentError(f"Retencao invalida: {key}") from exc
+        if value < 0 or value > 365:
+            raise AgentError(f"Retencao fora do limite: {key}")
+        clean_retention[key] = value
+    if not any(clean_retention.values()):
+        raise AgentError("Configure pelo menos uma retencao maior que zero")
+
+    enabled = bool(job.get("enabled", True))
+    existing = next(
+        (item for item in config.get("jobs", []) if item.get("name") == name), None
+    )
+    now = dt.datetime.now().isoformat(timespec="seconds")
+    new_job = {
+        "name": name,
+        "disk_uuid": disk_uuid,
+        "sources": source_names,
+        "source_paths": source_paths,
+        "excludes": excludes,
+        "schedule": {
+            "frequency": frequency,
+            "time": time_value,
+            "weekday": weekday,
+            "monthday": monthday,
+            "on_calendar": on_calendar,
+            "label": schedule_label,
+        },
+        "retention": clean_retention,
+        "enabled": enabled,
+        "created_at": (existing or {}).get("created_at") or now,
+        "updated_at": now,
+    }
+    config["jobs"] = [
+        item for item in config.get("jobs", []) if item.get("name") != name
+    ] + [new_job]
+    _save_backup_config(config)
+    try:
+        _apply_backup_timer(name, enabled, on_calendar)
+    except AgentError:
+        new_job["enabled"] = False
+        config["jobs"] = [
+            item for item in config.get("jobs", []) if item.get("name") != name
+        ] + [new_job]
+        _save_backup_config(config)
+        raise
+    log(f"BACKUP_JOB_SAVE {name} {on_calendar} enabled={enabled}")
+    return new_job
+
+
+def op_backup_job_toggle(name: str, enabled: bool, **_):
+    config = _load_backup_config()
+    job = next(
+        (item for item in config.get("jobs", []) if item.get("name") == name), None
+    )
+    if job is None:
+        raise AgentError("Job nao encontrado")
+    job["enabled"] = bool(enabled)
+    job["updated_at"] = dt.datetime.now().isoformat(timespec="seconds")
+    _save_backup_config(config)
+    try:
+        _apply_backup_timer(
+            name, job["enabled"], job.get("schedule", {}).get("on_calendar", "")
+        )
+    except AgentError:
+        job["enabled"] = False
+        _save_backup_config(config)
+        raise
+    log(f"BACKUP_JOB_TOGGLE {name} enabled={job['enabled']}")
+    return job
+
+
+def op_backup_job_delete(name: str, **_):
+    config = _load_backup_config()
+    job = next(
+        (item for item in config.get("jobs", []) if item.get("name") == name), None
+    )
+    if job is None:
+        raise AgentError("Job nao encontrado")
+    config["jobs"] = [
+        item for item in config.get("jobs", []) if item.get("name") != name
+    ]
+    _save_backup_config(config)
+    _apply_backup_timer(name, False, "")
+    try:
+        (Path(BACKUP_STATUS_DIR) / f"{name}.json").unlink(missing_ok=True)
+    except OSError:
+        pass
+    log(f"BACKUP_JOB_DELETE {name}")
+    return {"name": name}
+
+
+def op_backup_job_run(name: str, **_):
+    config = _load_backup_config()
+    job = next(
+        (item for item in config.get("jobs", []) if item.get("name") == name), None
+    )
+    if job is None:
+        raise AgentError("Job nao encontrado")
+    run(
+        [
+            "systemctl",
+            "start",
+            "--no-block",
+            f"homelab-restic-backup@{name}.service",
+        ],
+        timeout=30,
+    )
+    log(f"BACKUP_JOB_RUN {name}")
+    return {"name": name, "started": True}
+
+
 OPS = {
     "ping": op_ping,
     "df": op_df,
@@ -1194,6 +1496,10 @@ OPS = {
     "backup_overview": op_backup_overview,
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,
+    "backup_job_save": op_backup_job_save,
+    "backup_job_toggle": op_backup_job_toggle,
+    "backup_job_delete": op_backup_job_delete,
+    "backup_job_run": op_backup_job_run,
 }
 
 

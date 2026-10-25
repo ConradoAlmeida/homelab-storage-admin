@@ -10,9 +10,9 @@ fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "==> Checando dependencias"
-for cmd in btrfs pdbedit smbpasswd smbcontrol testparm; do
+for cmd in btrfs pdbedit smbpasswd smbcontrol testparm restic parted mkfs.ext4; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin btrfs-progs" >&2
+    echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin btrfs-progs restic parted e2fsprogs" >&2
     exit 1
   fi
 done
@@ -24,15 +24,19 @@ fi
 echo "==> Instalando binarios"
 install -m 0755 "$HERE/agent/homelab-storage-agent.py" /usr/local/sbin/homelab-storage-agent
 install -m 0755 "$HERE/agent/homelab-storage-snapshot.py" /usr/local/sbin/homelab-storage-snapshot
+install -m 0755 "$HERE/agent/homelab-restic-backup.py" /usr/local/sbin/homelab-restic-backup
 
 echo "==> Instalando unidades systemd"
 install -m 0644 "$HERE/agent/homelab-storage-agent.service" /etc/systemd/system/homelab-storage-agent.service
 install -m 0644 "$HERE/agent/homelab-storage-snapshot.service" /etc/systemd/system/homelab-storage-snapshot.service
 install -m 0644 "$HERE/agent/homelab-storage-snapshot.timer" /etc/systemd/system/homelab-storage-snapshot.timer
+install -m 0644 "$HERE/agent/homelab-restic-backup@.service" /etc/systemd/system/homelab-restic-backup@.service
 
 echo "==> Configuracao"
-mkdir -p /etc/homelab-storage-agent
+mkdir -p /etc/homelab-storage-agent /etc/homelab-backup/status /etc/homelab-backup/secrets /var/log/homelab-restic
 chmod 0755 /etc/homelab-storage-agent
+chmod 0700 /etc/homelab-backup /etc/homelab-backup/status /etc/homelab-backup/secrets
+chmod 0750 /var/log/homelab-restic
 
 systemctl daemon-reload
 systemctl enable homelab-storage-agent

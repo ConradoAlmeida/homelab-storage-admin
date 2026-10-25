@@ -130,5 +130,17 @@ class AgentClient:
     def backup_secret(self, uuid):
         return self.call("backup_secret", timeout=30, uuid=uuid)
 
+    def backup_job_save(self, job):
+        return self.call("backup_job_save", timeout=60, job=job)
+
+    def backup_job_toggle(self, name, enabled):
+        return self.call("backup_job_toggle", timeout=60, name=name, enabled=enabled)
+
+    def backup_job_delete(self, name):
+        return self.call("backup_job_delete", timeout=60, name=name)
+
+    def backup_job_run(self, name):
+        return self.call("backup_job_run", timeout=30, name=name)
+
 
 agent = AgentClient()

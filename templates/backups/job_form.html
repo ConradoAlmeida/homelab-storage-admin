@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{% if job %}Editar job{% else %}Novo job{% endif %} - Backups{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+  <div>
+    <h1 style="margin-bottom:4px">{% if job %}Editar job {{ job.name }}{% else %}Novo job de backup{% endif %}</h1>
+    <p class="muted">Fontes, periodicidade, retenção e ativação são aplicadas ao salvar.</p>
+  </div>
+  <a class="btn small" href="{% url 'backup_index' %}">← Voltar</a>
+</div>
+
+{% if error %}<div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>{% endif %}
+{% if shares_error %}<div class="alert danger"><strong>Shares indisponíveis</strong><p class="muted">{{ shares_error }}</p></div>{% endif %}
+{% if not disks %}<div class="alert danger"><strong>Nenhum disco configurado.</strong> Prepare um disco de backup primeiro.</div>{% endif %}
+
+<form method="post" class="card" style="max-width:820px">
+  {% csrf_token %}
+
+  <label for="name">Nome do job</label>
+  <input id="name" name="name" value="{{ form.name }}" maxlength="32" pattern="[a-z0-9][a-z0-9_-]{0,31}" {% if job %}readonly{% endif %} required>
+  <p class="muted" style="font-size:12px">Use minúsculas, números, _ ou -. Não é possível renomear um job existente.</p>
+
+  <label for="disk_uuid">Disco de destino</label>
+  <select id="disk_uuid" name="disk_uuid" required>
+    {% for disk in disks %}
+      <option value="{{ disk.uuid }}" {% if disk.uuid == form.disk_uuid %}selected{% endif %}>
+        {{ disk.label|default:disk.path }} — {{ disk.path }} — {{ disk.repo|default:"repo não registrado" }}
+      </option>
+    {% empty %}
+      <option value="">Nenhum disco configurado</option>
+    {% endfor %}
+  </select>
+
+  <label style="margin-top:16px">Fontes (shares)</label>
+  <div class="card" style="box-shadow:none;margin:6px 0 12px;padding:10px 12px">
+    {% for share in shares %}
+      <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:5px 0">
+        <input type="checkbox" name="sources" value="{{ share.name }}" {% if share.name in form.sources %}checked{% endif %} style="width:auto;margin-top:3px">
+        <span><strong>{{ share.name }}</strong><span class="muted" style="font-size:12px"> · {{ share.path }}</span></span>
+      </label>
+    {% empty %}
+      <span class="muted">Nenhum share encontrado.</span>
+    {% endfor %}
+  </div>
+
+  <label for="excludes">Exclusões (uma por linha)</label>
+  <textarea id="excludes" name="excludes" rows="4" placeholder="*.tmp&#10;@eaDir">{{ form.excludes_text }}</textarea>
+  <p class="muted" style="font-size:12px">Padrões passados ao restic com <code>--exclude</code>. Deixe vazio se não precisar.</p>
+
+  <h2 style="margin-top:22px">Periodicidade</h2>
+  <label for="frequency">Frequência</label>
+  <select id="frequency" name="frequency">
+    <option value="daily" {% if form.frequency == "daily" %}selected{% endif %}>Diário</option>
+    <option value="weekly" {% if form.frequency == "weekly" %}selected{% endif %}>Semanal</option>
+    <option value="monthly" {% if form.frequency == "monthly" %}selected{% endif %}>Mensal</option>
+  </select>
+
+  <label for="time">Horário</label>
+  <input id="time" name="time" type="time" value="{{ form.time }}" required>
+
+  <label for="weekday">Dia da semana (semanal)</label>
+  <select id="weekday" name="weekday">
+    {% for value, label in weekdays %}
+      <option value="{{ value }}" {% if form.weekday|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="monthday">Dia do mês (mensal)</label>
+  <input id="monthday" name="monthday" type="number" min="1" max="28" value="{{ form.monthday }}">
+  <p class="muted" style="font-size:12px">Semanal usa o dia da semana; mensal usa o dia do mês (1–28). O timer systemd é atualizado ao salvar.</p>
+
+  <h2 style="margin-top:22px">Retenção</h2>
+  <div class="metric-grid">
+    <div class="metric"><span>Diários</span><input name="keep_daily" type="number" min="0" max="365" value="{{ form.retention.daily }}"></div>
+    <div class="metric"><span>Semanais</span><input name="keep_weekly" type="number" min="0" max="365" value="{{ form.retention.weekly }}"></div>
+    <div class="metric"><span>Mensais</span><input name="keep_monthly" type="number" min="0" max="365" value="{{ form.retention.monthly }}"></div>
+  </div>
+  <p class="muted" style="font-size:12px">Pelo menos uma retenção deve ser maior que zero. O restic aplica <code>forget --prune</code> após o backup.</p>
+
+  <label style="display:flex;gap:8px;align-items:center;margin-top:16px">
+    <input type="checkbox" name="enabled" {% if form.enabled %}checked{% endif %} style="width:auto">
+    <span>Job ativo (cria/atualiza o timer systemd)</span>
+  </label>
+
+  <div style="margin-top:18px">
+    <button class="btn" type="submit">Salvar job</button>
+    <a class="btn small" href="{% url 'backup_index' %}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

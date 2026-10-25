@@ -1,12 +1,23 @@
 import re
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from core.agent import AgentError, agent
 from core.models import AuditLog
 
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
+WEEKDAYS = [
+    (0, "Segunda"),
+    (1, "Terça"),
+    (2, "Quarta"),
+    (3, "Quinta"),
+    (4, "Sexta"),
+    (5, "Sábado"),
+    (6, "Domingo"),
+]
 
 
 def _default_label(disk: dict) -> str:
@@ -150,3 +161,213 @@ def credentials(request):
                     ip=request.META.get("REMOTE_ADDR"),
                 )
     return render(request, "backups/credentials.html", context)
+
+
+def _default_job_form(overview: dict) -> dict:
+    disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
+    return {
+        "name": "",
+        "disk_uuid": disks[0]["uuid"] if disks else "",
+        "sources": [],
+        "excludes_text": "",
+        "frequency": "daily",
+        "time": "03:30",
+        "weekday": 0,
+        "monthday": 1,
+        "retention": {"daily": 7, "weekly": 4, "monthly": 6},
+        "enabled": True,
+    }
+
+
+def _job_form_from_job(job: dict) -> dict:
+    schedule = job.get("schedule") or {}
+    retention = job.get("retention") or {}
+    return {
+        "name": job.get("name", ""),
+        "disk_uuid": job.get("disk_uuid", ""),
+        "sources": job.get("sources") or [],
+        "excludes_text": "\n".join(job.get("excludes") or []),
+        "frequency": schedule.get("frequency", "daily"),
+        "time": schedule.get("time", "03:30"),
+        "weekday": schedule.get("weekday", 0) or 0,
+        "monthday": schedule.get("monthday", 1) or 1,
+        "retention": {
+            "daily": retention.get("daily", 0),
+            "weekly": retention.get("weekly", 0),
+            "monthly": retention.get("monthly", 0),
+        },
+        "enabled": bool(job.get("enabled", True)),
+    }
+
+
+@login_required
+def job_form(request, name=None):
+    try:
+        overview = agent.backup_overview()
+    except AgentError as exc:
+        return render(
+            request,
+            "backups/job_form.html",
+            {"overview": None, "error": str(exc), "disks": [], "shares": []},
+        )
+    try:
+        shares = agent.list_shares(include_size=False)
+    except AgentError as exc:
+        shares = []
+        shares_error = str(exc)
+    else:
+        shares_error = None
+    disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
+
+    job = None
+    if name:
+        job = next(
+            (item for item in overview.get("jobs", []) if item.get("name") == name),
+            None,
+        )
+        if job is None:
+            messages.error(request, f"Job não encontrado: {name}")
+            return redirect("backup_index")
+
+    error = None
+    if request.method == "POST":
+        form_name = (
+            job.get("name") if job else request.POST.get("name") or ""
+        ).strip().lower()
+        form = {
+            "name": form_name,
+            "disk_uuid": request.POST.get("disk_uuid") or "",
+            "sources": request.POST.getlist("sources"),
+            "excludes_text": request.POST.get("excludes") or "",
+            "frequency": request.POST.get("frequency") or "daily",
+            "time": request.POST.get("time") or "03:30",
+            "weekday": request.POST.get("weekday") or "0",
+            "monthday": request.POST.get("monthday") or "1",
+            "retention": {
+                "daily": request.POST.get("keep_daily") or "0",
+                "weekly": request.POST.get("keep_weekly") or "0",
+                "monthly": request.POST.get("keep_monthly") or "0",
+            },
+            "enabled": request.POST.get("enabled") == "on",
+        }
+        if not form_name:
+            error = "Informe o nome do job."
+        elif job is None and any(
+            item.get("name") == form_name for item in overview.get("jobs", [])
+        ):
+            error = "Já existe um job com esse nome; edite o existente."
+        elif not disks:
+            error = "Nenhum disco de backup configurado. Prepare um disco primeiro."
+        elif not shares:
+            error = "Nenhum share encontrado."
+        else:
+            payload = {
+                "name": form_name,
+                "disk_uuid": form["disk_uuid"],
+                "sources": form["sources"],
+                "excludes": form["excludes_text"].splitlines(),
+                "schedule": {
+                    "frequency": form["frequency"],
+                    "time": form["time"],
+                    "weekday": form["weekday"],
+                    "monthday": form["monthday"],
+                },
+                "retention": form["retention"],
+                "enabled": form["enabled"],
+            }
+            try:
+                result = agent.backup_job_save(payload)
+            except AgentError as exc:
+                error = str(exc)
+            else:
+                AuditLog.objects.create(
+                    actor=request.user,
+                    action="backup_job_save",
+                    target=result.get("name", form_name),
+                    detail=(
+                        f"enabled={result.get('enabled')} "
+                        f"schedule={result.get('schedule', {}).get('label', '')}"
+                    ),
+                    ip=request.META.get("REMOTE_ADDR"),
+                )
+                messages.success(request, f"Job {form_name} salvo.")
+                return redirect("backup_index")
+    else:
+        form = _job_form_from_job(job) if job else _default_job_form(overview)
+
+    return render(
+        request,
+        "backups/job_form.html",
+        {
+            "overview": overview,
+            "disks": disks,
+            "shares": shares,
+            "shares_error": shares_error,
+            "weekdays": WEEKDAYS,
+            "job": job,
+            "form": form,
+            "error": error,
+        },
+    )
+
+
+@login_required
+@require_POST
+def job_run(request, name):
+    try:
+        agent.backup_job_run(name)
+    except AgentError as exc:
+        messages.error(request, str(exc))
+    else:
+        AuditLog.objects.create(
+            actor=request.user,
+            action="backup_job_run",
+            target=name,
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(
+            request, f"Backup {name} iniciado. Atualize a página para ver o status."
+        )
+    return redirect("backup_index")
+
+
+@login_required
+@require_POST
+def job_toggle(request, name):
+    enabled = request.POST.get("enabled") == "1"
+    try:
+        agent.backup_job_toggle(name, enabled)
+    except AgentError as exc:
+        messages.error(request, str(exc))
+    else:
+        AuditLog.objects.create(
+            actor=request.user,
+            action="backup_job_toggle",
+            target=name,
+            detail=f"enabled={enabled}",
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(
+            request, f"Job {name} {'ativado' if enabled else 'desativado'}."
+        )
+    return redirect("backup_index")
+
+
+@login_required
+@require_POST
+def job_delete(request, name):
+    try:
+        agent.backup_job_delete(name)
+    except AgentError as exc:
+        messages.error(request, str(exc))
+    else:
+        AuditLog.objects.create(
+            actor=request.user,
+            action="backup_job_delete",
+            target=name,
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(
+            request, f"Job {name} excluído. O repositório restic foi mantido."
+        )
+    return redirect("backup_index")
