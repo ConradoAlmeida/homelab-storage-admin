@@ -20,6 +20,7 @@ em disco.
 | Ativar/desativar acesso | Usuários → botão Ativar/Desativar |
 | Criar share no `smb.conf` | Shares → Novo share |
 | Navegar histórico/snapshots | Histórico (`/history/`) — read-only |
+| Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
@@ -58,6 +59,8 @@ Ele só pede operações conhecidas ao agente, que valida cada argumento.
 
 - `/mnt/nas` é o subvolume `@data` do array (RAID1 degradado + Btrfs).
 - O container monta `/mnt/nas` **read-only** para o navegador de histórico; escritas continuam só pelo agente root.
+- O app **não** acessa `/dev` nem roda `smartctl`/`hdparm`: o agente root expõe
+  `storage_overview`, `storage_smart` e `storage_smart_test` via socket.
 - O banco SQLite e os dados do app ficam em
   `/mnt/nas/apps/homelab-storage-admin/data` (bind mount), fora do microSD.
 - Cada share que terá snapshots é um **subvolume Btrfs** próprio:
@@ -212,6 +215,21 @@ montado; se o mount cair, ele aborta em vez de escrever no microSD.
 O container precisa de `/mnt/nas` montado read-only. O app não escreve nos dados
 por esse caminho; qualquer escrita continua no agente root.
 
+## 6.5 Discos e SMART
+
+`/storage/` mostra:
+- temperatura da CPU, fans/PWM (quando expostos), load e RAM;
+- cada disco (`sda`, `sdb`, `mmcblk0`), modelo, serial, tamanho, montagem e estado;
+- temperatura **somente se o disco já estiver ativo**;
+- RAID (`/proc/mdstat`, `mdadm --detail`) e Btrfs (usage, device stats, scrub).
+
+Regras de standby:
+- o agente usa `hdparm -C` para o estado e `smartctl -n standby` para temperatura/SMART;
+- se o disco estiver em `standby`/`sleeping`, o comando retorna sem acordar;
+- “Ler SMART” é um POST explícito e também respeita standby;
+- testes **curto/longo** só por botão; o longo pede confirmação e pode demorar horas;
+- a página não inicia teste nem SMART completo sozinha.
+
 ## 7. Samba
 
 O app escreve seções no `/etc/samba/smb.conf`, roda `testparm -s` e recarrega
@@ -278,6 +296,7 @@ homelab-storage-admin/
 ├── config/            # settings Django (env)
 ├── core/              # views, forms, models, cliente do agente
 ├── history/           # navegador read-only de snapshots/versoes
+├── storage/           # temperatura/estado/SMART sob demanda (standby-safe)
 ├── templates/         # UI escura, sem dependências externas
 ├── docker-compose.yml
 ├── install-agent.sh
