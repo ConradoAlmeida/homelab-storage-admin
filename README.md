@@ -229,6 +229,7 @@ Regras de standby:
 - “Ler SMART” é um POST explícito e também respeita standby;
 - testes **curto/longo** só por botão; o longo pede confirmação e pode demorar horas;
 - a página não inicia teste nem SMART completo sozinha.
+- No **Active Cooler oficial**, `0 rpm` com `PWM 0%` significa fan parado; a curva começa por volta de 50 °C. A UI mostra o zero explicitamente, em vez de “—”.
 
 ## 7. Samba
 
