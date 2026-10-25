@@ -161,5 +161,8 @@ class AgentClient:
     def cold_eject(self):
         return self.call("cold_eject", timeout=60)
 
+    def network_metrics(self):
+        return self.call("network_metrics", timeout=15)
+
 
 agent = AgentClient()

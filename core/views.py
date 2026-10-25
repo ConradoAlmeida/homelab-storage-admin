@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
@@ -112,6 +113,15 @@ def dashboard(request):
     context["backups"] = backups
     context["backup_jobs"] = backup_jobs
     return render(request, "dashboard.html", context)
+
+
+@login_required
+def network_metrics(request):
+    try:
+        data = agent.network_metrics()
+    except AgentError as exc:
+        return JsonResponse({"error": str(exc)}, status=503)
+    return JsonResponse(data)
 
 
 @login_required

@@ -1796,6 +1796,110 @@ def op_cold_eject(**_):
     return {"mounted": os.path.ismount(COLD_MOUNT), "mount": COLD_MOUNT}
 
 
+def _read_net_dev() -> dict:
+    data = {}
+    try:
+        lines = Path("/proc/net/dev").read_text().splitlines()[2:]
+    except OSError:
+        return data
+    for line in lines:
+        if ":" not in line:
+            continue
+        name, rest = line.split(":", 1)
+        name = name.strip()
+        fields = rest.split()
+        if name == "lo" or len(fields) < 16:
+            continue
+        try:
+            data[name] = {"rx": int(fields[0]), "tx": int(fields[8])}
+        except ValueError:
+            continue
+    return data
+
+
+def _active_interface(interfaces: list[str]) -> str | None:
+    rc, out, _ = run_optional(["ip", "route", "get", "1.1.1.1"], timeout=5)
+    if rc == 0:
+        match = re.search(r"\bdev\s+(\S+)", out)
+        if match and match.group(1) in interfaces:
+            return match.group(1)
+    return interfaces[0] if interfaces else None
+
+
+def _interface_details(name: str, rates: dict) -> dict:
+    info = {
+        "name": name,
+        "state": "unknown",
+        "speed_mbps": None,
+        "link_rx_mbps": None,
+        "link_tx_mbps": None,
+        "signal_dbm": None,
+        "ssid": None,
+        "mac": None,
+        **rates,
+    }
+    base = Path("/sys/class/net") / name
+    try:
+        info["state"] = (base / "operstate").read_text().strip()
+    except OSError:
+        pass
+    try:
+        info["mac"] = (base / "address").read_text().strip()
+    except OSError:
+        pass
+    try:
+        speed = int((base / "speed").read_text().strip())
+        if speed > 0:
+            info["speed_mbps"] = speed
+    except (OSError, ValueError):
+        pass
+    if name.startswith("wlan"):
+        rc, out, _ = run_optional(["iw", "dev", name, "link"], timeout=5)
+        if rc == 0:
+            ssid = re.search(r"SSID:\s*(.+)", out)
+            signal = re.search(r"signal:\s*(-?\d+)", out)
+            rx = re.search(r"rx bitrate:\s*([\d.]+)", out)
+            tx = re.search(r"tx bitrate:\s*([\d.]+)", out)
+            if ssid:
+                info["ssid"] = ssid.group(1).strip()
+            if signal:
+                info["signal_dbm"] = int(signal.group(1))
+            if rx:
+                info["link_rx_mbps"] = round(float(rx.group(1)), 1)
+            if tx:
+                info["link_tx_mbps"] = round(float(tx.group(1)), 1)
+    return info
+
+
+def op_network_metrics(**_):
+    first = _read_net_dev()
+    started = time.monotonic()
+    time.sleep(0.5)
+    second = _read_net_dev()
+    elapsed = max(0.1, time.monotonic() - started)
+    names = sorted(set(first) & set(second))
+    interfaces = []
+    for name in names:
+        delta_rx = max(0, second[name]["rx"] - first[name]["rx"])
+        delta_tx = max(0, second[name]["tx"] - first[name]["tx"])
+        rates = {
+            "rx_mbps": round(delta_rx * 8 / 1_000_000 / elapsed, 1),
+            "tx_mbps": round(delta_tx * 8 / 1_000_000 / elapsed, 1),
+            "rx_mb_s": round(delta_rx / 1_000_000 / elapsed, 2),
+            "tx_mb_s": round(delta_tx / 1_000_000 / elapsed, 2),
+            "rx_total": second[name]["rx"],
+            "tx_total": second[name]["tx"],
+        }
+        interfaces.append(_interface_details(name, rates))
+    active_name = _active_interface(names)
+    active = next((item for item in interfaces if item["name"] == active_name), None)
+    return {
+        "active": active,
+        "interfaces": interfaces,
+        "sampled_seconds": round(elapsed, 2),
+    }
+
+
 OPS = {
     "ping": op_ping,
     "df": op_df,
@@ -1825,6 +1929,7 @@ OPS = {
     "cold_prepare": op_cold_prepare,
     "cold_copy": op_cold_copy,
     "cold_eject": op_cold_eject,
+    "network_metrics": op_network_metrics,
 }
 
 
