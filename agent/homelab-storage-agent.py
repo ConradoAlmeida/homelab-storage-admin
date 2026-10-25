@@ -18,6 +18,7 @@ import shutil
 import socketserver
 import subprocess
 import sys
+import time
 import traceback
 from pathlib import Path
 
@@ -219,10 +220,29 @@ def _system_info() -> dict:
         pass
 
     load = os.getloadavg()
+    cpu_percent = None
+    try:
+        def cpu_sample() -> tuple[int, int]:
+            fields = Path("/proc/stat").read_text().splitlines()[0].split()[1:]
+            values = [int(value) for value in fields]
+            total = sum(values)
+            idle = values[3] + (values[4] if len(values) > 4 else 0)
+            return total, idle
+
+        total1, idle1 = cpu_sample()
+        time.sleep(0.2)
+        total2, idle2 = cpu_sample()
+        delta_total = total2 - total1
+        delta_idle = idle2 - idle1
+        if delta_total > 0:
+            cpu_percent = round(100 * (delta_total - delta_idle) / delta_total, 1)
+    except (OSError, ValueError, IndexError):
+        pass
     return {
         "zones": zones,
         "fans": fans,
         "load": {"l1": load[0], "l5": load[1], "l15": load[2]},
+        "cpu_percent": cpu_percent,
         "mem_total_kb": mem.get("MemTotal"),
         "mem_available_kb": mem.get("MemAvailable"),
         "mem_total_mb": round(mem["MemTotal"] / 1024) if "MemTotal" in mem else None,

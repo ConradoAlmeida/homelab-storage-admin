@@ -49,7 +49,22 @@
     </div>
   {% endfor %}
   <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px">{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
+  <div class="metric"><span>Uso de CPU</span><strong>{% if storage.system.cpu_percent is not None %}{{ storage.system.cpu_percent }}%{% else %}—{% endif %}</strong></div>
   <div class="metric"><span>RAM disponível</span><strong>{{ storage.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ storage.system.mem_total_mb|default:"—" }} MB</div></div>
+</div>
+
+<h2>Volumes</h2>
+<div class="cards">
+  {% for v in volumes %}
+    <div class="card">
+      <div class="label">{{ v.mount }}</div>
+      <div class="value">{{ v.free|filesizeformat }} livres</div>
+      <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
+      <div class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}"><span style="width: {{ v.percent }}%"></span></div>
+    </div>
+  {% empty %}
+    <div class="empty">Nenhum volume retornado.</div>
+  {% endfor %}
 </div>
 
 <h2>Discos</h2>
@@ -88,20 +103,6 @@
     {% endfor %}
   </tbody>
 </table></div>
-
-<h2>Volumes</h2>
-<div class="cards">
-  {% for v in volumes %}
-    <div class="card">
-      <div class="label">{{ v.mount }}</div>
-      <div class="value">{{ v.free|filesizeformat }} livres</div>
-      <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
-      <div class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}"><span style="width: {{ v.percent }}%"></span></div>
-    </div>
-  {% empty %}
-    <div class="empty">Nenhum volume retornado.</div>
-  {% endfor %}
-</div>
 
 <h2>Backups</h2>
 {% if not backups.restic %}
