@@ -84,7 +84,217 @@ def run(args: list[str], input_text: str | None = None, timeout: int = 60) -> st
     return proc.stdout
 
 
-def validate_user(username: str) -> str:
+def run_optional(args: list[str], timeout: int = 15) -> tuple[int, str, str]:
+    """Executa sem levantar erro; usado para consultas de estado/SMART."""
+    try:
+        proc = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+        return proc.returncode, proc.stdout, proc.stderr
+    except FileNotFoundError as exc:
+        return 127, "", str(exc)
+    except subprocess.TimeoutExpired as exc:
+        return 124, "", f"timeout: {exc}"
+
+
+def _disk_state(device: str) -> str:
+    if not device.startswith("/dev/sd"):
+        return "active"
+    rc, out, _ = run_optional(["hdparm", "-C", device], timeout=5)
+    if rc == 0:
+        match = re.search(r"drive state is:\s*(\S+)", out)
+        if match:
+            return match.group(1)
+    return "unknown"
+
+
+def _smart_summary(device: str) -> dict:
+    rc, out, err = run_optional(
+        ["smartctl", "-n", "standby", "-A", "-j", device], timeout=15
+    )
+    if rc == 2:
+        return {"state": "standby", "skipped": True}
+    if rc != 0:
+        return {"state": "unavailable", "error": (err or out).strip()[:300]}
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError:
+        return {"state": "unavailable", "error": "resposta smartctl invalida"}
+
+    attributes = {}
+    for item in data.get("ata_smart_attributes", {}).get("table", []):
+        attributes[str(item.get("id"))] = {
+            "name": item.get("name"),
+            "value": item.get("value"),
+            "worst": item.get("worst"),
+            "thresh": item.get("thresh"),
+            "raw": (item.get("raw") or {}).get("value"),
+        }
+
+    passed = (data.get("smart_status") or {}).get("passed")
+    return {
+        "state": "active",
+        "model": data.get("model_name"),
+        "serial": data.get("serial_number"),
+        "temperature": (data.get("temperature") or {}).get("current"),
+        "health": "PASSED" if passed else "FAILED",
+        "power_on_hours": (data.get("power_on_time") or {}).get("hours"),
+        "attributes": attributes,
+    }
+
+
+def _collect_mounts(device: dict) -> list[str]:
+    mounts = [m for m in (device.get("mountpoints") or []) if m]
+    for child in device.get("children") or []:
+        mounts.extend(_collect_mounts(child))
+    return mounts
+
+
+def _system_info() -> dict:
+    zones = []
+    for zone in sorted(Path("/sys/class/thermal").glob("thermal_zone*")):
+        try:
+            kind = (zone / "type").read_text().strip()
+            temp = int((zone / "temp").read_text().strip()) / 1000
+        except (OSError, ValueError):
+            continue
+        zones.append({"type": kind, "temp": temp})
+
+    fans = []
+    for hw in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
+        name = ""
+        try:
+            name = (hw / "name").read_text().strip()
+        except OSError:
+            pass
+        fan = None
+        pwm = None
+        try:
+            fan = int((hw / "fan1_input").read_text().strip())
+        except (OSError, ValueError):
+            pass
+        try:
+            pwm = int((hw / "pwm1").read_text().strip())
+        except (OSError, ValueError):
+            pass
+        if fan is not None or pwm is not None:
+            fans.append({"name": name, "rpm": fan, "pwm": pwm})
+
+    mem = {}
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            key, _, value = line.partition(":")
+            if key in ("MemTotal", "MemAvailable"):
+                mem[key] = int(value.strip().split()[0])
+    except (OSError, ValueError):
+        pass
+
+    load = os.getloadavg()
+    return {
+        "zones": zones,
+        "fans": fans,
+        "load": {"l1": load[0], "l5": load[1], "l15": load[2]},
+        "mem_total_kb": mem.get("MemTotal"),
+        "mem_available_kb": mem.get("MemAvailable"),
+        "mem_total_mb": round(mem["MemTotal"] / 1024) if "MemTotal" in mem else None,
+        "mem_available_mb": round(mem["MemAvailable"] / 1024)
+        if "MemAvailable" in mem
+        else None,
+    }
+
+
+def op_storage_overview(**_):
+    raw = run(
+        ["lsblk", "-J", "-o", "NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL,SERIAL,TRAN"]
+    )
+    data = json.loads(raw)
+    disks = []
+    for device in data.get("blockdevices", []):
+        name = device.get("name", "")
+        if device.get("type") != "disk" or name.startswith("loop"):
+            continue
+        path = f"/dev/{name}"
+        state = _disk_state(path)
+        smart = _smart_summary(path) if name.startswith("sd") else {"state": "unavailable"}
+        disks.append(
+            {
+                "name": name,
+                "path": path,
+                "size": device.get("size"),
+                "model": (device.get("model") or "").strip(),
+                "serial": (device.get("serial") or "").strip(),
+                "tran": device.get("tran"),
+                "fstype": device.get("fstype"),
+                "mounts": _collect_mounts(device),
+                "state": state,
+                "smart": smart,
+            }
+        )
+
+    raid = {}
+    try:
+        raid["mdstat"] = Path("/proc/mdstat").read_text()
+    except OSError:
+        raid["mdstat"] = ""
+    rc, out, _ = run_optional(["mdadm", "--detail", "/dev/md0"], timeout=10)
+    raid["detail"] = out if rc == 0 else ""
+
+    btrfs = {}
+    rc, out, _ = run_optional(["btrfs", "filesystem", "usage", "--raw", "/mnt/nas"], timeout=15)
+    btrfs["usage"] = out if rc == 0 else ""
+    rc, out, _ = run_optional(["btrfs", "device", "stats", "/mnt/nas"], timeout=15)
+    btrfs["stats"] = out if rc == 0 else ""
+    rc, out, _ = run_optional(["btrfs", "scrub", "status", "-d", "/mnt/nas"], timeout=15)
+    btrfs["scrub"] = out if rc == 0 else ""
+
+    return {
+        "system": _system_info(),
+        "disks": disks,
+        "raid": raid,
+        "btrfs": btrfs,
+    }
+
+
+def op_storage_smart(device: str, **_):
+    if not re.match(r"^/dev/sd[a-z]$", device or ""):
+        raise AgentError("Dispositivo invalido")
+    if not os.path.exists(device):
+        raise AgentError(f"Dispositivo nao encontrado: {device}")
+    state = _disk_state(device)
+    if state in ("standby", "sleeping"):
+        return {
+            "device": device,
+            "state": state,
+            "skipped": True,
+            "message": "Disco em standby; nao vou acordar para ler SMART",
+        }
+    data = _smart_summary(device)
+    data["device"] = device
+    data["state"] = state
+    return data
+
+
+def op_storage_smart_test(device: str, kind: str = "short", **_):
+    if not re.match(r"^/dev/sd[a-z]$", device or ""):
+        raise AgentError("Dispositivo invalido")
+    if kind not in ("short", "long"):
+        raise AgentError("Tipo de teste invalido (short/long)")
+    if not os.path.exists(device):
+        raise AgentError(f"Dispositivo nao encontrado: {device}")
+    state = _disk_state(device)
+    if state in ("standby", "sleeping"):
+        raise AgentError("Disco em standby; nao vou acordar para iniciar teste SMART")
+    rc, out, err = run_optional(["smartctl", "-t", kind, device], timeout=30)
+    if rc != 0:
+        raise AgentError((err or out).strip()[:500] or "smartctl falhou")
+    return {"device": device, "kind": kind, "started": True, "output": out.strip()}
+
+
+
     if not USER_RE.match(username or ""):
         raise AgentError("Usuario invalido (use minusculas, 3-32: a-z 0-9 . _ -)")
     return username
@@ -629,6 +839,9 @@ OPS = {
     "snapshot_list": op_snapshot_list,
     "snapshot_create": op_snapshot_create,
     "snapshot_delete": op_snapshot_delete,
+    "storage_overview": op_storage_overview,
+    "storage_smart": op_storage_smart,
+    "storage_smart_test": op_storage_smart_test,
 }
 
 

@@ -104,5 +104,15 @@ class AgentClient:
     def snapshot_delete(self, share, name):
         return self.call("snapshot_delete", share=share, name=name)
 
+    def storage_overview(self):
+        # hdparm/smartctl podem demorar alguns segundos por disco
+        return self.call("storage_overview", timeout=90)
+
+    def storage_smart(self, device):
+        return self.call("storage_smart", timeout=60, device=device)
+
+    def storage_smart_test(self, device, kind="short"):
+        return self.call("storage_smart_test", timeout=90, device=device, kind=kind)
+
 
 agent = AgentClient()

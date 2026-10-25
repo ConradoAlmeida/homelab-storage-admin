@@ -77,6 +77,19 @@
       .history-shell { grid-template-columns:1fr; }
       .history-sidebar { position:static; }
     }
+    .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:10px; margin:12px 0 18px; }
+    .metric { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+    .metric span { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+    .metric strong { font-size:19px; font-weight:650; }
+    .pre { background:#070b12; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12px; line-height:1.45; color:#cbd5e1; max-height:340px; }
+    .mono { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .disk-actions form { display:inline; }
+    .state-standby { color:var(--warn); }
+    .state-ok { color:var(--ok); }
+    .state-bad { color:var(--bad); }
+    details.card { padding:0; overflow:hidden; }
+    details.card summary { cursor:pointer; padding:14px 18px; color:var(--txt); }
+    details.card .pre { margin:0 14px 14px; }
   </style>
 </head>
 <body>
@@ -88,6 +101,7 @@
       <a href="{% url 'shares' %}">Shares</a>
       <a href="{% url 'snapshots' %}">Snapshots</a>
       <a href="{% url 'history_index' %}">Histórico</a>
+      <a href="{% url 'storage_index' %}">Discos</a>
     </nav>
     <div class="user">
       <span>{{ request.user.username }}</span>
