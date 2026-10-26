@@ -53,6 +53,13 @@ def test_unit_uses_host_env_and_preserves_socket_name():
     assert "Environment=STORAGE_ROOT" not in text
 
 
+def test_pi_boot_unit_uses_host_env_and_overlay():
+    text = read("deploy/pi/homelab-compose.service")
+    assert "/etc/homelab-storage-admin/host.env" in text
+    assert 'COMPOSE_OVERLAY' in text
+    assert "homelab-storage-admin" in text
+
+
 def test_deploy_loads_host_env_and_selected_overlay():
     text = read("deploy.sh")
     assert "/etc/homelab-storage-admin/host.env" in text

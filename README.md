@@ -273,6 +273,24 @@ sudo systemctl restart homelab-storage-agent smbd
 
 O rollback não mexe em `/mnt/nas`, snapshots, banco ou dados de share.
 
+### Boot no Pi (`homelab-compose.service`)
+
+A unidade de boot do Pi é específica do host e fica versionada em
+`deploy/pi/homelab-compose.service`. Ela espera o IP `192.168.0.150` na `wlan0`
+e sobe Pi-hole, o storage-admin, Dockge e Caddy. A linha do storage-admin
+carrega `/etc/homelab-storage-admin/host.env` e usa `COMPOSE_OVERLAY`.
+
+Instalação/atualização:
+
+```bash
+sudo install -m 0644 deploy/pi/homelab-compose.service \
+  /etc/systemd/system/homelab-compose.service
+sudo systemctl daemon-reload
+```
+
+Ela não é instalada pelo `install-agent.sh` porque também inicia stacks de
+terceiros (Pi-hole/Dockge/Caddy), que estão fora do escopo do app.
+
 ### Desenvolvimento local (uv)
 
 O projeto usa **uv** e Python **3.12**; o `uv.lock` é versionado:

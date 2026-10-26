@@ -1,0 +1,14 @@
+[Unit]
+Description=Homelab compose stacks after network and /mnt/nas
+After=docker.service network-online.target mnt-nas.mount
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=300
+ExecStart=/bin/sh -c 'until ip -4 addr show dev wlan0 | grep -q "192.168.0.150"; do sleep 1; done; cd /opt/stacks/pihole && docker compose up -d; cd /opt/stacks/homelab-storage-admin && set -a && . /etc/homelab-storage-admin/host.env && set +a && docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" up -d --force-recreate; cd /opt/dockge && docker compose up -d --force-recreate; cd /opt/stacks/caddy && docker compose up -d --force-recreate'
+
+[Install]
+WantedBy=multi-user.target
