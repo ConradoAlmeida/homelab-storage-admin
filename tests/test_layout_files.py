@@ -56,8 +56,14 @@ def test_unit_uses_host_env_and_preserves_socket_name():
 def test_pi_boot_unit_uses_host_env_and_overlay():
     text = read("deploy/pi/homelab-compose.service")
     assert "/etc/homelab-storage-admin/host.env" in text
-    assert 'COMPOSE_OVERLAY' in text
+    assert "COMPOSE_OVERLAY" in text
     assert "homelab-storage-admin" in text
+
+
+def test_pi_motd_points_to_storage_admin():
+    text = read("deploy/pi/motd")
+    assert "Storage admin:" in text
+    assert "http://homelab.lan:8060/" in text
 
 
 def test_deploy_loads_host_env_and_selected_overlay():

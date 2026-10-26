@@ -291,6 +291,12 @@ sudo systemctl daemon-reload
 Ela não é instalada pelo `install-agent.sh` porque também inicia stacks de
 terceiros (Pi-hole/Dockge/Caddy), que estão fora do escopo do app.
 
+O banner de login do Pi também fica versionado:
+
+```bash
+sudo install -m 0644 deploy/pi/motd /etc/motd.d/cockpit
+```
+
 ### Desenvolvimento local (uv)
 
 O projeto usa **uv** e Python **3.12**; o `uv.lock` é versionado:
