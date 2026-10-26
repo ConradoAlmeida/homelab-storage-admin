@@ -110,6 +110,12 @@ O `deploy.sh` usa o `COMPOSE_OVERLAY` definido no `host.env`
 (`docker-compose.moya.yml`). O bind fica em `127.0.0.1:8060`; publique com o
 proxy que já existe no host.
 
+> **Atenção no moyaserver atual:** a porta `8060` já é usada pelo container
+> `moya-storage-admin`, em `/home/conrado/documents/moya-storage-admin`. Não
+> rode este deploy sem antes decidir: não substituir o app antigo, mudar a
+> porta/nome da stack, ou desativar o antigo. Rodar os dois ao mesmo tempo
+> duplica a gestão de Samba/snapshots.
+
 ### Atalhos de serviços (curadoria por host)
 
 O dashboard **não descobre** serviços e **não faz health check**. Ele mostra
