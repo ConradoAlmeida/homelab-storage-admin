@@ -536,6 +536,11 @@ O `BIND_ADDR` continua `192.168.0.150`: o `cloudflared` roda no próprio Pi e
 conecta em `http://192.168.0.150:8060` por dentro. Nenhum bind novo e nenhuma
 porta publicada no roteador.
 
+**No moyaserver** o perfil é outro: o bind é `127.0.0.1:8060` e quem publica é o
+Caddy local. Se você montar túnel lá também, o `ingress` aponta para
+`http://127.0.0.1:8060` (ou para o Caddy), nunca para o IP da LAN do Pi. Nada
+nesta seção muda o deploy do moya.
+
 ### Cloudflare Tunnel (painel e apps)
 
 Pré-requisito: a zona do domínio precisa estar na Cloudflare (nameservers
