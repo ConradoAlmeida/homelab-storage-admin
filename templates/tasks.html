@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Tarefas do host - Homelab Storage{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between; margin-bottom:18px">
+  <div>
+    <h1 style="margin-bottom:4px">Tarefas do host</h1>
+    <p class="muted">Operações longas executadas pelo agente, com log e status.</p>
+  </div>
+  <a class="btn primary" href="{% url 'task_create' %}">Nova tarefa</a>
+</div>
+
+{% if agent_error %}
+  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
+{% elif tasks %}
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Tarefa</th><th>Tipo</th><th>Origem → destino</th><th>Status</th><th>Início</th><th></th></tr></thead>
+    <tbody>
+      {% for task in tasks %}
+        <tr>
+          <td class="mono">{{ task.id }}</td>
+          <td>{{ task.kind }}</td>
+          <td class="muted">{{ task.source }} → {{ task.dest }}</td>
+          <td>
+            {% if task.status == 'running' %}<span class="badge live">rodando</span>
+            {% elif task.status == 'success' %}<span class="state-ok">success</span>
+            {% elif task.status == 'cancelled' %}<span class="state-standby">cancelada</span>
+            {% else %}<span class="state-bad">{{ task.status }}</span>{% endif %}
+          </td>
+          <td class="muted">{{ task.started_at }}</td>
+          <td class="file-actions"><a class="btn small" href="{% url 'task_detail' task.id %}">Detalhes</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+{% else %}
+  <div class="empty">Nenhuma tarefa registrada.</div>
+{% endif %}
+{% endblock %}

@@ -175,6 +175,7 @@
       {% if capabilities.restic %}
         <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
       {% endif %}
+      <a href="{% url 'tasks' %}" class="{% if '/tarefas/' in request.path %}active{% endif %}">Tarefas</a>
     </nav>
     <div class="user">
       {% if request.user.is_staff %}

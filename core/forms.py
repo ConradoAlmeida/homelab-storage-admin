@@ -58,6 +58,40 @@ class GroupsForm(forms.Form):
             self.initial["groups"] = initial_groups
 
 
+class TaskCreateForm(forms.Form):
+    source = forms.CharField(
+        label="Origem",
+        max_length=255,
+        help_text="Diretorio de origem (somente leitura).",
+    )
+    dest = forms.CharField(
+        label="Destino",
+        max_length=255,
+        help_text="Diretorio de destino para comparar por checksum.",
+    )
+
+    def _clean_dir(self, value):
+        path = (value or "").strip().rstrip("/")
+        if not path.startswith("/"):
+            raise forms.ValidationError("Use caminho absoluto.")
+        if ".." in path.split("/"):
+            raise forms.ValidationError("Caminho invalido.")
+        prefixes = settings.ALLOWED_PATH_PREFIXES
+        if not prefixes:
+            raise forms.ValidationError("Nenhum caminho permitido configurado.")
+        if not path.startswith(prefixes):
+            raise forms.ValidationError(
+                "Use um caminho permitido: " + ", ".join(prefixes)
+            )
+        return path
+
+    def clean_source(self):
+        return self._clean_dir(self.cleaned_data["source"])
+
+    def clean_dest(self):
+        return self._clean_dir(self.cleaned_data["dest"])
+
+
 class ShareCreateForm(forms.Form):
     name = forms.RegexField(
         regex=r"^[A-Za-z0-9_-]{1,32}$",

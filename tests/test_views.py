@@ -19,6 +19,19 @@ def fake_agent(capabilities=None):
     agent.list_users.return_value = []
     agent.list_groups.return_value = []
     agent.snapshot_usage.return_value = []
+    agent.task_list.return_value = []
+    agent.task_status.return_value = {
+        "id": "20261026T120000-abcd1234",
+        "kind": "checksum",
+        "source": "/mnt/nas/a",
+        "dest": "/mnt/nas/b",
+        "status": "success",
+        "started_at": "2026-10-26T12:00:00",
+        "ended_at": "2026-10-26T12:01:00",
+        "returncode": 0,
+        "log_tail": "",
+    }
+    agent.task_start.return_value = {"id": "20261026T120000-abcd1234"}
     agent.storage_overview.return_value = {
         "system": {
             "zones": [],
@@ -86,6 +99,14 @@ class ViewSmokeTests(TestCase):
     def test_nav_hides_backups_without_restic(self):
         response = self.client.get("/")
         self.assertNotContains(response, 'href="/backups/"')
+
+    def test_tasks_pages_render(self):
+        self.assertEqual(self.client.get("/tarefas/").status_code, 200)
+        self.assertEqual(self.client.get("/tarefas/nova/").status_code, 200)
+        self.assertEqual(
+            self.client.get("/tarefas/20261026T120000-abcd1234/").status_code,
+            200,
+        )
 
     def test_group_create_posts_to_agent_and_audits(self):
         self.fake.create_group.return_value = {"name": "equipe", "gid": 1500}

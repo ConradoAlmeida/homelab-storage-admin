@@ -11,6 +11,7 @@ from .forms import (
     GroupsForm,
     PasswordForm,
     ShareCreateForm,
+    TaskCreateForm,
     UserCreateForm,
 )
 from .hostinfo import disk_role, volume_for
@@ -139,6 +140,58 @@ def share_sizes(request):
             ]
         }
     )
+
+
+@login_required
+def tasks(request):
+    context = {"agent_error": None, "tasks": []}
+    try:
+        context["tasks"] = agent.task_list()
+    except AgentError as exc:
+        context["agent_error"] = str(exc)
+    return render(request, "tasks.html", context)
+
+
+@login_required
+def task_create(request):
+    form = TaskCreateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            task = agent.task_start("checksum", data["source"], data["dest"])
+            _audit(
+                request,
+                "task.checksum",
+                task.get("id", ""),
+                f"{data['source']} -> {data['dest']}",
+            )
+            messages.success(request, "Tarefa de checksum iniciada.")
+            return redirect("task_detail", task_id=task["id"])
+        except AgentError as exc:
+            _error(request, exc)
+    return render(request, "task_form.html", {"form": form})
+
+
+@login_required
+def task_detail(request, task_id):
+    try:
+        task = agent.task_status(task_id)
+    except AgentError as exc:
+        messages.error(request, str(exc))
+        return redirect("tasks")
+    return render(request, "task_detail.html", {"task": task})
+
+
+@login_required
+@require_POST
+def task_cancel(request, task_id):
+    try:
+        agent.task_cancel(task_id)
+        _audit(request, "task.cancel", task_id)
+        messages.success(request, "Tarefa cancelada.")
+    except AgentError as exc:
+        _error(request, exc)
+    return redirect("task_detail", task_id=task_id)
 
 
 @login_required
