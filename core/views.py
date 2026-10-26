@@ -41,8 +41,8 @@ def dashboard(request):
     try:
         data = agent.df()
         context["volumes"] = data.get("volumes", [])
-        context["shares"] = agent.list_shares(include_size=True)
-        context["snapshots"] = agent.snapshot_usage()
+        context["shares"] = agent.list_shares(include_size=False)
+        context["snapshots"] = agent.snapshot_usage(include_size=False)
         storage = agent.storage_overview()
         backups = agent.backup_overview()
     except AgentError as exc:
@@ -111,6 +111,28 @@ def network_metrics(request):
     except AgentError as exc:
         return JsonResponse({"error": str(exc)}, status=503)
     return JsonResponse(data)
+
+
+@login_required
+def share_sizes(request):
+    """Tamanhos dos shares carregados depois do render do dashboard."""
+    try:
+        shares = agent.list_shares(include_size=True)
+    except AgentError as exc:
+        return JsonResponse({"error": str(exc)}, status=503)
+    return JsonResponse(
+        {
+            "shares": [
+                {
+                    "name": item.get("name"),
+                    "size": item.get("size"),
+                    "size_snapshots": item.get("size_snapshots"),
+                    "size_total": item.get("size_total"),
+                }
+                for item in shares
+            ]
+        }
+    )
 
 
 @login_required

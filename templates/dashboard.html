@@ -112,6 +112,45 @@
 })();
 </script>
 
+<script>
+(function () {
+  const endpoint = "{% url 'share_sizes' %}";
+  function fmtBytes(bytes) {
+    if (bytes === null || bytes === undefined) return "—";
+    let value = Number(bytes);
+    if (!Number.isFinite(value)) return "—";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let index = 0;
+    while (value >= 1024 && index < units.length - 1) { value /= 1024; index += 1; }
+    return value.toFixed(index > 1 ? 1 : 0) + " " + units[index];
+  }
+  async function loadSizes() {
+    try {
+      const response = await fetch(endpoint, {
+        headers: {"Accept": "application/json"},
+        cache: "no-store"
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const byName = new Map((data.shares || []).map((item) => [item.name, item]));
+      document.querySelectorAll("tr[data-share]").forEach((row) => {
+        const item = byName.get(row.dataset.share);
+        if (!item) return;
+        const size = row.querySelector("[data-size]");
+        const snapSize = row.querySelector("[data-snap-size]");
+        const total = row.querySelector("[data-total] strong");
+        if (size) size.textContent = fmtBytes(item.size);
+        if (snapSize) snapSize.textContent = fmtBytes(item.size_snapshots);
+        if (total) total.textContent = fmtBytes(item.size_total);
+      });
+    } catch (error) {
+      // Mantem os placeholders; o dashboard continua utilizavel.
+    }
+  }
+  loadSizes();
+})();
+</script>
+
 <h2>Volumes</h2>
 <div class="cards">
   {% for v in volumes %}
@@ -210,12 +249,12 @@
     <thead><tr><th>Share</th><th>Backend</th><th>Dados</th><th>Extra snapshots</th><th>Total</th><th>Snapshots</th><th></th></tr></thead>
     <tbody>
       {% for s in shares %}
-        <tr>
+        <tr data-share="{{ s.name }}">
           <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.read_only %} <span class="tag">RO</span>{% endif %}</td>
           <td class="muted">{{ s.backend|default:"—" }}</td>
-          <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
-          <td class="muted">{% if s.size_snapshots != None %}{{ s.size_snapshots|filesizeformat }}{% else %}—{% endif %}</td>
-          <td>{% if s.size_total != None %}<strong>{{ s.size_total|filesizeformat }}</strong>{% else %}—{% endif %}</td>
+          <td class="muted" data-size>—</td>
+          <td class="muted" data-snap-size>—</td>
+          <td data-total><strong>—</strong></td>
           <td>{% if s.snapshot_enabled %}<span class="tag ok">{{ s.snapshot_count }} · keep {{ s.snapshot_keep }}</span>{% else %}<span class="tag off">sem snap</span>{% endif %}</td>
           <td class="file-actions"><a class="btn small" href="{% url 'shares' %}">Gerenciar</a></td>
         </tr>

@@ -94,8 +94,9 @@ class AgentClient:
             private=private,
         )
 
-    def snapshot_usage(self):
-        return self.call("snapshot_usage")
+    def snapshot_usage(self, include_size=True):
+        timeout = 180 if include_size else None
+        return self.call("snapshot_usage", timeout=timeout, include_size=include_size)
 
     def snapshot_list(self, share):
         return self.call("snapshot_list", share=share)

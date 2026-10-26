@@ -55,6 +55,7 @@ class ViewSmokeTests(TestCase):
         )
         self.client.force_login(self.user)
         fake = fake_agent()
+        self.fake = fake
         for module in (core_views, storage_views, backup_views, context_processors):
             patcher = patch.object(module, "agent", fake)
             patcher.start()
@@ -66,6 +67,8 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "restic não encontrado")
+        self.fake.list_shares.assert_any_call(include_size=False)
+        self.fake.snapshot_usage.assert_any_call(include_size=False)
 
     def test_storage_renders_without_btrfs_or_smartctl(self):
         response = self.client.get("/storage/")
@@ -80,3 +83,28 @@ class ViewSmokeTests(TestCase):
     def test_nav_hides_backups_without_restic(self):
         response = self.client.get("/")
         self.assertNotContains(response, 'href="/backups/"')
+
+    def test_share_sizes_endpoint_returns_lazy_payload(self):
+        self.fake.list_shares.return_value = [
+            {
+                "name": "docs",
+                "size": 100,
+                "size_snapshots": 20,
+                "size_total": 120,
+            }
+        ]
+        response = self.client.get("/metrics/shares/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "shares": [
+                    {
+                        "name": "docs",
+                        "size": 100,
+                        "size_snapshots": 20,
+                        "size_total": 120,
+                    }
+                ]
+            },
+        )

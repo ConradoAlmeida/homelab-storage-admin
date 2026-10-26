@@ -962,7 +962,7 @@ def _delete_snapshot(path: str, backend: str) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
-def op_snapshot_usage(**_):
+def op_snapshot_usage(include_size=True, **_):
     policy = load_policies()
     result = []
     for share, cfg in sorted(policy.items()):
@@ -990,10 +990,10 @@ def op_snapshot_usage(**_):
         )
         # Nunca varre share desativado.
         names = _snapshot_list(snapdir) if (enabled and snapdir) else []
-        if enabled and snapdir and backend == "btrfs":
+        if include_size and enabled and snapdir and backend == "btrfs":
             # Btrfs compartilha extents entre snapshots; o numero e aproximado.
             total_size = _btrfs_du_bytes(snapdir)
-        elif enabled and snapdir and backend == "rsync":
+        elif include_size and enabled and snapdir and backend == "rsync":
             total_size = _snapshot_extra_bytes(src, snapdir)
         else:
             total_size = 0
