@@ -34,6 +34,9 @@ Ubuntu+Samba via perfil de host.
 | Ver dados e snapshots | Dashboard / Shares |
 | Criar/remover snapshot Btrfs | Snapshots |
 
+O dashboard carrega primeiro o estado básico e busca os tamanhos dos shares
+depois, em `/metrics/shares/`; assim o `du`/`btrfs du` não bloqueia o render.
+
 Fora do escopo: Active Directory (o Samba é `tdbsam` standalone), autoatendimento
 de senha, backup externo (use `restic` no host) e o **Jellyfin**. O Jellyfin tem
 stack, bibliotecas, plugins, transcoding e config próprios em `/opt/stacks/jellyfin`;
