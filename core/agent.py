@@ -67,6 +67,9 @@ class AgentClient:
     def list_groups(self):
         return self.call("list_groups")
 
+    def create_group(self, name, gid=None):
+        return self.call("create_group", name=name, gid=gid)
+
     def create_user(self, username, password, groups=None):
         return self.call("create_user", username=username, password=password, groups=groups or [])
 

@@ -65,6 +65,17 @@ DENY_SNAPSHOT = {
     s.strip() for s in os.environ.get("SNAPSHOT_DENYLIST", "").split(",") if s.strip()
 }
 RESERVED_SHARES = {"global", "homes", "printers", "print$"}
+RESERVED_GROUPS = {
+    "root",
+    "sudo",
+    "adm",
+    "wheel",
+    "users",
+    "nogroup",
+    "nobody",
+    "systemd-journal",
+    "docker",
+}
 BLOCK_DEVICE_RE = re.compile(
     r"^/dev/(?:sd[a-z]+|nvme\d+n\d+|mmcblk\d+|vd[a-z]+|xvd[a-z]+)$"
 )
@@ -553,6 +564,35 @@ def op_df(**_):
 
 def op_list_groups(**_):
     return sorted(name for name, gid in system_groups().items() if gid >= 1000)
+
+
+def op_create_group(name: str, gid: int | None = None, **_):
+    if not GROUP_RE.match(name or ""):
+        raise AgentError("Grupo invalido (minusculas, 2-32: a-z 0-9 . _ -)")
+    if name in RESERVED_GROUPS:
+        raise AgentError(f"Nome de grupo reservado: {name}")
+    if getent_group(name):
+        raise AgentError(f"Grupo ja existe: {name}")
+
+    command = ["groupadd"]
+    if gid is not None:
+        try:
+            gid = int(gid)
+        except (TypeError, ValueError) as exc:
+            raise AgentError("GID invalido") from exc
+        if gid < 1000 or gid > 60000:
+            raise AgentError("GID deve estar entre 1000 e 60000")
+        try:
+            grp.getgrgid(gid)
+            raise AgentError(f"GID ja em uso: {gid}")
+        except KeyError:
+            pass
+        command.extend(["-g", str(gid)])
+    command.append(name)
+
+    run(command)
+    log(f"CREATE_GROUP {name} gid={gid or 'auto'}")
+    return {"name": name, "gid": gid}
 
 
 def op_list_users(**_):
@@ -2111,6 +2151,7 @@ OPS = {
     "df": op_df,
     "list_users": op_list_users,
     "list_groups": op_list_groups,
+    "create_group": op_create_group,
     "create_user": op_create_user,
     "set_password": op_set_password,
     "set_groups": op_set_groups,

@@ -6,7 +6,13 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .agent import AgentError, agent
-from .forms import GroupsForm, PasswordForm, ShareCreateForm, UserCreateForm
+from .forms import (
+    GroupCreateForm,
+    GroupsForm,
+    PasswordForm,
+    ShareCreateForm,
+    UserCreateForm,
+)
 from .hostinfo import disk_role, volume_for
 from .models import AuditLog
 
@@ -164,6 +170,26 @@ def user_create(request):
         except AgentError as exc:
             _error(request, exc)
     return render(request, "user_form.html", {"form": form})
+
+
+@login_required
+def group_create(request):
+    form = GroupCreateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        try:
+            result = agent.create_group(data["name"], data.get("gid"))
+            _audit(
+                request,
+                "group.create",
+                data["name"],
+                f"gid={result.get('gid') or 'auto'}",
+            )
+            messages.success(request, f"Grupo {data['name']} criado.")
+            return redirect("users")
+        except AgentError as exc:
+            _error(request, exc)
+    return render(request, "group_form.html", {"form": form})
 
 
 @login_required

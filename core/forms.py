@@ -25,6 +25,21 @@ class UserCreateForm(forms.Form):
         self.fields["groups"].choices = [(g, g) for g in (group_choices or [])]
 
 
+class GroupCreateForm(forms.Form):
+    name = forms.RegexField(
+        regex=r"^[a-z][a-z0-9._-]{1,31}$",
+        label="Nome do grupo",
+        help_text="minusculas, 2-32 caracteres (a-z, 0-9, . _ -)",
+    )
+    gid = forms.IntegerField(
+        label="GID",
+        min_value=1000,
+        max_value=60000,
+        required=False,
+        help_text="Opcional. Se vazio, o sistema escolhe um GID livre >= 1000.",
+    )
+
+
 class PasswordForm(forms.Form):
     username = forms.CharField(widget=forms.HiddenInput)
     password = forms.CharField(label="Nova senha", widget=forms.PasswordInput, min_length=8)

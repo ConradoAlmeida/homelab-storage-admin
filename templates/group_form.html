@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Novo grupo - Homelab Storage{% endblock %}
+{% block content %}
+<h1>Novo grupo</h1>
+<form class="stack" method="post">
+  {% csrf_token %}
+  {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+      {{ field.errors }}
+    </div>
+  {% endfor %}
+  <div class="row">
+    <button class="btn primary" type="submit">Criar grupo</button>
+    <a class="btn" href="{% url 'users' %}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

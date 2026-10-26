@@ -16,6 +16,7 @@ Ubuntu+Samba via perfil de host.
 | Tarefa | Interface |
 |---|---|
 | Criar usuário Linux + Samba | Usuários → Novo usuário |
+| Criar grupo Linux/Samba | Usuários → Novo grupo |
 | Trocar senha do Samba | Usuários → Senha |
 | Editar grupos | Usuários → Grupos |
 | Ativar/desativar acesso | Usuários → botão Ativar/Desativar |
@@ -506,6 +507,10 @@ permissões `2775`. O dono padrão é `conrado` (ajustável em
 `SHARE_OWNER` no service do agente). O checkbox **Privado** adiciona
 `browseable = no`; a restrição real continua sendo o grupo `<share>_rw`
 (adicione só o dono nele).
+
+**Usuários → Novo grupo** cria um grupo Linux/Samba com nome validado e GID
+opcional (1000–60000). O agente bloqueia grupos reservados, grupos existentes e
+GIDs em uso; não há renomear/excluir pela UI.
 
 Para gerenciar senhas Samba fora do app: `sudo smbpasswd -a usuario`.
 

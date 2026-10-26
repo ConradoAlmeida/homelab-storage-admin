@@ -3,7 +3,10 @@
 {% block content %}
 <div class="row" style="justify-content:space-between; margin-bottom:18px">
   <h1 style="margin:0">Usuários Samba</h1>
-  <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
+  <div class="row">
+    <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
+    <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
+  </div>
 </div>
 
 {% if agent_error %}

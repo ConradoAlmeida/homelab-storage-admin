@@ -8,6 +8,7 @@ urlpatterns = [
     path("metrics/shares/", views.share_sizes, name="share_sizes"),
     path("usuarios/", views.users, name="users"),
     path("usuarios/novo/", views.user_create, name="user_create"),
+    path("usuarios/grupos/novo/", views.group_create, name="group_create"),
     path("usuarios/senha/", views.user_password, name="user_password"),
     path("usuarios/grupos/", views.user_groups, name="user_groups"),
     path("usuarios/toggle/", views.user_toggle, name="user_toggle"),

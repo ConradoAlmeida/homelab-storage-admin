@@ -9,12 +9,15 @@ import backups.views as backup_views
 import core.context_processors as context_processors
 import core.views as core_views
 import storage.views as storage_views
+from core.models import AuditLog
 
 
 def fake_agent(capabilities=None):
     agent = Mock()
     agent.df.return_value = {"volumes": []}
     agent.list_shares.return_value = []
+    agent.list_users.return_value = []
+    agent.list_groups.return_value = []
     agent.snapshot_usage.return_value = []
     agent.storage_overview.return_value = {
         "system": {
@@ -83,6 +86,18 @@ class ViewSmokeTests(TestCase):
     def test_nav_hides_backups_without_restic(self):
         response = self.client.get("/")
         self.assertNotContains(response, 'href="/backups/"')
+
+    def test_group_create_posts_to_agent_and_audits(self):
+        self.fake.create_group.return_value = {"name": "equipe", "gid": 1500}
+        response = self.client.post(
+            "/usuarios/grupos/novo/",
+            {"name": "equipe", "gid": "1500"},
+        )
+        self.assertRedirects(response, "/usuarios/")
+        self.fake.create_group.assert_called_once_with("equipe", 1500)
+        self.assertTrue(
+            AuditLog.objects.filter(action="group.create", target="equipe").exists()
+        )
 
     def test_share_sizes_endpoint_returns_lazy_payload(self):
         self.fake.list_shares.return_value = [
