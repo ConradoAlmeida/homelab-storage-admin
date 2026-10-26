@@ -110,11 +110,11 @@ O `deploy.sh` usa o `COMPOSE_OVERLAY` definido no `host.env`
 (`docker-compose.moya.yml`). O bind fica em `127.0.0.1:8060`; publique com o
 proxy que já existe no host.
 
-> **Atenção no moyaserver atual:** a porta `8060` já é usada pelo container
-> `moya-storage-admin`, em `/home/conrado/documents/moya-storage-admin`. Não
-> rode este deploy sem antes decidir: não substituir o app antigo, mudar a
-> porta/nome da stack, ou desativar o antigo. Rodar os dois ao mesmo tempo
-> duplica a gestão de Samba/snapshots.
+> **No moyaserver:** o app antigo `moya-storage-admin` foi substituído em
+> 2026-10-25. O novo app fica em `/opt/stacks/homelab-storage-admin`, com bind
+> `127.0.0.1:8060`; o Caddy local publica em `moya-storage.local`. O repo/dados
+> antigos foram preservados em `/home/conrado/documents/moya-storage-admin` e
+> em backup; o agente antigo está desabilitado. Não rode os dois ao mesmo tempo.
 
 ### Atalhos de serviços (curadoria por host)
 
