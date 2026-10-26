@@ -285,9 +285,10 @@ O rollback não mexe em `/mnt/nas`, snapshots, banco ou dados de share.
 ### Boot no Pi (`homelab-compose.service`)
 
 A unidade de boot do Pi é específica do host e fica versionada em
-`deploy/pi/homelab-compose.service`. Ela espera o IP `192.168.0.150` na `wlan0`
-e sobe Pi-hole, o storage-admin, Dockge e Caddy. A linha do storage-admin
-carrega `/etc/homelab-storage-admin/host.env` e usa `COMPOSE_OVERLAY`.
+`deploy/pi/homelab-compose.service`. Ela espera o IP `192.168.0.150` em
+**qualquer interface** (Wi-Fi ou Ethernet) e sobe Pi-hole, o storage-admin,
+Dockge e Caddy. A linha do storage-admin carrega
+`/etc/homelab-storage-admin/host.env` e usa `COMPOSE_OVERLAY`.
 
 Instalação/atualização:
 

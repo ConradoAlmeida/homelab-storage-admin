@@ -58,6 +58,8 @@ def test_pi_boot_unit_uses_host_env_and_overlay():
     assert "/etc/homelab-storage-admin/host.env" in text
     assert "COMPOSE_OVERLAY" in text
     assert "homelab-storage-admin" in text
+    assert "ip -4 addr show | grep" in text
+    assert "show dev wlan0" not in text
 
 
 def test_pi_motd_points_to_storage_admin():
