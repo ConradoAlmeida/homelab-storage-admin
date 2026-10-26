@@ -1,0 +1,37 @@
+# Unit do Cloudflare Tunnel do Pi.
+#
+# Instalação (ver README, seção 8.1):
+#   sudo install -m 0644 deploy/pi/homelab-cloudflared.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now homelab-cloudflared
+#
+# Mantida fora do install-agent.sh pelo mesmo motivo do homelab-compose.service:
+# é infraestrutura de host, não parte do app. Desabilite a unit `cloudflared` do
+# pacote (sudo systemctl disable --now cloudflared) para não rodar dois
+# conectores no mesmo túnel.
+[Unit]
+Description=Cloudflare Tunnel (homelab ingress)
+Documentation=https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=cloudflared
+Group=cloudflared
+ExecStart=/usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+
+# O conector só precisa falar TCP com a borda e abrir a config em /etc.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

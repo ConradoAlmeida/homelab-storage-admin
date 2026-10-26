@@ -1,0 +1,20 @@
+# Config do Cloudflare Tunnel do Pi.
+# Instale como /etc/cloudflared/config.yml (root:cloudflared, 0640).
+#
+# Os valores de `tunnel` e `credentials-file` saem de:
+#   cloudflared tunnel create homelab
+# O hostname precisa existir na zona da Cloudflare e ter a rota criada com:
+#   cloudflared tunnel route dns homelab storage.seudominio.com
+tunnel: TROQUE-PELO-UUID
+credentials-file: /etc/cloudflared/TROQUE-PELO-UUID.json
+
+# O cloudflared roda no host, então fala com o app pelo IP da LAN definido em
+# BIND_ADDR/BIND_PORT do host.env. Não use 127.0.0.1: o container não publica
+# em loopback.
+ingress:
+  - hostname: storage.seudominio.com
+    service: http://192.168.0.150:8060
+    originRequest:
+      connectTimeout: 10s
+  # Qualquer hostname não listado acima recebe 404 em vez de cair no app.
+  - service: http_status:404
