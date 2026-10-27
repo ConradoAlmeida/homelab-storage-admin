@@ -146,6 +146,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "casa")
         self.assertContains(response, "a.txt")
         self.assertContains(response, "Baixar")
+        self.assertContains(response, "2026-10-26T22:15:24-03:00")
         self.assertContains(response, "2026-10-25T22:37:27-03:00")
         self.fake.backup_ls.assert_called_once_with("u1", "aaaaaaaa", "/mnt/nas")
 

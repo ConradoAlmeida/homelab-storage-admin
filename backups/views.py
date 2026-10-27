@@ -95,6 +95,7 @@ def snapshot_browse(request, snapshot_id):
     path = (request.GET.get("path") or "/mnt/nas").strip()
     context = {
         "snapshot_id": snapshot_id,
+        "snapshot": {},
         "disk_uuid": disk_uuid,
         "path": path,
         "parent": str(PurePosixPath(path).parent),
@@ -110,6 +111,7 @@ def snapshot_browse(request, snapshot_id):
         context.update(
             {
                 "snapshot_id": data.get("snapshot_id") or snapshot_id,
+                "snapshot": data.get("snapshot") or {},
                 "path": data.get("path") or path,
                 "parent": data.get("parent") or context["parent"],
                 "breadcrumbs": _snapshot_breadcrumbs(data.get("path") or path),
