@@ -91,3 +91,27 @@ def test_install_agent_selects_profile():
     assert "HOST_ENV_PROFILE" in text
     assert "host.env.moya.example" in text
     assert "host.env.example" in text
+
+
+def test_templates_have_no_inline_css_or_js():
+    for path in (ROOT / "templates").rglob("*.html"):
+        text = path.read_text()
+        assert "<style" not in text, path
+        assert "<script>" not in text, path
+        assert 'style="' not in text, path
+        assert "onclick=" not in text, path
+        assert "onsubmit=" not in text, path
+
+
+def test_static_assets_exist():
+    assert (ROOT / "static" / "css" / "app.css").is_file()
+    for name in (
+        "confirm-actions.js",
+        "copy-secret.js",
+        "disk-wizard.js",
+        "job-form.js",
+        "live-metrics.js",
+        "network-metrics.js",
+        "share-sizes.js",
+    ):
+        assert (ROOT / "static" / "js" / name).is_file(), name
