@@ -57,8 +57,8 @@
     .muted { color:var(--muted); }
     .messages { list-style:none; padding:0; margin:0 0 18px; }
     .messages li { padding:10px 14px; border-radius:8px; margin-bottom:8px; background:var(--panel); border:1px solid var(--line); }
-    .messages li.success { border-color:#14532d; }
-    .messages li.error { border-color:#7f1d1d; }
+    .messages li.success { border-color:#14532d; background:#052e16; }
+    .messages li.error { border-color:#f87171; background:#1a0b0b; color:var(--txt); }
     form.stack { max-width:560px; display:grid; gap:14px; }
     form.stack label { font-size:13px; color:var(--muted); display:block; margin-bottom:4px; }
     form.stack input[type=text], form.stack input[type=password], form.stack input[type=number] { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0b1220; color:var(--txt); }
@@ -108,7 +108,9 @@
     details.card summary { cursor:pointer; padding:14px 18px; color:var(--txt); }
     details.card .pre { margin:0 14px 14px; }
     .alert { padding:12px 14px; border-radius:9px; border:1px solid var(--line); background:var(--panel); margin:12px 0; }
-    .alert.danger { border-color:#7f1d1d; background:#1a0b0b; }
+    .alert.danger { border-color:#f87171; background:#1a0b0b; }
+    .alert.danger strong { color:var(--err); display:block; margin-bottom:4px; }
+    .alert.danger p { margin:4px 0 0; color:var(--txt); }
     .alert.warn { border-color:#78350f; background:#1a1207; }
     .danger-zone { border:1px solid #7f1d1d; background:#140909; border-radius:10px; padding:14px; margin:14px 0; }
     code.phrase { display:inline-block; padding:4px 8px; border-radius:6px; background:#070b12; border:1px solid var(--line); color:var(--warn); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }

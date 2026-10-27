@@ -4,6 +4,7 @@
 <h1>Novo compartilhamento</h1>
 <form class="stack" method="post">
   {% csrf_token %}
+  {% include "partials/form_alert.html" %}
   {% for field in form %}
     <div>
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>

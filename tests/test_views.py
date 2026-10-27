@@ -11,6 +11,7 @@ import backups.views as backup_views
 import core.context_processors as context_processors
 import core.views as core_views
 import storage.views as storage_views
+from core.agent import AgentError
 from core.models import AuditLog
 
 
@@ -240,6 +241,20 @@ class ViewSmokeTests(TestCase):
                 action="backup_snapshot_download", target="aaaaaaaa"
             ).exists()
         )
+
+    def test_falha_ao_salvar_grupos_mostra_o_motivo(self):
+        self.fake.list_groups.return_value = ["cnc", "teste2"]
+        self.fake.list_users.return_value = [
+            {"username": "teste2", "groups": ["teste2"], "enabled": True, "fullname": ""}
+        ]
+        self.fake.set_groups.side_effect = AgentError("Usuario nao existe: teste2")
+        response = self.client.post(
+            "/usuarios/grupos/?username=teste2",
+            {"username": "teste2", "groups": ["cnc", "teste2"]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Não foi possível concluir")
+        self.assertContains(response, "Usuario nao existe: teste2")
 
     def test_group_create_posts_to_agent_and_audits(self):
         self.fake.create_group.return_value = {"name": "equipe", "gid": 1500}
