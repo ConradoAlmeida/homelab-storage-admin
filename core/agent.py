@@ -70,18 +70,6 @@ class AgentClient:
     def create_group(self, name, gid=None):
         return self.call("create_group", name=name, gid=gid)
 
-    def task_start(self, kind, source, dest):
-        return self.call("task_start", timeout=30, kind=kind, source=source, dest=dest)
-
-    def task_list(self):
-        return self.call("task_list", timeout=30)
-
-    def task_status(self, task_id):
-        return self.call("task_status", timeout=30, task_id=task_id)
-
-    def task_cancel(self, task_id):
-        return self.call("task_cancel", timeout=30, task_id=task_id)
-
     def create_user(self, username, password, groups=None):
         return self.call("create_user", username=username, password=password, groups=groups or [])
 

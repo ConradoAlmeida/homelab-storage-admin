@@ -15,7 +15,6 @@ import pwd
 import re
 import secrets
 import shutil
-import signal
 import socketserver
 import subprocess
 import sys
@@ -65,16 +64,6 @@ SNAPSHOT_BACKEND = os.environ.get("SNAPSHOT_BACKEND", "auto").strip().lower()
 DENY_SNAPSHOT = {
     s.strip() for s in os.environ.get("SNAPSHOT_DENYLIST", "").split(",") if s.strip()
 }
-TASK_DIR = os.environ.get("TASK_DIR", "/var/lib/homelab-storage-admin/tasks")
-TASK_SOURCE_PREFIXES = tuple(
-    p.strip().rstrip("/") + "/"
-    for p in os.environ.get(
-        "TASK_SOURCE_PREFIXES", ",".join(ALLOWED_PATH_PREFIXES)
-    ).split(",")
-    if p.strip()
-)
-TASK_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,80}$")
-TASKS: dict[str, subprocess.Popen] = {}
 RESERVED_SHARES = {"global", "homes", "printers", "print$"}
 RESERVED_GROUPS = {
     "root",
@@ -604,182 +593,6 @@ def op_create_group(name: str, gid: int | None = None, **_):
     run(command)
     log(f"CREATE_GROUP {name} gid={gid or 'auto'}")
     return {"name": name, "gid": gid}
-
-
-def _task_path(task_id: str) -> Path:
-    if not TASK_ID_RE.match(task_id or ""):
-        raise AgentError("ID de tarefa invalido")
-    return Path(TASK_DIR) / f"{task_id}.json"
-
-
-def _task_log_path(task_id: str) -> Path:
-    return Path(TASK_DIR) / f"{task_id}.log"
-
-
-def _task_save(data: dict) -> None:
-    path = _task_path(data["id"])
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(path.parent, 0o700)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
-
-
-def _task_load(task_id: str) -> dict:
-    path = _task_path(task_id)
-    if not path.is_file():
-        raise AgentError(f"Tarefa nao encontrada: {task_id}")
-    try:
-        return json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise AgentError(f"Tarefa invalida: {task_id}") from exc
-
-
-def _pid_alive(pid: int | None) -> bool:
-    if not pid:
-        return False
-    try:
-        os.kill(int(pid), 0)
-        return True
-    except (OSError, ValueError):
-        return False
-
-
-def _task_refresh(task_id: str) -> dict:
-    data = _task_load(task_id)
-    if data.get("status") != "running":
-        return data
-    proc = TASKS.get(task_id)
-    if proc is not None:
-        rc = proc.poll()
-        if rc is not None:
-            data["returncode"] = rc
-            data["status"] = "success" if rc == 0 else "failed"
-            data["ended_at"] = dt.datetime.now().isoformat(timespec="seconds")
-            _task_save(data)
-            TASKS.pop(task_id, None)
-    elif not _pid_alive(data.get("pid")):
-        data["status"] = "failed"
-        data["error"] = "processo nao encontrado"
-        data["ended_at"] = dt.datetime.now().isoformat(timespec="seconds")
-        _task_save(data)
-    return data
-
-
-def _validate_task_path(path: str, prefixes: tuple[str, ...], label: str) -> str:
-    raw = (path or "").strip()
-    if not raw:
-        raise AgentError(f"{label} nao informado")
-    real = os.path.realpath(raw)
-    if not any(real == p.rstrip("/") or real.startswith(p) for p in prefixes):
-        raise AgentError(
-            f"{label} fora dos prefixos permitidos: " + ", ".join(prefixes)
-        )
-    return real
-
-
-def op_task_start(kind: str, source: str, dest: str, **_):
-    if kind != "checksum":
-        raise AgentError("Tipo de tarefa invalido (use checksum)")
-    source_path = _validate_task_path(source, TASK_SOURCE_PREFIXES, "Origem")
-    dest_path = _validate_task_path(dest, ALLOWED_PATH_PREFIXES, "Destino")
-    if not os.path.isdir(source_path):
-        raise AgentError(f"Origem nao e diretorio: {source_path}")
-    if not os.path.isdir(dest_path):
-        raise AgentError(f"Destino nao e diretorio: {dest_path}")
-    if source_path == dest_path or dest_path.startswith(source_path + os.sep):
-        raise AgentError("Origem e destino invalidos")
-
-    task_id = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(4)
-    log_path = _task_log_path(task_id)
-    Path(TASK_DIR).mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(TASK_DIR, 0o700)
-    args = [
-        "rsync",
-        "-rltnDc",
-        "--itemize-changes",
-        "--no-perms",
-        "--no-owner",
-        "--no-group",
-        f"{source_path}/",
-        f"{dest_path}/",
-    ]
-    with open(log_path, "ab", buffering=0) as log_fh:
-        proc = subprocess.Popen(
-            args,
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-            close_fds=True,
-        )
-    TASKS[task_id] = proc
-    data = {
-        "id": task_id,
-        "kind": kind,
-        "source": source_path,
-        "dest": dest_path,
-        "status": "running",
-        "pid": proc.pid,
-        "started_at": dt.datetime.now().isoformat(timespec="seconds"),
-        "ended_at": None,
-        "returncode": None,
-        "log": str(log_path),
-    }
-    _task_save(data)
-    log(f"TASK_START {task_id} checksum {source_path} -> {dest_path}")
-    return data
-
-
-def op_task_list(**_):
-    if not os.path.isdir(TASK_DIR):
-        return []
-    tasks = []
-    for path in sorted(Path(TASK_DIR).glob("*.json"), reverse=True):
-        try:
-            tasks.append(_task_refresh(path.stem))
-        except AgentError:
-            continue
-    return sorted(tasks, key=lambda item: item.get("started_at", ""), reverse=True)
-
-
-def op_task_status(task_id: str, **_):
-    data = _task_refresh(task_id)
-    log_path = Path(data.get("log", _task_log_path(task_id)))
-    if log_path.is_file():
-        lines = log_path.read_text(errors="replace").splitlines()[-200:]
-        data["log_tail"] = "\n".join(lines)
-    else:
-        data["log_tail"] = ""
-    return data
-
-
-def op_task_cancel(task_id: str, **_):
-    data = _task_refresh(task_id)
-    if data.get("status") != "running":
-        return data
-    proc = TASKS.get(task_id)
-    pid = data.get("pid")
-    if proc is not None and proc.poll() is None:
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            proc.wait(timeout=5)
-        except (OSError, subprocess.TimeoutExpired):
-            try:
-                proc.kill()
-            except OSError:
-                pass
-    elif _pid_alive(pid):
-        try:
-            os.killpg(os.getpgid(int(pid)), signal.SIGTERM)
-        except OSError:
-            pass
-    data["status"] = "cancelled"
-    data["ended_at"] = dt.datetime.now().isoformat(timespec="seconds")
-    _task_save(data)
-    TASKS.pop(task_id, None)
-    log(f"TASK_CANCEL {task_id}")
-    return data
 
 
 def op_list_users(**_):
@@ -2339,10 +2152,6 @@ OPS = {
     "list_users": op_list_users,
     "list_groups": op_list_groups,
     "create_group": op_create_group,
-    "task_start": op_task_start,
-    "task_list": op_task_list,
-    "task_status": op_task_status,
-    "task_cancel": op_task_cancel,
     "create_user": op_create_user,
     "set_password": op_set_password,
     "set_groups": op_set_groups,
@@ -2400,7 +2209,6 @@ def main() -> int:
         print("O agente precisa rodar como root.", file=sys.stderr)
         return 1
     os.makedirs(CONFIG_DIR, exist_ok=True)
-    os.makedirs(TASK_DIR, exist_ok=True, mode=0o700)
     load_policies()
     if os.path.exists(SOCKET_PATH):
         os.unlink(SOCKET_PATH)

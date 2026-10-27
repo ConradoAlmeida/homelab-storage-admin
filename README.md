@@ -30,7 +30,6 @@ Ubuntu+Samba via perfil de host.
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Cópia fria USB | Backups → Cópia fria (USB) — restic copy + check + eject |
-| Acompanhar tarefas longas | Tarefas → checksum read-only com status/log/cancelar |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
@@ -496,22 +495,6 @@ O executor:
 Na tela de jobs: **Rodar agora** (systemd, sem bloquear a requisição),
 **Ativar/Desativar**, **Editar** e **Excluir** (o repositório restic é mantido).
 A tabela mostra último status e próxima execução.
-
-## 6.8 Tarefas do host
-
-`/tarefas/` mostra operações longas executadas pelo agente. A primeira versão
-implementa **checksum somente leitura** entre dois diretórios permitidos:
-
-- comando fixo `rsync -rltnDc` (dry-run + checksum), sem shell livre;
-- origem/destino validados pelos prefixos permitidos;
-- status/log/cancelar;
-- estado em `/var/lib/homelab-storage-admin/tasks`;
-- sem cópia, escrita ou remoção nesta versão.
-
-O checksum externo que já estiver rodando no host não aparece automaticamente;
-tarefas iniciadas pelo app usam o registro do agente.
-
----
 
 ## 7. Samba
 

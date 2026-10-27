@@ -36,8 +36,6 @@ ENV_KEYS = (
     "COLD_STATUS",
     "COLD_MOUNT",
     "LOG_FILE",
-    "TASK_DIR",
-    "TASK_SOURCE_PREFIXES",
 )
 
 
@@ -107,8 +105,6 @@ def agent_module(monkeypatch, tmp_path):
         "COLD_STATUS": str(tmp_path / "backup-config" / "cold-status.json"),
         "COLD_MOUNT": str(tmp_path / "coldcopy"),
         "LOG_FILE": str(tmp_path / "agent.log"),
-        "TASK_DIR": str(tmp_path / "tasks"),
-        "TASK_SOURCE_PREFIXES": f"{nas}/",
     }
     return load_agent(monkeypatch, values)
 
