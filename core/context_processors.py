@@ -30,6 +30,7 @@ def homelab(request):
         _cached_at = now
     return {
         "site_name": settings.SITE_NAME,
+        "product_name": settings.SITE_NAME,
         "capabilities": _cached_caps,
         "storage_root": settings.STORAGE_ROOT,
         "snapshot_root": settings.SNAPSHOT_ROOT,
