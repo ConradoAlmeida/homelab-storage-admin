@@ -381,7 +381,7 @@ Gere a chave com `openssl rand -hex 32`.
 | `STORAGE_ROOT` | `/mnt/nas` | raiz dos shares/volume principal |
 | `SNAPSHOT_ROOT` | `/mnt/nas/.snapshots` | snapdir Btrfs |
 | `ALLOWED_PATH_PREFIXES` | `/mnt/nas/` | prefixos aceitos (vírgula) |
-| `DF_MOUNTS` | `/,/mnt/nas,/mnt/backup` | mounts do `df` |
+| `DF_MOUNTS` | `/,/mnt/nas,/mnt/backup,/mnt/jellyfin` | mounts do `df` |
 | `SHARE_OWNER` | `conrado` | dono dos shares |
 | `SNAPSHOT_DENYLIST` | vazio | shares que nunca recebem snapshot |
 | `SNAPSHOT_BACKEND` | `auto` | `auto`, `btrfs`, `rsync` ou `none` |
@@ -435,7 +435,8 @@ caminho; qualquer escrita continua no agente root.
 
 `/storage/` mostra:
 - temperatura da CPU, fans/PWM (quando expostos), load e RAM;
-- cada disco (`sda`, `sdb`, `mmcblk0`), modelo, serial, tamanho, montagem e estado;
+- total/uso/livre somando os volumes monitorados e um cartão por volume;
+- cada disco (`sda`, `sdb`, `sdd`, `mmcblk0`), modelo, serial, tamanho, montagem, uso e estado;
 - temperatura **somente se o disco já estiver ativo**;
 - RAID (`/proc/mdstat`, `mdadm --detail`) e Btrfs (usage, device stats, scrub).
 
