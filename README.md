@@ -29,6 +29,7 @@ Ubuntu+Samba via perfil de host.
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
+| Listar snapshots restic | Backups → Snapshots restic — data, arquivos, tamanho e fontes |
 | Cópia fria USB | Backups → Cópia fria (USB) — restic copy + check + eject |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
@@ -500,6 +501,13 @@ O executor:
 Na tela de jobs: **Rodar agora** (systemd, sem bloquear a requisição),
 **Ativar/Desativar**, **Editar** e **Excluir** (o repositório restic é mantido).
 A tabela mostra último status e próxima execução.
+
+### Snapshots restic
+
+**Backups → Snapshots restic** lê `restic snapshots --json` de cada disco
+configurado e mostra disco, ID curto, data, arquivos, tamanho, bytes
+adicionados e fontes. Snapshots vazios aparecem marcados; a retenção é aplicada
+pelo job, não por essa tela. A listagem é read-only; restore ainda é via CLI.
 
 ## 7. Samba
 

@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path("", views.index, name="backup_index"),
+    path("snapshots/", views.snapshots, name="backup_snapshots"),
     path("disks/setup/", views.disk_wizard, name="backup_disk_wizard"),
     path("credentials/", views.credentials, name="backup_credentials"),
     path("cold/", views.cold_index, name="cold_index"),

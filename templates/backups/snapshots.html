@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Snapshots restic - Homelab Storage{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+  <div>
+    <h1 style="margin-bottom:4px">Snapshots restic</h1>
+    <p class="muted">Pontos de restauração no repositório. Um snapshot vazio ainda não contém arquivos.</p>
+  </div>
+  <a class="btn small" href="{% url 'backup_index' %}">← Backups</a>
+</div>
+
+{% if error %}
+  <div class="card" style="border-color:#7f1d1d"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+{% else %}
+  {% if errors %}
+    <div class="alert warn">
+      {% for item in errors %}<div>{{ item }}</div>{% endfor %}
+    </div>
+  {% endif %}
+  {% if snapshots %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Disco</th><th>Snapshot</th><th>Data</th><th>Arquivos</th><th>Tamanho</th><th>Adicionado</th><th>Fontes</th></tr></thead>
+      <tbody>
+        {% for snap in snapshots %}
+          <tr>
+            <td><strong>{{ snap.disk_label }}</strong></td>
+            <td><code>{{ snap.short_id }}</code>{% if snap.empty %} <span class="tag off">vazio</span>{% endif %}</td>
+            <td class="muted">{{ snap.time }}</td>
+            <td>{{ snap.files }}</td>
+            <td>{{ snap.bytes|filesizeformat }}</td>
+            <td class="muted">{{ snap.added_bytes|filesizeformat }}</td>
+            <td class="muted" style="font-size:12px">{{ snap.paths|join:", " }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Nenhum snapshot restic encontrado.</div>
+  {% endif %}
+{% endif %}
+{% endblock %}

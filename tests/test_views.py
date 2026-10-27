@@ -20,6 +20,7 @@ def fake_agent(capabilities=None):
     agent.list_groups.return_value = []
     agent.snapshot_usage.return_value = []
     agent.refresh_storage.return_value = {"disks": []}
+    agent.backup_snapshots.return_value = {"snapshots": [], "errors": []}
     agent.storage_overview.return_value = {
         "system": {
             "zones": [],
@@ -88,6 +89,11 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/backups/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "restic não encontrado")
+
+    def test_restic_snapshots_page_renders(self):
+        response = self.client.get("/backups/snapshots/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nenhum snapshot restic encontrado")
 
     def test_nav_hides_backups_without_restic(self):
         response = self.client.get("/")

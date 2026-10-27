@@ -128,6 +128,9 @@ class AgentClient:
     def backup_overview(self):
         return self.call("backup_overview", timeout=60)
 
+    def backup_snapshots(self):
+        return self.call("backup_snapshots", timeout=120)
+
     def backup_disk_setup(self, device, label, confirmation, allow_existing=False):
         return self.call(
             "backup_disk_setup",

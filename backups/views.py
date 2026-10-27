@@ -41,6 +41,18 @@ def index(request):
 
 
 @login_required
+def snapshots(request):
+    context = {"snapshots": [], "errors": [], "error": None}
+    try:
+        data = agent.backup_snapshots()
+        context["snapshots"] = data.get("snapshots", [])
+        context["errors"] = data.get("errors", [])
+    except AgentError as exc:
+        context["error"] = str(exc)
+    return render(request, "backups/snapshots.html", context)
+
+
+@login_required
 def disk_wizard(request):
     try:
         overview = agent.backup_overview()

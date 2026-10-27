@@ -1335,6 +1335,62 @@ def op_backup_overview(**_):
     }
 
 
+def op_backup_snapshots(**_):
+    if not shutil.which("restic"):
+        raise AgentError("restic nao esta instalado no host")
+    config = _load_backup_config()
+    result = []
+    errors = []
+    for disk in config.get("disks", []):
+        repo = disk.get("repo")
+        key_file = disk.get("key_file")
+        label = disk.get("label") or disk.get("uuid") or "backup"
+        if not repo or not key_file or not os.path.isfile(key_file):
+            errors.append(f"{label}: repositorio ou chave ausente")
+            continue
+        try:
+            raw = run(
+                [
+                    "restic",
+                    "-r",
+                    repo,
+                    "--password-file",
+                    key_file,
+                    "snapshots",
+                    "--json",
+                ],
+                timeout=120,
+            )
+            snapshots = json.loads(raw)
+        except (AgentError, json.JSONDecodeError) as exc:
+            errors.append(f"{label}: {exc}")
+            continue
+        for snap in snapshots:
+            summary = snap.get("summary") or {}
+            result.append(
+                {
+                    "disk_label": label,
+                    "disk_uuid": disk.get("uuid"),
+                    "id": snap.get("id"),
+                    "short_id": snap.get("short_id") or (snap.get("id") or "")[:8],
+                    "time": snap.get("time"),
+                    "hostname": snap.get("hostname"),
+                    "paths": snap.get("paths") or [],
+                    "tags": snap.get("tags") or [],
+                    "files": summary.get("total_files_processed", 0),
+                    "bytes": summary.get("total_bytes_processed", 0),
+                    "added_bytes": summary.get("data_added_packed", 0),
+                    "empty": summary.get("total_files_processed", 0) == 0,
+                }
+            )
+    return {
+        "snapshots": sorted(
+            result, key=lambda item: item.get("time") or "", reverse=True
+        ),
+        "errors": errors,
+    }
+
+
 def op_backup_disk_setup(
     device: str,
     label: str,
@@ -2218,6 +2274,7 @@ OPS = {
     "storage_smart": op_storage_smart,
     "storage_smart_test": op_storage_smart_test,
     "backup_overview": op_backup_overview,
+    "backup_snapshots": op_backup_snapshots,
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,
     "backup_job_save": op_backup_job_save,
