@@ -8,9 +8,15 @@ admin.site.site_title = settings.SITE_NAME
 admin.site.index_title = f"Administração do {settings.SITE_NAME}"
 admin.site.site_url = "/"
 
+login_view = auth_views.LoginView.as_view(template_name="login.html")
+if settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN:
+    from core.auth import login_view as credentials_login
+
+    login_view = credentials_login
+
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("login/", auth_views.LoginView.as_view(template_name="login.html"), name="login"),
+    path("login/", login_view, name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("history/", include("history.urls")),
     path("storage/", include("storage.urls")),

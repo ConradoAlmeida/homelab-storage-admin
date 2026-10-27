@@ -7,3 +7,15 @@ services:
       - /srv/samba:/srv/samba:ro
       - /mnt/data:/mnt/data:ro
       - /run/homelab-storage-admin:/run/homelab-storage-admin:ro
+    environment:
+      CREDENTIALS_URL: ${CREDENTIALS_URL:-http://moya-credenciais:8080}
+      CREDENTIALS_API_TOKEN: ${CREDENTIALS_API_TOKEN:-}
+      CREDENTIALS_APP: ${CREDENTIALS_APP:-storage}
+    networks:
+      - default
+      - moya
+
+networks:
+  moya:
+    external: true
+    name: moya

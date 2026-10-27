@@ -120,6 +120,11 @@ LOGOUT_REDIRECT_URL = "login"
 AGENT_SOCKET = os.environ.get("AGENT_SOCKET", "/run/homelab-storage-admin/agent.sock")
 AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "90"))
 
+# Credenciais (moyaserver). Vazio no Pi: mantém o login local.
+CREDENTIALS_URL = os.environ.get("CREDENTIALS_URL", "").rstrip("/")
+CREDENTIALS_API_TOKEN = os.environ.get("CREDENTIALS_API_TOKEN", "")
+CREDENTIALS_APP = os.environ.get("CREDENTIALS_APP", "storage")
+
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 X_FRAME_OPTIONS = "DENY"
