@@ -82,6 +82,12 @@ class AgentClient:
     def toggle_user(self, username, enabled):
         return self.call("toggle_user", username=username, enabled=enabled)
 
+    def delete_user(self, username):
+        return self.call("delete_user", username=username)
+
+    def delete_group(self, name):
+        return self.call("delete_group", name=name)
+
     def list_shares(self, include_size=False):
         timeout = 180 if include_size else None
         return self.call("list_shares", timeout=timeout, include_size=include_size)

@@ -754,6 +754,44 @@ def op_toggle_user(username: str, enabled: bool, **_):
     return {"username": username, "enabled": enabled}
 
 
+PROTECTED_USERS = {"root", "admin", "conrado"}
+
+
+def op_delete_user(username: str, **_):
+    validate_user(username)
+    if username in PROTECTED_USERS or username == SHARE_OWNER:
+        raise AgentError(f"Usuario protegido: {username}")
+    try:
+        entry = pwd.getpwnam(username)
+    except KeyError as exc:
+        raise AgentError(f"Usuario nao existe: {username}") from exc
+    if entry.pw_uid < 1000:
+        raise AgentError(f"Usuario protegido: {username}")
+    if set(group_names_for(username)) & {"sudo", "adm", "wheel", "root"}:
+        raise AgentError(f"Usuario protegido: {username}")
+    subprocess.run(["smbpasswd", "-x", username], check=False)
+    run(["userdel", "-r", username])
+    log(f"DELETE_USER {username}")
+    return {"username": username}
+
+
+def op_delete_group(name: str, **_):
+    if name in RESERVED_GROUPS:
+        raise AgentError(f"Grupo protegido: {name}")
+    validate_group(name)
+    entry = grp.getgrnam(name)
+    if entry.gr_gid < 1000:
+        raise AgentError(f"Grupo protegido: {name}")
+    donos = [user.pw_name for user in pwd.getpwall() if user.pw_gid == entry.gr_gid]
+    if donos:
+        raise AgentError(
+            f"Grupo {name} e o grupo primario de {', '.join(donos)}. Exclua o usuario."
+        )
+    run(["groupdel", name])
+    log(f"DELETE_GROUP {name}")
+    return {"name": name}
+
+
 def _parse_smb_conf() -> configparser.ConfigParser:
     text = run(["testparm", "-s"])
     lines = text.splitlines()
@@ -2503,6 +2541,8 @@ OPS = {
     "set_password": op_set_password,
     "set_groups": op_set_groups,
     "toggle_user": op_toggle_user,
+    "delete_user": op_delete_user,
+    "delete_group": op_delete_group,
     "list_shares": op_list_shares,
     "create_share": op_create_share,
     "snapshot_usage": op_snapshot_usage,

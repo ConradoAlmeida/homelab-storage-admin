@@ -31,6 +31,11 @@
               <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
               <button class="btn small {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
             </form>
+            <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
+              {% csrf_token %}
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <button class="btn small danger" type="submit">Excluir</button>
+            </form>
           </div>
         </td>
       </tr>
@@ -39,5 +44,27 @@
 </table></div>
 {% else %}
   <div class="empty">Nenhum usuario Samba cadastrado.</div>
+{% endif %}
+
+{% if groups %}
+<h2>Grupos</h2>
+<p class="muted">O grupo privado de cada usuário sai junto com a conta. Aqui ficam as pastas compartilhadas.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Grupo</th><th></th></tr></thead>
+  <tbody>
+    {% for nome in groups %}
+    <tr>
+      <td><strong>{{ nome }}</strong></td>
+      <td>
+        <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
+          {% csrf_token %}
+          <input type="hidden" name="name" value="{{ nome }}">
+          <button class="btn small danger" type="submit">Excluir</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table></div>
 {% endif %}
 {% endblock %}

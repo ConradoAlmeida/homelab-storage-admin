@@ -174,10 +174,19 @@ class UsersView(AgentTemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({"agent_error": None, "users": []})
+        context["groups"] = []
         try:
             context["users"] = agent.list_users()
         except AgentError as exc:
             context["agent_error"] = str(exc)
+            return context
+        try:
+            nomes = agent.list_groups()
+        except AgentError as exc:
+            context["agent_error"] = str(exc)
+            return context
+        contas = {item["username"] for item in context["users"]}
+        context["groups"] = [nome for nome in nomes if nome not in contas]
         return context
 
 
@@ -356,6 +365,35 @@ class UserToggleView(AgentPostView):
                 request,
                 f"Usuario {username} {'habilitado' if enabled else 'desabilitado'}.",
             )
+        return redirect("users")
+
+
+class UserDeleteView(AgentPostView):
+    def post(self, request):
+        username = request.POST.get("username", "")
+        try:
+            agent.delete_user(username)
+        except AgentError as exc:
+            _error(request, exc)
+        else:
+            _audit(request, "user.delete", username)
+            messages.success(
+                request,
+                f"Usuario {username} excluido, com a conta Samba e a pasta home.",
+            )
+        return redirect("users")
+
+
+class GroupDeleteView(AgentPostView):
+    def post(self, request):
+        name = request.POST.get("name", "")
+        try:
+            agent.delete_group(name)
+        except AgentError as exc:
+            _error(request, exc)
+        else:
+            _audit(request, "group.delete", name)
+            messages.success(request, f"Grupo {name} excluido.")
         return redirect("users")
 
 

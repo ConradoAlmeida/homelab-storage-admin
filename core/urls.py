@@ -17,6 +17,12 @@ urlpatterns = [
     path("usuarios/senha/", views.UserPasswordView.as_view(), name="user_password"),
     path("usuarios/grupos/", views.UserGroupsView.as_view(), name="user_groups"),
     path("usuarios/toggle/", views.UserToggleView.as_view(), name="user_toggle"),
+    path("usuarios/excluir/", views.UserDeleteView.as_view(), name="user_delete"),
+    path(
+        "usuarios/grupos/excluir/",
+        views.GroupDeleteView.as_view(),
+        name="group_delete",
+    ),
     path("shares/", views.SharesView.as_view(), name="shares"),
     path("shares/novo/", views.ShareCreateView.as_view(), name="share_create"),
     path("snapshots/", views.SnapshotsView.as_view(), name="snapshots"),

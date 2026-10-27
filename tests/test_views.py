@@ -242,6 +242,28 @@ class ViewSmokeTests(TestCase):
             ).exists()
         )
 
+    def test_excluir_usuario_chama_o_agente_e_avisa_se_falhar(self):
+        response = self.client.post("/usuarios/excluir/", {"username": "teste2"})
+        self.assertRedirects(response, "/usuarios/")
+        self.fake.delete_user.assert_called_once_with("teste2")
+        self.assertTrue(
+            AuditLog.objects.filter(action="user.delete", target="teste2").exists()
+        )
+
+        self.fake.delete_user.side_effect = AgentError("Usuario protegido: conrado")
+        response = self.client.post(
+            "/usuarios/excluir/", {"username": "conrado"}, follow=True
+        )
+        self.assertContains(response, "Usuario protegido: conrado")
+
+    def test_excluir_grupo_chama_o_agente(self):
+        response = self.client.post("/usuarios/grupos/excluir/", {"name": "cnc"})
+        self.assertRedirects(response, "/usuarios/")
+        self.fake.delete_group.assert_called_once_with("cnc")
+        self.assertTrue(
+            AuditLog.objects.filter(action="group.delete", target="cnc").exists()
+        )
+
     def test_falha_ao_salvar_grupos_mostra_o_motivo(self):
         self.fake.list_groups.return_value = ["cnc", "teste2"]
         self.fake.list_users.return_value = [
