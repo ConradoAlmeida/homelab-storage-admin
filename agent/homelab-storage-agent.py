@@ -37,6 +37,10 @@ COLD_CONFIG = os.environ.get("COLD_CONFIG", "/etc/homelab-backup/cold.json")
 COLD_STATUS = os.environ.get("COLD_STATUS", "/etc/homelab-backup/cold-status.json")
 COLD_MOUNT = os.environ.get("COLD_MOUNT", "/mnt/coldcopy")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
+STORAGE_CACHE = os.environ.get(
+    "STORAGE_CACHE", "/var/lib/homelab-storage-admin/storage-cache.json"
+)
+STORAGE_CACHE_MAX_AGE = int(os.environ.get("STORAGE_CACHE_MAX_AGE", "86400"))
 
 USER_RE = re.compile(r"^[a-z][a-z0-9._-]{2,31}$")
 SHARE_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
@@ -354,7 +358,7 @@ def _md_details(mdstat: str) -> str:
     return "\n\n".join(details)
 
 
-def op_storage_overview(**_):
+def _collect_storage_overview() -> dict:
     raw = run(
         ["lsblk", "-J", "-o", "NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL,SERIAL,TRAN"]
     )
@@ -411,6 +415,53 @@ def op_storage_overview(**_):
         "raid": raid,
         "btrfs": btrfs,
     }
+
+
+def _load_storage_cache() -> dict | None:
+    path = Path(STORAGE_CACHE)
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _save_storage_cache(data: dict) -> None:
+    path = Path(STORAGE_CACHE)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+
+
+def _refresh_storage_cache() -> dict:
+    data = _collect_storage_overview()
+    data["collected_at"] = dt.datetime.now().isoformat(timespec="seconds")
+    data["collected_ts"] = time.time()
+    data["cache_age_seconds"] = 0
+    data["stale"] = False
+    _save_storage_cache(data)
+    return data
+
+
+def op_storage_overview(force=False, **_):
+    if force:
+        return _refresh_storage_cache()
+    data = _load_storage_cache()
+    if data is None:
+        return _refresh_storage_cache()
+    age = max(0, int(time.time() - float(data.get("collected_ts") or 0)))
+    data["cache_age_seconds"] = age
+    data["stale"] = age > STORAGE_CACHE_MAX_AGE
+    return data
+
+
+def op_refresh_storage(**_):
+    return _refresh_storage_cache()
 
 
 def op_storage_smart(device: str, **_):
@@ -2163,6 +2214,7 @@ OPS = {
     "snapshot_create": op_snapshot_create,
     "snapshot_delete": op_snapshot_delete,
     "storage_overview": op_storage_overview,
+    "refresh_storage": op_refresh_storage,
     "storage_smart": op_storage_smart,
     "storage_smart_test": op_storage_smart_test,
     "backup_overview": op_backup_overview,
@@ -2208,6 +2260,17 @@ def main() -> int:
     if os.geteuid() != 0:
         print("O agente precisa rodar como root.", file=sys.stderr)
         return 1
+    if len(sys.argv) > 1 and sys.argv[1] == "--collect":
+        data = op_refresh_storage()
+        print(
+            json.dumps(
+                {
+                    "collected_at": data.get("collected_at"),
+                    "disks": len(data.get("disks", [])),
+                }
+            )
+        )
+        return 0
     os.makedirs(CONFIG_DIR, exist_ok=True)
     load_policies()
     if os.path.exists(SOCKET_PATH):

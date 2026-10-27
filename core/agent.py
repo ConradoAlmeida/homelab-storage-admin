@@ -112,8 +112,12 @@ class AgentClient:
         return self.call("snapshot_delete", share=share, name=name)
 
     def storage_overview(self):
-        # hdparm/smartctl podem demorar alguns segundos por disco
+        # lê o cache diário; coleta só se ainda não existir
         return self.call("storage_overview", timeout=90)
+
+    def refresh_storage(self):
+        # coleta sob demanda pelo botão Atualizar agora
+        return self.call("refresh_storage", timeout=120)
 
     def storage_smart(self, device):
         return self.call("storage_smart", timeout=60, device=device)

@@ -18,6 +18,17 @@ def index(request):
 
 @login_required
 @require_POST
+def refresh(request):
+    try:
+        agent.refresh_storage()
+        messages.success(request, "Métricas de storage/SMART atualizadas.")
+    except AgentError as exc:
+        messages.error(request, str(exc))
+    return redirect("storage_index")
+
+
+@login_required
+@require_POST
 def smart(request):
     device = (request.POST.get("device") or "").strip()
     context = {"device": device, "result": None, "error": None}

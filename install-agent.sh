@@ -64,6 +64,8 @@ echo "==> Instalando unidades systemd"
 install -m 0644 "$HERE/agent/homelab-storage-agent.service" /etc/systemd/system/homelab-storage-agent.service
 install -m 0644 "$HERE/agent/homelab-storage-snapshot.service" /etc/systemd/system/homelab-storage-snapshot.service
 install -m 0644 "$HERE/agent/homelab-storage-snapshot.timer" /etc/systemd/system/homelab-storage-snapshot.timer
+install -m 0644 "$HERE/agent/homelab-storage-metrics.service" /etc/systemd/system/homelab-storage-metrics.service
+install -m 0644 "$HERE/agent/homelab-storage-metrics.timer" /etc/systemd/system/homelab-storage-metrics.timer
 install -m 0644 "$HERE/agent/homelab-restic-backup@.service" /etc/systemd/system/homelab-restic-backup@.service
 install -m 0644 "$HERE/agent/homelab-cold-copy.service" /etc/systemd/system/homelab-cold-copy.service
 
@@ -77,6 +79,7 @@ systemctl daemon-reload
 systemctl enable homelab-storage-agent
 systemctl restart homelab-storage-agent
 systemctl enable --now homelab-storage-snapshot.timer
+systemctl enable --now homelab-storage-metrics.timer
 sleep 1
 
 echo "==> Status"

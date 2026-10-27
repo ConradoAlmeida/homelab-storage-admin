@@ -439,6 +439,10 @@ caminho; qualquer escrita continua no agente root.
 - temperatura **somente se o disco já estiver ativo**;
 - RAID (`/proc/mdstat`, `mdadm --detail`) e Btrfs (usage, device stats, scrub).
 
+A coleta é **diária** (`homelab-storage-metrics.timer`, 06:00) e fica em cache;
+o dashboard e `/storage/` não executam `smartctl` no request. O botão
+**Atualizar agora** força uma coleta. Disco em standby não é acordado.
+
 Regras de standby:
 - o agente usa `hdparm -C` para o estado e `smartctl -n standby` para temperatura/SMART;
 - se o disco estiver em `standby`/`sleeping`, o comando retorna sem acordar;

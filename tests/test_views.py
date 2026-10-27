@@ -19,6 +19,7 @@ def fake_agent(capabilities=None):
     agent.list_users.return_value = []
     agent.list_groups.return_value = []
     agent.snapshot_usage.return_value = []
+    agent.refresh_storage.return_value = {"disks": []}
     agent.storage_overview.return_value = {
         "system": {
             "zones": [],
@@ -77,6 +78,11 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/storage/")
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Btrfs")
+
+    def test_storage_refresh_triggers_agent(self):
+        response = self.client.post("/storage/refresh/")
+        self.assertRedirects(response, "/storage/")
+        self.fake.refresh_storage.assert_called_once_with()
 
     def test_backups_renders_empty_state_without_restic(self):
         response = self.client.get("/backups/")

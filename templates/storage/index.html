@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Discos - Homelab Storage{% endblock %}
 {% block content %}
-<h1>Discos e sistema</h1>
-<p class="muted">Temperaturas e estado são lidos sem acordar discos em standby. SMART completo e testes só por botão.</p>
+<div class="page-head">
+  <div>
+    <h1 style="margin-bottom:4px">Discos e sistema</h1>
+    <p class="muted">Temperaturas e estado vêm de uma coleta diária; discos em standby não são acordados. SMART completo e testes só por botão.</p>
+  </div>
+  <form method="post" action="{% url 'storage_refresh' %}">
+    {% csrf_token %}
+    <button class="btn primary" type="submit">Atualizar agora</button>
+  </form>
+</div>
 
 {% if error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
+  <p class="muted">Última coleta: {{ overview.collected_at|default:"—" }}{% if overview.stale %} · dados vencidos; use “Atualizar agora”{% endif %}</p>
   <h2>Sistema</h2>
   <div class="metric-grid">
     {% for z in overview.system.zones %}

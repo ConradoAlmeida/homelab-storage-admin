@@ -1,0 +1,7 @@
+[Unit]
+Description=Homelab Storage Admin - coleta diaria de storage/SMART
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-storage-agent --collect

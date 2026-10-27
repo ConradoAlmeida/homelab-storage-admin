@@ -36,6 +36,7 @@ ENV_KEYS = (
     "COLD_STATUS",
     "COLD_MOUNT",
     "LOG_FILE",
+    "STORAGE_CACHE",
 )
 
 
@@ -105,6 +106,7 @@ def agent_module(monkeypatch, tmp_path):
         "COLD_STATUS": str(tmp_path / "backup-config" / "cold-status.json"),
         "COLD_MOUNT": str(tmp_path / "coldcopy"),
         "LOG_FILE": str(tmp_path / "agent.log"),
+        "STORAGE_CACHE": str(tmp_path / "storage-cache.json"),
     }
     return load_agent(monkeypatch, values)
 

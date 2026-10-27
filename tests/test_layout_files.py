@@ -32,6 +32,15 @@ def test_host_env_example_is_pi_profile():
     assert values["COMPOSE_OVERLAY"] == "docker-compose.homelab.yml"
 
 
+def test_metrics_timer_is_installed_and_daily():
+    timer = read("agent/homelab-storage-metrics.timer")
+    service = read("agent/homelab-storage-metrics.service")
+    install = read("install-agent.sh")
+    assert "OnCalendar=*-*-* 06:00:00" in timer
+    assert "--collect" in service
+    assert "homelab-storage-metrics.timer" in install
+
+
 def test_install_agent_makes_btrfs_and_restic_optional():
     text = read("install-agent.sh")
     required_block = text.split("Checando dependencias obrigatorias", 1)[1].split(
