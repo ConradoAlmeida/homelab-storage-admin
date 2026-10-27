@@ -21,7 +21,7 @@ Ubuntu+Samba via perfil de host.
 | Editar grupos | Usuários → Grupos |
 | Ativar/desativar acesso | Usuários → botão Ativar/Desativar |
 | Criar share no `smb.conf` | Shares → Novo share |
-| Navegar histórico/snapshots | Histórico (`/history/`) — read-only |
+| Navegar/buscar snapshots Btrfs | Snapshots → Navegar (`/history/`) — read-only, busca e download |
 | Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
 | Visão geral do host | Dashboard — sistema, todos os discos, volumes, RAID/Btrfs, backup e resumo de snapshots |
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
@@ -427,8 +427,14 @@ de um prefixo permitido.
 `/history/` navega os shares e snapshots `@GMT-...`:
 - live e cada snapshot, com breadcrumb;
 - lista de pastas/arquivos, paginação e download;
+- busca no snapshot inteiro por nome/caminho, sem diferenciar maiúsculas;
+- resultados com abrir pasta, baixar e “Versões”;
 - “Versões” por arquivo, comparando live + snapshots;
 - tudo somente leitura; restauração ainda não implementada.
+
+Na tela **Snapshots**, cada snapshot tem o botão **Navegar**, que abre esse
+navegador já no snapshot escolhido. A busca é feita no conteúdo do snapshot
+selecionado; não altera nem cria arquivos.
 
 O container precisa do `STORAGE_ROOT` montado read-only (no Pi, `/mnt/nas`;
 no moya, `/srv/samba` e `/mnt/data`). O app não escreve nos dados por esse

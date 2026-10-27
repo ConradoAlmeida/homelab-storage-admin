@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import fnmatch
 import mimetypes
 import os
 import re
@@ -77,6 +78,53 @@ def _safe_target(base: Path, rel: str) -> Path:
     return target
 
 
+def _search(base: Path, query: str, limit: int = 200) -> tuple[list[dict], int, bool]:
+    query = (query or "").strip()
+    if not query:
+        return [], 0, False
+    pattern = query if any(char in query for char in "*?[") else f"*{query}*"
+    pattern = pattern.casefold()
+    match_path = "/" in query
+    matches = []
+    total = 0
+    base = base.resolve()
+    if not base.is_dir():
+        return [], 0, False
+    for root, dirs, files in os.walk(base, followlinks=False):
+        dirs[:] = [
+            name
+            for name in dirs
+            if not name.startswith(".")
+            and not (Path(root) / name).is_symlink()
+        ]
+        for name in dirs + files:
+            if name.startswith("."):
+                continue
+            full = Path(root) / name
+            if full.is_symlink():
+                continue
+            try:
+                stat = full.stat(follow_symlinks=False)
+            except OSError:
+                continue
+            rel = full.relative_to(base).as_posix()
+            target = rel if match_path else name
+            if not fnmatch.fnmatch(target.casefold(), pattern):
+                continue
+            total += 1
+            if len(matches) < limit:
+                matches.append(
+                    {
+                        "name": name,
+                        "rel": rel,
+                        "is_dir": full.is_dir(),
+                        "size": 0 if full.is_dir() else stat.st_size,
+                        "mtime": dt.datetime.fromtimestamp(stat.st_mtime),
+                    }
+                )
+    return matches, total, total > limit
+
+
 def _url_browse(share: str, snapshot: str, path: str = "") -> str:
     if path:
         return reverse("history_browse", args=[share, snapshot, path])
@@ -125,6 +173,7 @@ def share_detail(request, share: str):
 def browse(request, share: str, snapshot: str, filepath: str = ""):
     info = _share(share)
     base = _base(share, snapshot)
+    query = (request.GET.get("q") or "").strip()
     target = _safe_target(base, filepath)
     if target.is_file():
         return redirect("history_versions", share=share, filepath=filepath)
@@ -177,11 +226,56 @@ def browse(request, share: str, snapshot: str, filepath: str = ""):
         if (not filepath or live_candidate.exists())
         else _url_browse(share, "live")
     )
+    if query:
+        search_results = []
+        raw_matches, search_total, search_truncated = _search(base, query)
+        for item in raw_matches:
+            rel = item["rel"]
+            parent = str(PurePosixPath(rel).parent)
+            if parent == ".":
+                parent = ""
+            if item["is_dir"]:
+                browse_url = _url_browse(share, snapshot, rel)
+                download_url = None
+                versions_url = None
+            else:
+                browse_url = _url_browse(share, snapshot, parent)
+                download_url = reverse("history_download", args=[share, snapshot, rel])
+                versions_url = reverse("history_versions", args=[share, rel])
+            search_results.append(
+                {
+                    **item,
+                    "browse_url": browse_url,
+                    "download_url": download_url,
+                    "versions_url": versions_url,
+                }
+            )
+        context = {
+            "share": info,
+            "snapshot": snapshot,
+            "is_snapshot": snapshot != "live",
+            "path": filepath,
+            "query": query,
+            "parent_url": parent_url,
+            "crumbs": _breadcrumbs(share, snapshot, filepath),
+            "entries": [],
+            "page_obj": None,
+            "snapshots": snapshots,
+            "live_url": live_url,
+            "current_url": _url_browse(share, snapshot),
+            "share_url": reverse("history_share", args=[share]),
+            "search_results": search_results,
+            "search_total": search_total,
+            "search_truncated": search_truncated,
+        }
+        return render(request, "history/browse.html", context)
+
     context = {
         "share": info,
         "snapshot": snapshot,
         "is_snapshot": snapshot != "live",
         "path": filepath,
+        "query": query,
         "parent_url": parent_url,
         "crumbs": _breadcrumbs(share, snapshot, filepath),
         "entries": page_obj.object_list,
