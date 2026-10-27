@@ -1,8 +1,14 @@
+import mimetypes
 import re
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import FileResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from core.agent import AgentError, agent
@@ -50,6 +56,101 @@ def snapshots(request):
     except AgentError as exc:
         context["error"] = str(exc)
     return render(request, "backups/snapshots.html", context)
+
+
+def _snapshot_browse_url(snapshot_id: str, disk_uuid: str, path: str) -> str:
+    base = reverse("backup_snapshot_browse", args=[snapshot_id])
+    return f"{base}?{urlencode({'disk_uuid': disk_uuid, 'path': path})}"
+
+
+def _snapshot_breadcrumbs(path: str) -> list[dict]:
+    current = ""
+    crumbs = []
+    for part in PurePosixPath(path).parts:
+        if part == "/":
+            current = "/"
+            name = "/"
+        else:
+            current = f"{current.rstrip('/')}/{part}"
+            name = part
+        crumbs.append({"name": name, "path": current})
+    return crumbs
+
+
+def _safe_download_path(relative: str) -> Path | None:
+    if not relative:
+        return None
+    root = Path(settings.DATA_DIR).resolve()
+    candidate = (root / relative).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    return candidate
+
+
+@login_required
+def snapshot_browse(request, snapshot_id):
+    disk_uuid = (request.GET.get("disk_uuid") or "").strip()
+    path = (request.GET.get("path") or "/mnt/nas").strip()
+    context = {
+        "snapshot_id": snapshot_id,
+        "disk_uuid": disk_uuid,
+        "path": path,
+        "parent": str(PurePosixPath(path).parent),
+        "breadcrumbs": _snapshot_breadcrumbs(path),
+        "entries": [],
+        "error": None,
+    }
+    try:
+        data = agent.backup_ls(disk_uuid, snapshot_id, path)
+    except AgentError as exc:
+        context["error"] = str(exc)
+    else:
+        context.update(
+            {
+                "snapshot_id": data.get("snapshot_id") or snapshot_id,
+                "path": data.get("path") or path,
+                "parent": data.get("parent") or context["parent"],
+                "breadcrumbs": _snapshot_breadcrumbs(data.get("path") or path),
+                "entries": data.get("entries") or [],
+            }
+        )
+    return render(request, "backups/snapshot_browse.html", context)
+
+
+@login_required
+def snapshot_download(request, snapshot_id):
+    disk_uuid = (request.GET.get("disk_uuid") or "").strip()
+    path = (request.GET.get("path") or "").strip()
+    try:
+        result = agent.backup_download(disk_uuid, snapshot_id, path)
+    except AgentError as exc:
+        messages.error(request, f"Não foi possível baixar o arquivo: {exc}")
+        return redirect(_snapshot_browse_url(snapshot_id, disk_uuid, path))
+
+    target = _safe_download_path(result.get("relative") or "")
+    if target is None or not target.is_file():
+        messages.error(request, "Arquivo de download não encontrado no app.")
+        return redirect(_snapshot_browse_url(snapshot_id, disk_uuid, path))
+
+    filename = result.get("filename") or target.name
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    AuditLog.objects.create(
+        actor=request.user,
+        action="backup_snapshot_download",
+        target=snapshot_id,
+        detail=path,
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    response = FileResponse(
+        open(target, "rb"),
+        as_attachment=True,
+        filename=filename,
+        content_type=content_type,
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @login_required

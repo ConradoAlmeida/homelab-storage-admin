@@ -20,7 +20,7 @@ import subprocess
 import sys
 import time
 import traceback
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 SOCKET_PATH = os.environ.get(
     "AGENT_SOCKET",
@@ -37,6 +37,8 @@ COLD_CONFIG = os.environ.get("COLD_CONFIG", "/etc/homelab-backup/cold.json")
 COLD_STATUS = os.environ.get("COLD_STATUS", "/etc/homelab-backup/cold-status.json")
 COLD_MOUNT = os.environ.get("COLD_MOUNT", "/mnt/coldcopy")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
+DATA_DIR = os.environ.get("DATA_DIR", "/var/lib/homelab-storage-admin")
+DOWNLOAD_DIR = os.environ.get("DOWNLOAD_DIR", os.path.join(DATA_DIR, "downloads"))
 STORAGE_CACHE = os.environ.get(
     "STORAGE_CACHE", "/var/lib/homelab-storage-admin/storage-cache.json"
 )
@@ -46,6 +48,7 @@ USER_RE = re.compile(r"^[a-z][a-z0-9._-]{2,31}$")
 SHARE_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 GROUP_RE = re.compile(r"^[a-z][a-z0-9._-]{1,31}$")
 SNAP_RE = re.compile(r"^@GMT-\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}$")
+RESTIC_SNAPSHOT_RE = re.compile(r"^[0-9a-fA-F]{8,64}$")
 BACKUP_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 COLD_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F-]{16,64}$")
@@ -1391,6 +1394,155 @@ def op_backup_snapshots(**_):
     }
 
 
+def _backup_disk_by_uuid(disk_uuid: str) -> dict:
+    for disk in _load_backup_config().get("disks", []):
+        if disk.get("uuid") == disk_uuid:
+            if not disk.get("repo") or not disk.get("key_file"):
+                raise AgentError(f"Disco sem repositorio/chave: {disk_uuid}")
+            if not os.path.isfile(disk["key_file"]):
+                raise AgentError(f"Chave do restic ausente: {disk['key_file']}")
+            return disk
+    raise AgentError(f"Disco de backup nao encontrado: {disk_uuid}")
+
+
+def _validate_restic_snapshot(snapshot_id: str) -> str:
+    if not RESTIC_SNAPSHOT_RE.match(snapshot_id or ""):
+        raise AgentError("ID de snapshot restic invalido")
+    return snapshot_id
+
+
+def _validate_restic_path(path: str) -> str:
+    path = (path or "/mnt/nas").strip()
+    if not path.startswith("/") or ".." in PurePosixPath(path).parts:
+        raise AgentError("Caminho de backup invalido")
+    return str(PurePosixPath(path))
+
+
+def op_backup_ls(disk_uuid: str, snapshot_id: str, path: str = "/mnt/nas", **_):
+    if not shutil.which("restic"):
+        raise AgentError("restic nao esta instalado no host")
+    disk = _backup_disk_by_uuid(disk_uuid)
+    snapshot_id = _validate_restic_snapshot(snapshot_id)
+    path = _validate_restic_path(path)
+    raw = run(
+        [
+            "restic",
+            "-r",
+            disk["repo"],
+            "--password-file",
+            disk["key_file"],
+            "ls",
+            "--json",
+            snapshot_id,
+            path,
+        ],
+        timeout=120,
+    )
+    entries = []
+    snapshot = {}
+    for line in raw.splitlines():
+        try:
+            node = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if node.get("message_type") == "snapshot":
+            snapshot = {
+                "id": node.get("id"),
+                "short_id": node.get("short_id"),
+                "time": node.get("time"),
+                "hostname": node.get("hostname"),
+                "paths": node.get("paths") or [],
+                "tags": node.get("tags") or [],
+            }
+            continue
+        if node.get("message_type") != "node":
+            continue
+        node_path = node.get("path") or ""
+        if str(PurePosixPath(node_path).parent) != path:
+            continue
+        entries.append(
+            {
+                "name": node.get("name") or PurePosixPath(node_path).name,
+                "path": node_path,
+                "type": node.get("type"),
+                "size": node.get("size"),
+                "mtime": node.get("mtime"),
+                "permissions": node.get("permissions"),
+            }
+        )
+    entries.sort(key=lambda item: (item["type"] != "dir", item["name"].casefold()))
+    return {
+        "disk_uuid": disk_uuid,
+        "snapshot_id": snapshot_id,
+        "path": path,
+        "parent": str(PurePosixPath(path).parent),
+        "snapshot": snapshot,
+        "entries": entries,
+    }
+
+
+def _cleanup_downloads(max_age: int = 86400) -> None:
+    root = Path(DOWNLOAD_DIR)
+    if not root.is_dir():
+        return
+    cutoff = time.time() - max_age
+    for child in root.iterdir():
+        try:
+            if child.is_dir() and child.stat().st_mtime < cutoff:
+                shutil.rmtree(child, ignore_errors=True)
+        except OSError:
+            continue
+
+
+def op_backup_download(disk_uuid: str, snapshot_id: str, path: str, **_):
+    if not shutil.which("restic"):
+        raise AgentError("restic nao esta instalado no host")
+    disk = _backup_disk_by_uuid(disk_uuid)
+    snapshot_id = _validate_restic_snapshot(snapshot_id)
+    path = _validate_restic_path(path)
+    _cleanup_downloads()
+    filename = PurePosixPath(path).name or "download"
+    token = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(4)
+    target_dir = Path(DOWNLOAD_DIR) / token
+    target_dir.mkdir(parents=True, exist_ok=False)
+    os.chmod(target_dir.parent, 0o700)
+    os.chmod(target_dir, 0o700)
+    target = target_dir / filename
+    with open(target, "wb") as output:
+        proc = subprocess.run(
+            [
+                "restic",
+                "-r",
+                disk["repo"],
+                "--password-file",
+                disk["key_file"],
+                "dump",
+                snapshot_id,
+                path,
+            ],
+            stdout=output,
+            stderr=subprocess.PIPE,
+            timeout=600,
+            check=False,
+        )
+    if proc.returncode != 0:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        detail = (proc.stderr or b"").decode("utf-8", errors="replace").strip()[:500]
+        raise AgentError(f"restic dump falhou: {detail or proc.returncode}")
+    data_root = Path(DATA_DIR).resolve()
+    target_res = target.resolve()
+    try:
+        relative = target_res.relative_to(data_root)
+    except ValueError as exc:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        raise AgentError("DOWNLOAD_DIR fora de DATA_DIR") from exc
+    return {
+        "relative": str(relative),
+        "filename": filename,
+        "size": target.stat().st_size,
+    }
+
+
 def op_backup_disk_setup(
     device: str,
     label: str,
@@ -2275,6 +2427,8 @@ OPS = {
     "storage_smart_test": op_storage_smart_test,
     "backup_overview": op_backup_overview,
     "backup_snapshots": op_backup_snapshots,
+    "backup_ls": op_backup_ls,
+    "backup_download": op_backup_download,
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,
     "backup_job_save": op_backup_job_save,

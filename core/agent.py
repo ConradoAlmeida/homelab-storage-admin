@@ -131,6 +131,24 @@ class AgentClient:
     def backup_snapshots(self):
         return self.call("backup_snapshots", timeout=120)
 
+    def backup_ls(self, disk_uuid, snapshot_id, path="/mnt/nas"):
+        return self.call(
+            "backup_ls",
+            timeout=120,
+            disk_uuid=disk_uuid,
+            snapshot_id=snapshot_id,
+            path=path,
+        )
+
+    def backup_download(self, disk_uuid, snapshot_id, path):
+        return self.call(
+            "backup_download",
+            timeout=600,
+            disk_uuid=disk_uuid,
+            snapshot_id=snapshot_id,
+            path=path,
+        )
+
     def backup_disk_setup(self, device, label, confirmation, allow_existing=False):
         return self.call(
             "backup_disk_setup",

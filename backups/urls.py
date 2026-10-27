@@ -5,6 +5,16 @@ from . import views
 urlpatterns = [
     path("", views.index, name="backup_index"),
     path("snapshots/", views.snapshots, name="backup_snapshots"),
+    path(
+        "snapshots/<str:snapshot_id>/browse/",
+        views.snapshot_browse,
+        name="backup_snapshot_browse",
+    ),
+    path(
+        "snapshots/<str:snapshot_id>/download/",
+        views.snapshot_download,
+        name="backup_snapshot_download",
+    ),
     path("disks/setup/", views.disk_wizard, name="backup_disk_wizard"),
     path("credentials/", views.credentials, name="backup_credentials"),
     path("cold/", views.cold_index, name="cold_index"),

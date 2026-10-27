@@ -19,7 +19,7 @@
   {% endif %}
   {% if snapshots %}
     <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Disco</th><th>Snapshot</th><th>Data</th><th>Arquivos</th><th>Tamanho</th><th>Adicionado</th><th>Fontes</th></tr></thead>
+      <thead><tr><th>Disco</th><th>Snapshot</th><th>Data</th><th>Arquivos</th><th>Tamanho</th><th>Adicionado</th><th>Fontes</th><th></th></tr></thead>
       <tbody>
         {% for snap in snapshots %}
           <tr>
@@ -30,6 +30,9 @@
             <td>{{ snap.bytes|filesizeformat }}</td>
             <td class="muted">{{ snap.added_bytes|filesizeformat }}</td>
             <td class="muted" style="font-size:12px">{{ snap.paths|join:", " }}</td>
+            <td>
+              <a class="btn small" href="{% url 'backup_snapshot_browse' snap.short_id %}?disk_uuid={{ snap.disk_uuid|urlencode }}&path=/mnt/nas">Navegar</a>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Navegar no snapshot {{ snapshot_id }} - Homelab Storage{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between;align-items:flex-start">
+  <div>
+    <h1 style="margin-bottom:4px">Navegar no snapshot</h1>
+    <p class="muted">
+      Leitura somente. O conteúdo vem direto do repositório restic; nada é restaurado no share.
+    </p>
+  </div>
+  <a class="btn small" href="{% url 'backup_snapshots' %}">← Snapshots</a>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <strong>Snapshot:</strong> <code>{{ snapshot_id }}</code>
+      {% if snapshot.time %}<span class="muted"> · {{ snapshot.time }}</span>{% endif %}
+      {% if snapshot.hostname %}<span class="muted"> · {{ snapshot.hostname }}</span>{% endif %}
+      {% if snapshot.tags %}<span class="muted"> · tags: {{ snapshot.tags|join:", " }}</span>{% endif %}
+    </div>
+    <a class="btn small" href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ parent|urlencode }}">↑ Subir</a>
+  </div>
+  {% if snapshot.paths %}
+    <p class="muted" style="font-size:12px;margin-bottom:0">Fontes: {{ snapshot.paths|join:", " }}</p>
+  {% endif %}
+</div>
+
+{% if error %}
+  <div class="card" style="border-color:#7f1d1d"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+{% else %}
+  <div class="card">
+    <div class="row" style="gap:4px;flex-wrap:wrap;align-items:center;font-size:13px">
+      {% for crumb in breadcrumbs %}
+        {% if not forloop.first %}<span class="muted">/</span>{% endif %}
+        <a href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ crumb.path|urlencode }}">{{ crumb.name }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if entries %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Nome</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th>Permissões</th><th></th></tr></thead>
+      <tbody>
+        {% for entry in entries %}
+          <tr>
+            <td>
+              {% if entry.type == "dir" %}
+                <a href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ entry.path|urlencode }}"><strong>{{ entry.name }}</strong></a>
+              {% else %}
+                {{ entry.name }}
+              {% endif %}
+            </td>
+            <td class="muted">
+              {% if entry.type == "dir" %}Pasta{% elif entry.type == "file" %}Arquivo{% elif entry.type == "symlink" %}Link{% else %}{{ entry.type }}{% endif %}
+            </td>
+            <td>{% if entry.size is not None %}{{ entry.size|filesizeformat }}{% else %}—{% endif %}</td>
+            <td class="muted">{{ entry.mtime|default:"—" }}</td>
+            <td class="muted"><code>{{ entry.permissions|default:"—" }}</code></td>
+            <td>
+              {% if entry.type == "file" %}
+                <a class="btn small" href="{% url 'backup_snapshot_download' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ entry.path|urlencode }}">Baixar</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Pasta vazia ou sem itens imediatos.</div>
+  {% endif %}
+{% endif %}
+{% endblock %}

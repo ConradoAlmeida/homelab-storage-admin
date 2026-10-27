@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
@@ -21,6 +23,13 @@ def fake_agent(capabilities=None):
     agent.snapshot_usage.return_value = []
     agent.refresh_storage.return_value = {"disks": []}
     agent.backup_snapshots.return_value = {"snapshots": [], "errors": []}
+    agent.backup_ls.return_value = {
+        "snapshot_id": "a" * 64,
+        "path": "/mnt/nas",
+        "parent": "/mnt",
+        "snapshot": {},
+        "entries": [],
+    }
     agent.storage_overview.return_value = {
         "system": {
             "zones": [],
@@ -98,6 +107,72 @@ class ViewSmokeTests(TestCase):
     def test_nav_hides_backups_without_restic(self):
         response = self.client.get("/")
         self.assertNotContains(response, 'href="/backups/"')
+
+    def test_restic_snapshot_browser_lists_files(self):
+        self.fake.backup_ls.return_value = {
+            "snapshot_id": "a" * 64,
+            "path": "/mnt/nas",
+            "parent": "/mnt",
+            "snapshot": {
+                "short_id": "aaaaaaaa",
+                "time": "2026-10-26T22:15:24-03:00",
+                "hostname": "homelab",
+                "paths": ["/mnt/nas"],
+                "tags": ["homelab"],
+            },
+            "entries": [
+                {
+                    "name": "casa",
+                    "path": "/mnt/nas/casa",
+                    "type": "dir",
+                    "size": None,
+                    "mtime": "2026-10-25T22:37:27-03:00",
+                    "permissions": "drwxrwxr-x",
+                },
+                {
+                    "name": "a.txt",
+                    "path": "/mnt/nas/a.txt",
+                    "type": "file",
+                    "size": 12,
+                    "mtime": "2026-10-25T22:37:27-03:00",
+                    "permissions": "-rw-r--r--",
+                },
+            ],
+        }
+        response = self.client.get(
+            "/backups/snapshots/aaaaaaaa/browse/?disk_uuid=u1&path=/mnt/nas"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "casa")
+        self.assertContains(response, "a.txt")
+        self.assertContains(response, "Baixar")
+        self.assertContains(response, "2026-10-25T22:37:27-03:00")
+        self.fake.backup_ls.assert_called_once_with("u1", "aaaaaaaa", "/mnt/nas")
+
+    def test_restic_snapshot_download_serves_file_and_audits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            target = data_dir / "downloads" / "token" / "a.txt"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"conteudo")
+            self.fake.backup_download.return_value = {
+                "relative": "downloads/token/a.txt",
+                "filename": "a.txt",
+                "size": 8,
+            }
+            with self.settings(DATA_DIR=data_dir):
+                response = self.client.get(
+                    "/backups/snapshots/aaaaaaaa/download/"
+                    "?disk_uuid=u1&path=/mnt/nas/a.txt"
+                )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), b"conteudo")
+            self.assertEqual(response["Content-Disposition"], 'attachment; filename="a.txt"')
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="backup_snapshot_download", target="aaaaaaaa"
+            ).exists()
+        )
 
     def test_group_create_posts_to_agent_and_audits(self):
         self.fake.create_group.return_value = {"name": "equipe", "gid": 1500}
