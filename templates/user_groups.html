@@ -4,6 +4,7 @@
 <h1>Grupos{% if username %} de {{ username }}{% endif %}</h1>
 <form class="stack" method="post">
   {% csrf_token %}
+  {{ form.non_field_errors }}
   {% for field in form %}
     {% if field.is_hidden %}{{ field }}{% else %}
       <div>

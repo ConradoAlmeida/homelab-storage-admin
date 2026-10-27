@@ -510,7 +510,7 @@ def op_storage_smart_test(device: str, kind: str = "short", **_):
     return {"device": device, "kind": kind, "started": True, "output": out.strip()}
 
 
-
+def validate_user(username: str) -> str:
     if not USER_RE.match(username or ""):
         raise AgentError("Usuario invalido (use minusculas, 3-32: a-z 0-9 . _ -)")
     return username

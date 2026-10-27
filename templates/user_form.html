@@ -4,6 +4,7 @@
 <h1>Novo usuário Samba</h1>
 <form class="stack" method="post">
   {% csrf_token %}
+  {{ form.non_field_errors }}
   {% for field in form %}
     <div>
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
