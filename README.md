@@ -30,6 +30,7 @@ Ubuntu+Samba via perfil de host.
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Listar snapshots restic | Backups → Snapshots restic — data, arquivos, tamanho e fontes |
+| Navegar/baixar arquivo do restic | Backups → Snapshots restic → Navegar — read-only, com download |
 | Cópia fria USB | Backups → Cópia fria (USB) — restic copy + check + eject |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
@@ -391,6 +392,7 @@ Gere a chave com `openssl rand -hex 32`.
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
+| `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
 
 O unit `homelab-storage-agent.service` e o socket **não são renomeados**. O
 `deploy.sh` carrega esse arquivo e usa o overlay do host.
@@ -507,7 +509,19 @@ A tabela mostra último status e próxima execução.
 **Backups → Snapshots restic** lê `restic snapshots --json` de cada disco
 configurado e mostra disco, ID curto, data, arquivos, tamanho, bytes
 adicionados e fontes. Snapshots vazios aparecem marcados; a retenção é aplicada
-pelo job, não por essa tela. A listagem é read-only; restore ainda é via CLI.
+pelo job, não por essa tela.
+
+O botão **Navegar** abre um navegador read-only do snapshot:
+
+- lista pastas e arquivos com tamanho, data de modificação e permissões;
+- navega por breadcrumb sem restaurar nem sobrescrever shares;
+- **Baixar** usa `restic dump` no agente e o app serve o arquivo em streaming;
+- o download temporário fica em `DOWNLOAD_DIR` (padrão `DATA_DIR/downloads`) e
+  é limpo depois de 24 h;
+- caminhos, snapshot e disco são validados no agente; não há shell livre.
+
+Restaurar uma árvore inteira para um share continua sendo uma operação manual
+via CLI; o navegador serve para inspecionar e baixar itens específicos.
 
 ## 7. Samba
 
@@ -755,7 +769,7 @@ homelab-storage-admin/
 ├── core/              # views, forms, models, cliente do agente
 ├── history/           # navegador read-only de snapshots/versoes
 ├── storage/           # temperatura/estado/SMART sob demanda (standby-safe)
-├── backups/           # wizard de disco + (proximo) jobs restic
+├── backups/           # wizard, jobs, snapshots restic e navegador read-only
 ├── templates/         # UI escura, sem dependências externas
 ├── deploy/pi/
 │   ├── homelab-compose.service
