@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Arquivos e versões - Homelab Storage{% endblock %}
+{% block title %}Arquivos e versões - {{ site_name }}{% endblock %}
 {% block content %}
 <h1>Arquivos e versões</h1>
 <p class="muted">Navegue, busque e baixe arquivos do conteúdo atual e dos snapshots dos shares. Tudo é somente leitura; para criar/remover snapshots, use <a href="{% url 'snapshots' %}">Snapshots</a>.</p>
