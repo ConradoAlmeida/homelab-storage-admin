@@ -140,6 +140,15 @@ class AgentClient:
             path=path,
         )
 
+    def backup_search(self, disk_uuid, snapshot_id, query):
+        return self.call(
+            "backup_search",
+            timeout=180,
+            disk_uuid=disk_uuid,
+            snapshot_id=snapshot_id,
+            query=query,
+        )
+
     def backup_download(self, disk_uuid, snapshot_id, path):
         return self.call(
             "backup_download",

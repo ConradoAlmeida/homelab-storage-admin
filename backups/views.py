@@ -93,16 +93,38 @@ def _safe_download_path(relative: str) -> Path | None:
 def snapshot_browse(request, snapshot_id):
     disk_uuid = (request.GET.get("disk_uuid") or "").strip()
     path = (request.GET.get("path") or "/mnt/nas").strip()
+    query = (request.GET.get("q") or "").strip()
     context = {
         "snapshot_id": snapshot_id,
         "snapshot": {},
         "disk_uuid": disk_uuid,
         "path": path,
+        "query": query,
         "parent": str(PurePosixPath(path).parent),
         "breadcrumbs": _snapshot_breadcrumbs(path),
         "entries": [],
+        "search_matches": [],
+        "search_total": 0,
+        "search_truncated": False,
         "error": None,
     }
+    if query:
+        try:
+            data = agent.backup_search(disk_uuid, snapshot_id, query)
+        except AgentError as exc:
+            context["error"] = str(exc)
+        else:
+            context.update(
+                {
+                    "snapshot_id": data.get("snapshot_id") or snapshot_id,
+                    "query": data.get("query") or query,
+                    "search_matches": data.get("matches") or [],
+                    "search_total": data.get("total", 0),
+                    "search_truncated": bool(data.get("truncated")),
+                }
+            )
+        return render(request, "backups/snapshot_browse.html", context)
+
     try:
         data = agent.backup_ls(disk_uuid, snapshot_id, path)
     except AgentError as exc:

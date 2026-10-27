@@ -26,19 +26,68 @@
   {% endif %}
 </div>
 
+<div class="card">
+  <form method="get" action="{% url 'backup_snapshot_browse' snapshot_id %}" class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+    <input type="hidden" name="disk_uuid" value="{{ disk_uuid }}">
+    <input type="hidden" name="path" value="{{ path }}">
+    <input type="search" name="q" value="{{ query }}" placeholder="Buscar nome ou caminho no snapshot inteiro" style="min-width:280px;flex:1;max-width:560px;padding:8px 10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:inherit">
+    <button class="btn small" type="submit">Buscar</button>
+    {% if query %}<a class="btn small" href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ path|urlencode }}">Limpar</a>{% endif %}
+  </form>
+  <p class="muted" style="font-size:12px;margin:8px 0 0">Sem curinga, busca por trecho do nome/caminho; use <code>*</code> e <code>?</code> para padrões.</p>
+</div>
+
 {% if error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
 {% else %}
-  <div class="card">
-    <div class="row" style="gap:4px;flex-wrap:wrap;align-items:center;font-size:13px">
-      {% for crumb in breadcrumbs %}
-        {% if not forloop.first %}<span class="muted">/</span>{% endif %}
-        <a href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ crumb.path|urlencode }}">{{ crumb.name }}</a>
-      {% endfor %}
+  {% if query %}
+    <div class="card">
+      <strong>Resultados para “{{ query }}”</strong>
+      <span class="muted">· {{ search_total }} ocorrência{{ search_total|pluralize }}</span>
+      {% if search_truncated %}<span class="muted"> · mostrando os primeiros {{ search_matches|length }}</span>{% endif %}
     </div>
-  </div>
+    {% if search_matches %}
+      <div class="table-wrap"><table class="file-table">
+        <thead><tr><th>Caminho</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
+        <tbody>
+          {% for match in search_matches %}
+            <tr>
+              <td style="word-break:break-all">
+                <a href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={% if match.type == 'dir' %}{{ match.path|urlencode }}{% else %}{{ match.parent|urlencode }}{% endif %}">{{ match.path }}</a>
+              </td>
+              <td class="muted">
+                {% if match.type == "dir" %}Pasta{% elif match.type == "file" %}Arquivo{% elif match.type == "symlink" %}Link{% else %}{{ match.type }}{% endif %}
+              </td>
+              <td>{% if match.size is not None %}{{ match.size|filesizeformat }}{% else %}—{% endif %}</td>
+              <td class="muted">{{ match.mtime|default:"—" }}</td>
+              <td style="white-space:nowrap">
+                {% if match.type == "dir" %}
+                  <a class="btn small" href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ match.path|urlencode }}">Abrir</a>
+                {% else %}
+                  <a class="btn small" href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ match.parent|urlencode }}">Abrir pasta</a>
+                  {% if match.type == "file" %}
+                    <a class="btn small" href="{% url 'backup_snapshot_download' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ match.path|urlencode }}">Baixar</a>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <div class="empty">Nenhum arquivo ou pasta encontrado.</div>
+    {% endif %}
+  {% else %}
+    <div class="card">
+      <div class="row" style="gap:4px;flex-wrap:wrap;align-items:center;font-size:13px">
+        {% for crumb in breadcrumbs %}
+          {% if not forloop.first %}<span class="muted">/</span>{% endif %}
+          <a href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ crumb.path|urlencode }}">{{ crumb.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
 
-  {% if entries %}
+    {% if entries %}
     <div class="table-wrap"><table class="file-table">
       <thead><tr><th>Nome</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th>Permissões</th><th></th></tr></thead>
       <tbody>
@@ -68,6 +117,7 @@
     </table></div>
   {% else %}
     <div class="empty">Pasta vazia ou sem itens imediatos.</div>
+  {% endif %}
   {% endif %}
 {% endif %}
 {% endblock %}

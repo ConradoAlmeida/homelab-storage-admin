@@ -1500,6 +1500,80 @@ def _cleanup_downloads(max_age: int = 86400) -> None:
             continue
 
 
+def _validate_backup_query(query: str) -> tuple[str, str]:
+    query = (query or "").strip()
+    if not query or len(query) > 120 or any(ord(char) < 32 for char in query):
+        raise AgentError("Busca invalida (1-120 caracteres, sem controles)")
+    pattern = query if any(char in query for char in "*?[") else f"*{query}*"
+    return query, pattern
+
+
+def op_backup_search(
+    disk_uuid: str,
+    snapshot_id: str,
+    query: str,
+    limit: int = 200,
+    **_,
+):
+    if not shutil.which("restic"):
+        raise AgentError("restic nao esta instalado no host")
+    disk = _backup_disk_by_uuid(disk_uuid)
+    snapshot_id = _validate_restic_snapshot(snapshot_id)
+    query, pattern = _validate_backup_query(query)
+    limit = max(1, min(int(limit), 500))
+    raw = run(
+        [
+            "restic",
+            "-r",
+            disk["repo"],
+            "--password-file",
+            disk["key_file"],
+            "find",
+            "--snapshot",
+            snapshot_id,
+            "--json",
+            "--ignore-case",
+            pattern,
+        ],
+        timeout=180,
+    )
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise AgentError("Resposta invalida do restic find") from exc
+    if not isinstance(payload, list):
+        raise AgentError("Resposta invalida do restic find")
+    matches = []
+    total = 0
+    for item in payload:
+        item_matches = item.get("matches") or []
+        total += int(item.get("hits") or len(item_matches))
+        for node in item_matches:
+            node_path = node.get("path") or ""
+            if not node_path:
+                continue
+            matches.append(
+                {
+                    "name": node.get("name") or PurePosixPath(node_path).name,
+                    "path": node_path,
+                    "parent": str(PurePosixPath(node_path).parent),
+                    "type": node.get("type"),
+                    "size": node.get("size"),
+                    "mtime": node.get("mtime"),
+                    "permissions": node.get("permissions"),
+                }
+            )
+    return {
+        "disk_uuid": disk_uuid,
+        "snapshot_id": snapshot_id,
+        "query": query,
+        "pattern": pattern,
+        "total": total,
+        "truncated": total > limit,
+        "matches": matches[:limit],
+    }
+
+
 def op_backup_download(disk_uuid: str, snapshot_id: str, path: str, **_):
     if not shutil.which("restic"):
         raise AgentError("restic nao esta instalado no host")
@@ -2434,6 +2508,7 @@ OPS = {
     "backup_overview": op_backup_overview,
     "backup_snapshots": op_backup_snapshots,
     "backup_ls": op_backup_ls,
+    "backup_search": op_backup_search,
     "backup_download": op_backup_download,
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,

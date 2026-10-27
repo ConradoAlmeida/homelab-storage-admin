@@ -30,6 +30,13 @@ def fake_agent(capabilities=None):
         "snapshot": {},
         "entries": [],
     }
+    agent.backup_search.return_value = {
+        "snapshot_id": "a" * 64,
+        "query": "",
+        "matches": [],
+        "total": 0,
+        "truncated": False,
+    }
     agent.storage_overview.return_value = {
         "system": {
             "zones": [],
@@ -149,6 +156,46 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "2026-10-26T22:15:24-03:00")
         self.assertContains(response, "2026-10-25T22:37:27-03:00")
         self.fake.backup_ls.assert_called_once_with("u1", "aaaaaaaa", "/mnt/nas")
+
+    def test_restic_snapshot_search_lists_matches(self):
+        self.fake.backup_search.return_value = {
+            "snapshot_id": "a" * 64,
+            "query": "README",
+            "pattern": "*README*",
+            "total": 2,
+            "truncated": False,
+            "matches": [
+                {
+                    "name": "README.md",
+                    "path": "/mnt/nas/casa/README.md",
+                    "parent": "/mnt/nas/casa",
+                    "type": "file",
+                    "size": 12,
+                    "mtime": "2026-10-25T22:37:27-03:00",
+                    "permissions": "-rw-r--r--",
+                },
+                {
+                    "name": "Docs",
+                    "path": "/mnt/nas/Docs",
+                    "parent": "/mnt/nas",
+                    "type": "dir",
+                    "size": None,
+                    "mtime": "2026-10-25T22:37:27-03:00",
+                    "permissions": "drwxr-xr-x",
+                },
+            ],
+        }
+        response = self.client.get(
+            "/backups/snapshots/aaaaaaaa/browse/"
+            "?disk_uuid=u1&path=/mnt/nas&q=README"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Resultados para")
+        self.assertContains(response, "/mnt/nas/casa/README.md")
+        self.assertContains(response, "Baixar")
+        self.assertContains(response, "Abrir pasta")
+        self.assertContains(response, "Abrir")
+        self.fake.backup_search.assert_called_once_with("u1", "aaaaaaaa", "README")
 
     def test_restic_snapshot_download_serves_file_and_audits(self):
         with tempfile.TemporaryDirectory() as tmp:

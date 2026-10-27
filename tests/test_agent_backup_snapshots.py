@@ -136,6 +136,61 @@ def test_backup_ls_rejects_traversal(agent_module, monkeypatch, tmp_path):
         raise AssertionError("path traversal deveria falhar")
 
 
+def test_backup_search_wraps_plain_query(agent_module, monkeypatch, tmp_path):
+    agent = agent_module
+    _backup_config(agent, monkeypatch, tmp_path)
+    seen = {}
+
+    def fake_run(args, **kwargs):
+        seen["args"] = args
+        return json.dumps(
+            [
+                {
+                    "snapshot": "a" * 64,
+                    "hits": 1,
+                    "matches": [
+                        {
+                            "path": "/mnt/nas/casa/README.md",
+                            "type": "file",
+                            "size": 12,
+                            "mtime": "2026-10-25T22:37:27-03:00",
+                            "permissions": "-rw-r--r--",
+                        }
+                    ],
+                }
+            ]
+        )
+
+    monkeypatch.setattr(agent, "run", fake_run)
+    data = agent.op_backup_search("u1", "aaaaaaaa", "README")
+    assert seen["args"][-1] == "*README*"
+    assert data["pattern"] == "*README*"
+    assert data["total"] == 1
+    assert data["matches"][0]["name"] == "README.md"
+    assert data["matches"][0]["parent"] == "/mnt/nas/casa"
+
+
+def test_backup_search_keeps_glob_and_limits(agent_module, monkeypatch, tmp_path):
+    agent = agent_module
+    _backup_config(agent, monkeypatch, tmp_path)
+    matches = [
+        {"path": f"/mnt/nas/casa/{index}.pdf", "type": "file", "size": index}
+        for index in range(3)
+    ]
+    monkeypatch.setattr(
+        agent,
+        "run",
+        lambda *args, **kwargs: json.dumps(
+            [{"snapshot": "a" * 64, "hits": 3, "matches": matches}]
+        ),
+    )
+    data = agent.op_backup_search("u1", "aaaaaaaa", "*.pdf", limit=2)
+    assert data["pattern"] == "*.pdf"
+    assert data["total"] == 3
+    assert data["truncated"] is True
+    assert len(data["matches"]) == 2
+
+
 def test_backup_download_writes_shared_file(agent_module, monkeypatch, tmp_path):
     agent = agent_module
     _backup_config(agent, monkeypatch, tmp_path)

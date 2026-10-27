@@ -30,7 +30,7 @@ Ubuntu+Samba via perfil de host.
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Listar snapshots restic | Backups → Snapshots restic — data, arquivos, tamanho e fontes |
-| Navegar/baixar arquivo do restic | Backups → Snapshots restic → Navegar — read-only, com download |
+| Navegar/baixar/buscar no restic | Backups → Snapshots restic → Navegar — read-only, busca e download |
 | Cópia fria USB | Backups → Cópia fria (USB) — restic copy + check + eject |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
@@ -515,6 +515,9 @@ O botão **Navegar** abre um navegador read-only do snapshot:
 
 - lista pastas e arquivos com tamanho, data de modificação e permissões;
 - navega por breadcrumb sem restaurar nem sobrescrever shares;
+- **Buscar** procura no snapshot inteiro por trecho de nome/caminho, sem diferenciar maiúsculas; aceita `*` e `?` como curingas;
+- resultados mostram caminho, tipo, tamanho e data, com atalho para abrir a pasta ou baixar o arquivo;
+- a busca é limitada aos primeiros 200 resultados, mas informa o total encontrado;
 - **Baixar** usa `restic dump` no agente e o app serve o arquivo em streaming;
 - o download temporário fica em `DOWNLOAD_DIR` (padrão `DATA_DIR/downloads`) e
   é limpo depois de 24 h;
