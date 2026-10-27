@@ -22,6 +22,17 @@ def fake_agent(capabilities=None):
     agent.list_groups.return_value = []
     agent.snapshot_usage.return_value = []
     agent.refresh_storage.return_value = {"disks": []}
+    agent.live_metrics.return_value = {
+        "system": {
+            "zones": [{"type": "cpu_thermal", "temp": 35.0}],
+            "fans": [],
+            "load": {"l1": 0.1, "l5": 0.2, "l15": 0.3},
+            "cpu_percent": 5.0,
+            "mem_total_mb": 1024,
+            "mem_available_mb": 512,
+        },
+        "collected_at": "2026-10-26T23:00:00",
+    }
     agent.backup_snapshots.return_value = {"snapshots": [], "errors": []}
     agent.backup_ls.return_value = {
         "snapshot_id": "a" * 64,
@@ -233,6 +244,13 @@ class ViewSmokeTests(TestCase):
         self.assertTrue(
             AuditLog.objects.filter(action="group.create", target="equipe").exists()
         )
+
+    def test_live_metrics_endpoint_returns_hardware_only(self):
+        response = self.client.get("/metrics/live/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["system"]["cpu_percent"], 5.0)
+        self.assertNotIn("disks", response.json())
+        self.fake.live_metrics.assert_called_once_with()
 
     def test_share_sizes_endpoint_returns_lazy_payload(self):
         self.fake.list_shares.return_value = [

@@ -37,23 +37,23 @@
   <h2>Sistema</h2>
   <div class="metric-grid">
     {% for z in overview.system.zones %}
-      <div class="metric">
+      <div class="metric" data-live-zone="{{ forloop.counter0 }}" data-live-zone-type="{{ z.type }}">
         <span>{% if 'cpu' in z.type %}CPU{% else %}{{ z.type }}{% endif %}</span>
-        <strong>{{ z.temp|floatformat:1 }} °C{% if 'cpu' in z.type and overview.system.cpu_percent is not None %} · {{ overview.system.cpu_percent }}%{% endif %}</strong>
+        <strong data-live-zone-value>{{ z.temp|floatformat:1 }} °C{% if 'cpu' in z.type and overview.system.cpu_percent is not None %} · {{ overview.system.cpu_percent }}%{% endif %}</strong>
         {% if 'cpu' in z.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
       </div>
     {% endfor %}
     {% if capabilities.hwmon_fans %}
       {% for f in overview.system.fans %}
-        <div class="metric">
+        <div class="metric" data-live-fan="{{ forloop.counter0 }}">
           <span>Fan {{ f.name }}</span>
-          <strong>{% if f.rpm is not None %}{{ f.rpm }} rpm{% if f.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
-          <div class="muted" style="font-size:11px">PWM {% if f.pwm_percent is not None %}{{ f.pwm_percent }}%{% else %}—{% endif %}{% if f.rpm == 0 %} · curva começa ~50 °C{% endif %}</div>
+          <strong data-live-fan-value>{% if f.rpm is not None %}{{ f.rpm }} rpm{% if f.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
+          <div class="muted" style="font-size:11px" data-live-fan-sub>PWM {% if f.pwm_percent is not None %}{{ f.pwm_percent }}%{% else %}—{% endif %}{% if f.rpm == 0 %} · curva começa ~50 °C{% endif %}</div>
         </div>
       {% endfor %}
     {% endif %}
-    <div class="metric"><span>Load (1/5/15)</span><strong style="font-size:15px">{{ overview.system.load.l1|floatformat:2 }} / {{ overview.system.load.l5|floatformat:2 }} / {{ overview.system.load.l15|floatformat:2 }}</strong></div>
-    <div class="metric"><span>RAM disponível</span><strong>{{ overview.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ overview.system.mem_total_mb|default:"—" }} MB</div></div>
+    <div class="metric"><span>Load (1/5/15)</span><strong style="font-size:15px" data-live-load>{{ overview.system.load.l1|floatformat:2 }} / {{ overview.system.load.l5|floatformat:2 }} / {{ overview.system.load.l15|floatformat:2 }}</strong></div>
+    <div class="metric"><span>RAM disponível</span><strong><span data-live-mem-available>{{ overview.system.mem_available_mb|default:"—" }}</span> MB</strong><div class="muted" style="font-size:11px">de <span data-live-mem-total>{{ overview.system.mem_total_mb|default:"—" }}</span> MB</div></div>
   </div>
 
   <h2>Discos</h2>
@@ -139,4 +139,5 @@
     {% endif %}
   </details>
 {% endif %}
+{% include "partials/live_metrics.html" %}
 {% endblock %}

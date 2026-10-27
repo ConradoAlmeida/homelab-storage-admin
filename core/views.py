@@ -125,6 +125,16 @@ def network_metrics(request):
 
 
 @login_required
+def live_metrics(request):
+    """Hardware do Pi em tempo real; discos/SMART continuam no cache."""
+    try:
+        data = agent.live_metrics()
+    except AgentError as exc:
+        return JsonResponse({"error": str(exc)}, status=503)
+    return JsonResponse(data)
+
+
+@login_required
 def share_sizes(request):
     """Tamanhos dos shares carregados depois do render do dashboard."""
     try:

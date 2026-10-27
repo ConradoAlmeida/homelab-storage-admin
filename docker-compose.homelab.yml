@@ -5,4 +5,5 @@ services:
     volumes:
       - /mnt/nas/apps/homelab-storage-admin/data:/app/data
       - /mnt/nas:/mnt/nas:ro
+      - ${JELLYFIN_ROOT:-/mnt/jellyfin}:${JELLYFIN_ROOT:-/mnt/jellyfin}:ro
       - /run/homelab-storage-admin:/run/homelab-storage-admin:ro

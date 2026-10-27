@@ -16,6 +16,7 @@ services:
       - ALLOWED_PATH_PREFIXES=${ALLOWED_PATH_PREFIXES:-/mnt/nas/}
       - DF_MOUNTS=${DF_MOUNTS:-/,/mnt/nas}
       - BACKUP_ROOT=${BACKUP_ROOT:-/mnt/backup}
+      - JELLYFIN_ROOT=${JELLYFIN_ROOT:-/mnt/jellyfin}
       - SNAPSHOT_BACKEND=${SNAPSHOT_BACKEND:-auto}
       - SNAPSHOT_DENYLIST=${SNAPSHOT_DENYLIST:-}
     volumes:

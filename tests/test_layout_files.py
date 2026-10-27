@@ -20,6 +20,7 @@ def test_homelab_overlay_keeps_current_paths():
     text = read("docker-compose.homelab.yml")
     assert "/mnt/nas/apps/homelab-storage-admin/data:/app/data" in text
     assert "/mnt/nas:/mnt/nas:ro" in text
+    assert "${JELLYFIN_ROOT:-/mnt/jellyfin}:${JELLYFIN_ROOT:-/mnt/jellyfin}:ro" in text
     assert "/run/homelab-storage-admin:/run/homelab-storage-admin:ro" in text
 
 

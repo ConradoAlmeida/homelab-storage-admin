@@ -40,23 +40,23 @@
 <h2>Sistema e rede</h2>
 <div class="metric-grid">
   {% for zone in storage.system.zones %}
-    <div class="metric">
+    <div class="metric" data-live-zone="{{ forloop.counter0 }}" data-live-zone-type="{{ zone.type }}">
       <span>{% if 'cpu' in zone.type %}CPU{% else %}{{ zone.type }}{% endif %}</span>
-      <strong>{{ zone.temp|floatformat:1 }} °C{% if 'cpu' in zone.type and storage.system.cpu_percent is not None %} · {{ storage.system.cpu_percent }}%{% endif %}</strong>
+      <strong data-live-zone-value>{{ zone.temp|floatformat:1 }} °C{% if 'cpu' in zone.type and storage.system.cpu_percent is not None %} · {{ storage.system.cpu_percent }}%{% endif %}</strong>
       {% if 'cpu' in zone.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
     </div>
   {% endfor %}
   {% if capabilities.hwmon_fans %}
     {% for fan in storage.system.fans %}
-      <div class="metric">
+      <div class="metric" data-live-fan="{{ forloop.counter0 }}">
         <span>Fan {{ fan.name }}</span>
-        <strong>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
-        <div class="muted" style="font-size:11px">PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}</div>
+        <strong data-live-fan-value>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
+        <div class="muted" style="font-size:11px" data-live-fan-sub>PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}</div>
       </div>
     {% endfor %}
   {% endif %}
-  <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px">{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
-  <div class="metric"><span>RAM disponível</span><strong>{{ storage.system.mem_available_mb|default:"—" }} MB</strong><div class="muted" style="font-size:11px">de {{ storage.system.mem_total_mb|default:"—" }} MB</div></div>
+  <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px" data-live-load>{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
+  <div class="metric"><span>RAM disponível</span><strong><span data-live-mem-available>{{ storage.system.mem_available_mb|default:"—" }}</span> MB</strong><div class="muted" style="font-size:11px">de <span data-live-mem-total>{{ storage.system.mem_total_mb|default:"—" }}</span> MB</div></div>
   <div class="metric net" id="network-metrics">
     <span>Rede · <span id="net-iface">—</span> <span id="net-state" class="muted"></span></span>
     <strong class="net-rates"><span id="net-rx">—</span> <span class="muted">↓</span> · <span id="net-tx">—</span> <span class="muted">↑</span></strong>
@@ -266,4 +266,5 @@
 {% endif %}
 
 {% endif %}
+{% include "partials/live_metrics.html" %}
 {% endblock %}

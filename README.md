@@ -381,6 +381,7 @@ Gere a chave com `openssl rand -hex 32`.
 |---|---|---|
 | `SITE_NAME` | `Homelab Storage` | nome na UI/admin |
 | `STORAGE_ROOT` | `/mnt/nas` | raiz dos shares/volume principal |
+| `JELLYFIN_ROOT` | `/mnt/jellyfin` | mídia Jellyfin read-only (sem snapshot/restic) |
 | `SNAPSHOT_ROOT` | `/mnt/nas/.snapshots` | snapdir Btrfs |
 | `ALLOWED_PATH_PREFIXES` | `/mnt/nas/` | prefixos aceitos (vírgula) |
 | `DF_MOUNTS` | `/,/mnt/nas,/mnt/backup,/mnt/jellyfin` | mounts do `df` |
@@ -437,7 +438,9 @@ navegador já no snapshot escolhido. A busca é feita no conteúdo do snapshot
 selecionado; não altera nem cria arquivos.
 
 O container precisa do `STORAGE_ROOT` montado read-only (no Pi, `/mnt/nas`;
-no moya, `/srv/samba` e `/mnt/data`). O app não escreve nos dados por esse
+no moya, `/srv/samba` e `/mnt/data`). No Pi, `/mnt/jellyfin` também é montado
+read-only para o share `jellyfin` aparecer no histórico; sem esse mount, a rota
+`/history/jellyfin/live/` retorna 404. O app não escreve nos dados por esse
 caminho; qualquer escrita continua no agente root.
 
 ## 6.5 Discos e SMART
@@ -449,9 +452,15 @@ caminho; qualquer escrita continua no agente root.
 - temperatura **somente se o disco já estiver ativo**;
 - RAID (`/proc/mdstat`, `mdadm --detail`) e Btrfs (usage, device stats, scrub).
 
-A coleta é **diária** (`homelab-storage-metrics.timer`, 06:00) e fica em cache;
-o dashboard e `/storage/` não executam `smartctl` no request. O botão
-**Atualizar agora** força uma coleta. Disco em standby não é acordado.
+A coleta de **discos/SMART/RAID/Btrfs** é **diária**
+(`homelab-storage-metrics.timer`, 06:00) e fica em cache; o dashboard e
+`/storage/` não executam `smartctl` no request. O botão **Atualizar agora**
+força uma coleta. Disco em standby não é acordado.
+
+As métricas de **hardware do Pi** (CPU %, temperatura da CPU, load, RAM e fans)
+têm um endpoint próprio, `/metrics/live/`, consultado a cada 1 s pelo
+frontend. Ele lê apenas `/proc` e `/sys`, não chama `smartctl`/`lsblk`/`df` e
+pausa quando a aba está oculta. Temperatura/uso de disco continuam no cache.
 
 Regras de standby:
 - o agente usa `hdparm -C` para o estado e `smartctl -n standby` para temperatura/SMART;

@@ -119,6 +119,10 @@ class AgentClient:
         # coleta sob demanda pelo botão Atualizar agora
         return self.call("refresh_storage", timeout=120)
 
+    def live_metrics(self):
+        # hardware do host; não lê discos/SMART
+        return self.call("live_metrics", timeout=15)
+
     def storage_smart(self, device):
         return self.call("storage_smart", timeout=60, device=device)
 

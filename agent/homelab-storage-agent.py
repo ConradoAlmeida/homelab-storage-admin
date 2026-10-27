@@ -463,6 +463,14 @@ def op_storage_overview(force=False, **_):
     return data
 
 
+def op_live_metrics(**_):
+    """Metricas leves do hardware do Pi; nao toca em discos/SMART."""
+    return {
+        "system": _system_info(),
+        "collected_at": dt.datetime.now().isoformat(timespec="seconds"),
+    }
+
+
 def op_refresh_storage(**_):
     return _refresh_storage_cache()
 
@@ -2502,6 +2510,7 @@ OPS = {
     "snapshot_create": op_snapshot_create,
     "snapshot_delete": op_snapshot_delete,
     "storage_overview": op_storage_overview,
+    "live_metrics": op_live_metrics,
     "refresh_storage": op_refresh_storage,
     "storage_smart": op_storage_smart,
     "storage_smart_test": op_storage_smart_test,
