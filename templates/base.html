@@ -169,8 +169,8 @@
       <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
       <a href="{% url 'users' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}">Usuários</a>
       <a href="{% url 'shares' %}" class="{% if '/shares/' in request.path %}active{% endif %}">Shares</a>
-      <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Versões</a>
-      <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Explorar</a>
+      <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Snapshots</a>
+      <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Arquivos</a>
       <a href="{% url 'storage_index' %}" class="{% if '/storage/' in request.path %}active{% endif %}">Discos</a>
       {% if capabilities.restic %}
         <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>

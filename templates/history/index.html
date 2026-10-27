@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Explorar arquivos - Homelab Storage{% endblock %}
+{% block title %}Arquivos e versões - Homelab Storage{% endblock %}
 {% block content %}
-<h1>Explorar arquivos</h1>
-<p class="muted">Navegue pelas versões anteriores dos shares. Tudo é somente leitura; a restauração entra numa próxima etapa.</p>
+<h1>Arquivos e versões</h1>
+<p class="muted">Navegue pelo conteúdo atual e pelos snapshots dos shares. Tudo é somente leitura; para criar/remover snapshots, use <a href="{% url 'snapshots' %}">Snapshots</a>.</p>
 
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>

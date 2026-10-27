@@ -64,7 +64,12 @@ def dashboard(request):
             if volume:
                 break
         disk["volume"] = volume
-        disk["role"] = disk_role(disk, settings.STORAGE_ROOT, settings.BACKUP_ROOT)
+        disk["role"] = disk_role(
+            disk,
+            settings.STORAGE_ROOT,
+            settings.BACKUP_ROOT,
+            settings.JELLYFIN_ROOT,
+        )
 
     backup_disks = backups.get("disks", [])
     backup_jobs = backups.get("jobs", [])

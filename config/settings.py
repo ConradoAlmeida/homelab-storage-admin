@@ -20,6 +20,7 @@ SITE_NAME = os.environ.get("SITE_NAME", "Homelab Storage")
 STORAGE_ROOT = os.environ.get("STORAGE_ROOT", "/mnt/nas")
 SNAPSHOT_ROOT = os.environ.get("SNAPSHOT_ROOT", "/mnt/nas/.snapshots")
 BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
+JELLYFIN_ROOT = os.environ.get("JELLYFIN_ROOT", "/mnt/jellyfin")
 ALLOWED_PATH_PREFIXES = tuple(
     p.strip().rstrip("/") + "/"
     for p in os.environ.get("ALLOWED_PATH_PREFIXES", f"{STORAGE_ROOT}/").split(",")
@@ -27,7 +28,9 @@ ALLOWED_PATH_PREFIXES = tuple(
 )
 DF_MOUNTS = tuple(
     m.strip()
-    for m in os.environ.get("DF_MOUNTS", f"/,{STORAGE_ROOT}").split(",")
+    for m in os.environ.get(
+        "DF_MOUNTS", f"/,{STORAGE_ROOT},{BACKUP_ROOT},{JELLYFIN_ROOT}"
+    ).split(",")
     if m.strip()
 )
 SNAPSHOT_BACKEND = os.environ.get("SNAPSHOT_BACKEND", "auto").strip().lower()

@@ -28,12 +28,15 @@ def disk_role(
     disk: dict,
     storage_root: str,
     backup_root: str,
+    media_root: str | None = None,
 ) -> str:
     mounts = [mount for mount in (disk.get("mounts") or []) if mount]
     if any(mount == "/" for mount in mounts):
         return "sistema"
     if any(_under(mount, backup_root) for mount in mounts):
         return "backup"
+    if media_root and any(_under(mount, media_root) for mount in mounts):
+        return "mídia"
     if any(_under(mount, storage_root) for mount in mounts):
         return "dados/RAID"
     return "—"

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Versões Btrfs - Homelab Storage{% endblock %}
+{% block title %}Snapshots - Homelab Storage{% endblock %}
 {% block content %}
-<h1>Versões Btrfs</h1>
-<p class="muted">Gerencie as políticas e snapshots dos shares. O tamanho é aproximado porque extents compartilhados contam uma vez. Abra um share para criar, explorar ou remover versões.</p>
+<h1>Snapshots</h1>
+<p class="muted">Gerencie políticas, crie e remova snapshots. Para navegar no conteúdo e nas versões, use <a href="{% url 'history_index' %}">Arquivos</a>. O tamanho é aproximado porque extents compartilhados contam uma vez.</p>
 
 {% if agent_error %}
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>

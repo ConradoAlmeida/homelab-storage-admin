@@ -4,15 +4,40 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from core.agent import AgentError, agent
+from core.hostinfo import volume_for
 
 
 @login_required
 def index(request):
-    context = {"overview": None, "error": None}
+    context = {
+        "overview": None,
+        "error": None,
+        "volumes": [],
+        "totals": None,
+    }
     try:
         context["overview"] = agent.storage_overview()
     except AgentError as exc:
         context["error"] = str(exc)
+    try:
+        context["volumes"] = agent.df().get("volumes", [])
+    except AgentError:
+        context["volumes"] = []
+    volumes = context["volumes"]
+    if volumes:
+        context["totals"] = {
+            "total": sum(int(v.get("total") or 0) for v in volumes),
+            "used": sum(int(v.get("used") or 0) for v in volumes),
+            "free": sum(int(v.get("free") or 0) for v in volumes),
+        }
+    if context["overview"]:
+        for disk in context["overview"].get("disks", []):
+            volume = None
+            for mount in disk.get("mounts") or []:
+                volume = volume_for(mount, volumes)
+                if volume:
+                    break
+            disk["volume"] = volume
     return render(request, "storage/index.html", context)
 
 

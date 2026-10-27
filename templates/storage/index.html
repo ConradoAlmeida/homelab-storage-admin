@@ -16,6 +16,24 @@
   <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
   <p class="muted">Última coleta: {{ overview.collected_at|default:"—" }}{% if overview.stale %} · dados vencidos; use “Atualizar agora”{% endif %}</p>
+  {% if totals %}
+    <h2>Armazenamento</h2>
+    <div class="metric-grid">
+      <div class="metric"><span>Total monitorado</span><strong>{{ totals.total|filesizeformat }}</strong><div class="muted" style="font-size:11px">soma dos volumes abaixo</div></div>
+      <div class="metric"><span>Usado</span><strong>{{ totals.used|filesizeformat }}</strong><div class="muted" style="font-size:11px">soma dos volumes abaixo</div></div>
+      <div class="metric"><span>Livre</span><strong>{{ totals.free|filesizeformat }}</strong><div class="muted" style="font-size:11px">soma dos volumes abaixo</div></div>
+    </div>
+    <div class="cards">
+      {% for v in volumes %}
+        <div class="card">
+          <div class="label">{{ v.mount }}</div>
+          <div class="value">{{ v.free|filesizeformat }} livres</div>
+          <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
+          <div class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}"><span style="width: {{ v.percent }}%"></span></div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
   <h2>Sistema</h2>
   <div class="metric-grid">
     {% for z in overview.system.zones %}
@@ -40,13 +58,22 @@
 
   <h2>Discos</h2>
   <div class="table-wrap"><table class="file-table">
-    <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho / montagem</th><th>Estado</th><th>Temp.</th><th>SMART</th><th></th></tr></thead>
+    <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho / montagem</th><th>Uso</th><th>Estado</th><th>Temp.</th><th>SMART</th><th></th></tr></thead>
     <tbody>
       {% for disk in overview.disks %}
         <tr>
           <td><strong>{{ disk.name }}</strong><div class="muted mono" style="font-size:11px">{{ disk.path }}</div></td>
           <td>{{ disk.model|default:"—" }}<div class="muted mono" style="font-size:11px">{{ disk.serial|default:"—" }}</div></td>
           <td>{{ disk.size|default:"—" }}<div class="muted" style="font-size:11px">{{ disk.mounts|join:", "|default:"sem montagem" }}</div></td>
+          <td>
+            {% if disk.volume %}
+              <strong>{{ disk.volume.used|filesizeformat }}</strong> / {{ disk.volume.total|filesizeformat }}
+              <div class="muted" style="font-size:11px">{{ disk.volume.free|filesizeformat }} livres · {{ disk.volume.percent }}%</div>
+              <div class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}"><span style="width: {{ disk.volume.percent }}%"></span></div>
+            {% else %}
+              <span class="muted">sem volume montado</span>
+            {% endif %}
+          </td>
           <td>
             <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
             {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted" style="font-size:11px">não acordado</div>{% endif %}
@@ -95,7 +122,7 @@
           </td>
         </tr>
       {% empty %}
-        <tr><td colspan="7"><div class="empty">Nenhum disco encontrado.</div></td></tr>
+        <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
       {% endfor %}
     </tbody>
   </table></div>
