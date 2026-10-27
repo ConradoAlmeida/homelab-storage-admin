@@ -12,7 +12,7 @@
 
 <div class="alert danger">
   <strong>Nada foi apagado ainda.</strong>
-  <ul style="margin:10px 0 0 18px">
+  <ul class="help-indent-10">
     {% for warning in selected.warnings %}<li>{{ warning }}</li>{% endfor %}
   </ul>
 </div>
@@ -22,7 +22,7 @@
   <p class="muted">O drive será formatado e o repo frio será criado. Se continuar, o wizard pedirá a frase <code class="phrase">{{ selected.required_phrase }}</code>, a senha do app e a confirmação extra.</p>
 </div>
 
-<div class="row" style="gap:8px;margin-top:16px">
+<div class="row gap-8 mt-16">
   <a class="btn danger" href="?device={{ selected.path|urlencode }}&confirm=1">Continuar mesmo assim</a>
   <a class="btn small" href="{% url 'cold_index' %}">Cancelar</a>
 </div>

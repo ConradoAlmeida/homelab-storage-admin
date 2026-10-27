@@ -66,6 +66,14 @@ def fake_agent(capabilities=None):
         "jobs": [],
         "restic": False,
     }
+    agent.cold_overview.return_value = {
+        "disks": [],
+        "restic": False,
+        "primary": {},
+        "primary_error": "",
+        "config": None,
+        "status": {},
+    }
     agent.host_capabilities.return_value = capabilities or {
         "btrfs": False,
         "restic": False,
@@ -243,6 +251,47 @@ class ViewSmokeTests(TestCase):
         self.fake.create_group.assert_called_once_with("equipe", 1500)
         self.assertTrue(
             AuditLog.objects.filter(action="group.create", target="equipe").exists()
+        )
+
+    def test_cbv_pages_render(self):
+        paths = [
+            "/usuarios/",
+            "/usuarios/novo/",
+            "/usuarios/grupos/novo/",
+            "/usuarios/senha/?username=tester",
+            "/usuarios/grupos/?username=tester",
+            "/shares/",
+            "/shares/novo/",
+            "/snapshots/",
+            "/backups/",
+            "/backups/snapshots/",
+            "/backups/credentials/",
+            "/backups/jobs/new/",
+            "/backups/cold/",
+            "/storage/",
+            "/history/",
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200, path)
+
+    def test_share_create_cbv_posts_to_agent(self):
+        self.fake.create_share.return_value = {"name": "docs"}
+        response = self.client.post(
+            "/shares/novo/",
+            {
+                "name": "docs",
+                "path": "/mnt/nas/docs",
+                "comment": "teste",
+                "snapshot": "on",
+                "snapshot_keep": "7",
+            },
+        )
+        self.assertRedirects(response, "/shares/")
+        self.fake.create_share.assert_called_once()
+        self.assertTrue(
+            AuditLog.objects.filter(action="share.create", target="docs").exists()
         )
 
     def test_live_metrics_endpoint_returns_hardware_only(self):

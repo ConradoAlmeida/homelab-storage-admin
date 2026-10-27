@@ -1,0 +1,31 @@
+<div class="card">
+  <strong>Resultados para “{{ query }}”</strong>
+  <span class="muted">· {{ search_total }} ocorrência{{ search_total|pluralize }}</span>
+  {% if search_truncated %}<span class="muted"> · mostrando os primeiros {{ search_results|length }}</span>{% endif %}
+</div>
+{% if search_results %}
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Caminho</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
+    <tbody>
+      {% for result in search_results %}
+        <tr>
+          <td class="path-cell"><a href="{{ result.browse_url }}">{{ result.rel }}</a></td>
+          <td class="muted">{% if result.is_dir %}Pasta{% else %}Arquivo{% endif %}</td>
+          <td class="muted">{% if result.is_dir %}—{% else %}{{ result.size|filesizeformat }}{% endif %}</td>
+          <td class="muted">{{ result.mtime_text|default:result.mtime|default:"—" }}</td>
+          <td class="file-actions">
+            {% if result.is_dir %}
+              <a class="btn small" href="{{ result.browse_url }}">Abrir</a>
+            {% else %}
+              <a class="btn small" href="{{ result.browse_url }}">Abrir pasta</a>
+              <a class="btn small" href="{{ result.download_url }}">Baixar</a>
+              {% if result.versions_url %}<a class="btn small" href="{{ result.versions_url }}">Versões</a>{% endif %}
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+{% else %}
+  <div class="empty">Nenhum arquivo ou pasta encontrado.</div>
+{% endif %}

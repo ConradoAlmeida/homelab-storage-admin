@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Dashboard - Homelab Storage{% endblock %}
 {% block content %}
 <h1>Dashboard</h1>
 <p class="muted">Visão geral do host, discos, backup e shares.</p>
 
 {% if services %}
-<h2 style="margin-top:0">Serviços</h2>
+<h2 class="mt-0">Serviços</h2>
 <div class="service-cards">
   {% for service in services %}
-    <a class="service-card" href="{{ service.url }}" target="_blank" rel="noopener" style="--tint: {{ service.color }}">
+    <a class="service-card {{ service.icon }}" href="{{ service.url }}" target="_blank" rel="noopener">
       <span class="service-icon">
         {% if service.icon == 'jellyfin' %}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>
@@ -30,7 +31,7 @@
 {% endif %}
 
 {% if agent_error %}
-  <div class="card" style="border-color:#7f1d1d">
+  <div class="card border-danger">
     <strong>Agente indisponível</strong>
     <p class="muted">{{ agent_error }}</p>
     <p class="muted">Instale/ative o agente no host com <code>sudo ./install-agent.sh</code>.</p>
@@ -39,118 +40,19 @@
 
 <h2>Sistema e rede</h2>
 <div class="metric-grid">
-  {% for zone in storage.system.zones %}
-    <div class="metric" data-live-zone="{{ forloop.counter0 }}" data-live-zone-type="{{ zone.type }}">
-      <span>{% if 'cpu' in zone.type %}CPU{% else %}{{ zone.type }}{% endif %}</span>
-      <strong data-live-zone-value>{{ zone.temp|floatformat:1 }} °C{% if 'cpu' in zone.type and storage.system.cpu_percent is not None %} · {{ storage.system.cpu_percent }}%{% endif %}</strong>
-      {% if 'cpu' in zone.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
-    </div>
-  {% endfor %}
-  {% if capabilities.hwmon_fans %}
-    {% for fan in storage.system.fans %}
-      <div class="metric" data-live-fan="{{ forloop.counter0 }}">
-        <span>Fan {{ fan.name }}</span>
-        <strong data-live-fan-value>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
-        <div class="muted" style="font-size:11px" data-live-fan-sub>PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}</div>
-      </div>
-    {% endfor %}
-  {% endif %}
-  <div class="metric"><span>Load 1/5/15</span><strong style="font-size:15px" data-live-load>{{ storage.system.load.l1|floatformat:2 }} / {{ storage.system.load.l5|floatformat:2 }} / {{ storage.system.load.l15|floatformat:2 }}</strong></div>
-  <div class="metric"><span>RAM disponível</span><strong><span data-live-mem-available>{{ storage.system.mem_available_mb|default:"—" }}</span> MB</strong><div class="muted" style="font-size:11px">de <span data-live-mem-total>{{ storage.system.mem_total_mb|default:"—" }}</span> MB</div></div>
-  <div class="metric net" id="network-metrics">
+  {% include "partials/system_metrics.html" with system=storage.system %}
+  <div class="metric net" id="network-metrics" data-endpoint="{% url 'network_metrics' %}">
     <span>Rede · <span id="net-iface">—</span> <span id="net-state" class="muted"></span></span>
     <strong class="net-rates"><span id="net-rx">—</span> <span class="muted">↓</span> · <span id="net-tx">—</span> <span class="muted">↑</span></strong>
-    <div class="muted" style="font-size:11px"><span id="net-link">—</span> · <span id="net-signal">—</span></div>
-    <div class="muted" style="font-size:11px"><span id="net-rx-sub">—</span> ↓ · <span id="net-tx-sub">—</span> ↑</div>
+    <div class="muted text-11"><span id="net-link">—</span> · <span id="net-signal">—</span></div>
+    <div class="muted text-11"><span id="net-rx-sub">—</span> ↓ · <span id="net-tx-sub">—</span> ↑</div>
   </div>
 </div>
-<p class="muted" style="font-size:12px;margin-top:-8px">Rede: amostra de 0,5 s a cada 3 s; mede o tráfego total do host.</p>
+<p class="muted text-12 mt-n8">Rede: amostra de 0,5 s a cada 3 s; mede o tráfego total do host.</p>
 
-<script>
-(function () {
-  const endpoint = "{% url 'network_metrics' %}";
-  let busy = false;
-  function fmtRate(mbps) {
-    if (mbps === null || mbps === undefined) return "—";
-    return mbps >= 1000 ? (mbps / 1000).toFixed(2) + " Gbps" : Number(mbps).toFixed(1) + " Mbps";
-  }
-  function fmtBytes(bytes) {
-    if (bytes === null || bytes === undefined) return "—";
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    let value = Number(bytes);
-    let index = 0;
-    while (value >= 1024 && index < units.length - 1) { value /= 1024; index += 1; }
-    return value.toFixed(index > 1 ? 1 : 0) + " " + units[index];
-  }
-  async function tick() {
-    if (busy || document.hidden) return;
-    busy = true;
-    try {
-      const response = await fetch(endpoint, {headers: {"Accept": "application/json"}, cache: "no-store"});
-      if (!response.ok) throw new Error("http");
-      const data = await response.json();
-      const net = data.active;
-      if (!net) throw new Error("sem interface");
-      document.getElementById("net-iface").textContent = net.name;
-      document.getElementById("net-state").textContent = net.state + (net.ssid ? " · " + net.ssid : "");
-      document.getElementById("net-rx").textContent = fmtRate(net.rx_mbps);
-      document.getElementById("net-rx-sub").textContent = Number(net.rx_mb_s).toFixed(2) + " MB/s";
-      document.getElementById("net-tx").textContent = fmtRate(net.tx_mbps);
-      document.getElementById("net-tx-sub").textContent = Number(net.tx_mb_s).toFixed(2) + " MB/s";
-      const link = net.speed_mbps ? net.speed_mbps + " Mbps" : (net.link_rx_mbps ? net.link_rx_mbps + " Mbps" : "—");
-      document.getElementById("net-link").textContent = link;
-      document.getElementById("net-signal").textContent = net.signal_dbm !== null && net.signal_dbm !== undefined ? net.signal_dbm + " dBm" : (net.mac || "—");
-    } catch (error) {
-      const state = document.getElementById("net-state");
-      if (state) state.textContent = "indisponível";
-    } finally {
-      busy = false;
-    }
-  }
-  tick();
-  setInterval(tick, 3000);
-})();
-</script>
 
-<script>
-(function () {
-  const endpoint = "{% url 'share_sizes' %}";
-  function fmtBytes(bytes) {
-    if (bytes === null || bytes === undefined) return "—";
-    let value = Number(bytes);
-    if (!Number.isFinite(value)) return "—";
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    let index = 0;
-    while (value >= 1024 && index < units.length - 1) { value /= 1024; index += 1; }
-    return value.toFixed(index > 1 ? 1 : 0) + " " + units[index];
-  }
-  async function loadSizes() {
-    try {
-      const response = await fetch(endpoint, {
-        headers: {"Accept": "application/json"},
-        cache: "no-store"
-      });
-      if (!response.ok) return;
-      const data = await response.json();
-      const byName = new Map((data.shares || []).map((item) => [item.name, item]));
-      document.querySelectorAll("tr[data-share]").forEach((row) => {
-        const item = byName.get(row.dataset.share);
-        if (!item) return;
-        const size = row.querySelector("[data-size]");
-        const snapSize = row.querySelector("[data-snap-size]");
-        const total = row.querySelector("[data-total] strong");
-        if (size) size.textContent = fmtBytes(item.size);
-        if (snapSize) snapSize.textContent = fmtBytes(item.size_snapshots);
-        if (total) total.textContent = fmtBytes(item.size_total);
-      });
-    } catch (error) {
-      // Mantem os placeholders; o dashboard continua utilizavel.
-    }
-  }
-  loadSizes();
-})();
-</script>
 
+<div data-share-sizes-endpoint="{% url 'share_sizes' %}" hidden></div>
 <h2>Volumes</h2>
 <div class="cards">
   {% for v in volumes %}
@@ -158,7 +60,7 @@
       <div class="label">{{ v.mount }}</div>
       <div class="value">{{ v.free|filesizeformat }} livres</div>
       <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
-      <div class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}"><span style="width: {{ v.percent }}%"></span></div>
+      <progress class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}" value="{{v.percent}}" max="100"></progress>
     </div>
   {% empty %}
     <div class="empty">Nenhum volume retornado.</div>
@@ -171,13 +73,13 @@
   <tbody>
     {% for disk in storage.disks %}
       <tr>
-        <td><strong>{{ disk.name }}</strong><div class="muted mono" style="font-size:11px">{{ disk.path }}</div></td>
+        <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
         <td>{{ disk.role }}</td>
-        <td>{{ disk.model|default:"—" }}<div class="muted mono" style="font-size:11px">{{ disk.serial|default:"—" }}</div></td>
-        <td>{{ disk.size|default:"—" }}<div class="muted" style="font-size:11px">{{ disk.fstype|default:"sem FS" }}</div></td>
+        <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
+        <td>{{ disk.size|default:"—" }}<div class="muted text-11">{{ disk.fstype|default:"sem FS" }}</div></td>
         <td>
           <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
-          {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted" style="font-size:11px">não acordado</div>{% endif %}
+          {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
         </td>
         <td>
           {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
@@ -190,8 +92,8 @@
         <td>
           {% if disk.mounts %}<span class="muted">{{ disk.mounts|join:", " }}</span>{% else %}<span class="muted">sem montagem</span>{% endif %}
           {% if disk.volume %}
-            <div class="muted" style="font-size:11px">{{ disk.volume.free|filesizeformat }} livres de {{ disk.volume.total|filesizeformat }} ({{ disk.volume.percent }}%)</div>
-            <div class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}"><span style="width: {{ disk.volume.percent }}%"></span></div>
+            <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres de {{ disk.volume.total|filesizeformat }} ({{ disk.volume.percent }}%)</div>
+            <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{disk.volume.percent}}" max="100"></progress>
           {% endif %}
         </td>
         <td class="file-actions"><a class="btn small" href="{% url 'storage_index' %}">Detalhes</a></td>
@@ -213,19 +115,19 @@
     <tbody>
       {% for job in backup_jobs %}
         <tr>
-          <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted" style="font-size:11px">desativado</div>{% endif %}</td>
+          <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted text-11">desativado</div>{% endif %}</td>
           <td>
             {% if job.status.status == 'success' %}<span class="state-ok">success</span>
             {% elif job.status.status == 'failed' %}<span class="state-bad">failed</span>
             {% elif job.status.status == 'warning' %}<span class="state-standby">warning</span>
             {% elif job.status.status == 'running' %}<span class="badge live">rodando</span>
             {% else %}<span class="muted">—</span>{% endif %}
-            {% if job.last_run_label %}<div class="muted" style="font-size:11px">{{ job.last_run_label }}</div>{% endif %}
+            {% if job.last_run_label %}<div class="muted text-11">{{ job.last_run_label }}</div>{% endif %}
           </td>
           <td>{{ job.schedule.label|default:"—" }}</td>
           <td class="muted">{{ job.next_run_label|default:"—" }}</td>
           <td class="muted">{{ job.source_count }} share{{ job.source_count|pluralize }}</td>
-          <td>{{ job.disk_label }}{% if job.volume %}<div class="muted" style="font-size:11px">{{ job.volume.free|filesizeformat }} livres</div>{% endif %}</td>
+          <td>{{ job.disk_label }}{% if job.volume %}<div class="muted text-11">{{ job.volume.free|filesizeformat }} livres</div>{% endif %}</td>
           <td class="file-actions"><a class="btn small" href="{% url 'backup_index' %}">Gerenciar</a></td>
         </tr>
       {% endfor %}
@@ -266,5 +168,7 @@
 {% endif %}
 
 {% endif %}
+<script src="{% static 'js/network-metrics.js' %}" defer></script>
+<script src="{% static 'js/share-sizes.js' %}" defer></script>
 {% include "partials/live_metrics.html" %}
 {% endblock %}

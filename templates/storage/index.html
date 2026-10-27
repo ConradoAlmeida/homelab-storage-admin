@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1 style="margin-bottom:4px">Discos e sistema</h1>
+    <h1 class="mb-4">Discos e sistema</h1>
     <p class="muted">Temperaturas e estado vêm de uma coleta diária; discos em standby não são acordados. SMART completo e testes só por botão.</p>
   </div>
   <form method="post" action="{% url 'storage_refresh' %}">
@@ -13,15 +13,15 @@
 </div>
 
 {% if error %}
-  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
   <p class="muted">Última coleta: {{ overview.collected_at|default:"—" }}{% if overview.stale %} · dados vencidos; use “Atualizar agora”{% endif %}</p>
   {% if totals %}
     <h2>Armazenamento</h2>
     <div class="metric-grid">
-      <div class="metric"><span>Total monitorado</span><strong>{{ totals.total|filesizeformat }}</strong><div class="muted" style="font-size:11px">soma dos volumes abaixo</div></div>
-      <div class="metric"><span>Usado</span><strong>{{ totals.used|filesizeformat }}</strong><div class="muted" style="font-size:11px">soma dos volumes abaixo</div></div>
-      <div class="metric"><span>Livre</span><strong>{{ totals.free|filesizeformat }}</strong><div class="muted" style="font-size:11px">soma dos volumes abaixo</div></div>
+      <div class="metric"><span>Total monitorado</span><strong>{{ totals.total|filesizeformat }}</strong><div class="muted text-11">soma dos volumes abaixo</div></div>
+      <div class="metric"><span>Usado</span><strong>{{ totals.used|filesizeformat }}</strong><div class="muted text-11">soma dos volumes abaixo</div></div>
+      <div class="metric"><span>Livre</span><strong>{{ totals.free|filesizeformat }}</strong><div class="muted text-11">soma dos volumes abaixo</div></div>
     </div>
     <div class="cards">
       {% for v in volumes %}
@@ -29,31 +29,14 @@
           <div class="label">{{ v.mount }}</div>
           <div class="value">{{ v.free|filesizeformat }} livres</div>
           <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
-          <div class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}"><span style="width: {{ v.percent }}%"></span></div>
+          <progress class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}" value="{{v.percent}}" max="100"></progress>
         </div>
       {% endfor %}
     </div>
   {% endif %}
   <h2>Sistema</h2>
   <div class="metric-grid">
-    {% for z in overview.system.zones %}
-      <div class="metric" data-live-zone="{{ forloop.counter0 }}" data-live-zone-type="{{ z.type }}">
-        <span>{% if 'cpu' in z.type %}CPU{% else %}{{ z.type }}{% endif %}</span>
-        <strong data-live-zone-value>{{ z.temp|floatformat:1 }} °C{% if 'cpu' in z.type and overview.system.cpu_percent is not None %} · {{ overview.system.cpu_percent }}%{% endif %}</strong>
-        {% if 'cpu' in z.type %}<div class="muted" style="font-size:11px">temperatura · uso</div>{% endif %}
-      </div>
-    {% endfor %}
-    {% if capabilities.hwmon_fans %}
-      {% for f in overview.system.fans %}
-        <div class="metric" data-live-fan="{{ forloop.counter0 }}">
-          <span>Fan {{ f.name }}</span>
-          <strong data-live-fan-value>{% if f.rpm is not None %}{{ f.rpm }} rpm{% if f.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
-          <div class="muted" style="font-size:11px" data-live-fan-sub>PWM {% if f.pwm_percent is not None %}{{ f.pwm_percent }}%{% else %}—{% endif %}{% if f.rpm == 0 %} · curva começa ~50 °C{% endif %}</div>
-        </div>
-      {% endfor %}
-    {% endif %}
-    <div class="metric"><span>Load (1/5/15)</span><strong style="font-size:15px" data-live-load>{{ overview.system.load.l1|floatformat:2 }} / {{ overview.system.load.l5|floatformat:2 }} / {{ overview.system.load.l15|floatformat:2 }}</strong></div>
-    <div class="metric"><span>RAM disponível</span><strong><span data-live-mem-available>{{ overview.system.mem_available_mb|default:"—" }}</span> MB</strong><div class="muted" style="font-size:11px">de <span data-live-mem-total>{{ overview.system.mem_total_mb|default:"—" }}</span> MB</div></div>
+    {% include "partials/system_metrics.html" with system=overview.system %}
   </div>
 
   <h2>Discos</h2>
@@ -62,21 +45,21 @@
     <tbody>
       {% for disk in overview.disks %}
         <tr>
-          <td><strong>{{ disk.name }}</strong><div class="muted mono" style="font-size:11px">{{ disk.path }}</div></td>
-          <td>{{ disk.model|default:"—" }}<div class="muted mono" style="font-size:11px">{{ disk.serial|default:"—" }}</div></td>
-          <td>{{ disk.size|default:"—" }}<div class="muted" style="font-size:11px">{{ disk.mounts|join:", "|default:"sem montagem" }}</div></td>
+          <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
+          <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
+          <td>{{ disk.size|default:"—" }}<div class="muted text-11">{{ disk.mounts|join:", "|default:"sem montagem" }}</div></td>
           <td>
             {% if disk.volume %}
               <strong>{{ disk.volume.used|filesizeformat }}</strong> / {{ disk.volume.total|filesizeformat }}
-              <div class="muted" style="font-size:11px">{{ disk.volume.free|filesizeformat }} livres · {{ disk.volume.percent }}%</div>
-              <div class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}"><span style="width: {{ disk.volume.percent }}%"></span></div>
+              <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres · {{ disk.volume.percent }}%</div>
+              <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{disk.volume.percent}}" max="100"></progress>
             {% else %}
               <span class="muted">sem volume montado</span>
             {% endif %}
           </td>
           <td>
             <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
-            {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted" style="font-size:11px">não acordado</div>{% endif %}
+            {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
           </td>
           <td>
             {% if disk.smart.temperature is not None %}
@@ -93,13 +76,13 @@
             {% else %}
               <span class="muted">—</span>
             {% endif %}
-            {% if disk.smart.skipped %}<div class="muted" style="font-size:11px">standby</div>{% endif %}
+            {% if disk.smart.skipped %}<div class="muted text-11">standby</div>{% endif %}
           </td>
           <td class="file-actions disk-actions">
             {% if not capabilities.smartctl %}
-              <span class="muted" style="font-size:12px">smartctl indisponível</span>
+              <span class="muted text-12">smartctl indisponível</span>
             {% elif disk.smart.state == 'unavailable' %}
-              <span class="muted" style="font-size:12px">sem SMART</span>
+              <span class="muted text-12">sem SMART</span>
             {% else %}
               <form method="post" action="{% url 'storage_smart' %}">
                 {% csrf_token %}
@@ -112,7 +95,7 @@
                 <input type="hidden" name="kind" value="short">
                 <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste curto</button>
               </form>
-              <form method="post" action="{% url 'storage_smart_test' %}" onsubmit="return confirm('O teste longo pode demorar horas e ocupar o disco. Iniciar?')">
+              <form method="post" action="{% url 'storage_smart_test' %}" data-confirm="O teste longo pode demorar horas e ocupar o disco. Iniciar?">
                 {% csrf_token %}
                 <input type="hidden" name="device" value="{{ disk.path }}">
                 <input type="hidden" name="kind" value="long">

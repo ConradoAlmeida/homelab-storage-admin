@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block title %}{{ filename }} - Versões{% endblock %}
 {% block content %}
-<div class="row" style="justify-content:space-between;align-items:flex-start">
+<div class="row row-between-start">
   <div>
-    <h1 style="margin-bottom:4px">{{ filename }}</h1>
-    <div class="muted" style="font-size:13px">{{ share.name }} · {{ filepath }}</div>
+    <h1 class="mb-4">{{ filename }}</h1>
+    <div class="muted text-13">{{ share.name }} · {{ filepath }}</div>
   </div>
   <a class="btn small" href="{{ browse_url }}">← Voltar à pasta</a>
 </div>
 
-<p class="muted" style="margin-top:16px">Versões encontradas nos snapshots. Restaurar/“copiar como” entra na próxima etapa; por enquanto o acesso é somente leitura.</p>
+<p class="muted mt-16">Versões encontradas nos snapshots. Restaurar/“copiar como” entra na próxima etapa; por enquanto o acesso é somente leitura.</p>
 
-<div class="table-wrap"><table class="file-table" style="margin-top:12px">
+<div class="table-wrap"><table class="file-table mt-12">
   <thead><tr><th>Versão</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
   <tbody>
     {% if live %}

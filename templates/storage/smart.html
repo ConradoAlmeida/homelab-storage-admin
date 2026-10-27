@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% block title %}SMART {{ device }} - Homelab Storage{% endblock %}
 {% block content %}
-<div class="row" style="justify-content:space-between;align-items:flex-start">
+<div class="row row-between-start">
   <div>
-    <h1 style="margin-bottom:4px">SMART {{ device }}</h1>
-    <div class="muted" style="font-size:13px">Leitura sob demanda; nenhum teste é iniciado aqui.</div>
+    <h1 class="mb-4">SMART {{ device }}</h1>
+    <div class="muted text-13">Leitura sob demanda; nenhum teste é iniciado aqui.</div>
   </div>
   <a class="btn small" href="{% url 'storage_index' %}">← Voltar aos discos</a>
 </div>
 
 {% if error %}
-  <div class="card" style="border-color:#7f1d1d;margin-top:16px"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+  <div class="card border-danger mt-16"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
 {% elif result %}
   {% if result.skipped %}
-    <div class="card" style="margin-top:16px">
+    <div class="card mt-16">
       <strong>Disco em {{ result.state }}</strong>
       <p class="muted">{{ result.message|default:"Não vou acordar o disco para ler SMART." }}</p>
     </div>
@@ -22,7 +22,7 @@
       <div class="metric"><span>Saúde</span><strong class="{% if result.health == 'PASSED' %}state-ok{% elif result.health == 'FAILED' %}state-bad{% endif %}">{{ result.health|default:"—" }}</strong></div>
       <div class="metric"><span>Temperatura</span><strong>{{ result.temperature|default:"—" }} °C</strong></div>
       <div class="metric"><span>Horas ligado</span><strong>{{ result.power_on_hours|default:"—" }}</strong></div>
-      <div class="metric"><span>Modelo</span><strong style="font-size:14px">{{ result.model|default:"—" }}</strong><div class="muted mono" style="font-size:11px">{{ result.serial|default:"—" }}</div></div>
+      <div class="metric"><span>Modelo</span><strong class="text-14">{{ result.model|default:"—" }}</strong><div class="muted mono text-11">{{ result.serial|default:"—" }}</div></div>
     </div>
 
     {% if result.attributes %}

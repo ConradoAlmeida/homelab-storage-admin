@@ -775,6 +775,23 @@ sudo journalctl -u homelab-cloudflared -n 50
 
 ## 10. Estrutura
 
+### Views e frontend
+
+- Views autenticadas usam `Class-based views`:
+  - `FormView` para formulários;
+  - `TemplateView` para páginas de leitura;
+  - `View` com `get()`/`post()` explícitos nos fluxos críticos.
+- `core/view_base.py` concentra apenas login e o ciclo de vida comum; validação,
+  confirmação e auditoria continuam explícitas em cada fluxo.
+- `ListView`/`DetailView` não são usados para shares/snapshots/jobs porque eles
+  vêm do agente, não de models Django.
+- `templates/partials/` reúne mensagens, busca, resultados, métricas do sistema e
+  o coletor live.
+- CSS e JavaScript ficam em `static/css/` e `static/js/`; o HTML não contém
+  `<style>`, `<script>` inline nem handlers `onclick`/`onsubmit`.
+- `STATICFILES_DIRS` aponta para `static/`; o `collectstatic` do entrypoint
+  publica os arquivos para o WhiteNoise.
+
 ```
 homelab-storage-admin/
 ├── agent/
@@ -784,11 +801,12 @@ homelab-storage-admin/
 │   ├── homelab-storage-snapshot.service
 │   └── homelab-storage-snapshot.timer
 ├── config/            # settings Django (env)
-├── core/              # views, forms, models, cliente do agente
+├── core/              # CBVs, forms, models, cliente do agente, helpers HTTP
 ├── history/           # navegador read-only de snapshots/versoes
 ├── storage/           # temperatura/estado/SMART sob demanda (standby-safe)
 ├── backups/           # wizard, jobs, snapshots restic e navegador read-only
-├── templates/         # UI escura, sem dependências externas
+├── templates/         # UI escura, partials e sem dependências externas
+├── static/            # CSS e JavaScript próprios, fora do HTML
 ├── deploy/pi/
 │   ├── homelab-compose.service
 │   ├── homelab-cloudflared.service

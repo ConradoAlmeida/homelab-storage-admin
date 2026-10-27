@@ -5,7 +5,7 @@
 <p class="muted">Navegue, busque e baixe arquivos do conteúdo atual e dos snapshots dos shares. Tudo é somente leitura; para criar/remover snapshots, use <a href="{% url 'snapshots' %}">Snapshots</a>.</p>
 
 {% if agent_error %}
-  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif shares %}
 <div class="table-wrap"><table class="file-table">
   <thead><tr><th>Share</th><th>Versões</th><th>Última</th><th></th></tr></thead>
@@ -15,7 +15,7 @@
         <td>
           <strong>{{ s.name }}</strong>
           {% if not s.browseable %} <span class="tag">privado</span>{% endif %}
-          <div class="muted" style="font-size:12px">{{ s.path }}</div>
+          <div class="muted text-12">{{ s.path }}</div>
         </td>
         <td class="muted">{{ s.snapshot_count }}</td>
         <td class="muted">{{ s.last_snapshot|default:"—" }}</td>

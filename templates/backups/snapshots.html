@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Snapshots restic - Homelab Storage{% endblock %}
 {% block content %}
-<div class="row" style="justify-content:space-between;align-items:flex-start">
+<div class="row row-between-start">
   <div>
-    <h1 style="margin-bottom:4px">Snapshots restic</h1>
+    <h1 class="mb-4">Snapshots restic</h1>
     <p class="muted">Pontos de restauração no repositório. Um snapshot vazio ainda não contém arquivos.</p>
   </div>
   <a class="btn small" href="{% url 'backup_index' %}">← Backups</a>
 </div>
 
 {% if error %}
-  <div class="card" style="border-color:#7f1d1d"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+  <div class="card border-danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
 {% else %}
   {% if errors %}
     <div class="alert warn">
@@ -29,7 +29,7 @@
             <td>{{ snap.files }}</td>
             <td>{{ snap.bytes|filesizeformat }}</td>
             <td class="muted">{{ snap.added_bytes|filesizeformat }}</td>
-            <td class="muted" style="font-size:12px">{{ snap.paths|join:", " }}</td>
+            <td class="muted text-12">{{ snap.paths|join:", " }}</td>
             <td>
               <a class="btn small" href="{% url 'backup_snapshot_browse' snap.short_id %}?disk_uuid={{ snap.disk_uuid|urlencode }}&path={{ snap.browse_path|default:'/'|urlencode }}">Navegar</a>
             </td>

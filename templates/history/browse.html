@@ -7,19 +7,19 @@
     <a href="{% url 'history_index' %}">← Todos os shares</a>
     <a href="{{ live_url }}" class="{% if not is_snapshot %}active{% endif %}">Versão atual</a>
 
-    <h2 style="margin-top:16px">Snapshots</h2>
+    <h2 class="mt-16">Snapshots</h2>
     {% for snap in snapshots %}
       <a href="{{ snap.url }}" class="{% if snapshot == snap.name %}active{% endif %}">{{ snap.label }}</a>
     {% empty %}
-      <div class="muted" style="font-size:12px;padding:6px 9px">Sem snapshots</div>
+      <div class="muted text-12 p-6-9">Sem snapshots</div>
     {% endfor %}
   </aside>
 
   <main class="history-main">
-    <div class="row" style="justify-content:space-between;align-items:flex-start">
+    <div class="row row-between-start">
       <div>
-        <h1 style="margin-bottom:4px">{{ share.name }}</h1>
-        <div class="muted" style="font-size:13px">{{ share.path }}</div>
+        <h1 class="mb-4">{{ share.name }}</h1>
+        <div class="muted text-13">{{ share.path }}</div>
       </div>
       <div>
         {% if is_snapshot %}
@@ -37,52 +37,16 @@
       {% endfor %}
     </nav>
 
-    <div class="card" style="padding:12px">
-      <form method="get" action="{{ current_url }}" class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="search" name="q" value="{{ query }}" placeholder="Buscar nome ou caminho no snapshot inteiro" style="min-width:280px;flex:1;max-width:560px;padding:8px 10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:inherit">
-        <button class="btn small" type="submit">Buscar</button>
-        {% if query %}<a class="btn small" href="{{ current_url }}">Limpar</a>{% endif %}
-      </form>
-      <p class="muted" style="font-size:12px;margin:8px 0 0">Sem curinga, busca por trecho; use <code>*</code> e <code>?</code> para padrões.</p>
-    </div>
+    {% include "partials/search_form.html" %}
 
     {% if query %}
-      <div class="card">
-        <strong>Resultados para “{{ query }}”</strong>
-        <span class="muted">· {{ search_total }} ocorrência{{ search_total|pluralize }}</span>
-        {% if search_truncated %}<span class="muted"> · mostrando os primeiros {{ search_results|length }}</span>{% endif %}
-      </div>
-      {% if search_results %}
-        <div class="table-wrap"><table class="file-table">
-          <thead><tr><th>Caminho</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
-          <tbody>
-            {% for r in search_results %}
-              <tr>
-                <td style="word-break:break-all"><a href="{{ r.browse_url }}">{{ r.rel }}</a></td>
-                <td class="muted">{% if r.is_dir %}Pasta{% else %}Arquivo{% endif %}</td>
-                <td class="muted">{% if r.is_dir %}—{% else %}{{ r.size|filesizeformat }}{% endif %}</td>
-                <td class="muted">{{ r.mtime|date:"d/m/Y H:i" }}</td>
-                <td class="file-actions">
-                  {% if r.is_dir %}
-                    <a class="btn small" href="{{ r.browse_url }}">Abrir</a>
-                  {% else %}
-                    <a class="btn small" href="{{ r.download_url }}">Baixar</a>
-                    <a class="btn small" href="{{ r.versions_url }}">Versões</a>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table></div>
-      {% else %}
-        <div class="empty">Nenhum arquivo ou pasta encontrado.</div>
-      {% endif %}
+      {% include "partials/search_results.html" with search_results=search_results %}
     {% else %}
-      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <div class="row row-between mb-10">
         <div>
           {% if parent_url %}<a class="btn small" href="{{ parent_url }}">↑ Subir</a>{% endif %}
         </div>
-        <div class="muted" style="font-size:12px">
+        <div class="muted text-12">
           {{ page_obj.paginator.count }} item{{ page_obj.paginator.count|pluralize }}
         </div>
       </div>

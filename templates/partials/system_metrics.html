@@ -1,0 +1,18 @@
+{% for zone in system.zones %}
+  <div class="metric" data-live-zone="{{ forloop.counter0 }}" data-live-zone-type="{{ zone.type }}">
+    <span>{% if 'cpu' in zone.type %}CPU{% else %}{{ zone.type }}{% endif %}</span>
+    <strong data-live-zone-value>{{ zone.temp|floatformat:1 }} °C{% if 'cpu' in zone.type and system.cpu_percent is not None %} · {{ system.cpu_percent }}%{% endif %}</strong>
+    {% if 'cpu' in zone.type %}<div class="muted text-11">temperatura · uso</div>{% endif %}
+  </div>
+{% endfor %}
+{% if capabilities.hwmon_fans %}
+  {% for fan in system.fans %}
+    <div class="metric" data-live-fan="{{ forloop.counter0 }}">
+      <span>Fan {{ fan.name }}</span>
+      <strong data-live-fan-value>{% if fan.rpm is not None %}{{ fan.rpm }} rpm{% if fan.rpm == 0 %} (parado){% endif %}{% else %}—{% endif %}</strong>
+      <div class="muted text-11" data-live-fan-sub>PWM {% if fan.pwm_percent is not None %}{{ fan.pwm_percent }}%{% else %}—{% endif %}{% if fan.rpm == 0 %} · curva começa ~50 °C{% endif %}</div>
+    </div>
+  {% endfor %}
+{% endif %}
+<div class="metric"><span>Load (1/5/15)</span><strong class="text-15" data-live-load>{{ system.load.l1|floatformat:2 }} / {{ system.load.l5|floatformat:2 }} / {{ system.load.l15|floatformat:2 }}</strong></div>
+<div class="metric"><span>RAM disponível</span><strong><span data-live-mem-available>{{ system.mem_available_mb|default:"—" }}</span> MB</strong><div class="muted text-11">de <span data-live-mem-total>{{ system.mem_total_mb|default:"—" }}</span> MB</div></div>

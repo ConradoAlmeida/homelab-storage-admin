@@ -1,25 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Shares - Homelab Storage{% endblock %}
 {% block content %}
-<div class="row" style="justify-content:space-between; margin-bottom:18px">
-  <h1 style="margin:0">Compartilhamentos</h1>
+<div class="row row-between mb-18">
+  <h1 class="m-0">Compartilhamentos</h1>
   <a class="btn primary" href="{% url 'share_create' %}">Novo share</a>
 </div>
 
 {% if agent_error %}
-  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif shares %}
 <div class="table-wrap"><table>
   <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Tam. snapshots</th><th>Total</th><th>Usuários/Grupos</th><th>Acesso</th></tr></thead>
   <tbody>
     {% for s in shares %}
       <tr>
-        <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.comment %}<div class="muted" style="font-size:12px">{{ s.comment }}</div>{% endif %}</td>
+        <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.comment %}<div class="muted text-12">{{ s.comment }}</div>{% endif %}</td>
         <td class="muted">{{ s.path }}</td>
         <td>
           {% if s.snapshot_enabled %}
             <span class="tag ok">sim · keep {{ s.snapshot_keep }}</span>
-            <div class="muted" style="font-size:12px">{{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
+            <div class="muted text-12">{{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
           {% else %}
             <span class="tag off">não configurado</span>
           {% endif %}

@@ -1,18 +1,18 @@
-import mimetypes
+from __future__ import annotations
+
 import re
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.http import FileResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_POST
 
 from core.agent import AgentError, agent
+from core.http import file_response
 from core.models import AuditLog
+from core.view_base import AgentPostView, AgentTemplateView, AgentView
 
 from .defaults import DEFAULT_EXCLUDES_TEXT
 
@@ -36,30 +36,13 @@ def _default_label(disk: dict) -> str:
     return raw[:16] or "backup"
 
 
-@login_required
-def index(request):
-    context = {"overview": None, "error": None}
-    try:
-        context["overview"] = agent.backup_overview()
-    except AgentError as exc:
-        context["error"] = str(exc)
-    return render(request, "backups/index.html", context)
-
-
-@login_required
-def snapshots(request):
-    context = {"snapshots": [], "errors": [], "error": None}
-    try:
-        data = agent.backup_snapshots()
-        context["snapshots"] = data.get("snapshots", [])
-        context["errors"] = data.get("errors", [])
-    except AgentError as exc:
-        context["error"] = str(exc)
-    return render(request, "backups/snapshots.html", context)
-
-
 def _snapshot_browse_url(snapshot_id: str, disk_uuid: str, path: str) -> str:
     base = reverse("backup_snapshot_browse", args=[snapshot_id])
+    return f"{base}?{urlencode({'disk_uuid': disk_uuid, 'path': path})}"
+
+
+def _snapshot_download_url(snapshot_id: str, disk_uuid: str, path: str) -> str:
+    base = reverse("backup_snapshot_download", args=[snapshot_id])
     return f"{base}?{urlencode({'disk_uuid': disk_uuid, 'path': path})}"
 
 
@@ -87,219 +70,6 @@ def _safe_download_path(relative: str) -> Path | None:
     except ValueError:
         return None
     return candidate
-
-
-@login_required
-def snapshot_browse(request, snapshot_id):
-    disk_uuid = (request.GET.get("disk_uuid") or "").strip()
-    path = (request.GET.get("path") or "/mnt/nas").strip()
-    query = (request.GET.get("q") or "").strip()
-    context = {
-        "snapshot_id": snapshot_id,
-        "snapshot": {},
-        "disk_uuid": disk_uuid,
-        "path": path,
-        "query": query,
-        "parent": str(PurePosixPath(path).parent),
-        "breadcrumbs": _snapshot_breadcrumbs(path),
-        "entries": [],
-        "search_matches": [],
-        "search_total": 0,
-        "search_truncated": False,
-        "error": None,
-    }
-    if query:
-        try:
-            data = agent.backup_search(disk_uuid, snapshot_id, query)
-        except AgentError as exc:
-            context["error"] = str(exc)
-        else:
-            context.update(
-                {
-                    "snapshot_id": data.get("snapshot_id") or snapshot_id,
-                    "query": data.get("query") or query,
-                    "search_matches": data.get("matches") or [],
-                    "search_total": data.get("total", 0),
-                    "search_truncated": bool(data.get("truncated")),
-                }
-            )
-        return render(request, "backups/snapshot_browse.html", context)
-
-    try:
-        data = agent.backup_ls(disk_uuid, snapshot_id, path)
-    except AgentError as exc:
-        context["error"] = str(exc)
-    else:
-        context.update(
-            {
-                "snapshot_id": data.get("snapshot_id") or snapshot_id,
-                "snapshot": data.get("snapshot") or {},
-                "path": data.get("path") or path,
-                "parent": data.get("parent") or context["parent"],
-                "breadcrumbs": _snapshot_breadcrumbs(data.get("path") or path),
-                "entries": data.get("entries") or [],
-            }
-        )
-    return render(request, "backups/snapshot_browse.html", context)
-
-
-@login_required
-def snapshot_download(request, snapshot_id):
-    disk_uuid = (request.GET.get("disk_uuid") or "").strip()
-    path = (request.GET.get("path") or "").strip()
-    try:
-        result = agent.backup_download(disk_uuid, snapshot_id, path)
-    except AgentError as exc:
-        messages.error(request, f"Não foi possível baixar o arquivo: {exc}")
-        return redirect(_snapshot_browse_url(snapshot_id, disk_uuid, path))
-
-    target = _safe_download_path(result.get("relative") or "")
-    if target is None or not target.is_file():
-        messages.error(request, "Arquivo de download não encontrado no app.")
-        return redirect(_snapshot_browse_url(snapshot_id, disk_uuid, path))
-
-    filename = result.get("filename") or target.name
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    AuditLog.objects.create(
-        actor=request.user,
-        action="backup_snapshot_download",
-        target=snapshot_id,
-        detail=path,
-        ip=request.META.get("REMOTE_ADDR"),
-    )
-    response = FileResponse(
-        open(target, "rb"),
-        as_attachment=True,
-        filename=filename,
-        content_type=content_type,
-    )
-    response["X-Content-Type-Options"] = "nosniff"
-    return response
-
-
-@login_required
-def disk_wizard(request):
-    try:
-        overview = agent.backup_overview()
-    except AgentError as exc:
-        return render(
-            request,
-            "backups/disk_wizard.html",
-            {"overview": None, "selected": None, "error": str(exc)},
-        )
-
-    device = (request.POST.get("device") or request.GET.get("device") or "").strip()
-    if not device:
-        return redirect("backup_index")
-    selected = next(
-        (disk for disk in overview.get("disks", []) if disk["path"] == device), None
-    )
-    error = None
-    if selected is None:
-        error = f"Disco nao encontrado: {device}"
-        return render(
-            request,
-            "backups/disk_wizard.html",
-            {"overview": overview, "selected": None, "error": error},
-        )
-
-    if request.method == "POST":
-        password = request.POST.get("password") or ""
-        label = (request.POST.get("label") or "").strip().lower()
-        confirmation = request.POST.get("confirmation") or ""
-        acknowledge = request.POST.get("acknowledge") == "1"
-
-        if not selected["candidate"]:
-            error = f"Disco indisponivel: {selected['reason']}"
-        elif not request.user.check_password(password):
-            error = "Senha do app incorreta."
-        elif selected["extra_confirmation"] and not acknowledge:
-            error = "Marque a confirmação extra para disco não vazio/configurado."
-        elif not LABEL_RE.match(label):
-            error = "Label inválida: use 1–16 caracteres a-z, 0-9, _ ou -."
-        else:
-            try:
-                result = agent.backup_disk_setup(
-                    device,
-                    label,
-                    confirmation,
-                    allow_existing=selected["extra_confirmation"],
-                )
-            except AgentError as exc:
-                error = str(exc)
-            else:
-                return render(
-                    request,
-                    "backups/disk_result.html",
-                    {"result": result, "disk": selected},
-                )
-
-    if (
-        request.method == "GET"
-        and selected["extra_confirmation"]
-        and selected["candidate"]
-        and request.GET.get("confirm") != "1"
-    ):
-        return render(
-            request,
-            "backups/disk_warning.html",
-            {"overview": overview, "selected": selected},
-        )
-
-    return render(
-        request,
-        "backups/disk_wizard.html",
-        {
-            "overview": overview,
-            "selected": selected,
-            "error": error,
-            "default_label": _default_label(selected),
-        },
-    )
-
-
-@login_required
-def credentials(request):
-    context = {
-        "overview": None,
-        "disks": [],
-        "result": None,
-        "error": None,
-        "selected_uuid": (request.GET.get("uuid") or "").strip(),
-    }
-    try:
-        overview = agent.backup_overview()
-    except AgentError as exc:
-        context["error"] = str(exc)
-        return render(request, "backups/credentials.html", context)
-    context["overview"] = overview
-    context["disks"] = [
-        disk for disk in overview.get("disks", []) if disk.get("configured")
-    ]
-
-    if request.method == "POST":
-        uuid = (request.POST.get("uuid") or "").strip()
-        password = request.POST.get("password") or ""
-        context["selected_uuid"] = uuid
-        if not uuid:
-            context["error"] = "Selecione um disco configurado."
-        elif not request.user.check_password(password):
-            context["error"] = "Senha do app incorreta."
-        else:
-            try:
-                result = agent.backup_secret(uuid)
-            except AgentError as exc:
-                context["error"] = str(exc)
-            else:
-                context["result"] = result
-                AuditLog.objects.create(
-                    actor=request.user,
-                    action="backup_secret_reveal",
-                    target=uuid,
-                    detail=f"label={result.get('label', '')}",
-                    ip=request.META.get("REMOTE_ADDR"),
-                )
-    return render(request, "backups/credentials.html", context)
 
 
 def _default_job_form(overview: dict) -> dict:
@@ -339,37 +109,392 @@ def _job_form_from_job(job: dict) -> dict:
     }
 
 
-@login_required
-def job_form(request, name=None):
-    try:
-        overview = agent.backup_overview()
-    except AgentError as exc:
-        return render(
-            request,
-            "backups/job_form.html",
-            {"overview": None, "error": str(exc), "disks": [], "shares": []},
-        )
-    try:
-        shares = agent.list_shares(include_size=False)
-    except AgentError as exc:
-        shares = []
-        shares_error = str(exc)
-    else:
-        shares_error = None
-    disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
+class BackupIndexView(AgentTemplateView):
+    template_name = "backups/index.html"
 
-    job = None
-    if name:
-        job = next(
-            (item for item in overview.get("jobs", []) if item.get("name") == name),
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"overview": None, "error": None})
+        try:
+            context["overview"] = agent.backup_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class BackupSnapshotsView(AgentTemplateView):
+    template_name = "backups/snapshots.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"snapshots": [], "errors": [], "error": None})
+        try:
+            data = agent.backup_snapshots()
+            context["snapshots"] = data.get("snapshots", [])
+            context["errors"] = data.get("errors", [])
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class ResticSnapshotBrowseView(AgentView):
+    def get(self, request, snapshot_id):
+        disk_uuid = (request.GET.get("disk_uuid") or "").strip()
+        path = (request.GET.get("path") or "/mnt/nas").strip()
+        query = (request.GET.get("q") or "").strip()
+        context = {
+            "snapshot_id": snapshot_id,
+            "snapshot": {},
+            "disk_uuid": disk_uuid,
+            "path": path,
+            "query": query,
+            "parent": str(PurePosixPath(path).parent),
+            "breadcrumbs": _snapshot_breadcrumbs(path),
+            "entries": [],
+            "search_matches": [],
+            "search_total": 0,
+            "search_truncated": False,
+            "search_action": reverse(
+                "backup_snapshot_browse", args=[snapshot_id]
+            ),
+            "search_clear_url": _snapshot_browse_url(
+                snapshot_id, disk_uuid, path
+            ),
+            "search_hidden": [
+                {"name": "disk_uuid", "value": disk_uuid},
+                {"name": "path", "value": path},
+            ],
+            "search_placeholder": "Buscar nome ou caminho no snapshot inteiro",
+            "error": None,
+        }
+        if query:
+            try:
+                data = agent.backup_search(disk_uuid, snapshot_id, query)
+            except AgentError as exc:
+                context["error"] = str(exc)
+            else:
+                matches = []
+                for match in data.get("matches") or []:
+                    is_dir = match.get("type") == "dir"
+                    match_path = match.get("path") or ""
+                    parent = match.get("parent") or str(
+                        PurePosixPath(match_path).parent
+                    )
+                    matches.append(
+                        {
+                            **match,
+                            "rel": match_path,
+                            "is_dir": is_dir,
+                            "browse_url": _snapshot_browse_url(
+                                snapshot_id,
+                                disk_uuid,
+                                match_path if is_dir else parent,
+                            ),
+                            "download_url": None
+                            if is_dir
+                            else _snapshot_download_url(
+                                snapshot_id, disk_uuid, match_path
+                            ),
+                            "versions_url": None,
+                            "mtime_text": match.get("mtime") or "—",
+                        }
+                    )
+                context.update(
+                    {
+                        "snapshot_id": data.get("snapshot_id") or snapshot_id,
+                        "query": data.get("query") or query,
+                        "search_matches": matches,
+                        "search_total": data.get("total", 0),
+                        "search_truncated": bool(data.get("truncated")),
+                        "search_action": reverse(
+                            "backup_snapshot_browse", args=[snapshot_id]
+                        ),
+                        "search_clear_url": _snapshot_browse_url(
+                            snapshot_id, disk_uuid, path
+                        ),
+                        "search_hidden": [
+                            {"name": "disk_uuid", "value": disk_uuid},
+                            {"name": "path", "value": path},
+                        ],
+                        "search_placeholder": "Buscar nome ou caminho no snapshot inteiro",
+                    }
+                )
+            return render(request, "backups/snapshot_browse.html", context)
+
+        try:
+            data = agent.backup_ls(disk_uuid, snapshot_id, path)
+        except AgentError as exc:
+            context["error"] = str(exc)
+        else:
+            context.update(
+                {
+                    "snapshot_id": data.get("snapshot_id") or snapshot_id,
+                    "snapshot": data.get("snapshot") or {},
+                    "path": data.get("path") or path,
+                    "parent": data.get("parent") or context["parent"],
+                    "breadcrumbs": _snapshot_breadcrumbs(data.get("path") or path),
+                    "entries": data.get("entries") or [],
+                }
+            )
+        return render(request, "backups/snapshot_browse.html", context)
+
+
+class ResticSnapshotDownloadView(AgentView):
+    def get(self, request, snapshot_id):
+        disk_uuid = (request.GET.get("disk_uuid") or "").strip()
+        path = (request.GET.get("path") or "").strip()
+        try:
+            result = agent.backup_download(disk_uuid, snapshot_id, path)
+        except AgentError as exc:
+            messages.error(request, f"Não foi possível baixar o arquivo: {exc}")
+            return redirect(_snapshot_browse_url(snapshot_id, disk_uuid, path))
+
+        target = _safe_download_path(result.get("relative") or "")
+        if target is None or not target.is_file():
+            messages.error(request, "Arquivo de download não encontrado no app.")
+            return redirect(_snapshot_browse_url(snapshot_id, disk_uuid, path))
+
+        AuditLog.objects.create(
+            actor=request.user,
+            action="backup_snapshot_download",
+            target=snapshot_id,
+            detail=path,
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        return file_response(target, result.get("filename") or target.name)
+
+
+class DiskWizardView(AgentView):
+    template_name = "backups/disk_wizard.html"
+
+    def _overview(self, request):
+        try:
+            return agent.backup_overview(), None
+        except AgentError as exc:
+            return None, str(exc)
+
+    def get(self, request):
+        overview, error = self._overview(request)
+        if error:
+            return render(
+                request,
+                self.template_name,
+                {"overview": None, "selected": None, "error": error},
+            )
+        device = (request.GET.get("device") or "").strip()
+        if not device:
+            return redirect("backup_index")
+        selected = next(
+            (disk for disk in overview.get("disks", []) if disk["path"] == device),
             None,
         )
-        if job is None:
-            messages.error(request, f"Job não encontrado: {name}")
-            return redirect("backup_index")
+        if selected is None:
+            return render(
+                request,
+                self.template_name,
+                {
+                    "overview": overview,
+                    "selected": None,
+                    "error": f"Disco nao encontrado: {device}",
+                },
+            )
+        if (
+            selected["extra_confirmation"]
+            and selected["candidate"]
+            and request.GET.get("confirm") != "1"
+        ):
+            return render(
+                request,
+                "backups/disk_warning.html",
+                {"overview": overview, "selected": selected},
+            )
+        return render(
+            request,
+            self.template_name,
+            {
+                "overview": overview,
+                "selected": selected,
+                "error": None,
+                "default_label": _default_label(selected),
+            },
+        )
 
-    error = None
-    if request.method == "POST":
+    def post(self, request):
+        overview, error = self._overview(request)
+        if error:
+            return render(
+                request,
+                self.template_name,
+                {"overview": None, "selected": None, "error": error},
+            )
+        device = (request.POST.get("device") or "").strip()
+        if not device:
+            return redirect("backup_index")
+        selected = next(
+            (disk for disk in overview.get("disks", []) if disk["path"] == device),
+            None,
+        )
+        if selected is None:
+            return render(
+                request,
+                self.template_name,
+                {
+                    "overview": overview,
+                    "selected": None,
+                    "error": f"Disco nao encontrado: {device}",
+                },
+            )
+
+        password = request.POST.get("password") or ""
+        label = (request.POST.get("label") or "").strip().lower()
+        confirmation = request.POST.get("confirmation") or ""
+        acknowledge = request.POST.get("acknowledge") == "1"
+        error = None
+        if not selected["candidate"]:
+            error = f"Disco indisponivel: {selected['reason']}"
+        elif not request.user.check_password(password):
+            error = "Senha do app incorreta."
+        elif selected["extra_confirmation"] and not acknowledge:
+            error = "Marque a confirmação extra para disco não vazio/configurado."
+        elif not LABEL_RE.match(label):
+            error = "Label inválida: use 1–16 caracteres a-z, 0-9, _ ou -."
+        else:
+            try:
+                result = agent.backup_disk_setup(
+                    device,
+                    label,
+                    confirmation,
+                    allow_existing=selected["extra_confirmation"],
+                )
+            except AgentError as exc:
+                error = str(exc)
+            else:
+                return render(
+                    request,
+                    "backups/disk_result.html",
+                    {"result": result, "disk": selected},
+                )
+        return render(
+            request,
+            self.template_name,
+            {
+                "overview": overview,
+                "selected": selected,
+                "error": error,
+                "default_label": _default_label(selected),
+            },
+        )
+
+
+class CredentialsView(AgentView):
+    template_name = "backups/credentials.html"
+
+    def _context(self, request):
+        context = {
+            "overview": None,
+            "disks": [],
+            "result": None,
+            "error": None,
+            "selected_uuid": (request.GET.get("uuid") or "").strip(),
+        }
+        try:
+            overview = agent.backup_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+            return context
+        context["overview"] = overview
+        context["disks"] = [
+            disk for disk in overview.get("disks", []) if disk.get("configured")
+        ]
+        return context
+
+    def get(self, request):
+        return render(request, self.template_name, self._context(request))
+
+    def post(self, request):
+        context = self._context(request)
+        if context["error"]:
+            return render(request, self.template_name, context)
+        uuid = (request.POST.get("uuid") or "").strip()
+        password = request.POST.get("password") or ""
+        context["selected_uuid"] = uuid
+        if not uuid:
+            context["error"] = "Selecione um disco configurado."
+        elif not request.user.check_password(password):
+            context["error"] = "Senha do app incorreta."
+        else:
+            try:
+                result = agent.backup_secret(uuid)
+            except AgentError as exc:
+                context["error"] = str(exc)
+            else:
+                context["result"] = result
+                AuditLog.objects.create(
+                    actor=request.user,
+                    action="backup_secret_reveal",
+                    target=uuid,
+                    detail=f"label={result.get('label', '')}",
+                    ip=request.META.get("REMOTE_ADDR"),
+                )
+        return render(request, self.template_name, context)
+
+
+class JobFormView(AgentView):
+    template_name = "backups/job_form.html"
+
+    def _context(self, request, name=None):
+        try:
+            overview = agent.backup_overview()
+        except AgentError as exc:
+            return None, {
+                "overview": None,
+                "error": str(exc),
+                "disks": [],
+                "shares": [],
+            }
+        try:
+            shares = agent.list_shares(include_size=False)
+        except AgentError as exc:
+            shares = []
+            shares_error = str(exc)
+        else:
+            shares_error = None
+        disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
+        job = None
+        if name:
+            job = next(
+                (item for item in overview.get("jobs", []) if item.get("name") == name),
+                None,
+            )
+            if job is None:
+                messages.error(request, f"Job não encontrado: {name}")
+                return None, None
+        context = {
+            "overview": overview,
+            "disks": disks,
+            "shares": shares,
+            "shares_error": shares_error,
+            "weekdays": WEEKDAYS,
+            "job": job,
+            "error": None,
+            "default_excludes_text": DEFAULT_EXCLUDES_TEXT,
+        }
+        return job, context
+
+    def get(self, request, name=None):
+        job, context = self._context(request, name)
+        if context is None:
+            return redirect("backup_index")
+        if job is not None:
+            context["form"] = _job_form_from_job(job)
+        else:
+            context["form"] = _default_job_form(context["overview"])
+        return render(request, self.template_name, context)
+
+    def post(self, request, name=None):
+        job, context = self._context(request, name)
+        if context is None:
+            return redirect("backup_index")
         form_name = (
             job.get("name") if job else request.POST.get("name") or ""
         ).strip().lower()
@@ -389,16 +514,20 @@ def job_form(request, name=None):
             },
             "enabled": request.POST.get("enabled") == "on",
         }
+        context["form"] = form
         if not form_name:
-            error = "Informe o nome do job."
+            context["error"] = "Informe o nome do job."
         elif job is None and any(
-            item.get("name") == form_name for item in overview.get("jobs", [])
+            item.get("name") == form_name
+            for item in context["overview"].get("jobs", [])
         ):
-            error = "Já existe um job com esse nome; edite o existente."
-        elif not disks:
-            error = "Nenhum disco de backup configurado. Prepare um disco primeiro."
-        elif not shares:
-            error = "Nenhum share encontrado."
+            context["error"] = "Já existe um job com esse nome; edite o existente."
+        elif not context["disks"]:
+            context["error"] = (
+                "Nenhum disco de backup configurado. Prepare um disco primeiro."
+            )
+        elif not context["shares"]:
+            context["error"] = "Nenhum share encontrado."
         else:
             payload = {
                 "name": form_name,
@@ -417,7 +546,7 @@ def job_form(request, name=None):
             try:
                 result = agent.backup_job_save(payload)
             except AgentError as exc:
-                error = str(exc)
+                context["error"] = str(exc)
             else:
                 AuditLog.objects.create(
                     actor=request.user,
@@ -431,127 +560,168 @@ def job_form(request, name=None):
                 )
                 messages.success(request, f"Job {form_name} salvo.")
                 return redirect("backup_index")
-    else:
-        form = _job_form_from_job(job) if job else _default_job_form(overview)
-
-    return render(
-        request,
-        "backups/job_form.html",
-        {
-            "overview": overview,
-            "disks": disks,
-            "shares": shares,
-            "shares_error": shares_error,
-            "weekdays": WEEKDAYS,
-            "job": job,
-            "form": form,
-            "error": error,
-            "default_excludes_text": DEFAULT_EXCLUDES_TEXT,
-        },
-    )
+        return render(request, self.template_name, context)
 
 
-@login_required
-@require_POST
-def job_run(request, name):
-    try:
-        agent.backup_job_run(name)
-    except AgentError as exc:
-        messages.error(request, str(exc))
-    else:
-        AuditLog.objects.create(
-            actor=request.user,
-            action="backup_job_run",
-            target=name,
-            ip=request.META.get("REMOTE_ADDR"),
+class JobRunView(AgentPostView):
+    def post(self, request, name):
+        try:
+            agent.backup_job_run(name)
+        except AgentError as exc:
+            messages.error(request, str(exc))
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="backup_job_run",
+                target=name,
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request,
+                f"Backup {name} iniciado. Atualize a página para ver o status.",
+            )
+        return redirect("backup_index")
+
+
+class JobToggleView(AgentPostView):
+    def post(self, request, name):
+        enabled = request.POST.get("enabled") == "1"
+        try:
+            agent.backup_job_toggle(name, enabled)
+        except AgentError as exc:
+            messages.error(request, str(exc))
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="backup_job_toggle",
+                target=name,
+                detail=f"enabled={enabled}",
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request, f"Job {name} {'ativado' if enabled else 'desativado'}."
+            )
+        return redirect("backup_index")
+
+
+class JobDeleteView(AgentPostView):
+    def post(self, request, name):
+        try:
+            agent.backup_job_delete(name)
+        except AgentError as exc:
+            messages.error(request, str(exc))
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="backup_job_delete",
+                target=name,
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request, f"Job {name} excluído. O repositório restic foi mantido."
+            )
+        return redirect("backup_index")
+
+
+class ColdIndexView(AgentTemplateView):
+    template_name = "backups/cold_index.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"overview": None, "error": None})
+        try:
+            context["overview"] = agent.cold_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class ColdPrepareView(AgentView):
+    template_name = "backups/cold_prepare.html"
+
+    def _overview(self, request):
+        try:
+            return agent.cold_overview(), None
+        except AgentError as exc:
+            return None, str(exc)
+
+    def get(self, request):
+        overview, error = self._overview(request)
+        if error:
+            return render(
+                request,
+                self.template_name,
+                {"overview": None, "selected": None, "error": error},
+            )
+        device = (request.GET.get("device") or "").strip()
+        if not device:
+            return redirect("cold_index")
+        selected = next(
+            (disk for disk in overview.get("disks", []) if disk["path"] == device),
+            None,
         )
-        messages.success(
-            request, f"Backup {name} iniciado. Atualize a página para ver o status."
-        )
-    return redirect("backup_index")
-
-
-@login_required
-@require_POST
-def job_toggle(request, name):
-    enabled = request.POST.get("enabled") == "1"
-    try:
-        agent.backup_job_toggle(name, enabled)
-    except AgentError as exc:
-        messages.error(request, str(exc))
-    else:
-        AuditLog.objects.create(
-            actor=request.user,
-            action="backup_job_toggle",
-            target=name,
-            detail=f"enabled={enabled}",
-            ip=request.META.get("REMOTE_ADDR"),
-        )
-        messages.success(
-            request, f"Job {name} {'ativado' if enabled else 'desativado'}."
-        )
-    return redirect("backup_index")
-
-
-@login_required
-@require_POST
-def job_delete(request, name):
-    try:
-        agent.backup_job_delete(name)
-    except AgentError as exc:
-        messages.error(request, str(exc))
-    else:
-        AuditLog.objects.create(
-            actor=request.user,
-            action="backup_job_delete",
-            target=name,
-            ip=request.META.get("REMOTE_ADDR"),
-        )
-        messages.success(
-            request, f"Job {name} excluído. O repositório restic foi mantido."
-        )
-    return redirect("backup_index")
-
-
-@login_required
-def cold_index(request):
-    context = {"overview": None, "error": None}
-    try:
-        context["overview"] = agent.cold_overview()
-    except AgentError as exc:
-        context["error"] = str(exc)
-    return render(request, "backups/cold_index.html", context)
-
-
-@login_required
-def cold_prepare(request):
-    try:
-        overview = agent.cold_overview()
-    except AgentError as exc:
+        if selected is None:
+            return render(
+                request,
+                self.template_name,
+                {
+                    "overview": overview,
+                    "selected": None,
+                    "error": f"Drive não encontrado: {device}",
+                },
+            )
+        if (
+            selected["extra_confirmation"]
+            and selected["candidate"]
+            and request.GET.get("confirm") != "1"
+        ):
+            return render(
+                request,
+                "backups/cold_warning.html",
+                {"overview": overview, "selected": selected},
+            )
         return render(
             request,
-            "backups/cold_prepare.html",
-            {"overview": None, "selected": None, "error": str(exc)},
-        )
-    device = (request.POST.get("device") or request.GET.get("device") or "").strip()
-    if not device:
-        return redirect("cold_index")
-    selected = next(
-        (disk for disk in overview.get("disks", []) if disk["path"] == device), None
-    )
-    if selected is None:
-        return render(
-            request,
-            "backups/cold_prepare.html",
-            {"overview": overview, "selected": None, "error": f"Drive não encontrado: {device}"},
+            self.template_name,
+            {
+                "overview": overview,
+                "selected": selected,
+                "error": None,
+                "default_label": _default_label(selected),
+            },
         )
 
-    error = None
-    if request.method == "POST":
+    def post(self, request):
+        overview, error = self._overview(request)
+        if error:
+            return render(
+                request,
+                self.template_name,
+                {"overview": None, "selected": None, "error": error},
+            )
+        device = (request.POST.get("device") or "").strip()
+        if not device:
+            return redirect("cold_index")
+        selected = next(
+            (disk for disk in overview.get("disks", []) if disk["path"] == device),
+            None,
+        )
+        if selected is None:
+            return render(
+                request,
+                self.template_name,
+                {
+                    "overview": overview,
+                    "selected": None,
+                    "error": f"Drive não encontrado: {device}",
+                },
+            )
+
         password = request.POST.get("password") or ""
         label = (request.POST.get("label") or "").strip().lower()
         confirmation = request.POST.get("confirmation") or ""
         acknowledge = request.POST.get("acknowledge") == "1"
+        error = None
         if not selected["candidate"]:
             error = f"Drive indisponível: {selected['reason']}"
         elif not request.user.check_password(password):
@@ -583,64 +753,51 @@ def cold_prepare(request):
                     "backups/cold_result.html",
                     {"result": result, "disk": selected, "action": "prepared"},
                 )
-
-    if (
-        request.method == "GET"
-        and selected["extra_confirmation"]
-        and selected["candidate"]
-        and request.GET.get("confirm") != "1"
-    ):
         return render(
             request,
-            "backups/cold_warning.html",
-            {"overview": overview, "selected": selected},
+            self.template_name,
+            {
+                "overview": overview,
+                "selected": selected,
+                "error": error,
+                "default_label": _default_label(selected),
+            },
         )
 
-    return render(
-        request,
-        "backups/cold_prepare.html",
-        {
-            "overview": overview,
-            "selected": selected,
-            "error": error,
-            "default_label": _default_label(selected),
-        },
-    )
+
+class ColdCopyView(AgentPostView):
+    def post(self, request):
+        try:
+            result = agent.cold_copy()
+        except AgentError as exc:
+            messages.error(request, str(exc))
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="cold_copy",
+                target=result.get("device", ""),
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request,
+                "Cópia fria iniciada em segundo plano. Atualize a página para acompanhar o status.",
+            )
+        return redirect("cold_index")
 
 
-@login_required
-@require_POST
-def cold_copy(request):
-    try:
-        result = agent.cold_copy()
-    except AgentError as exc:
-        messages.error(request, str(exc))
-    else:
-        AuditLog.objects.create(
-            actor=request.user,
-            action="cold_copy",
-            target=result.get("device", ""),
-            ip=request.META.get("REMOTE_ADDR"),
-        )
-        messages.success(
-            request,
-            "Cópia fria iniciada em segundo plano. Atualize a página para acompanhar o status.",
-        )
-    return redirect("cold_index")
-
-
-@login_required
-@require_POST
-def cold_eject(request):
-    try:
-        agent.cold_eject()
-    except AgentError as exc:
-        messages.error(request, str(exc))
-    else:
-        AuditLog.objects.create(
-            actor=request.user,
-            action="cold_eject",
-            ip=request.META.get("REMOTE_ADDR"),
-        )
-        messages.success(request, "Drive frio ejetado. Pode desconectar com segurança.")
-    return redirect("cold_index")
+class ColdEjectView(AgentPostView):
+    def post(self, request):
+        try:
+            agent.cold_eject()
+        except AgentError as exc:
+            messages.error(request, str(exc))
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="cold_eject",
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request, "Drive frio ejetado. Pode desconectar com segurança."
+            )
+        return redirect("cold_index")

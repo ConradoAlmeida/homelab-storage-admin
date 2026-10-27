@@ -1,0 +1,11 @@
+<div class="card search-card">
+  <form method="get" action="{{ search_action }}" class="row search-form">
+    {% for hidden in search_hidden %}
+      <input type="hidden" name="{{ hidden.name }}" value="{{ hidden.value }}">
+    {% endfor %}
+    <input type="search" name="q" value="{{ query }}" placeholder="{{ search_placeholder }}" class="search-input">
+    <button class="btn small" type="submit">Buscar</button>
+    {% if query %}<a class="btn small" href="{{ search_clear_url }}">Limpar</a>{% endif %}
+  </form>
+  <p class="muted search-hint">Sem curinga, busca por trecho; use <code>*</code> e <code>?</code> para padrões.</p>
+</div>

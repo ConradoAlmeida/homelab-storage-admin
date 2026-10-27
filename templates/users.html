@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Usuários - Homelab Storage{% endblock %}
 {% block content %}
-<div class="row" style="justify-content:space-between; margin-bottom:18px">
-  <h1 style="margin:0">Usuários Samba</h1>
+<div class="row row-between mb-18">
+  <h1 class="m-0">Usuários Samba</h1>
   <div class="row">
     <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
     <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
@@ -10,7 +10,7 @@
 </div>
 
 {% if agent_error %}
-  <div class="card" style="border-color:#7f1d1d"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif users %}
 <div class="table-wrap"><table>
   <thead><tr><th>Usuário</th><th>Nome</th><th>Grupos</th><th>Status</th><th>Ações</th></tr></thead>
