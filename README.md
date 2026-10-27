@@ -817,3 +817,17 @@ homelab-storage-admin/
 ├── deploy.sh
 └── .env.example
 ```
+
+## Login pelo Credenciais (moyaserver)
+
+No moyaserver, o Storage Admin usa a senha única do Credenciais. O container
+entra na rede `moya` e recebe `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN`.
+
+- Quem não tem a concessão `storage` no Credenciais recebe "não tem acesso".
+- O acesso é binário: quem entra pode operar o Storage Admin; não há papéis.
+- A gestão de usuários Samba/Linux fica centralizada no Credenciais. As telas
+  de criar/alterar/excluir usuários e grupos são removidas nesse modo; a lista
+  de usuários continua somente leitura.
+- O usuário local `admin` continua funcionando como acesso de emergência se o
+  Credenciais estiver fora do ar.
+- No Pi, sem `CREDENTIALS_URL`, nada muda: o login local continua como antes.
