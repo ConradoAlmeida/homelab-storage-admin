@@ -31,6 +31,9 @@ def homelab(request):
     return {
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
+        "credenciais_ativa": bool(
+            settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN
+        ),
         "capabilities": _cached_caps,
         "storage_root": settings.STORAGE_ROOT,
         "snapshot_root": settings.SNAPSHOT_ROOT,

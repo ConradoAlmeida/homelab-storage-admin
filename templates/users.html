@@ -3,11 +3,16 @@
 {% block content %}
 <div class="row row-between mb-18">
   <h1 class="m-0">Usuários Samba</h1>
+  {% if not credenciais_ativa %}
   <div class="row">
     <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
     <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
   </div>
+  {% endif %}
 </div>
+{% if credenciais_ativa %}
+<div class="card"><strong>Gestão centralizada</strong><p class="muted">Criar, alterar senha, grupos e excluir contas é feito no Credenciais.</p></div>
+{% endif %}
 
 {% if agent_error %}
   <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
@@ -22,6 +27,7 @@
         <td>{% for g in u.groups %}<span class="tag">{{ g }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td>
         <td>{% if u.enabled %}<span class="tag ok">ativo</span>{% else %}<span class="tag off">desativado</span>{% endif %}</td>
         <td>
+          {% if not credenciais_ativa %}
           <div class="row">
             <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
             <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
@@ -37,6 +43,7 @@
               <button class="btn small danger" type="submit">Excluir</button>
             </form>
           </div>
+          {% endif %}
         </td>
       </tr>
     {% endfor %}
@@ -56,11 +63,13 @@
     <tr>
       <td><strong>{{ nome }}</strong></td>
       <td>
+        {% if not credenciais_ativa %}
         <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
           {% csrf_token %}
           <input type="hidden" name="name" value="{{ nome }}">
           <button class="btn small danger" type="submit">Excluir</button>
         </form>
+        {% endif %}
       </td>
     </tr>
     {% endfor %}
