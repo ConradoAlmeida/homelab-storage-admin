@@ -1370,6 +1370,11 @@ def op_backup_snapshots(**_):
             continue
         for snap in snapshots:
             summary = snap.get("summary") or {}
+            paths = snap.get("paths") or []
+            try:
+                browse_path = os.path.commonpath(paths) if paths else "/"
+            except ValueError:
+                browse_path = "/"
             result.append(
                 {
                     "disk_label": label,
@@ -1378,7 +1383,8 @@ def op_backup_snapshots(**_):
                     "short_id": snap.get("short_id") or (snap.get("id") or "")[:8],
                     "time": snap.get("time"),
                     "hostname": snap.get("hostname"),
-                    "paths": snap.get("paths") or [],
+                    "paths": paths,
+                    "browse_path": browse_path,
                     "tags": snap.get("tags") or [],
                     "files": summary.get("total_files_processed", 0),
                     "bytes": summary.get("total_bytes_processed", 0),

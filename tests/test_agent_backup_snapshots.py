@@ -48,6 +48,7 @@ def test_backup_snapshots_parses_restic_json(agent_module, monkeypatch, tmp_path
     assert data["snapshots"][0]["disk_label"] == "hdd700"
     assert data["snapshots"][0]["files"] == 10
     assert data["snapshots"][0]["bytes"] == 1234
+    assert data["snapshots"][0]["browse_path"] == "/mnt/nas/casa"
     assert data["snapshots"][0]["empty"] is False
 
 

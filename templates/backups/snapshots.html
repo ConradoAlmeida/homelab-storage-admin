@@ -31,7 +31,7 @@
             <td class="muted">{{ snap.added_bytes|filesizeformat }}</td>
             <td class="muted" style="font-size:12px">{{ snap.paths|join:", " }}</td>
             <td>
-              <a class="btn small" href="{% url 'backup_snapshot_browse' snap.short_id %}?disk_uuid={{ snap.disk_uuid|urlencode }}&path=/mnt/nas">Navegar</a>
+              <a class="btn small" href="{% url 'backup_snapshot_browse' snap.short_id %}?disk_uuid={{ snap.disk_uuid|urlencode }}&path={{ snap.browse_path|default:'/'|urlencode }}">Navegar</a>
             </td>
           </tr>
         {% endfor %}
