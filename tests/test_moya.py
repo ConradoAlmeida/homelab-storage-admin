@@ -9,7 +9,8 @@ def test_moya_example_profile():
     assert values["ALLOWED_PATH_PREFIXES"] == "/srv/samba/,/mnt/data/"
     assert values["SNAPSHOT_DENYLIST"] == "Veronte_Images"
     assert values["SNAPSHOT_BACKEND"] == "rsync"
-    assert values["DATA_DIR"] == "./data"
+    assert values["DATA_DIR"] == "/opt/stacks/homelab-storage-admin/data"
+    assert values["DOWNLOAD_DIR"] == "/opt/stacks/homelab-storage-admin/data/downloads"
     assert values["COMPOSE_OVERLAY"] == "docker-compose.moya.yml"
 
 
