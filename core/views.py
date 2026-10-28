@@ -49,7 +49,8 @@ class DashboardView(AgentTemplateView):
                 "backups": None,
                 "backup_jobs": [],
                 "snapshots_summary": {},
-                "raid_status": "—",
+                "raid_status": "-",
+                "health": None,
             }
         )
         try:
@@ -124,6 +125,23 @@ class DashboardView(AgentTemplateView):
         context["storage"] = storage
         context["backups"] = backups
         context["backup_jobs"] = backup_jobs
+        try:
+            context["health"] = agent.health_overview()
+        except AgentError:
+            pass
+        return context
+
+
+class NetworkView(AgentTemplateView):
+    template_name = "network.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"data": None, "error": None})
+        try:
+            context["data"] = agent.network_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
         return context
 
 

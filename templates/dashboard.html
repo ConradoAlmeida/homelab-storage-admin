@@ -5,6 +5,32 @@
 <h1>Dashboard</h1>
 <p class="muted">Visão geral do host, discos, backup e shares.</p>
 
+{% if health %}
+<div class="card health-card">
+  <div class="row row-between-start">
+    <div>
+      <h2 class="mt-0">Saúde</h2>
+      <p class="muted text-12">Alertas de disco, backups, containers e pendências.</p>
+    </div>
+    <span class="badge {% if health.ok %}live{% else %}danger{% endif %}">
+      {% if health.ok %}tudo ok{% else %}atenção{% endif %}
+    </span>
+  </div>
+  {% if health.alerts %}
+    <ul class="health-list">
+      {% for item in health.alerts %}
+        <li class="health-{{ item.level }}">
+          <strong>{{ item.title }}</strong>
+          {% if item.detail %}<span class="muted"> — {{ item.detail }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Nenhum alerta.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if services %}
 <h2 class="mt-0">Serviços</h2>
 <div class="service-cards">

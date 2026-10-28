@@ -70,6 +70,11 @@ urlpatterns = [
         name="arquivos_job_edit",
     ),
     path(
+        "arquivos/<str:job>/usb/",
+        views.ArquivosJobUsbView.as_view(),
+        name="arquivos_job_usb",
+    ),
+    path(
         "arquivos/<str:job>/run/",
         views.ArquivosJobRunView.as_view(),
         name="arquivos_job_run",

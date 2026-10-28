@@ -302,3 +302,10 @@ details[open] > summary.btn { margin-bottom:8px; }
 @keyframes gitea-spin { to { transform: rotate(360deg); } }
 
 [hidden] { display:none !important; }
+
+.health-card { margin: 18px 0 8px; }
+.health-list { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.health-list li { padding:9px 12px; border-left:3px solid var(--line); background:var(--bg-deep); border-radius:8px; font-size:14px; }
+.health-list li.health-red { border-left-color:var(--err); }
+.health-list li.health-warn { border-left-color:var(--warn); }
+.health-list li.health-info { border-left-color:var(--acc); }

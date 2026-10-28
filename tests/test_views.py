@@ -35,6 +35,19 @@ def fake_agent(capabilities=None):
         "collected_at": "2026-10-26T23:00:00",
     }
     agent.backup_snapshots.return_value = {"snapshots": [], "errors": []}
+    agent.health_overview.return_value = {
+        "alerts": [],
+        "volumes": [],
+        "ok": True,
+    }
+    agent.network_overview.return_value = {
+        "interfaces": [],
+        "routes": [],
+        "listening": [],
+        "containers": [],
+        "firewall": "inativo",
+        "rules": [],
+    }
     agent.backup_ls.return_value = {
         "snapshot_id": "a" * 64,
         "path": "/mnt/nas",
@@ -373,3 +386,15 @@ class ViewSmokeTests(TestCase):
         )
         self.assertContains(resposta, "Repositorio integro")
         self.fake.backup_check.assert_called_once_with("abc")
+
+    def test_dashboard_mostra_saude(self):
+        resposta = self.client.get("/")
+        self.assertContains(resposta, "Saúde")
+        self.assertContains(resposta, "tudo ok")
+
+    def test_rede_renderiza(self):
+        resposta = self.client.get("/rede/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Rede e firewall")
+        self.assertContains(resposta, "UFW")
+        self.assertContains(resposta, "Portas ouvindo")

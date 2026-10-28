@@ -97,6 +97,18 @@ OVERVIEW = {
 
 DETALHE = {
     "job": JOB_CRED,
+    "dir": "/var/backups/moya-credenciais",
+    "usb": [
+        {
+            "name": "sdb",
+            "path": "/dev/sdb",
+            "model": "USB DISK",
+            "fstype": "ext4",
+            "label": "GITEA",
+            "free_label": "20G",
+            "has_filesystem": True,
+        }
+    ],
     "sources": [
         {
             "name": "db.sqlite3",
@@ -133,6 +145,16 @@ class ArquivosJobViewTests(TestCase):
         fake.arquivos_job.return_value = DETALHE
         fake.arquivos_job_save.return_value = DETALHE
         fake.arquivos_job_run.return_value = {"name": "credenciais", "started": True}
+        fake.arquivos_sugestoes.return_value = {
+            "sources": ["/mnt/data/datasheets", "/home/conrado/caddy"]
+        }
+        fake.arquivos_job_usb_backup.return_value = {
+            "job": "apps",
+            "archive": "apps-20261028-130000.tar.gz",
+            "size_label": "104 MB",
+            "device": "sdb",
+            "verified": True,
+        }
         fake.arquivos_job_delete.return_value = {"name": "credenciais", "deleted": True}
         fake.arquivos_job_verify.return_value = {
             "archive": ARQUIVO,
@@ -189,6 +211,22 @@ class ArquivosJobViewTests(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Novo job de backup")
         self.assertContains(resposta, 'name="sources"')
+
+    def test_modelo_de_apps_preenche_as_fontes(self):
+        resposta = self.client.get("/backups/arquivos/new/?modelo=apps")
+        self.assertContains(resposta, 'value="apps"')
+        self.assertContains(resposta, "/mnt/data/datasheets")
+        self.assertContains(resposta, "Dados dos apps")
+
+    def test_backup_do_job_para_usb(self):
+        resposta = self.client.post(
+            "/backups/arquivos/apps/usb/",
+            data={"device": "sdb"},
+            follow=True,
+        )
+        self.assertContains(resposta, "copiado para sdb")
+        self.assertContains(resposta, "verificado")
+        self.fake.arquivos_job_usb_backup.assert_called_once_with("apps", "sdb")
 
     def test_formulario_edicao_traz_as_fontes(self):
         resposta = self.client.get("/backups/arquivos/credenciais/edit/")

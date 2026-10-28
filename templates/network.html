@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Rede - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="row row-between-start">
+  <div>
+    <h1 class="mb-4">Rede e firewall</h1>
+    <p class="muted">Somente leitura: interfaces, rotas, portas ouvindo, mapeamentos Docker e status do UFW.</p>
+  </div>
+  <div>
+    <a class="btn small" href="{% url 'dashboard' %}">Voltar ao dashboard</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+{% elif data %}
+  <h2>Firewall</h2>
+  <div class="card">
+    <p class="mb-4">
+      <span class="badge {% if data.firewall == 'ativo' %}live{% else %}danger{% endif %}">UFW {{ data.firewall }}</span>
+    </p>
+    {% if data.rules %}
+      <pre class="mono text-12">{{ data.rules|join:"\n" }}</pre>
+    {% else %}
+      <p class="muted text-12">Sem regras para mostrar (ou UFW não instalado).</p>
+    {% endif %}
+    <p class="muted text-12">
+      Docker publica portas via iptables e pode furar o UFW. O modelo mais seguro é
+      publicar os apps em <span class="mono">127.0.0.1</span> e deixar o Caddy expor.
+    </p>
+  </div>
+
+  <h2>Interfaces</h2>
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Interface</th><th>Estado</th><th>Endereço</th><th>Velocidade</th><th>MAC</th><th>Sinal</th></tr></thead>
+    <tbody>
+      {% for item in data.interfaces %}
+        <tr>
+          <td><strong>{{ item.name }}</strong></td>
+          <td><span class="badge {% if item.state == 'up' %}live{% endif %}">{{ item.state }}</span></td>
+          <td class="mono text-12">{{ item.cidr }}</td>
+          <td class="muted">{{ item.speed_mbps|default:"-" }}{% if item.speed_mbps %} Mbps{% endif %}</td>
+          <td class="mono text-11">{{ item.mac|default:"-" }}</td>
+          <td class="muted">{{ item.signal_dbm|default:"-" }}{% if item.signal_dbm %} dBm{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6"><div class="empty">Nenhuma interface.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+
+  <h2>Rotas</h2>
+  <div class="card">
+    {% if data.routes %}
+      <pre class="mono text-12">{{ data.routes|join:"\n" }}</pre>
+    {% else %}
+      <p class="muted">Nenhuma rota IPv4.</p>
+    {% endif %}
+  </div>
+
+  <h2>Portas ouvindo</h2>
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Endereço</th><th>Processo</th><th>Estado</th></tr></thead>
+    <tbody>
+      {% for item in data.listening %}
+        <tr>
+          <td class="mono text-12">{{ item.local }}</td>
+          <td class="muted">{{ item.process|default:"-" }}</td>
+          <td class="muted">{{ item.state }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3"><div class="empty">Nenhuma porta TCP ouvindo.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+
+  <h2>Containers publicados</h2>
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Container</th><th>Portas</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for item in data.containers %}
+        <tr>
+          <td><strong>{{ item.name }}</strong></td>
+          <td class="mono text-12">{{ item.ports|default:"-" }}</td>
+          <td class="muted">{{ item.status }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3"><div class="empty">Nenhum container rodando.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+{% endif %}
+{% endblock %}

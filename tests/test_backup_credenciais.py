@@ -305,3 +305,68 @@ def test_health_do_repositorio_ida_e_volta(agent_module, monkeypatch, tmp_path):
     assert dados["finished_at"] == "2026-10-28T04:30:00"
     if os.name != "nt":
         assert (tmp_path / "uuid-1.json").stat().st_mode & 0o777 == 0o600
+
+
+def test_job_copia_sqlite_com_backup_api(agent_module, tmp_path):
+    pasta = tmp_path / "dados"
+    pasta.mkdir()
+    _criar_banco(pasta / "app.db", "valor")
+    (pasta / "leiame.txt").write_text("ok\n")
+    agent_module.op_arquivos_job_save(
+        {
+            "name": "apps",
+            "label": "Apps",
+            "enabled": False,
+            "time": "03:30",
+            "frequency": "daily",
+            "weekday": 0,
+            "retention_days": 7,
+            "sources": [{"path": str(pasta)}],
+        }
+    )
+    status = agent_module._job_executar("apps")
+    destino = tmp_path / "extraido"
+    destino.mkdir()
+    with tarfile.open(
+        Path(agent_module.CREDENCIAIS_BACKUP_DIR) / status["archive"], "r:gz"
+    ) as pacote:
+        pacote.extractall(destino)
+    copia = destino / "files/0-dados/app.db"
+    assert _ler_banco(copia) == "valor"
+
+
+def test_job_backup_para_usb_com_hash(agent_module, monkeypatch, tmp_path):
+    pasta = tmp_path / "dados"
+    pasta.mkdir()
+    (pasta / "arquivo.txt").write_text("conteudo\n")
+    agent_module.op_arquivos_job_save(
+        {
+            "name": "apps",
+            "label": "Apps",
+            "enabled": False,
+            "time": "03:30",
+            "frequency": "daily",
+            "weekday": 0,
+            "retention_days": 7,
+            "sources": [{"path": str(pasta)}],
+        }
+    )
+    usb = tmp_path / "usb"
+    usb.mkdir()
+    monkeypatch.setattr(
+        agent_module,
+        "_gitea_usb_disks",
+        lambda: [{"name": "sdb", "path": "/dev/sdb", "has_filesystem": True}],
+    )
+    monkeypatch.setattr(
+        agent_module, "_usb_montar", lambda disco: (usb, False)
+    )
+    monkeypatch.setattr(agent_module, "_usb_desmontar", lambda *a: None)
+
+    resultado = agent_module.op_arquivos_job_usb_backup("apps", "sdb")
+
+    arquivo = usb / "apps" / "apps" / resultado["archive"]
+    assert arquivo.is_file()
+    assert resultado["verified"] is True
+    sidecar = usb / "apps" / "apps" / f"{resultado['archive']}.sha256"
+    assert resultado["sha256"] in sidecar.read_text()

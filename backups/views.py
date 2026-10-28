@@ -956,6 +956,22 @@ class ArquivosJobFormView(AgentTemplateView):
                 context["sources_text"] = "\n".join(
                     fonte["path"] for fonte in detalhe["job"]["sources"]
                 )
+        elif self.request.GET.get("modelo") == "apps":
+            try:
+                sugestoes = agent.arquivos_sugestoes().get("sources") or []
+            except AgentError:
+                sugestoes = []
+            context["job"] = {
+                "name": "apps",
+                "label": "Dados dos apps",
+                "enabled": False,
+                "time": "03:30",
+                "frequency": "daily",
+                "weekday": 0,
+                "retention_days": 7,
+                "sources": [{"path": caminho} for caminho in sugestoes],
+            }
+            context["sources_text"] = "\n".join(sugestoes)
         return context
 
     def _formulario(self, request, job=None):
@@ -1017,6 +1033,29 @@ class ArquivosJobRunView(AgentPostView):
             messages.success(
                 request,
                 "Backup iniciado. O andamento aparece nesta página automaticamente.",
+            )
+        return redirect("arquivos_job", job=job)
+
+
+class ArquivosJobUsbView(AgentPostView):
+    def post(self, request, job):
+        device = (request.POST.get("device") or "").strip()
+        try:
+            resultado = agent.arquivos_job_usb_backup(job, device)
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel copiar para o USB: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="arquivos_job_usb",
+                target=f"{job}:{device}",
+                detail=resultado.get("archive", ""),
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request,
+                f"Backup {resultado.get('archive')} copiado para {device} "
+                f"({resultado.get('size_label')}) e verificado. Pode desconectar.",
             )
         return redirect("arquivos_job", job=job)
 

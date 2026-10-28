@@ -231,6 +231,17 @@ class AgentClient:
             restart=restart,
         )
 
+    def arquivos_job_usb_backup(self, name, device):
+        return self.call(
+            "arquivos_job_usb_backup",
+            timeout=1200,
+            name=name,
+            device=device,
+        )
+
+    def arquivos_sugestoes(self):
+        return self.call("arquivos_sugestoes", timeout=30)
+
     def arquivos_job_download(self, name, archive):
         return self.call(
             "arquivos_job_download", timeout=120, name=name, archive=archive
@@ -294,6 +305,12 @@ class AgentClient:
 
     def cold_eject(self):
         return self.call("cold_eject", timeout=60)
+
+    def health_overview(self):
+        return self.call("health_overview", timeout=60)
+
+    def network_overview(self):
+        return self.call("network_overview", timeout=30)
 
     def network_metrics(self):
         return self.call("network_metrics", timeout=15)

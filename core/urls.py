@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
+    path("rede/", views.NetworkView.as_view(), name="network_index"),
     path("metrics/network/", views.NetworkMetricsView.as_view(), name="network_metrics"),
     path("metrics/live/", views.LiveMetricsView.as_view(), name="live_metrics"),
     path("metrics/shares/", views.ShareSizesView.as_view(), name="share_sizes"),

@@ -60,6 +60,51 @@
     </p>
   </div>
 
+  <h2>Backup para USB</h2>
+  <div class="card">
+    <p class="muted text-12">
+      Gera um backup novo agora e copia o pacote para o drive. O drive é montado,
+      o hash é conferido e ele é desmontado. Não desconecte até a mensagem de sucesso.
+    </p>
+    {% if detalhe.usb %}
+      <div class="table-wrap"><table class="file-table">
+        <thead><tr><th>Drive</th><th>Filesystem</th><th>Livre</th><th></th></tr></thead>
+        <tbody>
+          {% for disco in detalhe.usb %}
+            <tr>
+              <td><strong>{{ disco.name }}</strong><div class="muted text-11">{{ disco.model|default:"-" }}</div></td>
+              <td>
+                {% if disco.has_filesystem %}
+                  <span class="badge">{{ disco.fstype|default:"?" }}{% if disco.label %} · {{ disco.label }}{% endif %}</span>
+                {% else %}
+                  <span class="badge danger">sem filesystem</span>
+                {% endif %}
+              </td>
+              <td class="muted">{{ disco.free_label }}</td>
+              <td class="file-actions">
+                {% if disco.has_filesystem %}
+                  <form method="post" action="{% url 'arquivos_job_usb' job=detalhe.job.name %}" class="display-inline"
+                        data-confirm="Gerar um backup agora e gravar em {{ disco.path }}? Os arquivos existentes não são apagados.">
+                    {% csrf_token %}
+                    <input type="hidden" name="device" value="{{ disco.name }}">
+                    <button class="btn small" type="submit">Backup para USB</button>
+                  </form>
+                {% else %}
+                  <span class="muted text-12">indisponível</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <div class="alert">
+        <strong>Nenhum drive USB detectado.</strong>
+        Conecte um drive ext4/exFAT no moyaserver para usar esta opção.
+      </div>
+    {% endif %}
+  </div>
+
   <h2>Job</h2>
   <div class="card">
     <p class="mb-4">

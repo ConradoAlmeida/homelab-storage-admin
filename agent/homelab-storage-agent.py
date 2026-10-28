@@ -2718,6 +2718,43 @@ def _job_prune(config: dict, job: dict, manter: Path | None = None) -> list[str]
     return removidos
 
 
+def _eh_sqlite(caminho: Path) -> bool:
+    try:
+        with open(caminho, "rb") as arquivo:
+            return arquivo.read(16) == b"SQLite format 3\x00"
+    except OSError:
+        return False
+
+
+def _copiar_arquivo(origem: Path, destino: Path) -> None:
+    if _eh_sqlite(origem):
+        conexao = sqlite3.connect(origem.resolve().as_uri() + "?mode=ro", uri=True)
+        alvo = sqlite3.connect(str(destino))
+        try:
+            conexao.backup(alvo)
+        finally:
+            alvo.close()
+            conexao.close()
+        return
+    shutil.copyfile(origem, destino)
+
+
+def _job_archive_latest(nome: str, config: dict | None = None) -> Path | None:
+    config = config or _jobs_config()
+    pasta = Path(config["dir"])
+    if not pasta.is_dir():
+        return None
+    padroes = _job_archive_patterns(nome)
+    candidatos = [
+        item
+        for item in pasta.glob("*.tar.gz")
+        if any(padrao.match(item.name) for padrao in padroes)
+    ]
+    if not candidatos:
+        return None
+    return max(candidatos, key=lambda item: item.stat().st_mtime)
+
+
 def _fonte_tamanho(alvo: Path) -> int:
     if alvo.is_file():
         return alvo.stat().st_size
@@ -2885,7 +2922,7 @@ def _job_executar(nome: str) -> dict:
             indice_extra += 1
             if origem.is_file():
                 copia = pasta_extras / base_arc.split("/", 1)[1]
-                shutil.copyfile(origem, copia)
+                _copiar_arquivo(origem, copia)
                 os.chmod(copia, 0o600)
                 entradas.append(
                     _credenciais_manifesto(copia, base_arc, origem, "file")
@@ -2914,7 +2951,7 @@ def _job_executar(nome: str) -> dict:
                     relativo = arquivo.relative_to(origem).as_posix()
                     copia = copia_raiz / relativo
                     copia.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(arquivo, copia)
+                    _copiar_arquivo(arquivo, copia)
                     os.chmod(copia, 0o600)
                     entradas.append(
                         _credenciais_manifesto(
@@ -3094,6 +3131,7 @@ def _job_detalhe(nome: str) -> dict:
     return {
         "job": job,
         "dir": config["dir"],
+        "usb": _gitea_usb_disks() if shutil.which("lsblk") else [],
         "sources": fontes,
         "status": _job_status_read(job["name"]),
         "archives": _job_archives(job["name"], config),
@@ -3181,6 +3219,103 @@ def op_arquivos_job_run(name: str, **_):
         return _job_executar(job["name"])
     log(f"ARQUIVOS_JOB_RUN {job['name']}")
     return {"name": job["name"], "started": True}
+
+
+def op_arquivos_sugestoes(**_):
+    candidatos = [
+        "/mnt/data/datasheets",
+        "/opt/stacks/homelab-storage-admin/data/db.sqlite3",
+        "/home/conrado/caddy",
+        "/home/conrado/moya_credenciais_app/docker-compose.yml",
+        "/home/conrado/moya_credenciais_app/.env",
+        "/home/conrado/moya_drawing_manager/docker-compose.yml",
+        "/home/conrado/moya_drawing_manager/.env",
+        "/home/conrado/Datasheet_Manager/docker-compose.yml",
+        "/home/conrado/Datasheet_Manager/.env",
+        "/home/conrado/Data-Logger-Plotter/docker-compose.yml",
+        "/home/conrado/Data-Logger-Plotter/.env",
+        "/home/conrado/calcula_cabo/docker-compose.yml",
+        "/home/conrado/calcula_cabo/.env",
+        "/home/conrado/moya_sharepoint_analysis/docker-compose.yml",
+        "/home/conrado/moya_sharepoint_analysis/.env",
+        "/home/conrado/moya_sharepoint_analysis/config.ini",
+    ]
+    fontes = []
+    for caminho in candidatos:
+        alvo = Path(caminho)
+        if alvo.exists() and not alvo.is_symlink():
+            fontes.append(str(alvo))
+    return {"sources": fontes}
+
+
+def op_arquivos_job_usb_backup(name: str, device: str, **_):
+    config = _jobs_config()
+    job = _job_por_nome(config, name)
+    disco = next(
+        (item for item in _gitea_usb_disks() if item["name"] == device), None
+    )
+    if disco is None:
+        raise AgentError(f"Disco USB nao encontrado: {device}")
+    if not disco.get("has_filesystem"):
+        raise AgentError("Disco USB sem filesystem reconhecido")
+    _job_executar(name)
+    arquivo = _job_archive_latest(name, _jobs_config())
+    if arquivo is None:
+        raise AgentError("Backup recem-gerado nao encontrado")
+    sha = _sha256(arquivo)
+    montado, fomos_nos = _usb_montar(disco)
+    try:
+        livre = shutil.disk_usage(montado).free
+        if livre < arquivo.stat().st_size + 64 * 1024 * 1024:
+            raise AgentError(
+                f"Espaco insuficiente no USB: precisa de "
+                f"{_human_bytes(arquivo.stat().st_size)}, livre "
+                f"{_human_bytes(livre)}"
+            )
+        pasta = montado / "apps" / job["name"]
+        pasta.mkdir(parents=True, exist_ok=True)
+        destino = pasta / arquivo.name
+        try:
+            shutil.copyfile(arquivo, destino)
+        except OSError as exc:
+            raise AgentError(f"Falha ao copiar para o USB: {exc}") from exc
+        try:
+            os.chmod(destino, 0o600)
+        except OSError:
+            pass
+        try:
+            with open(destino, "rb+") as copia:
+                os.fsync(copia.fileno())
+        except OSError:
+            pass
+        _sincronizar_discos()
+        sidecar = pasta / f"{arquivo.name}.sha256"
+        sidecar.write_text(f"{sha}  {arquivo.name}\n")
+        try:
+            with open(sidecar, "rb+") as texto:
+                os.fsync(texto.fileno())
+        except OSError:
+            pass
+        _sincronizar_discos()
+        if _sha256(destino) != sha:
+            destino.unlink(missing_ok=True)
+            sidecar.unlink(missing_ok=True)
+            raise AgentError(
+                "A copia no USB nao confere com o backup; mantenha o drive conectado."
+            )
+    finally:
+        _usb_desmontar(montado, fomos_nos)
+    log(f"ARQUIVOS_USB {name} {device} {arquivo.name}")
+    return {
+        "job": job["name"],
+        "usb": device,
+        "archive": arquivo.name,
+        "path": str(destino),
+        "size": destino.stat().st_size,
+        "size_label": _human_bytes(destino.stat().st_size),
+        "sha256": sha,
+        "verified": True,
+    }
 
 
 def op_arquivos_job_verify(name: str, archive: str, **_):
@@ -4250,6 +4385,307 @@ def op_network_metrics(**_):
     }
 
 
+def _alerta(nivel: str, titulo: str, detalhe: str = "") -> dict:
+    return {"level": nivel, "title": titulo, "detail": detalhe}
+
+
+def _idade_dias(quando: str | None) -> int | None:
+    if not quando:
+        return None
+    try:
+        data = dt.datetime.fromisoformat(str(quando))
+    except ValueError:
+        return None
+    return max(0, (dt.datetime.now() - data).days)
+
+
+def op_health_overview(**_):
+    alertas: list[dict] = []
+
+    try:
+        volumes = op_df().get("volumes", [])
+    except AgentError:
+        volumes = []
+    for volume in volumes:
+        percent = float(volume.get("percent") or 0)
+        if percent >= 90:
+            alertas.append(
+                _alerta(
+                    "red",
+                    f"Disco {volume['mount']} em {percent}%",
+                    "Libere espaco ou aumente o volume.",
+                )
+            )
+        elif percent >= 75:
+            alertas.append(
+                _alerta(
+                    "warn",
+                    f"Disco {volume['mount']} em {percent}%",
+                    "Uso alto; acompanhe o crescimento.",
+                )
+            )
+
+    try:
+        config = _jobs_config()
+    except AgentError:
+        config = {"jobs": []}
+    for job in config.get("jobs", []):
+        status = _job_status_read(job["name"])
+        rotulo = job.get("label") or job["name"]
+        if status.get("status") == "failed":
+            alertas.append(
+                _alerta(
+                    "red",
+                    f"Backup local {rotulo} falhou",
+                    status.get("error", ""),
+                )
+            )
+        elif status.get("status") == "skipped":
+            alertas.append(
+                _alerta(
+                    "warn",
+                    f"Backup local {rotulo} aguardando disco",
+                    status.get("message", ""),
+                )
+            )
+        if job.get("enabled"):
+            dias = _idade_dias(status.get("finished_at"))
+            if dias is None:
+                alertas.append(
+                    _alerta("info", f"Backup local {rotulo} nunca executou")
+                )
+            elif dias > 14:
+                alertas.append(
+                    _alerta(
+                        "warn",
+                        f"Backup local {rotulo} ha {dias} dias",
+                        "Verifique o timer e o destino.",
+                    )
+                )
+
+    if not shutil.which("restic"):
+        alertas.append(_alerta("warn", "restic nao instalado"))
+    else:
+        try:
+            backup_config = _load_backup_config()
+        except AgentError:
+            backup_config = {"disks": [], "jobs": []}
+        if not backup_config.get("disks"):
+            alertas.append(
+                _alerta(
+                    "info",
+                    "Sem repositorio restic",
+                    "Conecte um disco externo para habilitar.",
+                )
+            )
+        for job in _backup_jobs(backup_config):
+            status = job.get("status") or {}
+            if status.get("status") == "failed":
+                alertas.append(
+                    _alerta(
+                        "red",
+                        f"Backup restic {job.get('name')} falhou",
+                        status.get("message", ""),
+                    )
+                )
+            elif status.get("status") == "skipped":
+                alertas.append(
+                    _alerta(
+                        "warn",
+                        f"Backup restic {job.get('name')} aguardando disco",
+                        status.get("message", ""),
+                    )
+                )
+        for disk in backup_config.get("disks", []):
+            health = _backup_health_read(str(disk.get("uuid")))
+            rotulo = disk.get("label") or disk.get("uuid")
+            if not health:
+                alertas.append(
+                    _alerta(
+                        "info",
+                        f"Repositorio restic {rotulo} nunca verificado",
+                        "Use Verificar repo.",
+                    )
+                )
+            elif not health.get("ok"):
+                alertas.append(
+                    _alerta(
+                        "red",
+                        f"Repositorio restic {rotulo} com problema",
+                        health.get("message", ""),
+                    )
+                )
+
+    dumps = _gitea_dumps()
+    if dumps:
+        caminho = Path(GITEA_BACKUP_DIR) / dumps[0]["name"]
+        try:
+            dias = max(
+                0,
+                (
+                    dt.datetime.now()
+                    - dt.datetime.fromtimestamp(caminho.stat().st_mtime)
+                ).days,
+            )
+        except OSError:
+            dias = 0
+        if dias > 7:
+            alertas.append(
+                _alerta(
+                    "warn",
+                    f"Dump do Gitea ha {dias} dias",
+                    "Gere um novo dump e copie para o USB.",
+                )
+            )
+    else:
+        alertas.append(_alerta("warn", "Nenhum dump do Gitea no servidor"))
+
+    status_gitea = _gitea_status_read()
+    if status_gitea.get("status") == "failed":
+        alertas.append(
+            _alerta(
+                "red",
+                "Ultimo backup do Gitea falhou",
+                status_gitea.get("error", ""),
+            )
+        )
+    elif status_gitea.get("status") == "done" and not status_gitea.get(
+        "usb_verified"
+    ):
+        alertas.append(
+            _alerta(
+                "info",
+                "Ultimo dump do Gitea esta so no servidor",
+                "Copie para o USB quando puder.",
+            )
+        )
+
+    rc, saida, _ = run_optional(
+        ["docker", "ps", "--format", "{{.Names}}|{{.Status}}"], timeout=15
+    )
+    if rc == 0:
+        for linha in (saida or "").splitlines():
+            if "|" not in linha:
+                continue
+            nome, estado = linha.split("|", 1)
+            if "unhealthy" in estado:
+                alertas.append(
+                    _alerta("red", f"Container {nome} unhealthy", estado)
+                )
+            elif "Restarting" in estado:
+                alertas.append(
+                    _alerta("warn", f"Container {nome} reiniciando", estado)
+                )
+
+    rc, saida, _ = run_optional(["ufw", "status"], timeout=5)
+    if rc == 0 and "inactive" in (saida or "").lower():
+        alertas.append(
+            _alerta(
+                "warn",
+                "Firewall inativo",
+                "Veja a pagina Rede para portas expostas.",
+            )
+        )
+
+    env_credenciais = Path("/home/conrado/moya_credenciais_app/.env")
+    if env_credenciais.is_file():
+        try:
+            for linha in env_credenciais.read_text().splitlines():
+                if linha.strip().startswith("EMAIL_HOST="):
+                    if not linha.split("=", 1)[1].strip():
+                        alertas.append(
+                            _alerta(
+                                "info",
+                                "SMTP nao configurado",
+                                "Ativacao por link continua manual.",
+                            )
+                        )
+                    break
+        except OSError:
+            pass
+
+    ordem = {"red": 0, "warn": 1, "info": 2}
+    alertas.sort(key=lambda item: ordem.get(item["level"], 9))
+    return {
+        "alerts": alertas[:20],
+        "volumes": volumes,
+        "generated_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "ok": not any(item["level"] in ("red", "warn") for item in alertas),
+    }
+
+
+def op_network_overview(**_):
+    interfaces = []
+    rc, saida, _ = run_optional(["ip", "-4", "-o", "addr", "show"], timeout=10)
+    if rc == 0:
+        for linha in (saida or "").splitlines():
+            achado = re.match(r"^\d+:\s+(\S+)\s+inet\s+(\S+)", linha)
+            if not achado or achado.group(1) == "lo":
+                continue
+            nome, cidr = achado.group(1), achado.group(2)
+            detalhe = _interface_details(nome, {})
+            detalhe["cidr"] = cidr
+            interfaces.append(detalhe)
+
+    rotas = []
+    rc, saida, _ = run_optional(["ip", "-4", "route", "show"], timeout=10)
+    if rc == 0:
+        rotas = [linha.strip() for linha in (saida or "").splitlines() if linha.strip()]
+
+    portas = []
+    rc, saida, _ = run_optional(["ss", "-ltnp"], timeout=10)
+    if rc == 0:
+        for linha in (saida or "").splitlines()[1:]:
+            campos = linha.split()
+            if len(campos) < 4:
+                continue
+            endereco = campos[3]
+            processo = ""
+            achado = re.search(r'users:\(\("([^"]+)"', linha)
+            if achado:
+                processo = achado.group(1)
+            portas.append(
+                {
+                    "state": campos[0],
+                    "local": endereco,
+                    "process": processo,
+                    "raw": linha.strip(),
+                }
+            )
+
+    containers = []
+    rc, saida, _ = run_optional(
+        ["docker", "ps", "--format", "{{.Names}}|{{.Ports}}|{{.Status}}"],
+        timeout=15,
+    )
+    if rc == 0:
+        for linha in (saida or "").splitlines():
+            partes = linha.split("|", 2)
+            if len(partes) != 3:
+                continue
+            containers.append(
+                {"name": partes[0], "ports": partes[1], "status": partes[2]}
+            )
+
+    firewall = "indisponivel"
+    regras: list[str] = []
+    rc, saida, _ = run_optional(["ufw", "status", "verbose"], timeout=10)
+    if rc == 0:
+        linhas = [linha.rstrip() for linha in (saida or "").splitlines()]
+        firewall = "ativo" if "Status: active" in (saida or "") else "inativo"
+        regras = [linha for linha in linhas[3:] if linha.strip()][:60]
+
+    return {
+        "interfaces": interfaces,
+        "routes": rotas,
+        "listening": sorted(portas, key=lambda item: item["local"]),
+        "containers": containers,
+        "firewall": firewall,
+        "rules": regras,
+        "generated_at": dt.datetime.now().isoformat(timespec="seconds"),
+    }
+
+
 OPS = {
     "ping": op_ping,
     "host_capabilities": op_host_capabilities,
@@ -4296,6 +4732,10 @@ OPS = {
     "arquivos_job_verify": op_arquivos_job_verify,
     "arquivos_job_restore": op_arquivos_job_restore,
     "arquivos_job_download": op_arquivos_job_download,
+    "arquivos_job_usb_backup": op_arquivos_job_usb_backup,
+    "arquivos_sugestoes": op_arquivos_sugestoes,
+    "health_overview": op_health_overview,
+    "network_overview": op_network_overview,
     "credenciais_backup_overview": op_credenciais_backup_overview,
     "credenciais_backup_run": op_credenciais_backup_run,
     "credenciais_backup_add_file": op_credenciais_backup_add_file,
