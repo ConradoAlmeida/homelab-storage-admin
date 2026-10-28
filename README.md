@@ -562,7 +562,7 @@ via CLI; o navegador serve para inspecionar e baixar itens específicos.
 - **Restore**: extrai em staging, confere `sha256` do manifesto e roda
   `PRAGMA integrity_check`; só então copia banco e `.env` com dono/permissão
   originais. O estado atual vai para `pre-restore-AAAAMMDD-HHMMSS` e o container
-  é reiniciado.
+  é reiniciado em instantes, depois da resposta.
 
 O banco é copiado pela API de backup do SQLite, então a cópia é consistente
 mesmo com o app rodando. A retenção (`CREDENCIAIS_RETENTION_DAYS`, 30) apaga

@@ -134,7 +134,7 @@
       <span class="mono">PRAGMA integrity_check</span> no banco antes de tocar em qualquer coisa.
       O banco e o <span class="mono">.env</span> atuais são copiados para
       <span class="mono">{{ overview.config.dir }}/pre-restore-AAAAMMDD-HHMMSS</span>.
-      Só então os arquivos voltam com dono e permissão originais, e o container é reiniciado.
+      Só então os arquivos voltam com dono e permissão originais; o container é reiniciado em instantes, depois da resposta.
     </p>
     <p class="muted text-12">
       Para restaurar em outra máquina: baixe o arquivo, extraia <span class="mono">db.sqlite3</span> e

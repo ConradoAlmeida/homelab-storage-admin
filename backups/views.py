@@ -891,7 +891,7 @@ class CredenciaisBackupRestoreView(AgentPostView):
                 ip=request.META.get("REMOTE_ADDR"),
             )
             aviso = (
-                " Container reiniciado."
+                " O container será reiniciado em instantes."
                 if resultado.get("restarted")
                 else " Reinicie o moya-credenciais para aplicar."
             )

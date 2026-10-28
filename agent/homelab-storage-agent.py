@@ -2538,11 +2538,16 @@ def op_credenciais_backup_restore(archive: str, restart: bool = True, **_):
     finally:
         shutil.rmtree(estagio, ignore_errors=True)
     reiniciado = False
-    if restart and config.get("container"):
-        rc, _, _ = run_optional(
-            ["docker", "restart", str(config["container"])], timeout=120
+    container = str(config.get("container") or "")
+    if restart and re.match(r"^[A-Za-z0-9_.-]+$", container):
+        # O container serve esta interface: reinicia depois da resposta.
+        subprocess.Popen(
+            ["sh", "-c", "sleep 3; docker restart \"$1\"", "sh", container],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
-        reiniciado = rc == 0
+        reiniciado = True
     _credenciais_status_write(
         {
             **_credenciais_status_read(),
