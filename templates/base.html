@@ -6,35 +6,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ product_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32.png' %}">
 </head>
 <body>
   <a class="skip" href="#main">Ir para o conteúdo</a>
-  <header>
-    <a class="brand" href="{% url 'dashboard' %}">{{ product_name }}</a>
-    <nav aria-label="Principal">
-      <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
-      <a href="{% url 'users' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}">Usuários</a>
-      <a href="{% url 'shares' %}" class="{% if '/shares/' in request.path %}active{% endif %}">Shares</a>
-      <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Snapshots</a>
-      <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Arquivos</a>
-      <a href="{% url 'storage_index' %}" class="{% if '/storage/' in request.path %}active{% endif %}">Discos</a>
-      {% if capabilities.restic %}
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="{% url 'dashboard' %}">
+        <img src="{% static 'images/moya_wordmark_official.svg' %}" alt="Moya">
+        <span>{{ product_name }}</span>
+      </a>
+      <nav class="side-nav" aria-label="Principal">
+        <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+        <a href="{% url 'users' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}">Usuários</a>
+        <a href="{% url 'shares' %}" class="{% if '/shares/' in request.path %}active{% endif %}">Shares</a>
+        <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Snapshots</a>
+        <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Arquivos</a>
+        <a href="{% url 'storage_index' %}" class="{% if '/storage/' in request.path %}active{% endif %}">Discos</a>
+        {% if capabilities.restic %}
         <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
-      {% endif %}
-    </nav>
-    <div class="user">
-      {% if request.user.is_staff %}
-        <a class="btn small" href="{% url 'admin:index' %}" title="Abrir painel Django admin">{{ request.user.username }}</a>
-      {% else %}
-        <span>{{ request.user.username }}</span>
-      {% endif %}
-      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
+        {% endif %}
+      </nav>
+      <div class="sidebar-foot">
+        {% if request.user.is_staff %}
+        <a class="user-chip" href="{% url 'admin:index' %}" title="Abrir painel Django admin">{{ request.user.username }}</a>
+        {% else %}
+        <span class="user-chip">{{ request.user.username }}</span>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <button class="menu-toggle" type="button" data-nav-toggle aria-label="Abrir menu">☰</button>
+        <span class="topbar-title">{{ product_name }}</span>
+      </header>
+      <main id="main">
+        {% include "partials/messages.html" %}
+        {% block content %}{% endblock %}
+      </main>
     </div>
-  </header>
-  <main id="main">
-    {% include "partials/messages.html" %}
-    {% block content %}{% endblock %}
-  </main>
+  </div>
+  <script src="{% static 'js/shell.js' %}"></script>
   <script src="{% static 'js/confirm-actions.js' %}"></script>
   <script src="{% static 'js/copy-secret.js' %}"></script>
 </body>
