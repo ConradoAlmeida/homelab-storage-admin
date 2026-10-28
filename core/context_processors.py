@@ -1,8 +1,8 @@
 """Contexto comum: nome do site e capacidades do host.
 
-As capacidades s├úo consultadas no agente e mantidas por alguns segundos para
-n├úo abrir um socket em cada p├ígina. Se o agente estiver indispon├¡vel, o
-template recebe um dicion├írio vazio e simplesmente esconde os recursos
+As capacidades são consultadas no agente e mantidas por alguns segundos para
+não abrir um socket em cada página. Se o agente estiver indisponível, o
+template recebe um dicionário vazio e simplesmente esconde os recursos
 opcionais; as views continuam tratando o erro.
 """
 from __future__ import annotations

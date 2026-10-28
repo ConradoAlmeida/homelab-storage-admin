@@ -1,5 +1,3 @@
-# Regra: este app roda no Pi e no moyaserver. As rotas de administração são
-# compartilhadas; nunca remova features por causa do Credenciais.
 from django.urls import path
 
 from . import views
