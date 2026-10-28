@@ -14,7 +14,9 @@
     {% if capabilities.credenciais_backup %}
     <a class="btn small" href="{% url 'arquivos_backup_index' %}">Backup de arquivos</a>
     {% endif %}
+    {% if capabilities.gitea %}
     <a class="btn small" href="{% url 'gitea_backup' %}">Backup do Gitea</a>
+    {% endif %}
     <a class="btn small" href="{% url 'backup_credentials' %}">Senha do repositório</a>
     <a class="btn small" href="#discos">Escolher disco</a>
   </div>

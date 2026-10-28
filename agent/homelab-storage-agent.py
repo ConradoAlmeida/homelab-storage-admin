@@ -240,6 +240,15 @@ def detect_hwmon_fans(base: str = "/sys/class/hwmon") -> bool:
     return False
 
 
+def _container_exists(name: str) -> bool:
+    if not shutil.which("docker"):
+        return False
+    rc, _, _ = run_optional(
+        ["docker", "inspect", "-f", "{{.Name}}", name], timeout=10
+    )
+    return rc == 0
+
+
 def host_capabilities() -> dict:
     fstype = _fstype(STORAGE_ROOT)
     return {
@@ -255,6 +264,7 @@ def host_capabilities() -> dict:
         "credenciais_backup": bool(
             Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
         ),
+        "gitea": _container_exists(GITEA_CONTAINER),
     }
 
 
@@ -2446,9 +2456,10 @@ def _jobs_config() -> dict:
         if legado.is_file():
             caminho = legado
         else:
-            base["jobs"] = [
-                _job_legado({"db": CREDENCIAIS_DB, "env": CREDENCIAIS_ENV})
-            ]
+            if Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file():
+                base["jobs"] = [
+                    _job_legado({"db": CREDENCIAIS_DB, "env": CREDENCIAIS_ENV})
+                ]
             return base
     try:
         dados = json.loads(caminho.read_text())
@@ -4400,6 +4411,54 @@ def _idade_dias(quando: str | None) -> int | None:
     return max(0, (dt.datetime.now() - data).days)
 
 
+def _gitea_health_alertas() -> list[dict]:
+    alertas = []
+    dumps = _gitea_dumps()
+    if dumps:
+        caminho = Path(GITEA_BACKUP_DIR) / dumps[0]["name"]
+        try:
+            dias = max(
+                0,
+                (
+                    dt.datetime.now()
+                    - dt.datetime.fromtimestamp(caminho.stat().st_mtime)
+                ).days,
+            )
+        except OSError:
+            dias = 0
+        if dias > 7:
+            alertas.append(
+                _alerta(
+                    "warn",
+                    f"Dump do Gitea ha {dias} dias",
+                    "Gere um novo dump e copie para o USB.",
+                )
+            )
+    else:
+        alertas.append(_alerta("warn", "Nenhum dump do Gitea no servidor"))
+
+    status_gitea = _gitea_status_read()
+    if status_gitea.get("status") == "failed":
+        alertas.append(
+            _alerta(
+                "red",
+                "Ultimo backup do Gitea falhou",
+                status_gitea.get("error", ""),
+            )
+        )
+    elif status_gitea.get("status") == "done" and not status_gitea.get(
+        "usb_verified"
+    ):
+        alertas.append(
+            _alerta(
+                "info",
+                "Ultimo dump do Gitea esta so no servidor",
+                "Copie para o USB quando puder.",
+            )
+        )
+    return alertas
+
+
 def op_health_overview(**_):
     alertas: list[dict] = []
 
@@ -4431,8 +4490,26 @@ def op_health_overview(**_):
     except AgentError:
         config = {"jobs": []}
     for job in config.get("jobs", []):
-        status = _job_status_read(job["name"])
+        if job["name"] == "credenciais" and not (
+            Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
+        ):
+            continue
         rotulo = job.get("label") or job["name"]
+        faltando = [
+            fonte["path"]
+            for fonte in job.get("sources", [])
+            if not Path(fonte.get("path", "")).exists()
+        ]
+        if faltando:
+            alertas.append(
+                _alerta(
+                    "red",
+                    f"Backup local {rotulo} com fonte ausente",
+                    ", ".join(faltando[:3]),
+                )
+            )
+            continue
+        status = _job_status_read(job["name"])
         if status.get("status") == "failed":
             alertas.append(
                 _alerta(
@@ -4517,49 +4594,8 @@ def op_health_overview(**_):
                     )
                 )
 
-    dumps = _gitea_dumps()
-    if dumps:
-        caminho = Path(GITEA_BACKUP_DIR) / dumps[0]["name"]
-        try:
-            dias = max(
-                0,
-                (
-                    dt.datetime.now()
-                    - dt.datetime.fromtimestamp(caminho.stat().st_mtime)
-                ).days,
-            )
-        except OSError:
-            dias = 0
-        if dias > 7:
-            alertas.append(
-                _alerta(
-                    "warn",
-                    f"Dump do Gitea ha {dias} dias",
-                    "Gere um novo dump e copie para o USB.",
-                )
-            )
-    else:
-        alertas.append(_alerta("warn", "Nenhum dump do Gitea no servidor"))
-
-    status_gitea = _gitea_status_read()
-    if status_gitea.get("status") == "failed":
-        alertas.append(
-            _alerta(
-                "red",
-                "Ultimo backup do Gitea falhou",
-                status_gitea.get("error", ""),
-            )
-        )
-    elif status_gitea.get("status") == "done" and not status_gitea.get(
-        "usb_verified"
-    ):
-        alertas.append(
-            _alerta(
-                "info",
-                "Ultimo dump do Gitea esta so no servidor",
-                "Copie para o USB quando puder.",
-            )
-        )
+    if _container_exists(GITEA_CONTAINER):
+        alertas.extend(_gitea_health_alertas())
 
     rc, saida, _ = run_optional(
         ["docker", "ps", "--format", "{{.Names}}|{{.Status}}"], timeout=15
