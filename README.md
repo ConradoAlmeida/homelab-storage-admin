@@ -601,6 +601,31 @@ existe um **disco externo** disponível:
   check e tem o botão **Verificar repo**.
 - Antes de confiar, rode um restore de teste a partir do snapshot.
 
+## 6.10 Backup do Gitea
+
+**Backups → Backup do Gitea** gera um dump consistente e permite copiá-lo
+manualmente para um drive USB. O Gitea continua rodando durante o dump.
+
+- **Dump**: `gitea dump` executado como usuário `git` dentro do container,
+  com `--skip-log --skip-index`. O zip é copiado para
+  `/var/backups/gitea/gitea-AAAAMMDD-HHMMSS.zip`, `600 root`, com `sha256`
+  registrado. Mantém os últimos `GITEA_KEEP` dumps (padrão 2).
+- **USB**: a tela lista drives removíveis (USB), mostra filesystem, rótulo e
+  espaço livre. O backup monta o drive (se preciso), confere o espaço, copia
+  para `<drive>/gitea/<zip>` + `.sha256`, confere o hash e desmonta.
+  Arquivos existentes no drive não são apagados; nada é formatado.
+- **Status**: `/etc/homelab-backup/gitea.json` (`dump`, `usb`, `done`,
+  `failed`), exibido na própria página. O dump continua no servidor mesmo se a
+  cópia para o USB falhar.
+- **Execução assíncrona**: `homelab-gitea-backup@<host|device>.service`, então
+  a página não fica presa durante os ~3,7 GB.
+- **Restauração**: pare o Gitea, extraia o zip e restaure banco, repositórios e
+  configuração; teste em um ambiente separado antes de confiar.
+
+O backup do Gitea é **manual por decisão** (dump + USB). Quando houver
+repositório restic, a pasta `/var/backups/gitea` pode entrar em um job restic
+para versionamento e cópia fora do disco.
+
 ## 7. Samba
 
 O app escreve seções no `/etc/samba/smb.conf`, roda `testparm -s` e recarrega
