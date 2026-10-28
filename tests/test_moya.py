@@ -15,7 +15,7 @@ def test_moya_example_profile():
 
 
 def test_moya_overlay_does_not_use_pi_paths_or_ip():
-    text = (ROOT / "docker-compose.moya.yml").read_text()
+    text = (ROOT / "docker-compose.moya.yml").read_text(encoding="utf-8")
     assert "192.168.0.150" not in text
     assert "/srv/samba:/srv/samba:ro" in text
     assert "/mnt/data:/mnt/data:ro" in text
@@ -23,13 +23,13 @@ def test_moya_overlay_does_not_use_pi_paths_or_ip():
 
 
 def test_homelab_overlay_still_reproduces_pi_paths():
-    text = (ROOT / "docker-compose.homelab.yml").read_text()
+    text = (ROOT / "docker-compose.homelab.yml").read_text(encoding="utf-8")
     assert "/mnt/nas:/mnt/nas:ro" in text
     assert "/run/homelab-storage-admin:/run/homelab-storage-admin:ro" in text
 
 
 def test_readme_documents_profiles_and_neighbors():
-    text = (ROOT / "README.md").read_text()
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "host.env" in text
     assert "docker-compose.homelab.yml" in text
     assert "docker-compose.moya.yml" in text

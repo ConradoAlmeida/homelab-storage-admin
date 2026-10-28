@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    os.name == "nt",
+    reason="caminhos POSIX do servidor Linux",
+)
 
 
 def test_backup_snapshots_parses_restic_json(agent_module, monkeypatch, tmp_path):

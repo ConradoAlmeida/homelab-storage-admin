@@ -3,6 +3,9 @@ from __future__ import annotations
 import getpass
 import importlib.util
 import os
+import socketserver
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -71,8 +74,37 @@ def set_env(monkeypatch, values: dict[str, str]) -> None:
         monkeypatch.setenv(key, str(value))
 
 
+def _stub_modules_ausentes_no_windows() -> None:
+    """O agente importa grp/pwd e socketserver UNIX, que nao existem no Windows."""
+    for nome in ("grp", "pwd"):
+        if nome in sys.modules:
+            continue
+        try:
+            __import__(nome)
+        except ImportError:
+            modulo = types.ModuleType(nome)
+            if nome == "grp":
+                def _ausente(*args, **kwargs):
+                    raise KeyError(args[0] if args else "grupo")
+
+                modulo.getgrall = lambda: []
+                modulo.getgrnam = _ausente
+                modulo.getgrgid = _ausente
+            else:
+                def _ausente_pwd(*args, **kwargs):
+                    raise KeyError(args[0] if args else "usuario")
+
+                modulo.getpwall = lambda: []
+                modulo.getpwnam = _ausente_pwd
+                modulo.getpwuid = _ausente_pwd
+            sys.modules[nome] = modulo
+    if not hasattr(socketserver, "ThreadingUnixStreamServer"):
+        socketserver.ThreadingUnixStreamServer = socketserver.ThreadingTCPServer
+
+
 def load_agent(monkeypatch, values: dict[str, str] | None = None):
     set_env(monkeypatch, values or {})
+    _stub_modules_ausentes_no_windows()
     spec = importlib.util.spec_from_file_location(
         f"homelab_storage_agent_test_{os.getpid()}_{id(values)}",
         AGENT_PATH,

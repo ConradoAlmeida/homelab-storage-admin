@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import configparser
+import os
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    os.name == "nt",
+    reason="caminhos POSIX do servidor Linux",
+)
 
 
 def empty_smb():

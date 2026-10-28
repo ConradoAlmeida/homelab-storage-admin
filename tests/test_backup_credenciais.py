@@ -3,26 +3,10 @@ from __future__ import annotations
 import datetime as dt
 import os
 import sqlite3
-import sys
 import tarfile
-import types
 from pathlib import Path
 
 import pytest
-
-# O agente importa grp/pwd, que nao existem no Windows. O backup do Credenciais
-# nao usa esses modulos, entao um stub mantem o teste portavel.
-for _nome in ("grp", "pwd"):
-    if _nome not in sys.modules:
-        try:
-            __import__(_nome)
-        except ImportError:
-            sys.modules[_nome] = types.ModuleType(_nome)
-
-import socketserver  # noqa: E402
-
-if not hasattr(socketserver, "ThreadingUnixStreamServer"):
-    socketserver.ThreadingUnixStreamServer = socketserver.ThreadingTCPServer
 
 
 def _criar_banco(caminho: Path, valor: str = "original") -> None:

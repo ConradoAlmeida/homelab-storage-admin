@@ -10,6 +10,16 @@ from django.urls import reverse
 from .views import _base, _safe_target, _search, _snapshots
 
 
+def _pode_criar_symlink(base: Path) -> bool:
+    teste = base / ".symlink-teste"
+    try:
+        teste.symlink_to(base)
+        teste.unlink()
+    except (OSError, NotImplementedError):
+        return False
+    return True
+
+
 class SafeTargetTests(SimpleTestCase):
     def test_inside(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -30,6 +40,8 @@ class SafeTargetTests(SimpleTestCase):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory) / "share"
             base.mkdir()
+            if not _pode_criar_symlink(Path(directory)):
+                self.skipTest("symlink indisponivel neste sistema")
             outside = Path(directory) / "fora.txt"
             outside.write_text("x")
             (base / "link").symlink_to(outside)
@@ -85,6 +97,8 @@ class SnapshotSearchTests(SimpleTestCase):
             (base / "sub" / "relatorio.txt").write_text("b")
             (base / "outro.txt").write_text("c")
             (base / ".oculto.txt").write_text("d")
+            if not _pode_criar_symlink(Path(directory)):
+                self.skipTest("symlink indisponivel neste sistema")
             outside = Path(directory) / "fora.txt"
             outside.write_text("e")
             (base / "link.txt").symlink_to(outside)
