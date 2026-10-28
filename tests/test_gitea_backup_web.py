@@ -80,6 +80,37 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "sdb")
         self.assertContains(resposta, "Backup para USB")
 
+    def test_status_copiando_avisa_para_nao_desconectar(self):
+        self.fake.gitea_overview.return_value = {
+            **OVERVIEW,
+            "status": {
+                "status": "running",
+                "stage": "copy",
+                "target": "sdb",
+                "size_label": "3.7 GB",
+            },
+        }
+        resposta = self.client.get("/backups/gitea/")
+        self.assertContains(resposta, "NÃO desconecte o drive USB")
+        self.assertContains(resposta, "copiando para o USB")
+        self.assertNotContains(resposta, "Cópia no USB verificada")
+        self.assertContains(resposta, "data-gitea-running")
+
+    def test_status_verificando_nao_parece_concluido(self):
+        self.fake.gitea_overview.return_value = {
+            **OVERVIEW,
+            "status": {
+                "status": "running",
+                "stage": "verify",
+                "target": "sdb",
+                "size_label": "3.7 GB",
+            },
+        }
+        resposta = self.client.get("/backups/gitea/")
+        self.assertContains(resposta, "verificando o hash")
+        self.assertContains(resposta, "NÃO desconecte o drive USB")
+        self.assertNotContains(resposta, "Cópia no USB verificada")
+
     def test_dump_no_servidor(self):
         resposta = self.client.post(
             "/backups/gitea/start/",
