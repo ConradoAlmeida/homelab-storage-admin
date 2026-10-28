@@ -3396,6 +3396,16 @@ def _gitea_prune() -> list[str]:
     return removidos
 
 
+def _sincronizar_discos() -> None:
+    sincronizar = getattr(os, "sync", None)
+    if sincronizar is None:
+        return
+    try:
+        sincronizar()
+    except OSError:
+        pass
+
+
 def _sha256(caminho: Path) -> str:
     resumo = hashlib.sha256()
     with open(caminho, "rb") as arquivo:
@@ -3426,6 +3436,7 @@ def _gitea_dump() -> Path:
     destino = pasta / nome
     _gitea_status_write(
         {
+            **_gitea_status_read(),
             "status": "running",
             "stage": "dump",
             "started_at": dt.datetime.now().isoformat(timespec="seconds"),
@@ -3489,6 +3500,7 @@ def _gitea_dump() -> Path:
         raise AgentError(f"Falha ao gerar o dump do Gitea: {exc}") from exc
     _gitea_status_write(
         {
+            **_gitea_status_read(),
             "status": "running",
             "stage": "done",
             "archive": nome,
@@ -3613,7 +3625,7 @@ def _usb_montar(disco: dict) -> tuple[Path, bool]:
 
 def _usb_desmontar(montado: Path, fomos_nos: bool) -> None:
     try:
-        os.sync()
+        _sincronizar_discos()
     except OSError:
         pass
     if fomos_nos:
@@ -3661,21 +3673,42 @@ def _gitea_backup(target: str = "host") -> dict:
                 pasta = montado / "gitea"
                 pasta.mkdir(parents=True, exist_ok=True)
                 destino = pasta / arquivo.name
-                shutil.copyfile(arquivo, destino)
-                os.chmod(destino, 0o600)
-                os.sync()
+                try:
+                    shutil.copyfile(arquivo, destino)
+                except OSError as exc:
+                    raise AgentError(f"Falha ao copiar para o USB: {exc}") from exc
+                try:
+                    os.chmod(destino, 0o600)
+                except OSError:
+                    pass  # exFAT/FAT nao guardam permissao Unix
+                try:
+                    with open(destino, "rb+") as copia:
+                        os.fsync(copia.fileno())
+                except OSError:
+                    pass
+                _sincronizar_discos()
+                sidecar = pasta / f"{arquivo.name}.sha256"
+                sidecar.write_text(f"{dados['sha256']}  {arquivo.name}\n")
+                try:
+                    with open(sidecar, "rb+") as texto:
+                        os.fsync(texto.fileno())
+                except OSError:
+                    pass
+                _sincronizar_discos()
                 if _sha256(destino) != dados["sha256"]:
                     destino.unlink(missing_ok=True)
-                    raise AgentError("Copia no USB nao confere com o dump")
-                (pasta / f"{arquivo.name}.sha256").write_text(
-                    f"{dados['sha256']}  {arquivo.name}\n"
-                )
+                    sidecar.unlink(missing_ok=True)
+                    raise AgentError(
+                        "A copia no USB nao confere com o dump. "
+                        "Mantenha o drive conectado e tente de novo."
+                    )
                 dados.update(
                     {
                         "usb": alvo,
                         "usb_path": str(destino),
                         "usb_mount": str(montado),
                         "usb_size": destino.stat().st_size,
+                        "usb_verified": True,
                     }
                 )
             finally:
@@ -3683,7 +3716,7 @@ def _gitea_backup(target: str = "host") -> dict:
         _gitea_status_write(dados)
         log(f"GITEA_BACKUP {alvo} {arquivo.name}")
         return dados
-    except AgentError as exc:
+    except (AgentError, OSError) as exc:
         atual = _gitea_status_read()
         _gitea_status_write(
             {
@@ -3694,6 +3727,8 @@ def _gitea_backup(target: str = "host") -> dict:
                 "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
             }
         )
+        if isinstance(exc, OSError):
+            raise AgentError(f"Falha no backup do Gitea: {exc}") from exc
         raise
 
 
