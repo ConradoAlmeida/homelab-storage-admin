@@ -665,7 +665,7 @@ class JobRunView(AgentPostView):
             )
             messages.success(
                 request,
-                f"Backup {name} iniciado. Atualize a página para ver o status.",
+                f"Backup {name} iniciado. O andamento aparece neste painel automaticamente.",
             )
         return redirect("backup_index")
 
@@ -1014,7 +1014,10 @@ class ArquivosJobRunView(AgentPostView):
                 target=job,
                 ip=request.META.get("REMOTE_ADDR"),
             )
-            messages.success(request, "Backup iniciado. Atualize a pagina para ver o status.")
+            messages.success(
+                request,
+                "Backup iniciado. O andamento aparece nesta página automaticamente.",
+            )
         return redirect("arquivos_job", job=job)
 
 
@@ -1175,6 +1178,6 @@ class GiteaBackupStartView(AgentPostView):
             messages.success(
                 request,
                 f"Backup do Gitea iniciado {destino}. "
-                "Atualize a pagina para acompanhar.",
+                "O andamento aparece nesta página automaticamente.",
             )
         return redirect("gitea_backup")
