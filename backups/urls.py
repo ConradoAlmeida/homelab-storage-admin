@@ -29,6 +29,31 @@ urlpatterns = [
         views.CredentialsView.as_view(),
         name="backup_credentials",
     ),
+    path(
+        "credenciais-app/",
+        views.CredenciaisBackupView.as_view(),
+        name="credenciais_backup_index",
+    ),
+    path(
+        "credenciais-app/run/",
+        views.CredenciaisBackupRunView.as_view(),
+        name="credenciais_backup_run",
+    ),
+    path(
+        "credenciais-app/<str:archive>/verify/",
+        views.CredenciaisBackupVerifyView.as_view(),
+        name="credenciais_backup_verify",
+    ),
+    path(
+        "credenciais-app/<str:archive>/download/",
+        views.CredenciaisBackupDownloadView.as_view(),
+        name="credenciais_backup_download",
+    ),
+    path(
+        "credenciais-app/<str:archive>/restore/",
+        views.CredenciaisBackupRestoreView.as_view(),
+        name="credenciais_backup_restore",
+    ),
     path("cold/", views.ColdIndexView.as_view(), name="cold_index"),
     path("cold/setup/", views.ColdPrepareView.as_view(), name="cold_prepare"),
     path("cold/copy/", views.ColdCopyView.as_view(), name="cold_copy"),

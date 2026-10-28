@@ -193,6 +193,28 @@ class AgentClient:
     def backup_job_run(self, name):
         return self.call("backup_job_run", timeout=30, name=name)
 
+    def credenciais_backup_overview(self):
+        return self.call("credenciais_backup_overview", timeout=60)
+
+    def credenciais_backup_run(self):
+        return self.call("credenciais_backup_run", timeout=600)
+
+    def credenciais_backup_verify(self, archive):
+        return self.call("credenciais_backup_verify", timeout=300, archive=archive)
+
+    def credenciais_backup_restore(self, archive, restart=True):
+        return self.call(
+            "credenciais_backup_restore",
+            timeout=600,
+            archive=archive,
+            restart=restart,
+        )
+
+    def credenciais_backup_download(self, archive):
+        return self.call(
+            "credenciais_backup_download", timeout=120, archive=archive
+        )
+
     def cold_overview(self):
         return self.call("cold_overview", timeout=60)
 

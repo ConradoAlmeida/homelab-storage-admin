@@ -23,7 +23,7 @@
         <a href="{% url 'snapshots' %}" class="{% if '/snapshots/' in request.path %}active{% endif %}">Snapshots</a>
         <a href="{% url 'history_index' %}" class="{% if '/history/' in request.path %}active{% endif %}">Arquivos</a>
         <a href="{% url 'storage_index' %}" class="{% if '/storage/' in request.path %}active{% endif %}">Discos</a>
-        {% if capabilities.restic %}
+        {% if capabilities.restic or capabilities.credenciais_backup %}
         <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
         {% endif %}
       </nav>

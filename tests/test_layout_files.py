@@ -6,7 +6,7 @@ from .conftest import ROOT, parse_env_file
 
 
 def read(path: str) -> str:
-    return (ROOT / path).read_text()
+    return (ROOT / path).read_text(encoding="utf-8")
 
 
 def test_generic_compose_has_no_pi_ip():
@@ -95,7 +95,7 @@ def test_install_agent_selects_profile():
 
 def test_templates_have_no_inline_css_or_js():
     for path in (ROOT / "templates").rglob("*.html"):
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         assert "<style" not in text, path
         assert "<script>" not in text, path
         assert 'style="' not in text, path

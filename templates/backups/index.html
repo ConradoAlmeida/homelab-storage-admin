@@ -10,7 +10,10 @@
     <a class="btn small" href="{% url 'backup_snapshots' %}">Snapshots restic</a>
     <a class="btn small" href="{% url 'cold_index' %}">Cópia fria (USB)</a>
     <a class="btn small" href="{% url 'backup_job_new' %}">Novo job</a>
-    <a class="btn small" href="{% url 'backup_credentials' %}">Credenciais</a>
+    {% if capabilities.credenciais_backup %}
+    <a class="btn small" href="{% url 'credenciais_backup_index' %}">Backup do Credenciais</a>
+    {% endif %}
+    <a class="btn small" href="{% url 'backup_credentials' %}">Senha do repositório</a>
     <a class="btn small" href="#discos">Escolher disco</a>
   </div>
 </div>
@@ -19,7 +22,9 @@
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
   {% if not overview.restic %}
-    <div class="alert danger"><strong>restic não encontrado no host.</strong> A preparação de disco vai recusar até instalar o pacote.</div>
+    <div class="alert danger"><strong>restic não encontrado no host.</strong> A preparação de disco vai recusar até instalar o pacote.
+      {% if capabilities.credenciais_backup %}O <a href="{% url 'credenciais_backup_index' %}">backup do Credenciais</a> funciona sem restic.{% endif %}
+    </div>
   {% endif %}
 
   <h2 id="discos">Discos</h2>

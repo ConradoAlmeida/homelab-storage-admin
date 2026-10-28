@@ -32,6 +32,7 @@ Ubuntu+Samba via perfil de host.
 | Listar snapshots restic | Backups → Snapshots restic — data, arquivos, tamanho e fontes |
 | Navegar/baixar/buscar no restic | Backups → Snapshots restic → Navegar — read-only, busca e download |
 | Cópia fria USB | Backups → Cópia fria (USB) — restic copy + check + eject |
+| Backup do Credenciais | Backups → Backup do Credenciais — banco + `.env`, sem restic |
 | Ver versões de um arquivo | Histórico → arquivo → Versões |
 | Share privado/oculto | Shares → Novo share → Privado (`browseable = no`) |
 | Ver dados e snapshots | Dashboard / Shares |
@@ -394,6 +395,12 @@ Gere a chave com `openssl rand -hex 32`.
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 | `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
+| `CREDENCIAIS_DB` | `/home/conrado/moya_credenciais_app/data/db.sqlite3` | banco do Credenciais (moya) |
+| `CREDENCIAIS_ENV` | `/home/conrado/moya_credenciais_app/.env` | `.env` do Credenciais (moya) |
+| `CREDENCIAIS_BACKUP_DIR` | `/var/backups/moya-credenciais` | destino dos arquivos, `700 root:root` |
+| `CREDENCIAIS_CONTAINER` | `moya-credenciais` | container reiniciado após restauração |
+| `CREDENCIAIS_TIME` | `03:30` | horário do timer diário |
+| `CREDENCIAIS_RETENTION_DAYS` | `30` | retenção em dias |
 
 O unit `homelab-storage-agent.service` e o socket **não são renomeados**. O
 `deploy.sh` carrega esse arquivo e usa o overlay do host.
@@ -540,6 +547,30 @@ O botão **Navegar** abre um navegador read-only do snapshot:
 
 Restaurar uma árvore inteira para um share continua sendo uma operação manual
 via CLI; o navegador serve para inspecionar e baixar itens específicos.
+
+## 6.8 Backup do Credenciais
+
+**Backups → Backup do Credenciais** cobre o banco SQLite e o `.env` do
+`moya-credenciais` sem depender de restic:
+
+- **Fonte**: `CREDENCIAIS_DB` e `CREDENCIAIS_ENV`, com estado e tamanho.
+- **Job**: timer systemd `homelab-credenciais-backup.timer`, diário às 03:30
+  (`OnCalendar=*-*-* 03:30:00`, `Persistent=true`) e **Rodar agora**.
+- **Status**: último resultado em `/etc/homelab-backup/credenciais-status.json`,
+  lista dos arquivos em `CREDENCIAIS_BACKUP_DIR` (600 root:root, pasta 700) e
+  próxima execução.
+- **Restore**: extrai em staging, confere `sha256` do manifesto e roda
+  `PRAGMA integrity_check`; só então copia banco e `.env` com dono/permissão
+  originais. O estado atual vai para `pre-restore-AAAAMMDD-HHMMSS` e o container
+  é reiniciado.
+
+O banco é copiado pela API de backup do SQLite, então a cópia é consistente
+mesmo com o app rodando. A retenção (`CREDENCIAIS_RETENTION_DAYS`, 30) apaga
+apenas arquivos antigos do próprio diretório e nunca o recém-criado. O download
+usa o mesmo diretório temporário do restic e é auditado.
+
+Para instalar o timer: `sudo ./install-agent.sh` no moya (o timer só é ativado
+quando `CREDENCIAIS_DB` existe; no Pi ele fica desligado).
 
 ## 7. Samba
 

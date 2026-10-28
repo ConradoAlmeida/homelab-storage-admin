@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Backup do Credenciais - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="row row-between-start">
+  <div>
+    <h1 class="mb-4">Backup do Credenciais</h1>
+    <p class="muted">Banco SQLite e <span class="mono">.env</span> em arquivo local, sem restic. Leitura restrita ao root.</p>
+  </div>
+  <div>
+    <a class="btn small" href="{% url 'backup_index' %}">Voltar aos backups</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+{% elif overview %}
+  {% if not overview.available %}
+    <div class="alert danger">
+      <strong>Fonte incompleta.</strong> O agente não encontrou o banco ou o <span class="mono">.env</span> do Credenciais.
+      Nada é gerado até os dois arquivos existirem.
+    </div>
+  {% endif %}
+
+  <h2>Fonte</h2>
+  <div class="card">
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Item</th><th>Caminho</th><th>Tamanho</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for fonte in overview.sources %}
+          <tr>
+            <td><strong>{{ fonte.name }}</strong></td>
+            <td class="mono text-12">{{ fonte.path }}</td>
+            <td class="muted">{{ fonte.size }}</td>
+            <td>
+              {% if fonte.ok %}<span class="badge live">ok</span>
+              {% else %}<span class="badge danger">ausente</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="muted text-12">
+      Destino: <span class="mono">{{ overview.config.dir }}</span> ·
+      retenção {{ overview.config.retention_days }} dias ·
+      arquivos <span class="mono">600 root:root</span> em pasta <span class="mono">700</span>.
+    </p>
+  </div>
+
+  <h2>Job</h2>
+  <div class="card">
+    <div class="row row-between-start">
+      <div>
+        <p class="mb-4">
+          <span class="badge">diário {{ overview.config.time }}</span>
+          <span class="badge">retenção {{ overview.config.retention_days }} dias</span>
+          <span class="badge">timer {{ overview.timer }}</span>
+        </p>
+        <p class="muted text-12">
+          Próxima execução: <strong>{{ overview.next_run|default:"-" }}</strong> ·
+          container reiniciado após restauração: <span class="mono">{{ overview.config.container }}</span>
+        </p>
+      </div>
+      <div class="file-actions">
+        <form method="post" action="{% url 'credenciais_backup_run' %}" class="display-inline">
+          {% csrf_token %}
+          <button class="btn small" type="submit" {% if not overview.available %}disabled{% endif %}>Rodar agora</button>
+        </form>
+      </div>
+    </div>
+    {% with status=overview.status %}
+      {% if status %}
+        <p class="text-12">
+          {% if status.ok %}<span class="state-ok">sucesso</span>{% else %}<span class="state-bad">falha</span>{% endif %}
+          <span class="muted">
+            {{ status.finished_at|default:status.started_at }} ·
+            {{ status.size_label|default:"-" }} ·
+            {{ status.duration_seconds|default:"-" }}s
+            {% if status.error %} · {{ status.error }}{% endif %}
+          </span>
+        </p>
+        {% if status.last_restore %}
+          <p class="muted text-12">
+            Última restauração: {{ status.last_restore }} ({{ status.restored_archive }}) ·
+            cópia anterior em <span class="mono">{{ status.pre_restore }}</span>
+          </p>
+        {% endif %}
+      {% else %}
+        <p class="muted text-12">Nenhuma execução registrada desde a instalação do job.</p>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <h2>Status dos arquivos</h2>
+  {% if overview.archives %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th><th>Idade</th><th></th></tr></thead>
+      <tbody>
+        {% for item in overview.archives %}
+          <tr>
+            <td class="mono text-12">{{ item.name }}</td>
+            <td class="muted">{{ item.created_label }}</td>
+            <td>{{ item.size }}</td>
+            <td class="muted">{{ item.age_days }}d</td>
+            <td class="file-actions">
+              <form method="post" action="{% url 'credenciais_backup_verify' archive=item.name %}" class="display-inline">
+                {% csrf_token %}
+                <button class="btn small" type="submit">Verificar</button>
+              </form>
+              <a class="btn small" href="{% url 'credenciais_backup_download' archive=item.name %}">Baixar</a>
+              <details class="display-inline">
+                <summary class="btn small danger">Restaurar</summary>
+                <form method="post" action="{% url 'credenciais_backup_restore' archive=item.name %}" class="restore-form"
+                      data-confirm="Restaurar {{ item.name }} por cima do banco em uso?">
+                  {% csrf_token %}
+                  <label class="text-12">Digite <span class="mono">{{ item.name }}</span> para confirmar</label>
+                  <input class="input" type="text" name="confirmation" autocomplete="off" required>
+                  <label class="text-12"><input type="checkbox" name="restart" value="1" checked> reiniciar o container</label>
+                  <button class="btn small danger" type="submit">Restaurar agora</button>
+                </form>
+              </details>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Nenhum backup ainda. Rode agora para criar o primeiro.</div>
+  {% endif %}
+
+  <h2>Restore</h2>
+  <div class="card">
+    <p class="text-12">
+      A restauração extrai o arquivo, confere o <span class="mono">sha256</span> de cada item e roda
+      <span class="mono">PRAGMA integrity_check</span> no banco antes de tocar em qualquer coisa.
+      O banco e o <span class="mono">.env</span> atuais são copiados para
+      <span class="mono">{{ overview.config.dir }}/pre-restore-AAAAMMDD-HHMMSS</span>.
+      Só então os arquivos voltam com dono e permissão originais, e o container é reiniciado.
+    </p>
+    <p class="muted text-12">
+      Para restaurar em outra máquina: baixe o arquivo, extraia <span class="mono">db.sqlite3</span> e
+      <span class="mono">.env</span> em <span class="mono">{{ overview.config.db }}</span> e
+      <span class="mono">{{ overview.config.env }}</span>, depois suba o Credenciais.
+    </p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diario do Credenciais
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+Unit=homelab-credenciais-backup.service
+
+[Install]
+WantedBy=timers.target

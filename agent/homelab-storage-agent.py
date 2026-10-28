@@ -9,6 +9,7 @@ from __future__ import annotations
 import configparser
 import datetime as dt
 import grp
+import hashlib
 import json
 import os
 import pwd
@@ -16,8 +17,11 @@ import re
 import secrets
 import shutil
 import socketserver
+import sqlite3
 import subprocess
 import sys
+import tarfile
+import tempfile
 import time
 import traceback
 from pathlib import Path, PurePosixPath
@@ -36,6 +40,24 @@ BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
 COLD_CONFIG = os.environ.get("COLD_CONFIG", "/etc/homelab-backup/cold.json")
 COLD_STATUS = os.environ.get("COLD_STATUS", "/etc/homelab-backup/cold-status.json")
 COLD_MOUNT = os.environ.get("COLD_MOUNT", "/mnt/coldcopy")
+CREDENCIAIS_CONFIG = os.environ.get(
+    "CREDENCIAIS_CONFIG", "/etc/homelab-backup/credenciais.json"
+)
+CREDENCIAIS_STATUS = os.environ.get(
+    "CREDENCIAIS_STATUS", "/etc/homelab-backup/credenciais-status.json"
+)
+CREDENCIAIS_BACKUP_DIR = os.environ.get(
+    "CREDENCIAIS_BACKUP_DIR", "/var/backups/moya-credenciais"
+)
+CREDENCIAIS_DB = os.environ.get(
+    "CREDENCIAIS_DB", "/home/conrado/moya_credenciais_app/data/db.sqlite3"
+)
+CREDENCIAIS_ENV = os.environ.get(
+    "CREDENCIAIS_ENV", "/home/conrado/moya_credenciais_app/.env"
+)
+CREDENCIAIS_CONTAINER = os.environ.get("CREDENCIAIS_CONTAINER", "moya-credenciais")
+CREDENCIAIS_TIME = os.environ.get("CREDENCIAIS_TIME", "03:30")
+CREDENCIAIS_RETENTION_DAYS = int(os.environ.get("CREDENCIAIS_RETENTION_DAYS", "30"))
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
 DATA_DIR = os.environ.get("DATA_DIR", "/var/lib/homelab-storage-admin")
 DOWNLOAD_DIR = os.environ.get("DOWNLOAD_DIR", os.path.join(DATA_DIR, "downloads"))
@@ -53,6 +75,7 @@ BACKUP_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 COLD_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F-]{16,64}$")
 JOB_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
+CREDENCIAIS_ARCHIVE_RE = re.compile(r"^moya-credenciais-\d{8}-\d{6}\.tar\.gz$")
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -209,6 +232,9 @@ def host_capabilities() -> dict:
         "storage_root_mounted": os.path.ismount(STORAGE_ROOT),
         "storage_root_fstype": fstype,
         "snapshot_backend": snapshot_backend_for(STORAGE_ROOT),
+        "credenciais_backup": bool(
+            Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
+        ),
     }
 
 
@@ -2137,6 +2163,429 @@ def op_backup_job_run(name: str, **_):
     return {"name": name, "started": True}
 
 
+# --- backup local do Credenciais (banco + .env, sem restic) ---
+
+
+def _human_bytes(value: int | float) -> str:
+    numero = float(value)
+    for unidade in ("B", "KB", "MB", "GB"):
+        if numero < 1024:
+            return f"{numero:.0f} {unidade}" if unidade == "B" else f"{numero:.1f} {unidade}"
+        numero /= 1024
+    return f"{numero:.1f} TB"
+
+
+def _credenciais_config() -> dict:
+    base = {
+        "time": CREDENCIAIS_TIME,
+        "retention_days": CREDENCIAIS_RETENTION_DAYS,
+        "db": CREDENCIAIS_DB,
+        "env": CREDENCIAIS_ENV,
+        "dir": CREDENCIAIS_BACKUP_DIR,
+        "container": CREDENCIAIS_CONTAINER,
+    }
+    caminho = Path(CREDENCIAIS_CONFIG)
+    if not caminho.is_file():
+        return base
+    try:
+        dados = json.loads(caminho.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentError(f"Configuracao do backup do Credenciais invalida: {exc}") from exc
+    if not isinstance(dados, dict):
+        return base
+    for chave in list(base):
+        valor = dados.get(chave)
+        if valor not in (None, ""):
+            base[chave] = valor
+    try:
+        base["retention_days"] = max(1, int(base["retention_days"]))
+    except (TypeError, ValueError):
+        base["retention_days"] = CREDENCIAIS_RETENTION_DAYS
+    if not TIME_RE.match(str(base["time"])):
+        base["time"] = CREDENCIAIS_TIME
+    return base
+
+
+def _credenciais_status_read() -> dict:
+    caminho = Path(CREDENCIAIS_STATUS)
+    if not caminho.is_file():
+        return {}
+    try:
+        dados = json.loads(caminho.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def _credenciais_status_write(dados: dict) -> dict:
+    caminho = Path(CREDENCIAIS_STATUS)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, indent=2, sort_keys=True))
+    os.chmod(temporario, 0o600)
+    temporario.replace(caminho)
+    return dados
+
+
+def _credenciais_next_run(config: dict) -> str | None:
+    try:
+        hora, minuto = [int(parte) for parte in str(config.get("time", "")).split(":")]
+    except (ValueError, AttributeError):
+        return None
+    agora = dt.datetime.now()
+    proximo = agora.replace(hour=hora, minute=minuto, second=0, microsecond=0)
+    if proximo <= agora:
+        proximo += dt.timedelta(days=1)
+    return proximo.isoformat(timespec="minutes")
+
+
+def _credenciais_arquivo(archive: str) -> Path:
+    if not CREDENCIAIS_ARCHIVE_RE.match(archive or ""):
+        raise AgentError("Nome de backup invalido")
+    config = _credenciais_config()
+    caminho = Path(config["dir"]) / archive
+    if not caminho.is_file():
+        raise AgentError("Backup nao encontrado")
+    return caminho
+
+
+def _credenciais_lista(config: dict) -> list[dict]:
+    pasta = Path(config["dir"])
+    if not pasta.is_dir():
+        return []
+    itens = []
+    for caminho in pasta.glob("moya-credenciais-*.tar.gz"):
+        if not CREDENCIAIS_ARCHIVE_RE.match(caminho.name):
+            continue
+        try:
+            info = caminho.stat()
+        except OSError:
+            continue
+        try:
+            criado = dt.datetime.strptime(
+                caminho.name[:-7], "moya-credenciais-%Y%m%d-%H%M%S"
+            )
+        except ValueError:
+            criado = dt.datetime.fromtimestamp(info.st_mtime)
+        itens.append(
+            {
+                "name": caminho.name,
+                "size_bytes": info.st_size,
+                "size": _human_bytes(info.st_size),
+                "created_at": criado.isoformat(timespec="seconds"),
+                "created_label": criado.strftime("%d/%m/%Y %H:%M"),
+                "age_days": max(0, (dt.datetime.now() - criado).days),
+            }
+        )
+    return sorted(itens, key=lambda item: item["name"], reverse=True)
+
+
+def _credenciais_prune(pasta: Path, dias: int, manter: Path | None = None) -> list[str]:
+    limite = dt.datetime.now() - dt.timedelta(days=max(1, int(dias)))
+    removidos = []
+    for caminho in pasta.glob("moya-credenciais-*.tar.gz"):
+        if manter is not None and caminho == manter:
+            continue
+        if not CREDENCIAIS_ARCHIVE_RE.match(caminho.name):
+            continue
+        try:
+            if dt.datetime.fromtimestamp(caminho.stat().st_mtime) < limite:
+                caminho.unlink()
+                removidos.append(caminho.name)
+        except OSError:
+            continue
+    for estagio in pasta.glob(".staging-*"):
+        try:
+            if estagio.is_dir() and dt.datetime.fromtimestamp(
+                estagio.stat().st_mtime
+            ) < dt.datetime.now() - dt.timedelta(hours=1):
+                shutil.rmtree(estagio, ignore_errors=True)
+        except OSError:
+            continue
+    return removidos
+
+
+def _credenciais_manifesto(copia: Path, arcname: str, origem: Path) -> dict:
+    info = origem.stat()
+    resumo = hashlib.sha256()
+    with open(copia, "rb") as arquivo:
+        for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+            resumo.update(bloco)
+    return {
+        "arcname": arcname,
+        "source": str(origem),
+        "uid": info.st_uid,
+        "gid": info.st_gid,
+        "mode": info.st_mode & 0o777,
+        "size": copia.stat().st_size,
+        "sha256": resumo.hexdigest(),
+    }
+
+
+def _credenciais_backup_run(config: dict | None = None) -> dict:
+    config = config or _credenciais_config()
+    banco = Path(config["db"])
+    ambiente = Path(config["env"])
+    if not banco.is_file():
+        raise AgentError(f"Banco do Credenciais nao encontrado em {banco}")
+    if not ambiente.is_file():
+        raise AgentError(f"Arquivo .env do Credenciais nao encontrado em {ambiente}")
+    destino = Path(config["dir"])
+    destino.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(destino, 0o700)
+        if hasattr(os, "chown"):
+            os.chown(destino, 0, 0)
+    except (OSError, NotImplementedError):
+        pass
+    inicio = dt.datetime.now()
+    nome = f"moya-credenciais-{inicio.strftime('%Y%m%d-%H%M%S')}.tar.gz"
+    estagio = Path(tempfile.mkdtemp(prefix=".staging-", dir=destino))
+    try:
+        copia_banco = estagio / "db.sqlite3"
+        origem = sqlite3.connect(banco.resolve().as_uri() + "?mode=ro", uri=True)
+        alvo = sqlite3.connect(str(copia_banco))
+        try:
+            origem.backup(alvo)
+        finally:
+            alvo.close()
+            origem.close()
+        os.chmod(copia_banco, 0o600)
+        copia_env = estagio / ".env"
+        shutil.copyfile(ambiente, copia_env)
+        os.chmod(copia_env, 0o600)
+        manifesto = {
+            "created_at": inicio.isoformat(timespec="seconds"),
+            "files": [
+                _credenciais_manifesto(copia_banco, "db.sqlite3", banco),
+                _credenciais_manifesto(copia_env, ".env", ambiente),
+            ],
+        }
+        (estagio / "manifest.json").write_text(json.dumps(manifesto, indent=2))
+        os.chmod(estagio / "manifest.json", 0o600)
+        arquivo = destino / nome
+        with tarfile.open(arquivo, "w:gz") as pacote:
+            for item in ("db.sqlite3", ".env", "manifest.json"):
+                pacote.add(estagio / item, arcname=item)
+        os.chmod(arquivo, 0o600)
+    except (OSError, sqlite3.Error, tarfile.TarError) as exc:
+        raise AgentError(f"Falha ao gerar o backup do Credenciais: {exc}") from exc
+    finally:
+        shutil.rmtree(estagio, ignore_errors=True)
+    removidos = _credenciais_prune(destino, config["retention_days"], manter=arquivo)
+    fim = dt.datetime.now()
+    status = _credenciais_status_write(
+        {
+            "ok": True,
+            "error": "",
+            "started_at": inicio.isoformat(timespec="seconds"),
+            "finished_at": fim.isoformat(timespec="seconds"),
+            "duration_seconds": round((fim - inicio).total_seconds(), 1),
+            "archive": nome,
+            "size": arquivo.stat().st_size,
+            "size_label": _human_bytes(arquivo.stat().st_size),
+            "removed": removidos,
+            "database": str(banco),
+            "env": str(ambiente),
+            "retention_days": config["retention_days"],
+        }
+    )
+    log(f"CREDENCIAIS_BACKUP {nome} {status['size_label']}")
+    return status
+
+
+def _credenciais_extrair(arquivo: Path, destino: Path) -> None:
+    permitidos = {"db.sqlite3", ".env", "manifest.json"}
+    try:
+        with tarfile.open(arquivo, "r:gz") as pacote:
+            for membro in pacote.getmembers():
+                if membro.name not in permitidos or not membro.isfile():
+                    raise AgentError(f"Entrada inesperada no backup: {membro.name}")
+                origem = pacote.extractfile(membro)
+                if origem is None:
+                    raise AgentError(f"Nao foi possivel ler {membro.name} do backup")
+                alvo = destino / membro.name
+                with open(alvo, "wb") as saida:
+                    shutil.copyfileobj(origem, saida)
+                os.chmod(alvo, 0o600)
+    except (OSError, tarfile.TarError) as exc:
+        raise AgentError(f"Backup invalido: {exc}") from exc
+
+
+def _credenciais_conferir(destino: Path) -> dict:
+    try:
+        manifesto = json.loads((destino / "manifest.json").read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentError(f"Manifesto do backup invalido: {exc}") from exc
+    conferencias = []
+    for item in manifesto.get("files", []):
+        alvo = destino / item.get("arcname", "")
+        if not alvo.is_file():
+            conferencias.append(False)
+            continue
+        resumo = hashlib.sha256()
+        with open(alvo, "rb") as arquivo:
+            for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+                resumo.update(bloco)
+        conferencias.append(resumo.hexdigest() == item.get("sha256"))
+    conexao = sqlite3.connect(str(destino / "db.sqlite3"))
+    try:
+        integridade = conexao.execute("PRAGMA integrity_check").fetchone()[0]
+    except sqlite3.Error as exc:
+        raise AgentError(f"Nao foi possivel verificar o banco: {exc}") from exc
+    finally:
+        conexao.close()
+    return {
+        "integrity": integridade,
+        "hashes_ok": bool(conferencias) and all(conferencias),
+        "manifest": manifesto,
+    }
+
+
+def op_credenciais_backup_overview(**_):
+    config = _credenciais_config()
+    banco = Path(config["db"])
+    ambiente = Path(config["env"])
+    rc, saida, _ = run_optional(
+        ["systemctl", "is-active", "homelab-credenciais-backup.timer"], timeout=10
+    )
+    return {
+        "available": banco.is_file() and ambiente.is_file(),
+        "config": {
+            "time": config["time"],
+            "retention_days": config["retention_days"],
+            "db": config["db"],
+            "env": config["env"],
+            "dir": config["dir"],
+            "container": config["container"],
+        },
+        "sources": [
+            {
+                "name": "Banco SQLite",
+                "path": config["db"],
+                "ok": banco.is_file(),
+                "size": _human_bytes(banco.stat().st_size) if banco.is_file() else "-",
+            },
+            {
+                "name": "Variaveis de ambiente",
+                "path": config["env"],
+                "ok": ambiente.is_file(),
+                "size": _human_bytes(ambiente.stat().st_size) if ambiente.is_file() else "-",
+            },
+        ],
+        "status": _credenciais_status_read(),
+        "archives": _credenciais_lista(config),
+        "next_run": _credenciais_next_run(config),
+        "timer": (saida or "").strip() or "desconhecido",
+    }
+
+
+def op_credenciais_backup_run(**_):
+    return _credenciais_backup_run()
+
+
+def op_credenciais_backup_verify(archive: str, **_):
+    arquivo = _credenciais_arquivo(archive)
+    config = _credenciais_config()
+    estagio = Path(tempfile.mkdtemp(prefix=".verify-", dir=config["dir"]))
+    try:
+        _credenciais_extrair(arquivo, estagio)
+        dados = _credenciais_conferir(estagio)
+    finally:
+        shutil.rmtree(estagio, ignore_errors=True)
+    return {
+        "archive": archive,
+        "integrity": dados["integrity"],
+        "hashes_ok": dados["hashes_ok"],
+        "files": [item.get("arcname") for item in dados["manifest"].get("files", [])],
+    }
+
+
+def op_credenciais_backup_restore(archive: str, restart: bool = True, **_):
+    arquivo = _credenciais_arquivo(archive)
+    config = _credenciais_config()
+    destino = Path(config["dir"])
+    estagio = Path(tempfile.mkdtemp(prefix=".restore-", dir=destino))
+    seguranca = destino / (
+        "pre-restore-" + dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    )
+    try:
+        _credenciais_extrair(arquivo, estagio)
+        dados = _credenciais_conferir(estagio)
+        if str(dados["integrity"]).lower() != "ok":
+            raise AgentError(
+                f"Banco restaurado falhou na verificacao: {dados['integrity']}"
+            )
+        if not dados["hashes_ok"]:
+            raise AgentError("O arquivo do backup nao confere com o manifesto")
+        seguranca.mkdir(parents=True, exist_ok=True)
+        os.chmod(seguranca, 0o700)
+        banco = Path(config["db"])
+        ambiente = Path(config["env"])
+        if banco.is_file():
+            shutil.copy2(banco, seguranca / "db.sqlite3")
+        if ambiente.is_file():
+            shutil.copy2(ambiente, seguranca / ".env")
+        for item in dados["manifest"].get("files", []):
+            alvo = banco if item.get("arcname") == "db.sqlite3" else ambiente
+            shutil.copyfile(estagio / item["arcname"], alvo)
+            try:
+                os.chmod(alvo, int(item.get("mode") or 0o600) & 0o777)
+                if hasattr(os, "chown"):
+                    os.chown(alvo, int(item.get("uid", 0)), int(item.get("gid", 0)))
+            except (OSError, NotImplementedError, ValueError):
+                pass
+    finally:
+        shutil.rmtree(estagio, ignore_errors=True)
+    reiniciado = False
+    if restart and config.get("container"):
+        rc, _, _ = run_optional(
+            ["docker", "restart", str(config["container"])], timeout=120
+        )
+        reiniciado = rc == 0
+    _credenciais_status_write(
+        {
+            **_credenciais_status_read(),
+            "last_restore": dt.datetime.now().isoformat(timespec="seconds"),
+            "restored_archive": archive,
+            "restore_ok": True,
+            "restore_container": reiniciado,
+            "pre_restore": seguranca.name,
+        }
+    )
+    log(f"CREDENCIAIS_RESTORE {archive} docker={reiniciado}")
+    return {
+        "archive": archive,
+        "integrity": dados["integrity"],
+        "security_copy": str(seguranca),
+        "restarted": reiniciado,
+    }
+
+
+def op_credenciais_backup_download(archive: str, **_):
+    arquivo = _credenciais_arquivo(archive)
+    _cleanup_downloads()
+    token = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(4)
+    pasta = Path(DOWNLOAD_DIR) / token
+    pasta.mkdir(parents=True, exist_ok=False)
+    os.chmod(pasta.parent, 0o700)
+    os.chmod(pasta, 0o700)
+    alvo = pasta / arquivo.name
+    shutil.copyfile(arquivo, alvo)
+    os.chmod(alvo, 0o600)
+    raiz = Path(DATA_DIR).resolve()
+    try:
+        relativo = alvo.resolve().relative_to(raiz)
+    except ValueError as exc:
+        shutil.rmtree(pasta, ignore_errors=True)
+        raise AgentError("DOWNLOAD_DIR fora de DATA_DIR") from exc
+    return {
+        "relative": str(relativo),
+        "filename": arquivo.name,
+        "size": alvo.stat().st_size,
+    }
+
+
 def _load_cold_config() -> dict:
     path = Path(COLD_CONFIG)
     if not path.exists():
@@ -2565,6 +3014,11 @@ OPS = {
     "backup_job_toggle": op_backup_job_toggle,
     "backup_job_delete": op_backup_job_delete,
     "backup_job_run": op_backup_job_run,
+    "credenciais_backup_overview": op_credenciais_backup_overview,
+    "credenciais_backup_run": op_credenciais_backup_run,
+    "credenciais_backup_verify": op_credenciais_backup_verify,
+    "credenciais_backup_restore": op_credenciais_backup_restore,
+    "credenciais_backup_download": op_credenciais_backup_download,
     "cold_overview": op_cold_overview,
     "cold_prepare": op_cold_prepare,
     "cold_copy": op_cold_copy,
@@ -2601,6 +3055,23 @@ def main() -> int:
     if os.geteuid() != 0:
         print("O agente precisa rodar como root.", file=sys.stderr)
         return 1
+    if len(sys.argv) > 1 and sys.argv[1] == "--credenciais-backup":
+        try:
+            dados = _credenciais_backup_run()
+        except AgentError as exc:
+            log("CREDENCIAIS_BACKUP_FAIL " + str(exc))
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(
+            json.dumps(
+                {
+                    "archive": dados.get("archive"),
+                    "size": dados.get("size"),
+                    "removed": dados.get("removed"),
+                }
+            )
+        )
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--collect":
         data = op_refresh_storage()
         print(

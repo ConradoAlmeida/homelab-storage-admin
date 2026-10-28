@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup local do Credenciais (banco e .env)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-storage-agent --credenciais-backup
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=15min

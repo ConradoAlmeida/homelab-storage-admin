@@ -801,3 +801,123 @@ class ColdEjectView(AgentPostView):
                 request, "Drive frio ejetado. Pode desconectar com segurança."
             )
         return redirect("cold_index")
+
+
+class CredenciaisBackupView(AgentTemplateView):
+    template_name = "backups/credenciais.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"overview": None, "error": None})
+        try:
+            context["overview"] = agent.credenciais_backup_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class CredenciaisBackupRunView(AgentPostView):
+    def post(self, request):
+        try:
+            resultado = agent.credenciais_backup_run()
+        except AgentError as exc:
+            messages.error(request, f"Backup do Credenciais falhou: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="credenciais_backup_run",
+                target=resultado.get("archive", ""),
+                detail=resultado.get("size_label", ""),
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request,
+                f"Backup gerado: {resultado.get('archive')} "
+                f"({resultado.get('size_label')}).",
+            )
+        return redirect("credenciais_backup_index")
+
+
+class CredenciaisBackupVerifyView(AgentPostView):
+    def post(self, request, archive):
+        try:
+            resultado = agent.credenciais_backup_verify(archive)
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel verificar {archive}: {exc}")
+        else:
+            integro = str(resultado.get("integrity", "")).lower() == "ok"
+            if integro and resultado.get("hashes_ok"):
+                messages.success(
+                    request,
+                    f"{archive}: banco íntegro e arquivos conferem com o manifesto.",
+                )
+            else:
+                messages.error(
+                    request,
+                    f"{archive}: verificacao falhou "
+                    f"(integridade={resultado.get('integrity')}, "
+                    f"hashes={'ok' if resultado.get('hashes_ok') else 'divergentes'}).",
+                )
+            AuditLog.objects.create(
+                actor=request.user,
+                action="credenciais_backup_verify",
+                target=archive,
+                detail=f"integrity={resultado.get('integrity')}",
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+        return redirect("credenciais_backup_index")
+
+
+class CredenciaisBackupRestoreView(AgentPostView):
+    def post(self, request, archive):
+        confirmacao = (request.POST.get("confirmation") or "").strip()
+        if confirmacao != archive:
+            messages.error(
+                request,
+                "Para restaurar, digite o nome do arquivo exatamente como aparece.",
+            )
+            return redirect("credenciais_backup_index")
+        reiniciar = request.POST.get("restart") == "1"
+        try:
+            resultado = agent.credenciais_backup_restore(archive, restart=reiniciar)
+        except AgentError as exc:
+            messages.error(request, f"Restauracao falhou: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="credenciais_backup_restore",
+                target=archive,
+                detail=f"restart={resultado.get('restarted')}",
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            aviso = (
+                " Container reiniciado."
+                if resultado.get("restarted")
+                else " Reinicie o moya-credenciais para aplicar."
+            )
+            messages.success(
+                request,
+                f"Backup {archive} restaurado. Copia do estado anterior em "
+                f"{resultado.get('security_copy')}.{aviso}",
+            )
+        return redirect("credenciais_backup_index")
+
+
+class CredenciaisBackupDownloadView(AgentView):
+    def get(self, request, archive):
+        try:
+            resultado = agent.credenciais_backup_download(archive)
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel baixar {archive}: {exc}")
+            return redirect("credenciais_backup_index")
+        destino = _safe_download_path(resultado.get("relative") or "")
+        if destino is None or not destino.is_file():
+            messages.error(request, "Arquivo de download nao encontrado no app.")
+            return redirect("credenciais_backup_index")
+        AuditLog.objects.create(
+            actor=request.user,
+            action="credenciais_backup_download",
+            target=archive,
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        return file_response(destino, resultado.get("filename") or destino.name)
