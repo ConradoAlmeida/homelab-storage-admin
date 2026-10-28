@@ -85,6 +85,22 @@ def test_retencao_remove_arquivo_antigo(agent_module):
     assert not antigo.exists()
 
 
+def test_retencao_remove_copia_de_restauracao_antiga(agent_module):
+    banco, ambiente = _fontes(agent_module)
+    _criar_banco(banco)
+    ambiente.parent.mkdir(parents=True, exist_ok=True)
+    ambiente.write_text("CHAVE=valor\n")
+    destino = Path(agent_module.CREDENCIAIS_BACKUP_DIR)
+    antiga = destino / "pre-restore-20200101-000000"
+    antiga.mkdir(parents=True)
+    velho = (dt.datetime.now() - dt.timedelta(days=45)).timestamp()
+    os.utime(antiga, (velho, velho))
+
+    agent_module.op_credenciais_backup_run()
+
+    assert not antiga.exists()
+
+
 def test_overview_lista_fontes_e_arquivos(agent_module):
     banco, ambiente = _fontes(agent_module)
     _criar_banco(banco)

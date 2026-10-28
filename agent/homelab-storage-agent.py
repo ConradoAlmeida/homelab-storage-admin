@@ -2302,6 +2302,14 @@ def _credenciais_prune(pasta: Path, dias: int, manter: Path | None = None) -> li
                 shutil.rmtree(estagio, ignore_errors=True)
         except OSError:
             continue
+    for seguranca in pasta.glob("pre-restore-*"):
+        try:
+            if seguranca.is_dir() and dt.datetime.fromtimestamp(
+                seguranca.stat().st_mtime
+            ) < limite:
+                shutil.rmtree(seguranca, ignore_errors=True)
+        except OSError:
+            continue
     return removidos
 
 
@@ -2506,9 +2514,14 @@ def op_credenciais_backup_restore(archive: str, restart: bool = True, **_):
     config = _credenciais_config()
     destino = Path(config["dir"])
     estagio = Path(tempfile.mkdtemp(prefix=".restore-", dir=destino))
-    seguranca = destino / (
+    base_seguranca = destino / (
         "pre-restore-" + dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     )
+    seguranca = base_seguranca
+    contador = 1
+    while seguranca.exists():
+        seguranca = base_seguranca.with_name(f"{base_seguranca.name}-{contador}")
+        contador += 1
     try:
         _credenciais_extrair(arquivo, estagio)
         dados = _credenciais_conferir(estagio)
@@ -2518,7 +2531,7 @@ def op_credenciais_backup_restore(archive: str, restart: bool = True, **_):
             )
         if not dados["hashes_ok"]:
             raise AgentError("O arquivo do backup nao confere com o manifesto")
-        seguranca.mkdir(parents=True, exist_ok=True)
+        seguranca.mkdir(parents=True)
         os.chmod(seguranca, 0o700)
         banco = Path(config["db"])
         ambiente = Path(config["env"])

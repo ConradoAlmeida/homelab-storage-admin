@@ -284,3 +284,12 @@ progress.bar.err::-moz-progress-bar { background:var(--err); }
 .border-ok { border-color:#14532d; }
 .login-box { max-width:420px; margin:40px auto; }
 .service-card { --tint: var(--acc); }
+
+/* Backup do Credenciais */
+.badge.danger { color:var(--err); border-color:rgba(255,107,107,.45); background:rgba(255,107,107,.08); }
+summary.btn { display:inline-flex; align-items:center; gap:7px; }
+summary.btn::marker { content:""; }
+details[open] > summary.btn { margin-bottom:8px; }
+.restore-form { display:flex; flex-direction:column; gap:8px; margin-top:10px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--bg-deep); min-width:300px; }
+.restore-form label { color:var(--muted); }
+.restore-form input[type=checkbox] { width:auto; margin-right:6px; }
