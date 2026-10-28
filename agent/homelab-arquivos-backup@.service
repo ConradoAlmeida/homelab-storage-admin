@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup local de arquivos %i
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-storage-agent --backup-job %i
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=6h

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Backup local de arquivos - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="row row-between-start">
+  <div>
+    <h1 class="mb-4">Backup local de arquivos</h1>
+    <p class="muted">Jobs independentes, cada um com suas fontes, periodicidade e retenção. Arquivos e pastas do servidor, sem restic, com leitura restrita ao root.</p>
+  </div>
+  <div class="file-actions">
+    <a class="btn small" href="{% url 'backup_index' %}">Voltar aos backups</a>
+    <a class="btn small" href="{% url 'arquivos_job_new' %}">Novo job</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+{% elif overview %}
+  {% include "backups/_jobs_table.html" with overview=overview %}
+  <p class="muted text-12">
+    Destino: <span class="mono">{{ overview.dir }}</span> ·
+    arquivos <span class="mono">600 root:root</span> em pasta <span class="mono">700</span>.
+  </p>
+{% endif %}
+{% endblock %}

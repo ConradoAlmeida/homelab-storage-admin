@@ -73,16 +73,6 @@ def _safe_download_path(relative: str) -> Path | None:
     return candidate
 
 
-def _agenda_label(config: dict) -> str:
-    if config.get("frequency") == "weekly":
-        try:
-            dia = WEEKDAY_LABELS[int(config.get("weekday", 0)) % 7]
-        except (TypeError, ValueError):
-            dia = "Segunda"
-        return f"semanal ({dia.lower()}) {config.get('time', '')}"
-    return f"diário {config.get('time', '')}"
-
-
 def _default_job_form(overview: dict) -> dict:
     disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
     return {
@@ -129,8 +119,8 @@ class BackupIndexView(AgentTemplateView):
             {
                 "overview": None,
                 "error": None,
-                "credenciais": None,
-                "credenciais_error": None,
+                "arquivos": None,
+                "arquivos_error": None,
             }
         )
         try:
@@ -138,13 +128,9 @@ class BackupIndexView(AgentTemplateView):
         except AgentError as exc:
             context["error"] = str(exc)
         try:
-            context["credenciais"] = agent.arquivos_backup_overview()
+            context["arquivos"] = agent.arquivos_jobs()
         except AgentError as exc:
-            context["credenciais_error"] = str(exc)
-        if context.get("credenciais"):
-            context["agenda_label"] = _agenda_label(
-                context["credenciais"].get("config", {})
-            )
+            context["arquivos_error"] = str(exc)
         return context
 
 
@@ -829,123 +815,156 @@ class ColdEjectView(AgentPostView):
         return redirect("cold_index")
 
 
-class ArquivosBackupView(AgentTemplateView):
-    template_name = "backups/arquivos.html"
+
+class ArquivosJobsView(AgentTemplateView):
+    template_name = "backups/arquivos_jobs.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"overview": None, "error": None})
+        try:
+            context["overview"] = agent.arquivos_jobs()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class ArquivosJobView(AgentTemplateView):
+    template_name = "backups/arquivos_job.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"detalhe": None, "error": None})
+        try:
+            context["detalhe"] = agent.arquivos_job(self.kwargs["job"])
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+TRABALHO_PADRAO = {
+    "name": "",
+    "label": "",
+    "enabled": True,
+    "time": "03:30",
+    "frequency": "daily",
+    "weekday": 0,
+    "retention_days": 30,
+    "sources": [],
+}
+
+
+class ArquivosJobFormView(AgentTemplateView):
+    template_name = "backups/arquivos_job_form.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(
             {
-                "overview": None,
+                "job": dict(TRABALHO_PADRAO),
+                "sources_text": "",
                 "error": None,
                 "weekdays": list(enumerate(WEEKDAY_LABELS)),
-                "agenda_label": "",
+                "edicao": False,
             }
         )
-        try:
-            context["overview"] = agent.arquivos_backup_overview()
-        except AgentError as exc:
-            context["error"] = str(exc)
-        if context.get("overview"):
-            context["agenda_label"] = _agenda_label(
-                context["overview"].get("config", {})
-            )
+        nome = self.kwargs.get("job")
+        if nome:
+            context["edicao"] = True
+            try:
+                detalhe = agent.arquivos_job(nome)
+            except AgentError as exc:
+                context["error"] = str(exc)
+            else:
+                context["job"] = detalhe["job"]
+                context["sources_text"] = "\n".join(
+                    fonte["path"] for fonte in detalhe["job"]["sources"]
+                )
         return context
 
+    def _formulario(self, request, job=None):
+        linhas = (request.POST.get("sources") or "").splitlines()
+        caminhos = [linha.strip() for linha in linhas if linha.strip()]
+        return {
+            "name": (request.POST.get("name") or job or "").strip(),
+            "label": (request.POST.get("label") or "").strip(),
+            "enabled": request.POST.get("enabled") == "1",
+            "time": (request.POST.get("time") or "03:30").strip(),
+            "frequency": request.POST.get("frequency") or "daily",
+            "weekday": request.POST.get("weekday") or 0,
+            "retention_days": request.POST.get("retention_days") or 30,
+            "sources": [{"path": caminho} for caminho in caminhos],
+        }
 
-class ArquivosBackupRunView(AgentPostView):
-    def post(self, request):
+    def post(self, request, job=None):
+        dados = self._formulario(request, job)
         try:
-            resultado = agent.arquivos_backup_run()
+            detalhe = agent.arquivos_job_save(dados)
         except AgentError as exc:
-            messages.error(request, f"Backup local falhou: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="arquivos_backup_run",
-                target=resultado.get("archive", ""),
-                detail=resultado.get("size_label", ""),
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            messages.success(
+            return render(
                 request,
-                f"Backup gerado: {resultado.get('archive')} "
-                f"({resultado.get('size_label')}).",
+                self.template_name,
+                {
+                    "job": dados,
+                    "sources_text": "\n".join(
+                        fonte["path"] for fonte in dados["sources"]
+                    ),
+                    "error": str(exc),
+                    "weekdays": list(enumerate(WEEKDAY_LABELS)),
+                    "edicao": bool(job),
+                },
             )
-        return redirect("arquivos_backup_index")
+        AuditLog.objects.create(
+            actor=request.user,
+            action="arquivos_job_save",
+            target=detalhe["job"]["name"],
+            detail=f"{detalhe['job']['frequency']} {detalhe['job']['time']}",
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(request, f"Job {detalhe['job']['label']} salvo.")
+        return redirect("arquivos_job", job=detalhe["job"]["name"])
 
 
-class ArquivosBackupSettingsView(AgentPostView):
-    def post(self, request):
+class ArquivosJobRunView(AgentPostView):
+    def post(self, request, job):
         try:
-            resultado = agent.arquivos_backup_settings(
-                time=(request.POST.get("time") or "").strip(),
-                frequency=(request.POST.get("frequency") or "daily").strip(),
-                weekday=request.POST.get("weekday") or 0,
-                retention_days=request.POST.get("retention_days") or 0,
-            )
+            agent.arquivos_job_run(job)
         except AgentError as exc:
-            messages.error(request, f"Nao foi possivel salvar o agendamento: {exc}")
+            messages.error(request, f"Nao foi possivel iniciar o backup: {exc}")
         else:
             AuditLog.objects.create(
                 actor=request.user,
-                action="credenciais_backup_settings",
-                target=f"{resultado.get('frequency')} {resultado.get('time')}",
-                detail=f"retencao={resultado.get('retention_days')}d",
+                action="arquivos_job_run",
+                target=job,
                 ip=request.META.get("REMOTE_ADDR"),
             )
-            messages.success(
-                request,
-                f"Agendamento atualizado: "
-                f"{'semanal' if resultado.get('frequency') == 'weekly' else 'diário'} "
-                f"{resultado.get('time')}, retenção "
-                f"{resultado.get('retention_days')} dias.",
-            )
-        return redirect("arquivos_backup_index")
+            messages.success(request, "Backup iniciado. Atualize a pagina para ver o status.")
+        return redirect("arquivos_job", job=job)
 
 
-class ArquivosBackupFileAddView(AgentPostView):
-    def post(self, request):
-        caminho = (request.POST.get("path") or "").strip()
+class ArquivosJobDeleteView(AgentPostView):
+    def post(self, request, job):
         try:
-            agent.arquivos_backup_add_file(caminho)
+            agent.arquivos_job_delete(job)
         except AgentError as exc:
-            messages.error(request, f"Nao foi possivel incluir o arquivo: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="credenciais_backup_add_file",
-                target=caminho,
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            messages.success(
-                request, f"{caminho} passa a entrar no proximo backup."
-            )
+            messages.error(request, f"Nao foi possivel excluir o job: {exc}")
+            return redirect("arquivos_job", job=job)
+        AuditLog.objects.create(
+            actor=request.user,
+            action="arquivos_job_delete",
+            target=job,
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(
+            request, "Job excluido. Os arquivos de backup continuam no disco."
+        )
         return redirect("arquivos_backup_index")
 
 
-class ArquivosBackupFileRemoveView(AgentPostView):
-    def post(self, request):
-        caminho = (request.POST.get("path") or "").strip()
+class ArquivosJobVerifyView(AgentPostView):
+    def post(self, request, job, archive):
         try:
-            agent.arquivos_backup_remove_file(caminho)
-        except AgentError as exc:
-            messages.error(request, f"Nao foi possivel remover o arquivo: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="credenciais_backup_remove_file",
-                target=caminho,
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            messages.success(request, f"{caminho} sai do proximo backup.")
-        return redirect("arquivos_backup_index")
-
-
-class ArquivosBackupVerifyView(AgentPostView):
-    def post(self, request, archive):
-        try:
-            resultado = agent.arquivos_backup_verify(archive)
+            resultado = agent.arquivos_job_verify(job, archive)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel verificar {archive}: {exc}")
         else:
@@ -964,64 +983,64 @@ class ArquivosBackupVerifyView(AgentPostView):
                 )
             AuditLog.objects.create(
                 actor=request.user,
-                action="arquivos_backup_verify",
-                target=archive,
+                action="arquivos_job_verify",
+                target=f"{job}:{archive}",
                 detail=f"integrity={resultado.get('integrity')}",
                 ip=request.META.get("REMOTE_ADDR"),
             )
-        return redirect("arquivos_backup_index")
+        return redirect("arquivos_job", job=job)
 
 
-class ArquivosBackupRestoreView(AgentPostView):
-    def post(self, request, archive):
+class ArquivosJobRestoreView(AgentPostView):
+    def post(self, request, job, archive):
         confirmacao = (request.POST.get("confirmation") or "").strip()
         if confirmacao != archive:
             messages.error(
                 request,
                 "Para restaurar, digite o nome do arquivo exatamente como aparece.",
             )
-            return redirect("arquivos_backup_index")
+            return redirect("arquivos_job", job=job)
         reiniciar = request.POST.get("restart") == "1"
         try:
-            resultado = agent.arquivos_backup_restore(archive, restart=reiniciar)
+            resultado = agent.arquivos_job_restore(job, archive, restart=reiniciar)
         except AgentError as exc:
             messages.error(request, f"Restauracao falhou: {exc}")
         else:
             AuditLog.objects.create(
                 actor=request.user,
-                action="arquivos_backup_restore",
-                target=archive,
+                action="arquivos_job_restore",
+                target=f"{job}:{archive}",
                 detail=f"restart={resultado.get('restarted')}",
                 ip=request.META.get("REMOTE_ADDR"),
             )
             aviso = (
-                " O container será reiniciado em instantes."
+                " O container sera reiniciado em instantes."
                 if resultado.get("restarted")
-                else " Reinicie o moya-credenciais para aplicar."
+                else " Reinicie o container manualmente para aplicar."
             )
             messages.success(
                 request,
                 f"Backup {archive} restaurado. Copia do estado anterior em "
                 f"{resultado.get('security_copy')}.{aviso}",
             )
-        return redirect("arquivos_backup_index")
+        return redirect("arquivos_job", job=job)
 
 
-class ArquivosBackupDownloadView(AgentView):
-    def get(self, request, archive):
+class ArquivosJobDownloadView(AgentView):
+    def get(self, request, job, archive):
         try:
-            resultado = agent.arquivos_backup_download(archive)
+            resultado = agent.arquivos_job_download(job, archive)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel baixar {archive}: {exc}")
-            return redirect("arquivos_backup_index")
+            return redirect("arquivos_job", job=job)
         destino = _safe_download_path(resultado.get("relative") or "")
         if destino is None or not destino.is_file():
             messages.error(request, "Arquivo de download nao encontrado no app.")
-            return redirect("arquivos_backup_index")
+            return redirect("arquivos_job", job=job)
         AuditLog.objects.create(
             actor=request.user,
-            action="arquivos_backup_download",
-            target=archive,
+            action="arquivos_job_download",
+            target=f"{job}:{archive}",
             ip=request.META.get("REMOTE_ADDR"),
         )
         return file_response(destino, resultado.get("filename") or destino.name)

@@ -193,6 +193,40 @@ class AgentClient:
     def backup_job_run(self, name):
         return self.call("backup_job_run", timeout=30, name=name)
 
+    def arquivos_jobs(self):
+        return self.call("arquivos_jobs", timeout=60)
+
+    def arquivos_job(self, name):
+        return self.call("arquivos_job", timeout=60, name=name)
+
+    def arquivos_job_save(self, job):
+        return self.call("arquivos_job_save", timeout=120, job=job)
+
+    def arquivos_job_delete(self, name):
+        return self.call("arquivos_job_delete", timeout=60, name=name)
+
+    def arquivos_job_run(self, name):
+        return self.call("arquivos_job_run", timeout=60, name=name)
+
+    def arquivos_job_verify(self, name, archive):
+        return self.call(
+            "arquivos_job_verify", timeout=300, name=name, archive=archive
+        )
+
+    def arquivos_job_restore(self, name, archive, restart=True):
+        return self.call(
+            "arquivos_job_restore",
+            timeout=600,
+            name=name,
+            archive=archive,
+            restart=restart,
+        )
+
+    def arquivos_job_download(self, name, archive):
+        return self.call(
+            "arquivos_job_download", timeout=120, name=name, archive=archive
+        )
+
     def arquivos_backup_overview(self):
         return self.call("credenciais_backup_overview", timeout=60)
 

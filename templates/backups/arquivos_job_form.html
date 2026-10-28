@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{% if edicao %}Editar job{% else %}Novo job{% endif %} - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="row row-between-start">
+  <div>
+    <h1 class="mb-4">{% if edicao %}Editar job de backup{% else %}Novo job de backup{% endif %}</h1>
+    <p class="muted">Um caminho por linha: arquivo ou pasta. O banco e o <span class="mono">.env</span> do Credenciais são reconhecidos automaticamente pelo caminho.</p>
+  </div>
+  <div>
+    <a class="btn small" href="{% url 'arquivos_backup_index' %}">Voltar aos jobs</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="flash flash-error">{{ error }}</div>
+{% endif %}
+
+<form method="post" class="panel panel-form">
+  {% csrf_token %}
+  <div class="form-group">
+    <label for="name">Nome do job (a-z, 0-9, _ ou -)</label>
+    <input class="form-control" id="name" type="text" name="name" value="{{ job.name }}" {% if edicao %}readonly{% endif %} required>
+  </div>
+  <div class="form-group">
+    <label for="label">Rótulo</label>
+    <input class="form-control" id="label" type="text" name="label" value="{{ job.label }}" placeholder="Documentos, Projetos, Configurações">
+  </div>
+  <div class="form-group">
+    <label for="sources">Fontes (uma por linha)</label>
+    <textarea class="form-control" id="sources" name="sources" rows="6" placeholder="/home/conrado/documentos&#10;/etc/algum/arquivo.conf" required>{{ sources_text }}</textarea>
+  </div>
+  <div class="form-group">
+    <label for="frequency">Periodicidade</label>
+    <select class="form-control" id="frequency" name="frequency">
+      <option value="daily" {% if job.frequency != "weekly" %}selected{% endif %}>Diário</option>
+      <option value="weekly" {% if job.frequency == "weekly" %}selected{% endif %}>Semanal</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="weekday">Dia da semana (para semanal)</label>
+    <select class="form-control" id="weekday" name="weekday">
+      {% for valor, rotulo in weekdays %}
+      <option value="{{ valor }}" {% if job.weekday == valor %}selected{% endif %}>{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="time">Horário</label>
+    <input class="form-control" id="time" type="time" name="time" value="{{ job.time }}" required>
+  </div>
+  <div class="form-group">
+    <label for="retention_days">Retenção (dias)</label>
+    <input class="form-control" id="retention_days" type="number" name="retention_days" min="1" max="3650" value="{{ job.retention_days }}" required>
+  </div>
+  <div class="check">
+    <input id="enabled" type="checkbox" name="enabled" value="1" {% if job.enabled %}checked{% endif %}>
+    <label for="enabled">Job ativo</label>
+  </div>
+  <div class="actions">
+    <button class="btn-primary" type="submit">Salvar job</button>
+    <a class="btn-secondary" href="{% url 'arquivos_backup_index' %}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

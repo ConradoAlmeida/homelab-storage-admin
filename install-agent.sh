@@ -68,8 +68,7 @@ install -m 0644 "$HERE/agent/homelab-storage-metrics.service" /etc/systemd/syste
 install -m 0644 "$HERE/agent/homelab-storage-metrics.timer" /etc/systemd/system/homelab-storage-metrics.timer
 install -m 0644 "$HERE/agent/homelab-restic-backup@.service" /etc/systemd/system/homelab-restic-backup@.service
 install -m 0644 "$HERE/agent/homelab-cold-copy.service" /etc/systemd/system/homelab-cold-copy.service
-install -m 0644 "$HERE/agent/homelab-credenciais-backup.service" /etc/systemd/system/homelab-credenciais-backup.service
-install -m 0644 "$HERE/agent/homelab-credenciais-backup.timer" /etc/systemd/system/homelab-credenciais-backup.timer
+install -m 0644 "$HERE/agent/homelab-arquivos-backup@.service" /etc/systemd/system/homelab-arquivos-backup@.service
 
 echo "==> Configuracao"
 mkdir -p /etc/homelab-storage-agent /etc/homelab-backup/status /etc/homelab-backup/secrets /var/log/homelab-restic
@@ -85,10 +84,8 @@ systemctl restart homelab-storage-agent
 systemctl enable --now homelab-storage-snapshot.timer
 systemctl enable --now homelab-storage-metrics.timer
 if [[ -f "${CREDENCIAIS_DB:-/home/conrado/moya_credenciais_app/data/db.sqlite3}" ]]; then
-  systemctl enable --now homelab-credenciais-backup.timer
-  /usr/local/sbin/homelab-storage-agent --apply-timer || true
-else
   systemctl disable --now homelab-credenciais-backup.timer 2>/dev/null || true
+  /usr/local/sbin/homelab-storage-agent --apply-timer || true
 fi
 sleep 1
 

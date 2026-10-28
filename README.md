@@ -550,31 +550,37 @@ via CLI; o navegador serve para inspecionar e baixar itens específicos.
 
 ## 6.8 Backup local de arquivos
 
-**Backups → Backup de arquivos** é um job local, sem restic, em que o admin
-escolhe **arquivos ou pastas** do servidor. O banco SQLite e o .env do
-Credenciais entram por padrão.
+**Backups → Backup de arquivos** cria **jobs independentes**, cada um com suas
+fontes, periodicidade e retenção. Sem restic; leitura restrita ao root.
 
-- **Fontes**: banco e .env fixos, mais os itens incluídos em **Incluir arquivo
-  ou pasta** (caminho absoluto, arquivo comum ou pasta; symlinks são ignorados).
-  Limite por fonte CREDENCIAIS_MAX_SOURCE_BYTES (padrão 2 GB).
-- **Agendamento**: diário ou semanal, com horário e retenção em dias, editável
-  na tela. O agente reescreve homelab-credenciais-backup.timer
-  (OnCalendar) e recarrega o systemd.
-- **Pacote**: db.sqlite3, .env, iles/<n>-<nome>/... e manifest.json,
-  com arquivos 600 root:root em pasta 700. Pastas preservam a estrutura
-  interna; du/espaço livre são conferidos antes de gerar.
-- **Status**: último resultado em /etc/homelab-backup/credenciais-status.json,
-  lista de pacotes, tamanho, idade e próxima execução.
-- **Restore**: extrai em staging, confere sha256 e PRAGMA integrity_check;
-  copia o estado atual para pre-restore-AAAAMMDD-HHMMSS; devolve cada arquivo
-  ou pasta ao caminho de origem com dono/permissão originais e reinicia o
-  container. Restore não apaga arquivos criados depois do backup.
+- **Job**: nome (a-z, 0-9, _, -), rótulo, fontes (um caminho por linha),
+  diário ou semanal, dia da semana, horário, retenção em dias e ativo/inativo.
+- **Fontes**: arquivo ou pasta, caminho absoluto, até
+  CREDENCIAIS_MAX_SOURCE_BYTES (2 GB). Symlinks, pastas especiais e /proc,
+  /sys, /dev, /run são recusados. O banco e o .env do Credenciais são
+  reconhecidos pelo caminho e copiados com segurança (SQLite backup API).
+- **Agendamento**: um timer systemd por job
+  (homelab-arquivos-backup-<job>.timer) e o serviço
+  homelab-arquivos-backup@<job>.service. Alterar o job reescreve o
+  OnCalendar; jobs desativados têm o timer removido.
+- **Pacote**: <job>-AAAAMMDD-HHMMSS.tar.gz em CREDENCIAIS_BACKUP_DIR, com
+  manifest.json, arquivos 600 root:root e pasta 700. Pastas preservam a
+  estrutura interna, inclusive vazias.
+- **Status**: /etc/homelab-backup/status/<job>.json, com último resultado,
+  próxima execução e lista de pacotes por job.
+- **Restore**: extrai em staging, confere sha256 e PRAGMA integrity_check
+  quando há banco; copia o estado atual para pre-restore-AAAAMMDD-HHMMSS;
+  devolve tudo ao caminho de origem com dono/permissão originais e reinicia o
+  container quando o banco do Credenciais é restaurado. Não apaga arquivos
+  criados depois do backup.
 - **Download** usa o diretório temporário do restic e é auditado.
 
-A configuração fica em /etc/homelab-backup/credenciais.json (iles,
-	ime, requency, weekday, 
-etention_days). O timer só é ativado quando
-CREDENCIAIS_DB existe; no Pi fica desligado.
+A configuração fica em /etc/homelab-backup/credenciais.json (jobs com
+
+ame, label, nabled, sources, requency, weekday, 	ime,
+
+etention_days). O formato antigo (job único com iles) é migrado
+automaticamente para o job credenciais.
 
 ## 7. Samba
 
