@@ -35,7 +35,7 @@
     <strong>Cópia concluída e verificada.</strong> O hash confere com o dump do servidor. Você já pode desconectar o drive com segurança.
   </div>
   <div id="gitea-failure" class="alert danger" {% if overview.status.status != "failed" %}hidden{% endif %}>
-    <strong>O backup falhou.</strong> <span id="gitea-failure-text">{{ overview.status.error }}</span>
+    <strong>O backup falhou.</strong> <span id="gitea-failure-text">{{ erro_gitea }}</span>
   </div>
 
   {% if not overview.running %}
@@ -75,8 +75,8 @@
     <p class="muted text-12" id="gitea-status-meta">
       {% firstof overview.status.finished_at overview.status.started_at "" %}
       {% if overview.status.size_label %} · {{ overview.status.size_label }}{% endif %}
-      {% if overview.status.error %} · {{ overview.status.error }}{% endif %}
     </p>
+    <p class="muted mono text-11" id="gitea-error-raw" {% if not overview.status.error %}hidden{% endif %}>{{ overview.status.error }}</p>
     <p class="muted text-12" id="gitea-usb-path" {% if not overview.status.usb_path %}hidden{% endif %}>
       Copiado para <span class="mono">{{ overview.status.usb_path }}</span> ·
       sha256 <span class="mono">{{ overview.status.sha256|slice:":16" }}…</span>

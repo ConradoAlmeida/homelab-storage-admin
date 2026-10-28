@@ -300,3 +300,5 @@ details[open] > summary.btn { margin-bottom:8px; }
 /* Status dinamico do backup do Gitea */
 .spinner { display:inline-block; width:12px; height:12px; border:2px solid rgba(74,158,255,.25); border-top-color:var(--acc); border-radius:50%; animation:gitea-spin 1s linear infinite; vertical-align:middle; margin-right:6px; }
 @keyframes gitea-spin { to { transform: rotate(360deg); } }
+
+[hidden] { display:none !important; }

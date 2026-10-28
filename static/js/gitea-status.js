@@ -67,7 +67,12 @@
     if (falha) falha.hidden = status.status !== "failed";
     if (falha) {
       var motivo = el("gitea-failure-text");
-      if (motivo) motivo.textContent = status.error || "";
+      if (motivo) motivo.textContent = dados.error_label || status.error || "";
+    }
+    var detalhe = el("gitea-error-raw");
+    if (detalhe) {
+      detalhe.textContent = status.error || "";
+      detalhe.hidden = !status.error;
     }
     if (spinner) spinner.hidden = !rodando;
 
@@ -94,7 +99,6 @@
       var quando = rodando ? status.started_at : status.finished_at || status.started_at;
       if (quando) partes.push(quando.replace("T", " "));
       if (status.size_label) partes.push(status.size_label);
-      if (status.error && !falha) partes.push(status.error);
       meta.textContent = partes.join(" · ");
     }
 

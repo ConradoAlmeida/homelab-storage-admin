@@ -74,6 +74,30 @@ def _safe_download_path(relative: str) -> Path | None:
     return candidate
 
 
+def _gitea_error_text(erro: str) -> str:
+    texto = (erro or "").strip()
+    baixo = texto.lower()
+    if "input/output error" in baixo or "errno 5" in baixo:
+        return (
+            "O drive USB desconectou ou falhou durante a cópia/verificação. "
+            "O dump no servidor foi gerado e está íntegro; tente com outro drive "
+            "ou outra porta USB."
+        )
+    if "no space" in baixo or "espaco insuficiente" in baixo:
+        return (
+            "Espaço insuficiente no drive USB. "
+            "O dump no servidor está íntegro."
+        )
+    if "nao confere" in baixo:
+        return (
+            "A cópia no USB não confere com o dump. O dump no servidor está "
+            "íntegro; tente de novo com o drive conectado."
+        )
+    if "nao encontrado" in baixo and "usb" in baixo:
+        return "O drive USB não foi encontrado. Conecte-o e tente de novo."
+    return texto or "Falha no backup."
+
+
 def _algum_rodando(overview) -> bool:
     if not isinstance(overview, dict):
         return False
@@ -1103,11 +1127,14 @@ class GiteaBackupView(AgentTemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"overview": None, "error": None})
+        context.update({"overview": None, "error": None, "erro_gitea": ""})
         try:
             context["overview"] = agent.gitea_overview()
         except AgentError as exc:
             context["error"] = str(exc)
+        if context.get("overview"):
+            status = context["overview"].get("status") or {}
+            context["erro_gitea"] = _gitea_error_text(status.get("error", ""))
         return context
 
 
@@ -1117,9 +1144,11 @@ class GiteaBackupStatusView(AgentView):
             overview = agent.gitea_overview()
         except AgentError as exc:
             return JsonResponse({"error": str(exc)}, status=503)
+        status = overview.get("status") or {}
         return JsonResponse(
             {
-                "status": overview.get("status") or {},
+                "status": status,
+                "error_label": _gitea_error_text(status.get("error", "")),
                 "dumps": overview.get("dumps") or [],
                 "running": bool(overview.get("running")),
             }

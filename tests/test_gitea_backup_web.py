@@ -111,6 +111,21 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "NÃO desconecte o drive USB")
         self.assertNotContains(resposta, "Cópia no USB verificada")
 
+    def test_falha_de_usb_mostra_mensagem_amigavel(self):
+        self.fake.gitea_overview.return_value = {
+            **OVERVIEW,
+            "status": {
+                "status": "failed",
+                "stage": "verify",
+                "size_label": "3.7 GB",
+                "error": "[Errno 5] Input/output error: '/mnt/gitea-usb/sdb/gitea/x.zip'",
+            },
+        }
+        resposta = self.client.get("/backups/gitea/")
+        self.assertContains(resposta, "O drive USB desconectou ou falhou")
+        self.assertContains(resposta, "O dump no servidor foi gerado e está íntegro")
+        self.assertContains(resposta, "gitea-error-raw")
+
     def test_endpoint_de_status_entrega_json(self):
         resposta = self.client.get("/backups/gitea/status/")
         self.assertEqual(resposta.status_code, 200)
