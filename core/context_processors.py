@@ -32,6 +32,7 @@ def homelab(request):
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
         "capabilities": _cached_caps,
+        "credenciais_gerencia_usuarios": settings.CREDENTIALS_MANAGE_USERS,
         "storage_root": settings.STORAGE_ROOT,
         "snapshot_root": settings.SNAPSHOT_ROOT,
         "backup_root": settings.BACKUP_ROOT,

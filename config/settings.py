@@ -66,6 +66,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.GestaoUsuariosCredenciaisMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -124,6 +125,9 @@ AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "90"))
 CREDENTIALS_URL = os.environ.get("CREDENTIALS_URL", "").rstrip("/")
 CREDENTIALS_API_TOKEN = os.environ.get("CREDENTIALS_API_TOKEN", "")
 CREDENTIALS_APP = os.environ.get("CREDENTIALS_APP", "storage")
+# Explícito por host: desliga só a gestão de identidade que o Credenciais assume.
+# O Pi mantém 0; o moyaserver configura 1 no host.env.
+CREDENTIALS_MANAGE_USERS = os.environ.get("CREDENTIALS_MANAGE_USERS", "0") == "1"
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False

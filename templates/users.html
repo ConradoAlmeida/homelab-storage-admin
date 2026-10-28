@@ -5,9 +5,14 @@
   <h1 class="m-0">Usuários Samba</h1>
   <div class="row">
     <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
+    {% if not credenciais_gerencia_usuarios %}
     <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
+    {% endif %}
   </div>
 </div>
+{% if credenciais_gerencia_usuarios %}
+<div class="card"><strong>Identidade centralizada</strong><p class="muted">Criar, senha, grupos e exclusão de usuários são feitos no Credenciais. Grupos Linux e operações de servidor continuam aqui.</p></div>
+{% endif %}
 
 {% if agent_error %}
   <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
@@ -22,6 +27,7 @@
         <td>{% for g in u.groups %}<span class="tag">{{ g }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td>
         <td>{% if u.enabled %}<span class="tag ok">ativo</span>{% else %}<span class="tag off">desativado</span>{% endif %}</td>
         <td>
+          {% if not credenciais_gerencia_usuarios %}
           <div class="row">
             <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
             <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
@@ -37,6 +43,7 @@
               <button class="btn small danger" type="submit">Excluir</button>
             </form>
           </div>
+          {% endif %}
         </td>
       </tr>
     {% endfor %}
