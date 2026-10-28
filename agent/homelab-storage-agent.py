@@ -3684,8 +3684,10 @@ def _gitea_backup(target: str = "host") -> dict:
     )
     try:
         arquivo = _gitea_dump()
+        removidos = _gitea_prune()
         dados = {
             "target": alvo,
+            "removed": removidos,
             "archive": arquivo.name,
             "path": str(arquivo),
             "size": arquivo.stat().st_size,
