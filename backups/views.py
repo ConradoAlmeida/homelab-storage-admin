@@ -1080,3 +1080,41 @@ class ArquivosJobDownloadView(AgentView):
             ip=request.META.get("REMOTE_ADDR"),
         )
         return file_response(destino, resultado.get("filename") or destino.name)
+
+
+class GiteaBackupView(AgentTemplateView):
+    template_name = "backups/gitea.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"overview": None, "error": None})
+        try:
+            context["overview"] = agent.gitea_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class GiteaBackupStartView(AgentPostView):
+    def post(self, request):
+        alvo = (request.POST.get("target") or "host").strip()
+        try:
+            agent.gitea_start(alvo)
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel iniciar o backup do Gitea: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="gitea_backup_start",
+                target=alvo,
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            destino = (
+                "no servidor" if alvo == "host" else f"para o USB {alvo}"
+            )
+            messages.success(
+                request,
+                f"Backup do Gitea iniciado {destino}. "
+                "Atualize a pagina para acompanhar.",
+            )
+        return redirect("gitea_backup")

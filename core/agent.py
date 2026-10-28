@@ -178,6 +178,12 @@ class AgentClient:
             allow_existing=allow_existing,
         )
 
+    def gitea_overview(self):
+        return self.call("gitea_overview", timeout=60)
+
+    def gitea_start(self, target="host"):
+        return self.call("gitea_start", timeout=60, target=target)
+
     def backup_check(self, uuid):
         return self.call("backup_check", timeout=7200, uuid=uuid)
 

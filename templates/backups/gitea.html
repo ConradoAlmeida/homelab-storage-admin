@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Backup do Gitea - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="row row-between-start">
+  <div>
+    <h1 class="mb-4">Backup do Gitea</h1>
+    <p class="muted">Dump consistente do Gitea (banco, repositórios, configuração e anexos) e cópia manual para um drive USB. O drive é montado, conferido e desmontado.</p>
+  </div>
+  <div class="file-actions">
+    <a class="btn small" href="{% url 'backup_index' %}">Voltar aos backups</a>
+    <form method="post" action="{% url 'gitea_backup_start' %}" class="display-inline">
+      {% csrf_token %}
+      <input type="hidden" name="target" value="host">
+      <button class="btn small" type="submit" {% if not overview.running %}disabled{% endif %}>Gerar dump no servidor</button>
+    </form>
+  </div>
+</div>
+
+{% if error %}
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+{% elif overview %}
+  {% if not overview.running %}
+    <div class="alert danger"><strong>Gitea não está rodando.</strong> Inicie o container <span class="mono">{{ overview.container }}</span> antes do backup.</div>
+  {% endif %}
+
+  <h2>Estado</h2>
+  <div class="card">
+    <p class="mb-4">
+      <span class="badge {% if overview.running %}live{% endif %}">container {{ overview.running|yesno:"ativo,parado" }}</span>
+      <span class="badge">volume {{ overview.volume_size }}</span>
+      <span class="badge">mantém {{ overview.keep }} dump(s) no servidor</span>
+    </p>
+    <p class="muted text-12">
+      Volume: <span class="mono">{{ overview.volume|default:"-" }}</span> ·
+      destino: <span class="mono">{{ overview.backup_dir }}</span>
+    </p>
+    {% with status=overview.status %}
+      {% if status %}
+        <p class="text-12">
+          {% if status.status == "running" %}<span class="badge live">rodando ({{ status.stage }})</span>
+          {% elif status.status == "done" %}<span class="state-ok">concluído</span>
+          {% elif status.status == "failed" %}<span class="state-bad">falhou</span>
+          {% else %}<span class="muted">{{ status.status }}</span>{% endif %}
+          <span class="muted">
+            {% firstof status.finished_at status.started_at "" %}
+            {% if status.size_label %} · {{ status.size_label }}{% endif %}
+            {% if status.error %} · {{ status.error }}{% endif %}
+          </span>
+        </p>
+        {% if status.usb_path %}
+          <p class="muted text-12">
+            Copiado para <span class="mono">{{ status.usb_path }}</span> ·
+            sha256 <span class="mono">{{ status.sha256|slice:":16" }}…</span>
+          </p>
+        {% endif %}
+      {% else %}
+        <p class="muted text-12">Nenhuma execução registrada.</p>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <h2>Drives USB</h2>
+  {% if overview.usb %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Drive</th><th>Tamanho</th><th>Filesystem</th><th>Montagem</th><th>Livre</th><th></th></tr></thead>
+      <tbody>
+        {% for disco in overview.usb %}
+          <tr>
+            <td>
+              <strong>{{ disco.name }}</strong>
+              <div class="muted text-11">{{ disco.model|default:"-" }}</div>
+            </td>
+            <td>{{ disco.size }}</td>
+            <td>
+              {% if disco.has_filesystem %}
+                <span class="badge">{{ disco.fstype|default:"?" }}{% if disco.label %} · {{ disco.label }}{% endif %}</span>
+              {% else %}
+                <span class="badge danger">sem filesystem</span>
+              {% endif %}
+            </td>
+            <td class="muted mono text-12">{{ disco.mountpoint|default:"será montado" }}</td>
+            <td class="muted">{{ disco.free_label }}</td>
+            <td class="file-actions">
+              {% if disco.has_filesystem and overview.running %}
+                <form method="post" action="{% url 'gitea_backup_start' %}" class="display-inline"
+                      data-confirm="Gerar o dump e gravar em {{ disco.path }}? Os arquivos existentes no drive não são apagados.">
+                  {% csrf_token %}
+                  <input type="hidden" name="target" value="{{ disco.name }}">
+                  <button class="btn small" type="submit">Backup para USB</button>
+                </form>
+              {% else %}
+                <span class="muted text-12">indisponível</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="alert">
+      <strong>Nenhum drive USB detectado.</strong>
+      Conecte um drive com ext4 ou exFAT. Ele aparece aqui e pode ser usado sem formatar;
+      os arquivos existentes são preservados.
+    </div>
+  {% endif %}
+
+  <h2>Dumps no servidor</h2>
+  {% if overview.dumps %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th></tr></thead>
+      <tbody>
+        {% for item in overview.dumps %}
+          <tr>
+            <td class="mono text-12">{{ item.name }}</td>
+            <td class="muted">{{ item.created_label }}</td>
+            <td>{{ item.size_label }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Nenhum dump no servidor ainda.</div>
+  {% endif %}
+
+  <h2>Como funciona</h2>
+  <div class="card">
+    <p class="text-12">
+      O dump roda com <span class="mono">gitea dump</span> dentro do container, sem parar o Gitea.
+      O arquivo é gravado como <span class="mono">600 root</span> em {{ overview.backup_dir }}.
+      No USB, vai para <span class="mono">/gitea/</span> com um arquivo <span class="mono">.sha256</span> ao lado.
+      O drive é desmontado ao final. Mantenha cópias em mais de um drive e teste a restauração.
+    </p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup manual do Gitea (%i)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-storage-agent --gitea-backup %i
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle

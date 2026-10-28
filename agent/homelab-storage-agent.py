@@ -24,6 +24,7 @@ import tarfile
 import tempfile
 import time
 import traceback
+import zipfile
 from pathlib import Path, PurePosixPath
 
 SOCKET_PATH = os.environ.get(
@@ -61,6 +62,14 @@ CREDENCIAIS_ENV = os.environ.get(
 CREDENCIAIS_CONTAINER = os.environ.get("CREDENCIAIS_CONTAINER", "moya-credenciais")
 CREDENCIAIS_TIME = os.environ.get("CREDENCIAIS_TIME", "03:30")
 CREDENCIAIS_RETENTION_DAYS = int(os.environ.get("CREDENCIAIS_RETENTION_DAYS", "30"))
+GITEA_CONTAINER = os.environ.get("GITEA_CONTAINER", "gitea")
+GITEA_BACKUP_DIR = os.environ.get("GITEA_BACKUP_DIR", "/var/backups/gitea")
+GITEA_STATUS = os.environ.get("GITEA_STATUS", "/etc/homelab-backup/gitea.json")
+GITEA_KEEP = int(os.environ.get("GITEA_KEEP", "2"))
+GITEA_USB_ROOT = os.environ.get("GITEA_USB_ROOT", "/mnt/gitea-usb")
+GITEA_USB_MIN_FREE = int(
+    os.environ.get("GITEA_USB_MIN_FREE", str(512 * 1024 * 1024))
+)
 CREDENCIAIS_MAX_SOURCE_BYTES = int(
     os.environ.get(
         "CREDENCIAIS_MAX_SOURCE_BYTES",
@@ -3326,6 +3335,429 @@ def op_credenciais_backup_download(archive: str, **_):
     return op_arquivos_job_download("credenciais", archive)
 
 
+# --- backup manual do Gitea (dump + copia para USB) ---
+
+
+def _gitea_status_read() -> dict:
+    caminho = Path(GITEA_STATUS)
+    if not caminho.is_file():
+        return {}
+    try:
+        dados = json.loads(caminho.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def _gitea_status_write(dados: dict) -> dict:
+    caminho = Path(GITEA_STATUS)
+    caminho.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(caminho.parent, 0o700)
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, indent=2, sort_keys=True) + "\n")
+    os.chmod(temporario, 0o600)
+    temporario.replace(caminho)
+    return dados
+
+
+def _gitea_dumps() -> list[dict]:
+    pasta = Path(GITEA_BACKUP_DIR)
+    if not pasta.is_dir():
+        return []
+    itens = []
+    for caminho in sorted(pasta.glob("gitea-*.zip"), reverse=True):
+        try:
+            info = caminho.stat()
+        except OSError:
+            continue
+        itens.append(
+            {
+                "name": caminho.name,
+                "size": info.st_size,
+                "size_label": _human_bytes(info.st_size),
+                "created_label": dt.datetime.fromtimestamp(info.st_mtime).strftime(
+                    "%d/%m/%Y %H:%M"
+                ),
+            }
+        )
+    return itens
+
+
+def _gitea_prune() -> list[str]:
+    pasta = Path(GITEA_BACKUP_DIR)
+    dumps = sorted(pasta.glob("gitea-*.zip"), reverse=True)
+    removidos = []
+    for caminho in dumps[max(1, GITEA_KEEP) :]:
+        try:
+            caminho.unlink()
+            removidos.append(caminho.name)
+        except OSError:
+            continue
+    return removidos
+
+
+def _sha256(caminho: Path) -> str:
+    resumo = hashlib.sha256()
+    with open(caminho, "rb") as arquivo:
+        for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+            resumo.update(bloco)
+    return resumo.hexdigest()
+
+
+def _gitea_dump() -> Path:
+    if not shutil.which("docker"):
+        raise AgentError("docker nao encontrado no host")
+    rc, saida, _ = run_optional(
+        ["docker", "inspect", "-f", "{{.State.Running}}", GITEA_CONTAINER],
+        timeout=20,
+    )
+    if rc != 0 or (saida or "").strip() != "true":
+        raise AgentError(f"Container do Gitea nao esta rodando: {GITEA_CONTAINER}")
+    pasta = Path(GITEA_BACKUP_DIR)
+    pasta.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        os.chmod(pasta, 0o700)
+        if hasattr(os, "chown"):
+            os.chown(pasta, 0, 0)
+    except (OSError, NotImplementedError):
+        pass
+    nome = f"gitea-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}.zip"
+    interno = f"/data/gitea/{nome}"
+    destino = pasta / nome
+    _gitea_status_write(
+        {
+            "status": "running",
+            "stage": "dump",
+            "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+            "archive": nome,
+        }
+    )
+    try:
+        run(
+            [
+                "docker",
+                "exec",
+                "-u",
+                "git",
+                GITEA_CONTAINER,
+                "gitea",
+                "dump",
+                "-c",
+                "/data/gitea/conf/app.ini",
+                "--skip-log",
+                "--skip-index",
+                "-f",
+                interno,
+            ],
+            timeout=1800,
+        )
+        run(
+            ["docker", "cp", f"{GITEA_CONTAINER}:{interno}", str(destino)],
+            timeout=900,
+        )
+        run_optional(["docker", "exec", GITEA_CONTAINER, "rm", "-f", interno])
+        os.chmod(destino, 0o600)
+        try:
+            os.chown(destino, 0, 0)
+        except (OSError, NotImplementedError):
+            pass
+        with zipfile.ZipFile(destino) as pacote:
+            ruim = pacote.testzip()
+        if ruim:
+            raise AgentError(f"Dump corrompido no item: {ruim}")
+    except AgentError:
+        destino.unlink(missing_ok=True)
+        _gitea_status_write(
+            {
+                "status": "failed",
+                "stage": "dump",
+                "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+                "error": "falha ao gerar o dump",
+            }
+        )
+        raise
+    except (OSError, zipfile.BadZipFile) as exc:
+        destino.unlink(missing_ok=True)
+        _gitea_status_write(
+            {
+                "status": "failed",
+                "stage": "dump",
+                "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+                "error": str(exc),
+            }
+        )
+        raise AgentError(f"Falha ao gerar o dump do Gitea: {exc}") from exc
+    _gitea_status_write(
+        {
+            "status": "running",
+            "stage": "done",
+            "archive": nome,
+            "size": destino.stat().st_size,
+            "size_label": _human_bytes(destino.stat().st_size),
+            "sha256": _sha256(destino),
+            "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+        }
+    )
+    log(f"GITEA_DUMP {nome} {destino.stat().st_size}")
+    return destino
+
+
+def _gitea_usb_disks() -> list[dict]:
+    raw = run(
+        [
+            "lsblk",
+            "-J",
+            "-o",
+            "NAME,SIZE,TYPE,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL,SERIAL,TRAN,RM",
+        ],
+        timeout=30,
+    )
+    try:
+        dados = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise AgentError("Resposta invalida do lsblk") from exc
+    discos = []
+    for device in dados.get("blockdevices", []):
+        nome = device.get("name", "")
+        if device.get("type") != "disk" or nome.startswith("loop"):
+            continue
+        removivel = device.get("rm") is True or device.get("tran") == "usb"
+        if not removivel:
+            continue
+        mounts = _collect_mounts(device)
+        partes = []
+
+        def coletar(node: dict) -> None:
+            for filho in node.get("children") or []:
+                partes.append(filho)
+                coletar(filho)
+
+        coletar(device)
+        com_fs = [item for item in partes if item.get("fstype")]
+        if not com_fs and device.get("fstype"):
+            com_fs = [device]
+        fstype = com_fs[0].get("fstype") if com_fs else None
+        label = com_fs[0].get("label") if com_fs else None
+        livre = None
+        ponto = None
+        for candidato in com_fs:
+            for montado in candidato.get("mountpoints") or []:
+                if montado:
+                    ponto = montado
+                    break
+            if ponto:
+                break
+        if not ponto:
+            for montado in mounts:
+                if montado:
+                    ponto = montado
+                    break
+        if ponto:
+            try:
+                livre = shutil.disk_usage(ponto).free
+            except OSError:
+                livre = None
+        discos.append(
+            {
+                "name": nome,
+                "path": f"/dev/{nome}",
+                "size": device.get("size"),
+                "model": (device.get("model") or "").strip(),
+                "serial": (device.get("serial") or "").strip(),
+                "tran": device.get("tran"),
+                "fstype": fstype,
+                "label": label,
+                "mountpoint": ponto,
+                "free": livre,
+                "free_label": _human_bytes(livre) if livre is not None else "-",
+                "has_filesystem": bool(com_fs),
+                "partitions": [
+                    {
+                        "name": item.get("name"),
+                        "fstype": item.get("fstype"),
+                        "label": item.get("label"),
+                        "mountpoints": item.get("mountpoints") or [],
+                    }
+                    for item in partes
+                ],
+            }
+        )
+    return sorted(discos, key=lambda item: item["name"])
+
+
+def _usb_particao(disco: dict) -> dict | None:
+    for item in disco.get("partitions") or []:
+        if item.get("fstype"):
+            return item
+    if disco.get("fstype"):
+        return disco
+    return None
+
+
+def _usb_montar(disco: dict) -> tuple[Path, bool]:
+    parte = _usb_particao(disco)
+    if parte is None:
+        raise AgentError(
+            "Disco USB sem filesystem reconhecido. Formate como ext4 ou exFAT."
+        )
+    pontos = [p for p in (parte.get("mountpoints") or []) if p]
+    if pontos:
+        return Path(pontos[0]), False
+    raiz = Path(GITEA_USB_ROOT)
+    raiz.mkdir(parents=True, exist_ok=True, mode=0o700)
+    destino = raiz / disco["name"]
+    destino.mkdir(parents=True, exist_ok=True, mode=0o700)
+    run(["mount", f"/dev/{parte['name']}", str(destino)], timeout=60)
+    return destino, True
+
+
+def _usb_desmontar(montado: Path, fomos_nos: bool) -> None:
+    try:
+        os.sync()
+    except OSError:
+        pass
+    if fomos_nos:
+        run_optional(["umount", str(montado)], timeout=60)
+
+
+def _gitea_backup(target: str = "host") -> dict:
+    alvo = (target or "host").strip()
+    _gitea_status_write(
+        {
+            "status": "running",
+            "stage": "dump" if alvo == "host" else "usb",
+            "target": alvo,
+            "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+        }
+    )
+    try:
+        arquivo = _gitea_dump()
+        dados = {
+            "status": "done",
+            "stage": "done",
+            "target": alvo,
+            "archive": arquivo.name,
+            "path": str(arquivo),
+            "size": arquivo.stat().st_size,
+            "size_label": _human_bytes(arquivo.stat().st_size),
+            "sha256": _sha256(arquivo),
+            "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+        }
+        if alvo != "host":
+            disco = next(
+                (item for item in _gitea_usb_disks() if item["name"] == alvo), None
+            )
+            if disco is None:
+                raise AgentError(f"Disco USB nao encontrado: {alvo}")
+            montado, fomos_nos = _usb_montar(disco)
+            try:
+                livre = shutil.disk_usage(montado).free
+                if livre < arquivo.stat().st_size + GITEA_USB_MIN_FREE:
+                    raise AgentError(
+                        f"Espaco insuficiente no USB: precisa de "
+                        f"{_human_bytes(arquivo.stat().st_size)}, livre "
+                        f"{_human_bytes(livre)}"
+                    )
+                pasta = montado / "gitea"
+                pasta.mkdir(parents=True, exist_ok=True)
+                destino = pasta / arquivo.name
+                shutil.copyfile(arquivo, destino)
+                os.chmod(destino, 0o600)
+                os.sync()
+                if _sha256(destino) != dados["sha256"]:
+                    destino.unlink(missing_ok=True)
+                    raise AgentError("Copia no USB nao confere com o dump")
+                (pasta / f"{arquivo.name}.sha256").write_text(
+                    f"{dados['sha256']}  {arquivo.name}\n"
+                )
+                dados.update(
+                    {
+                        "usb": alvo,
+                        "usb_path": str(destino),
+                        "usb_mount": str(montado),
+                        "usb_size": destino.stat().st_size,
+                    }
+                )
+            finally:
+                _usb_desmontar(montado, fomos_nos)
+        _gitea_status_write(dados)
+        log(f"GITEA_BACKUP {alvo} {arquivo.name}")
+        return dados
+    except AgentError as exc:
+        atual = _gitea_status_read()
+        _gitea_status_write(
+            {
+                **atual,
+                "status": "failed",
+                "stage": atual.get("stage", "dump"),
+                "error": str(exc),
+                "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+            }
+        )
+        raise
+
+
+def op_gitea_overview(**_):
+    rc, saida, _ = run_optional(
+        ["docker", "inspect", "-f", "{{.State.Running}}", GITEA_CONTAINER],
+        timeout=20,
+    )
+    rodando = rc == 0 and (saida or "").strip() == "true"
+    volume = ""
+    size = "-"
+    if rodando:
+        rc_m, saida_m, _ = run_optional(
+            [
+                "docker",
+                "inspect",
+                "-f",
+                "{{range .Mounts}}{{.Source}} {{end}}",
+                GITEA_CONTAINER,
+            ],
+            timeout=20,
+        )
+        if rc_m == 0:
+            fontes = (saida_m or "").split()
+            volume = fontes[0] if fontes else ""
+            if volume:
+                rc_d, du, _ = run_optional(["du", "-sh", volume], timeout=30)
+                if rc_d == 0 and du.strip():
+                    size = du.split()[0]
+    return {
+        "container": GITEA_CONTAINER,
+        "running": rodando,
+        "volume": volume,
+        "volume_size": size,
+        "dumps": _gitea_dumps(),
+        "status": _gitea_status_read(),
+        "usb": _gitea_usb_disks() if shutil.which("lsblk") else [],
+        "backup_dir": GITEA_BACKUP_DIR,
+        "keep": GITEA_KEEP,
+    }
+
+
+def op_gitea_start(target: str = "host", **_):
+    alvo = (target or "host").strip()
+    if alvo != "host":
+        nomes = [item["name"] for item in _gitea_usb_disks()]
+        if alvo not in nomes:
+            raise AgentError(f"Disco USB nao encontrado: {alvo}")
+    try:
+        run(
+            [
+                "systemctl",
+                "start",
+                "--no-block",
+                f"homelab-gitea-backup@{alvo}.service",
+            ],
+            timeout=30,
+        )
+    except AgentError:
+        return _gitea_backup(alvo)
+    log(f"GITEA_BACKUP_START {alvo}")
+    return {"target": alvo, "started": True}
+
+
 def _load_cold_config() -> dict:
     path = Path(COLD_CONFIG)
     if not path.exists():
@@ -3751,6 +4183,8 @@ OPS = {
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,
     "backup_check": op_backup_check,
+    "gitea_overview": op_gitea_overview,
+    "gitea_start": op_gitea_start,
     "backup_job_save": op_backup_job_save,
     "backup_job_toggle": op_backup_job_toggle,
     "backup_job_delete": op_backup_job_delete,
@@ -3845,6 +4279,15 @@ def main() -> int:
                 }
             )
         )
+        return 0
+    if len(sys.argv) > 2 and sys.argv[1] == "--gitea-backup":
+        try:
+            dados = _gitea_backup(sys.argv[2])
+        except AgentError as exc:
+            log("GITEA_BACKUP_FAIL " + str(exc))
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(json.dumps(dados, ensure_ascii=False))
         return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--check-repos":
         print(json.dumps(op_backup_check_all(), ensure_ascii=False))

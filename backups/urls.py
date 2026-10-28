@@ -35,6 +35,16 @@ urlpatterns = [
         name="backup_check",
     ),
     path(
+        "gitea/",
+        views.GiteaBackupView.as_view(),
+        name="gitea_backup",
+    ),
+    path(
+        "gitea/start/",
+        views.GiteaBackupStartView.as_view(),
+        name="gitea_backup_start",
+    ),
+    path(
         "arquivos/",
         views.ArquivosJobsView.as_view(),
         name="arquivos_backup_index",

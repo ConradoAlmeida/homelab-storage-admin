@@ -70,15 +70,18 @@ install -m 0644 "$HERE/agent/homelab-restic-backup@.service" /etc/systemd/system
 install -m 0644 "$HERE/agent/homelab-cold-copy.service" /etc/systemd/system/homelab-cold-copy.service
 install -m 0644 "$HERE/agent/homelab-restic-check.service" /etc/systemd/system/homelab-restic-check.service
 install -m 0644 "$HERE/agent/homelab-restic-check.timer" /etc/systemd/system/homelab-restic-check.timer
+install -m 0644 "$HERE/agent/homelab-gitea-backup@.service" /etc/systemd/system/homelab-gitea-backup@.service
 install -m 0644 "$HERE/agent/homelab-arquivos-backup@.service" /etc/systemd/system/homelab-arquivos-backup@.service
 
 echo "==> Configuracao"
 mkdir -p /etc/homelab-storage-agent /etc/homelab-backup/status /etc/homelab-backup/secrets /etc/homelab-backup/health /var/log/homelab-restic
 mkdir -p "${CREDENCIAIS_BACKUP_DIR:-/var/backups/moya-credenciais}"
+mkdir -p "${GITEA_BACKUP_DIR:-/var/backups/gitea}" "${GITEA_USB_ROOT:-/mnt/gitea-usb}"
 chmod 0755 /etc/homelab-storage-agent
 chmod 0700 /etc/homelab-backup /etc/homelab-backup/status /etc/homelab-backup/secrets
 chmod 0750 /var/log/homelab-restic
 chmod 0700 "${CREDENCIAIS_BACKUP_DIR:-/var/backups/moya-credenciais}"
+chmod 0700 "${GITEA_BACKUP_DIR:-/var/backups/gitea}" "${GITEA_USB_ROOT:-/mnt/gitea-usb}"
 
 systemctl daemon-reload
 systemctl enable homelab-storage-agent
