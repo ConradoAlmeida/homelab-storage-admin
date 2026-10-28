@@ -73,6 +73,17 @@ def _safe_download_path(relative: str) -> Path | None:
     return candidate
 
 
+def _algum_rodando(overview) -> bool:
+    if not isinstance(overview, dict):
+        return False
+    for item in overview.get("jobs") or []:
+        if not isinstance(item, dict):
+            continue
+        if (item.get("status") or {}).get("status") == "running":
+            return True
+    return False
+
+
 def _default_job_form(overview: dict) -> dict:
     disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
     return {
@@ -137,6 +148,9 @@ class BackupIndexView(AgentTemplateView):
             context["arquivos"] = agent.arquivos_jobs()
         except AgentError as exc:
             context["arquivos_error"] = str(exc)
+        context["rodando"] = _algum_rodando(
+            context.get("overview")
+        ) or _algum_rodando(context.get("arquivos"))
         return context
 
 
@@ -862,6 +876,7 @@ class ArquivosJobsView(AgentTemplateView):
             context["overview"] = agent.arquivos_jobs()
         except AgentError as exc:
             context["error"] = str(exc)
+        context["rodando"] = _algum_rodando(context.get("overview"))
         return context
 
 

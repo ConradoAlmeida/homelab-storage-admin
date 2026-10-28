@@ -54,7 +54,8 @@
           {% if status.status == "running" %}
             <span class="badge live">rodando</span>
             <span class="muted">
-              {% if status.stage == "dump" %}gerando o dump…
+              {% if status.stage == "queued" %}na fila do systemd…
+              {% elif status.stage == "dump" %}gerando o dump…
               {% elif status.stage == "dumped" %}dump pronto, preparando a cópia…
               {% elif status.stage == "copy" %}copiando para o USB — não desconecte
               {% elif status.stage == "verify" %}verificando o hash — não desconecte
@@ -154,9 +155,6 @@
     </p>
   </div>
 
-  {% if overview.status.status == "running" %}
-  <div data-gitea-running="1" hidden></div>
-  <script src="{% static 'js/gitea-status.js' %}"></script>
-  {% endif %}
+  <div data-auto-refresh data-status="{{ overview.status.status|default:'idle' }}" hidden></div>
 {% endif %}
 {% endblock %}

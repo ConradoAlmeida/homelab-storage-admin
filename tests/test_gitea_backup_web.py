@@ -94,7 +94,7 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "NÃO desconecte o drive USB")
         self.assertContains(resposta, "copiando para o USB")
         self.assertNotContains(resposta, "Cópia no USB verificada")
-        self.assertContains(resposta, "data-gitea-running")
+        self.assertContains(resposta, "data-auto-refresh")
 
     def test_status_verificando_nao_parece_concluido(self):
         self.fake.gitea_overview.return_value = {

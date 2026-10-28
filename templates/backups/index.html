@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Backups - {{ product_name }}{% endblock %}
 {% block content %}
+<div data-auto-refresh data-status="{% if rodando %}running{% else %}idle{% endif %}" hidden></div>
 <div class="row row-between-start">
   <div>
     <h1 class="mb-4">Backups</h1>

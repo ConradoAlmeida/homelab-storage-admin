@@ -2001,6 +2001,18 @@ def _read_backup_status(name: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _write_backup_status(name: str, data: dict) -> dict:
+    pasta = Path(BACKUP_STATUS_DIR)
+    pasta.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(pasta, 0o700)
+    path = pasta / f"{name}.json"
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    os.chmod(tmp, 0o600)
+    tmp.replace(path)
+    return data
+
+
 def _next_run(schedule: dict | None) -> str | None:
     if not schedule:
         return None
@@ -2275,15 +2287,35 @@ def op_backup_job_run(name: str, **_):
     )
     if job is None:
         raise AgentError("Job nao encontrado")
-    run(
-        [
-            "systemctl",
-            "start",
-            "--no-block",
-            f"homelab-restic-backup@{name}.service",
-        ],
-        timeout=30,
+    _write_backup_status(
+        name,
+        {
+            "job": name,
+            "status": "running",
+            "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+        },
     )
+    try:
+        run(
+            [
+                "systemctl",
+                "start",
+                "--no-block",
+                f"homelab-restic-backup@{name}.service",
+            ],
+            timeout=30,
+        )
+    except AgentError as exc:
+        _write_backup_status(
+            name,
+            {
+                "job": name,
+                "status": "failed",
+                "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+                "message": str(exc),
+            },
+        )
+        raise
     log(f"BACKUP_JOB_RUN {name}")
     return {"name": name, "started": True}
 
@@ -3127,6 +3159,14 @@ def op_arquivos_job_delete(name: str, **_):
 
 def op_arquivos_job_run(name: str, **_):
     job = _job_por_nome(_jobs_config(), name)
+    _job_status_write(
+        job["name"],
+        {
+            "status": "running",
+            "stage": "queued",
+            "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+        },
+    )
     try:
         run(
             [
@@ -3791,6 +3831,14 @@ def op_gitea_start(target: str = "host", **_):
         nomes = [item["name"] for item in _gitea_usb_disks()]
         if alvo not in nomes:
             raise AgentError(f"Disco USB nao encontrado: {alvo}")
+    _gitea_status_write(
+        {
+            "status": "running",
+            "stage": "queued",
+            "target": alvo,
+            "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+        }
+    )
     try:
         run(
             [

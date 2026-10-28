@@ -165,6 +165,18 @@ class ArquivosJobViewTests(TestCase):
         self.assertContains(resposta, "semanal (sexta) 05:00")
         self.assertContains(resposta, "Novo job")
 
+    def test_lista_atualiza_sozinha_com_job_rodando(self):
+        rodando = {
+            **OVERVIEW,
+            "jobs": [
+                {**OVERVIEW["jobs"][0], "status": {"status": "running"}},
+                OVERVIEW["jobs"][1],
+            ],
+        }
+        self.fake.arquivos_jobs.return_value = rodando
+        resposta = self.client.get("/backups/arquivos/")
+        self.assertContains(resposta, 'data-status="running"')
+
     def test_indice_mostra_os_jobs(self):
         resposta = self.client.get("/backups/")
         self.assertContains(resposta, "Backups locais de arquivos")
