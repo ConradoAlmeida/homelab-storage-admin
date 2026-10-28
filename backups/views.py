@@ -138,7 +138,7 @@ class BackupIndexView(AgentTemplateView):
         except AgentError as exc:
             context["error"] = str(exc)
         try:
-            context["credenciais"] = agent.credenciais_backup_overview()
+            context["credenciais"] = agent.arquivos_backup_overview()
         except AgentError as exc:
             context["credenciais_error"] = str(exc)
         if context.get("credenciais"):
@@ -843,7 +843,7 @@ class ArquivosBackupView(AgentTemplateView):
             }
         )
         try:
-            context["overview"] = agent.credenciais_backup_overview()
+            context["overview"] = agent.arquivos_backup_overview()
         except AgentError as exc:
             context["error"] = str(exc)
         if context.get("overview"):
@@ -878,7 +878,7 @@ class ArquivosBackupRunView(AgentPostView):
 class ArquivosBackupSettingsView(AgentPostView):
     def post(self, request):
         try:
-            resultado = agent.credenciais_backup_settings(
+            resultado = agent.arquivos_backup_settings(
                 time=(request.POST.get("time") or "").strip(),
                 frequency=(request.POST.get("frequency") or "daily").strip(),
                 weekday=request.POST.get("weekday") or 0,
@@ -908,7 +908,7 @@ class ArquivosBackupFileAddView(AgentPostView):
     def post(self, request):
         caminho = (request.POST.get("path") or "").strip()
         try:
-            agent.credenciais_backup_add_file(caminho)
+            agent.arquivos_backup_add_file(caminho)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel incluir o arquivo: {exc}")
         else:
@@ -928,7 +928,7 @@ class ArquivosBackupFileRemoveView(AgentPostView):
     def post(self, request):
         caminho = (request.POST.get("path") or "").strip()
         try:
-            agent.credenciais_backup_remove_file(caminho)
+            agent.arquivos_backup_remove_file(caminho)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel remover o arquivo: {exc}")
         else:

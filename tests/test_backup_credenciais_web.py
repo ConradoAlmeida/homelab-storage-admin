@@ -70,16 +70,16 @@ class ArquivosBackupViewTests(TestCase):
         )
         self.client.force_login(self.user)
         fake = fake_agent()
-        fake.credenciais_backup_overview.return_value = OVERVIEW
+        fake.arquivos_backup_overview.return_value = OVERVIEW
         fake.arquivos_backup_run.return_value = {
             "archive": ARQUIVO,
             "size_label": "20.0 KB",
         }
         fake.backup_overview.return_value = {"restic": False, "disks": [], "jobs": []}
-        fake.credenciais_backup_add_file.return_value = {
+        fake.arquivos_backup_add_file.return_value = {
             "files": ["/home/conrado/app.conf"]
         }
-        fake.credenciais_backup_remove_file.return_value = {"files": []}
+        fake.arquivos_backup_remove_file.return_value = {"files": []}
         fake.arquivos_backup_verify.return_value = {
             "archive": ARQUIVO,
             "integrity": "ok",
@@ -116,7 +116,7 @@ class ArquivosBackupViewTests(TestCase):
             follow=True,
         )
         self.assertContains(resposta, "passa a entrar")
-        self.fake.credenciais_backup_add_file.assert_called_once_with(
+        self.fake.arquivos_backup_add_file.assert_called_once_with(
             "/home/conrado/app.conf"
         )
         self.assertTrue(
@@ -130,12 +130,12 @@ class ArquivosBackupViewTests(TestCase):
             follow=True,
         )
         self.assertContains(resposta, "sai do proximo backup")
-        self.fake.credenciais_backup_remove_file.assert_called_once_with(
+        self.fake.arquivos_backup_remove_file.assert_called_once_with(
             "/home/conrado/app.conf"
         )
 
     def test_incluir_arquivo_mostra_erro_do_agente(self):
-        self.fake.credenciais_backup_add_file.side_effect = AgentError(
+        self.fake.arquivos_backup_add_file.side_effect = AgentError(
             "Use um caminho absoluto"
         )
         resposta = self.client.post(
@@ -146,7 +146,7 @@ class ArquivosBackupViewTests(TestCase):
         self.assertContains(resposta, "Use um caminho absoluto")
 
     def test_salvar_agendamento(self):
-        self.fake.credenciais_backup_settings.return_value = {
+        self.fake.arquivos_backup_settings.return_value = {
             "time": "04:15",
             "frequency": "weekly",
             "weekday": 2,
@@ -163,7 +163,7 @@ class ArquivosBackupViewTests(TestCase):
             follow=True,
         )
         self.assertContains(resposta, "Agendamento atualizado")
-        self.fake.credenciais_backup_settings.assert_called_once_with(
+        self.fake.arquivos_backup_settings.assert_called_once_with(
             time="04:15",
             frequency="weekly",
             weekday="2",
