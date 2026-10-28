@@ -75,6 +75,11 @@ class CredenciaisBackupViewTests(TestCase):
             "archive": ARQUIVO,
             "size_label": "20.0 KB",
         }
+        fake.backup_overview.return_value = {"restic": False, "disks": [], "jobs": []}
+        fake.credenciais_backup_add_file.return_value = {
+            "files": ["/home/conrado/app.conf"]
+        }
+        fake.credenciais_backup_remove_file.return_value = {"files": []}
         fake.credenciais_backup_verify.return_value = {
             "archive": ARQUIVO,
             "integrity": "ok",
@@ -96,6 +101,49 @@ class CredenciaisBackupViewTests(TestCase):
             "credenciais_backup": True,
         }
         context_processors._cached_at = time.monotonic()
+
+    def test_indice_mostra_o_job_local(self):
+        resposta = self.client.get("/backups/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Backup local de arquivos")
+        self.assertContains(resposta, "Credenciais")
+        self.assertContains(resposta, "diário 03:30")
+
+    def test_incluir_arquivo_individual(self):
+        resposta = self.client.post(
+            "/backups/credenciais-app/files/add/",
+            data={"path": "/home/conrado/app.conf"},
+            follow=True,
+        )
+        self.assertContains(resposta, "passa a entrar")
+        self.fake.credenciais_backup_add_file.assert_called_once_with(
+            "/home/conrado/app.conf"
+        )
+        self.assertTrue(
+            AuditLog.objects.filter(action="credenciais_backup_add_file").exists()
+        )
+
+    def test_remover_arquivo_individual(self):
+        resposta = self.client.post(
+            "/backups/credenciais-app/files/remove/",
+            data={"path": "/home/conrado/app.conf"},
+            follow=True,
+        )
+        self.assertContains(resposta, "sai do proximo backup")
+        self.fake.credenciais_backup_remove_file.assert_called_once_with(
+            "/home/conrado/app.conf"
+        )
+
+    def test_incluir_arquivo_mostra_erro_do_agente(self):
+        self.fake.credenciais_backup_add_file.side_effect = AgentError(
+            "Use um caminho absoluto"
+        )
+        resposta = self.client.post(
+            "/backups/credenciais-app/files/add/",
+            data={"path": "relativo.conf"},
+            follow=True,
+        )
+        self.assertContains(resposta, "Use um caminho absoluto")
 
     def test_pagina_mostra_fonte_job_e_arquivo(self):
         resposta = self.client.get("/backups/credenciais-app/")

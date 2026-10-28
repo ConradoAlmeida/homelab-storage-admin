@@ -293,3 +293,6 @@ details[open] > summary.btn { margin-bottom:8px; }
 .restore-form { display:flex; flex-direction:column; gap:8px; margin-top:10px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--bg-deep); min-width:300px; }
 .restore-form label { color:var(--muted); }
 .restore-form input[type=checkbox] { width:auto; margin-right:6px; }
+
+.file-add-form { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
+.file-add-form input { flex:1; min-width:320px; }

@@ -144,6 +144,62 @@ def test_restauracao_volta_banco_e_env(agent_module):
     assert (anterior / ".env").is_file()
 
 
+def _criar_extra(tmp_path: Path, valor: str = "extra") -> Path:
+    caminho = tmp_path / "config" / "app.conf"
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    caminho.write_text(valor + "\n")
+    return caminho
+
+
+def test_incluir_arquivo_individual_entra_no_proximo_backup(agent_module, tmp_path):
+    banco, ambiente = _fontes(agent_module)
+    _criar_banco(banco)
+    ambiente.parent.mkdir(parents=True, exist_ok=True)
+    ambiente.write_text("CHAVE=valor\n")
+    extra = _criar_extra(tmp_path)
+
+    agent_module.op_credenciais_backup_add_file(str(extra))
+    dados = agent_module.op_credenciais_backup_overview()
+    assert str(extra) in dados["config"]["files"]
+    assert any(item["path"] == str(extra) for item in dados["sources"])
+
+    status = agent_module.op_credenciais_backup_run()
+    with tarfile.open(
+        Path(agent_module.CREDENCIAIS_BACKUP_DIR) / status["archive"], "r:gz"
+    ) as pacote:
+        nomes = pacote.getnames()
+    assert f"files/0-{extra.name}" in nomes
+
+    agent_module.op_credenciais_backup_remove_file(str(extra))
+    assert agent_module.op_credenciais_backup_overview()["config"]["files"] == []
+
+
+def test_restauracao_devolve_arquivo_individual(agent_module, tmp_path):
+    banco, ambiente = _fontes(agent_module)
+    _criar_banco(banco)
+    ambiente.parent.mkdir(parents=True, exist_ok=True)
+    ambiente.write_text("CHAVE=valor\n")
+    extra = _criar_extra(tmp_path, "antes")
+    agent_module.op_credenciais_backup_add_file(str(extra))
+    status = agent_module.op_credenciais_backup_run()
+
+    _criar_extra(tmp_path, "depois")
+    resultado = agent_module.op_credenciais_backup_restore(
+        status["archive"], restart=False
+    )
+
+    assert extra.read_text() == "antes\n"
+    copia = Path(resultado["security_copy"]) / "files" / f"0-{extra.name}"
+    assert copia.read_text() == "depois\n"
+
+
+def test_incluir_recusa_diretorio_e_caminho_relativo(agent_module, tmp_path):
+    with pytest.raises(agent_module.AgentError):
+        agent_module.op_credenciais_backup_add_file("relativo.conf")
+    with pytest.raises(agent_module.AgentError):
+        agent_module.op_credenciais_backup_add_file(str(tmp_path / "config"))
+
+
 def test_restauracao_recusa_nome_invalido(agent_module):
     with pytest.raises(agent_module.AgentError):
         agent_module.op_credenciais_backup_restore("../../etc/passwd", restart=False)

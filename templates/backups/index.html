@@ -18,6 +18,56 @@
   </div>
 </div>
 
+{% if capabilities.credenciais_backup %}
+<h2>Backup local de arquivos</h2>
+<div class="card">
+  {% if credenciais_error %}
+    <p class="muted">Agente indisponível: {{ credenciais_error }}</p>
+  {% elif credenciais %}
+    <p class="muted text-12">
+      Banco SQLite + <span class="mono">.env</span> e
+      {{ credenciais.config.files|length }} arquivo(s) individual(is) ·
+      diário {{ credenciais.config.time }} · retenção {{ credenciais.config.retention_days }} dias ·
+      arquivos 600 root:root
+    </p>
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Job</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>Credenciais</strong>
+            <div class="muted mono text-11">{{ credenciais.config.dir }}</div>
+          </td>
+          <td class="muted text-12">
+            banco + .env{% if credenciais.config.files %} + {{ credenciais.config.files|length }} arquivo(s){% endif %}
+            {% if not credenciais.available %}<div class="badge danger">fonte incompleta</div>{% endif %}
+          </td>
+          <td class="muted">diário {{ credenciais.config.time }}</td>
+          <td class="muted">{{ credenciais.config.retention_days }} dias</td>
+          <td>
+            {% with status=credenciais.status %}
+              {% if status.ok %}<span class="state-ok">success</span>
+              {% elif status.error %}<span class="state-bad">failed</span>
+              {% else %}<span class="muted">-</span>{% endif %}
+              {% if status.finished_at %}<div class="muted text-11">{{ status.finished_at }}</div>{% endif %}
+              {% if status.error %}<div class="muted text-11">{{ status.error }}</div>{% endif %}
+            {% endwith %}
+          </td>
+          <td class="muted text-12">{{ credenciais.next_run|default:"-" }}</td>
+          <td class="file-actions">
+            <form method="post" action="{% url 'credenciais_backup_run' %}" class="display-inline">
+              {% csrf_token %}
+              <button class="btn small" type="submit">Rodar agora</button>
+            </form>
+            <a class="btn small" href="{% url 'credenciais_backup_index' %}">Configurar</a>
+          </td>
+        </tr>
+      </tbody>
+    </table></div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}

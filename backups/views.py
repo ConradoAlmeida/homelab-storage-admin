@@ -114,11 +114,22 @@ class BackupIndexView(AgentTemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"overview": None, "error": None})
+        context.update(
+            {
+                "overview": None,
+                "error": None,
+                "credenciais": None,
+                "credenciais_error": None,
+            }
+        )
         try:
             context["overview"] = agent.backup_overview()
         except AgentError as exc:
             context["error"] = str(exc)
+        try:
+            context["credenciais"] = agent.credenciais_backup_overview()
+        except AgentError as exc:
+            context["credenciais_error"] = str(exc)
         return context
 
 
@@ -835,6 +846,44 @@ class CredenciaisBackupRunView(AgentPostView):
                 f"Backup gerado: {resultado.get('archive')} "
                 f"({resultado.get('size_label')}).",
             )
+        return redirect("credenciais_backup_index")
+
+
+class CredenciaisBackupFileAddView(AgentPostView):
+    def post(self, request):
+        caminho = (request.POST.get("path") or "").strip()
+        try:
+            agent.credenciais_backup_add_file(caminho)
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel incluir o arquivo: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="credenciais_backup_add_file",
+                target=caminho,
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request, f"{caminho} passa a entrar no proximo backup."
+            )
+        return redirect("credenciais_backup_index")
+
+
+class CredenciaisBackupFileRemoveView(AgentPostView):
+    def post(self, request):
+        caminho = (request.POST.get("path") or "").strip()
+        try:
+            agent.credenciais_backup_remove_file(caminho)
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel remover o arquivo: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="credenciais_backup_remove_file",
+                target=caminho,
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(request, f"{caminho} sai do proximo backup.")
         return redirect("credenciais_backup_index")
 
 

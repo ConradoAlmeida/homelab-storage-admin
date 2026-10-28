@@ -550,10 +550,16 @@ via CLI; o navegador serve para inspecionar e baixar itens específicos.
 
 ## 6.8 Backup do Credenciais
 
-**Backups → Backup do Credenciais** cobre o banco SQLite e o `.env` do
-`moya-credenciais` sem depender de restic:
+**Backups → Backup do Credenciais** cobre o banco SQLite, o `.env` e arquivos
+individuais do `moya-credenciais` sem depender de restic. O job aparece também
+na página principal de Backups, com status e próxima execução.
 
-- **Fonte**: `CREDENCIAIS_DB` e `CREDENCIAIS_ENV`, com estado e tamanho.
+- **Fonte**: `CREDENCIAIS_DB`, `CREDENCIAIS_ENV` e os arquivos incluídos em
+  **Incluir arquivo** (caminho absoluto, arquivo comum, até
+  `CREDENCIAIS_MAX_FILE_BYTES`, padrão 100 MB). Symlinks, pastas, `/proc`,
+  `/sys`, `/dev` e `/run` são recusados.
+- **Configuração**: a lista fica em `/etc/homelab-backup/credenciais.json`
+  (`files`), editável pela tela; remover um item não apaga o arquivo original.
 - **Job**: timer systemd `homelab-credenciais-backup.timer`, diário às 03:30
   (`OnCalendar=*-*-* 03:30:00`, `Persistent=true`) e **Rodar agora**.
 - **Status**: último resultado em `/etc/homelab-backup/credenciais-status.json`,
@@ -563,6 +569,10 @@ via CLI; o navegador serve para inspecionar e baixar itens específicos.
   `PRAGMA integrity_check`; só então copia banco e `.env` com dono/permissão
   originais. O estado atual vai para `pre-restore-AAAAMMDD-HHMMSS` e o container
   é reiniciado em instantes, depois da resposta.
+
+O pacote guarda `db.sqlite3`, `.env` e `files/<n>-<nome>`; o **Restore** devolve
+cada arquivo individual ao caminho de origem e guarda a versão atual em
+`pre-restore-*/files/`.
 
 O banco é copiado pela API de backup do SQLite, então a cópia é consistente
 mesmo com o app rodando. A retenção (`CREDENCIAIS_RETENTION_DAYS`, 30) apaga

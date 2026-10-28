@@ -40,6 +40,16 @@ urlpatterns = [
         name="credenciais_backup_run",
     ),
     path(
+        "credenciais-app/files/add/",
+        views.CredenciaisBackupFileAddView.as_view(),
+        name="credenciais_backup_file_add",
+    ),
+    path(
+        "credenciais-app/files/remove/",
+        views.CredenciaisBackupFileRemoveView.as_view(),
+        name="credenciais_backup_file_remove",
+    ),
+    path(
         "credenciais-app/<str:archive>/verify/",
         views.CredenciaisBackupVerifyView.as_view(),
         name="credenciais_backup_verify",
