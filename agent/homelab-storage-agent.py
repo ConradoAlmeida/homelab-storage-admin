@@ -44,6 +44,7 @@ COLD_MOUNT = os.environ.get("COLD_MOUNT", "/mnt/coldcopy")
 BACKUP_HEALTH_DIR = os.environ.get(
     "BACKUP_HEALTH_DIR", "/etc/homelab-backup/health"
 )
+SYSTEMD_DIR = os.environ.get("SYSTEMD_DIR", "/etc/systemd/system")
 CREDENCIAIS_CONFIG = os.environ.get(
     "CREDENCIAIS_CONFIG", "/etc/homelab-backup/credenciais.json"
 )
@@ -2072,13 +2073,13 @@ def _backup_jobs(config: dict) -> list[dict]:
 
 
 def _apply_backup_timer(name: str, enabled: bool, on_calendar: str) -> None:
-    service_template = Path("/etc/systemd/system/homelab-restic-backup@.service")
+    service_template = Path(SYSTEMD_DIR) / "homelab-restic-backup@.service"
     if not service_template.is_file():
         raise AgentError(
             "Servico homelab-restic-backup@.service ausente; rode sudo ./install-agent.sh"
         )
     timer_name = f"homelab-restic-backup-{name}.timer"
-    timer_path = Path("/etc/systemd/system") / timer_name
+    timer_path = Path(SYSTEMD_DIR) / timer_name
     if enabled:
         timer_path.write_text(
             "[Unit]\n"
@@ -2580,7 +2581,7 @@ def _job_agenda(job: dict) -> str:
 
 
 def _job_apply_timer(job: dict) -> None:
-    base = Path("/etc/systemd/system")
+    base = Path(SYSTEMD_DIR)
     if not base.is_dir():
         return
     nome = job["name"]
@@ -4257,7 +4258,7 @@ def op_cold_copy(**_):
     disk = next((item for item in disks if item.get("configured")), None)
     if disk is None:
         raise AgentError("Drive de copia fria nao conectado")
-    if not Path("/etc/systemd/system/homelab-cold-copy.service").is_file():
+    if not (Path(SYSTEMD_DIR) / "homelab-cold-copy.service").is_file():
         raise AgentError("Servico homelab-cold-copy ausente; rode sudo ./install-agent.sh")
     rc, _, _ = run_optional(
         ["systemctl", "is-active", "--quiet", "homelab-cold-copy.service"], timeout=10

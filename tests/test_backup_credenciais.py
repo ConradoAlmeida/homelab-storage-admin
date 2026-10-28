@@ -330,7 +330,7 @@ def test_job_copia_sqlite_com_backup_api(agent_module, tmp_path):
     with tarfile.open(
         Path(agent_module.CREDENCIAIS_BACKUP_DIR) / status["archive"], "r:gz"
     ) as pacote:
-        pacote.extractall(destino)
+        pacote.extractall(destino, filter="data")
     copia = destino / "files/0-dados/app.db"
     assert _ler_banco(copia) == "valor"
 

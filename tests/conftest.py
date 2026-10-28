@@ -56,6 +56,9 @@ ENV_KEYS = (
     "GITEA_CONTAINER",
     "GITEA_KEEP",
     "GITEA_USB_MIN_FREE",
+    "ARQUIVOS_STATUS_DIR",
+    "BACKUP_HEALTH_DIR",
+    "SYSTEMD_DIR",
     "LOG_FILE",
     "STORAGE_CACHE",
 )
@@ -170,6 +173,9 @@ def agent_module(monkeypatch, tmp_path):
         "GITEA_CONTAINER": "gitea-teste",
         "GITEA_KEEP": "2",
         "GITEA_USB_MIN_FREE": "1024",
+        "ARQUIVOS_STATUS_DIR": str(tmp_path / "backup-config" / "arquivos-status"),
+        "BACKUP_HEALTH_DIR": str(tmp_path / "backup-config" / "health"),
+        "SYSTEMD_DIR": str(tmp_path / "systemd"),
         "LOG_FILE": str(tmp_path / "agent.log"),
         "STORAGE_CACHE": str(tmp_path / "storage-cache.json"),
     }
