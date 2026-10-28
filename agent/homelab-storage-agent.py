@@ -2615,7 +2615,7 @@ def _credenciais_backup_run(config: dict | None = None) -> dict:
         arquivo = destino / nome
         with tarfile.open(arquivo, "w:gz") as pacote:
             for item in [*nomes, "manifest.json"]:
-                pacote.add(estagio / item, arcname=item)
+                pacote.add(estagio / item, arcname=item, recursive=False)
         os.chmod(arquivo, 0o600)
     except (OSError, sqlite3.Error, tarfile.TarError) as exc:
         raise AgentError(f"Falha ao gerar o backup do Credenciais: {exc}") from exc

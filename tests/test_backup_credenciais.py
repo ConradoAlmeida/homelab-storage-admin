@@ -217,6 +217,7 @@ def test_incluir_pasta_backup_e_restore(agent_module, tmp_path):
     assert "files/0-projeto/raiz.txt" in nomes
     assert "files/0-projeto/sub/item.txt" in nomes
     assert "files/0-projeto/vazia" in nomes
+    assert len(nomes) == len(set(nomes))
 
     (pasta / "raiz.txt").write_text("alterado\n")
     (pasta / "novo.txt").write_text("novo\n")
