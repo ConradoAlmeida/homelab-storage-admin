@@ -17,6 +17,7 @@ from core.view_base import AgentPostView, AgentTemplateView, AgentView
 from .defaults import DEFAULT_EXCLUDES_TEXT
 
 LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
+WEEKDAY_LABELS = ("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo")
 WEEKDAYS = [
     (0, "Segunda"),
     (1, "Terça"),
@@ -70,6 +71,16 @@ def _safe_download_path(relative: str) -> Path | None:
     except ValueError:
         return None
     return candidate
+
+
+def _agenda_label(config: dict) -> str:
+    if config.get("frequency") == "weekly":
+        try:
+            dia = WEEKDAY_LABELS[int(config.get("weekday", 0)) % 7]
+        except (TypeError, ValueError):
+            dia = "Segunda"
+        return f"semanal ({dia.lower()}) {config.get('time', '')}"
+    return f"diário {config.get('time', '')}"
 
 
 def _default_job_form(overview: dict) -> dict:
@@ -130,6 +141,10 @@ class BackupIndexView(AgentTemplateView):
             context["credenciais"] = agent.credenciais_backup_overview()
         except AgentError as exc:
             context["credenciais_error"] = str(exc)
+        if context.get("credenciais"):
+            context["agenda_label"] = _agenda_label(
+                context["credenciais"].get("config", {})
+            )
         return context
 
 
@@ -814,29 +829,40 @@ class ColdEjectView(AgentPostView):
         return redirect("cold_index")
 
 
-class CredenciaisBackupView(AgentTemplateView):
-    template_name = "backups/credenciais.html"
+class ArquivosBackupView(AgentTemplateView):
+    template_name = "backups/arquivos.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"overview": None, "error": None})
+        context.update(
+            {
+                "overview": None,
+                "error": None,
+                "weekdays": list(enumerate(WEEKDAY_LABELS)),
+                "agenda_label": "",
+            }
+        )
         try:
             context["overview"] = agent.credenciais_backup_overview()
         except AgentError as exc:
             context["error"] = str(exc)
+        if context.get("overview"):
+            context["agenda_label"] = _agenda_label(
+                context["overview"].get("config", {})
+            )
         return context
 
 
-class CredenciaisBackupRunView(AgentPostView):
+class ArquivosBackupRunView(AgentPostView):
     def post(self, request):
         try:
-            resultado = agent.credenciais_backup_run()
+            resultado = agent.arquivos_backup_run()
         except AgentError as exc:
-            messages.error(request, f"Backup do Credenciais falhou: {exc}")
+            messages.error(request, f"Backup local falhou: {exc}")
         else:
             AuditLog.objects.create(
                 actor=request.user,
-                action="credenciais_backup_run",
+                action="arquivos_backup_run",
                 target=resultado.get("archive", ""),
                 detail=resultado.get("size_label", ""),
                 ip=request.META.get("REMOTE_ADDR"),
@@ -846,10 +872,39 @@ class CredenciaisBackupRunView(AgentPostView):
                 f"Backup gerado: {resultado.get('archive')} "
                 f"({resultado.get('size_label')}).",
             )
-        return redirect("credenciais_backup_index")
+        return redirect("arquivos_backup_index")
 
 
-class CredenciaisBackupFileAddView(AgentPostView):
+class ArquivosBackupSettingsView(AgentPostView):
+    def post(self, request):
+        try:
+            resultado = agent.credenciais_backup_settings(
+                time=(request.POST.get("time") or "").strip(),
+                frequency=(request.POST.get("frequency") or "daily").strip(),
+                weekday=request.POST.get("weekday") or 0,
+                retention_days=request.POST.get("retention_days") or 0,
+            )
+        except AgentError as exc:
+            messages.error(request, f"Nao foi possivel salvar o agendamento: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="credenciais_backup_settings",
+                target=f"{resultado.get('frequency')} {resultado.get('time')}",
+                detail=f"retencao={resultado.get('retention_days')}d",
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request,
+                f"Agendamento atualizado: "
+                f"{'semanal' if resultado.get('frequency') == 'weekly' else 'diário'} "
+                f"{resultado.get('time')}, retenção "
+                f"{resultado.get('retention_days')} dias.",
+            )
+        return redirect("arquivos_backup_index")
+
+
+class ArquivosBackupFileAddView(AgentPostView):
     def post(self, request):
         caminho = (request.POST.get("path") or "").strip()
         try:
@@ -866,10 +921,10 @@ class CredenciaisBackupFileAddView(AgentPostView):
             messages.success(
                 request, f"{caminho} passa a entrar no proximo backup."
             )
-        return redirect("credenciais_backup_index")
+        return redirect("arquivos_backup_index")
 
 
-class CredenciaisBackupFileRemoveView(AgentPostView):
+class ArquivosBackupFileRemoveView(AgentPostView):
     def post(self, request):
         caminho = (request.POST.get("path") or "").strip()
         try:
@@ -884,13 +939,13 @@ class CredenciaisBackupFileRemoveView(AgentPostView):
                 ip=request.META.get("REMOTE_ADDR"),
             )
             messages.success(request, f"{caminho} sai do proximo backup.")
-        return redirect("credenciais_backup_index")
+        return redirect("arquivos_backup_index")
 
 
-class CredenciaisBackupVerifyView(AgentPostView):
+class ArquivosBackupVerifyView(AgentPostView):
     def post(self, request, archive):
         try:
-            resultado = agent.credenciais_backup_verify(archive)
+            resultado = agent.arquivos_backup_verify(archive)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel verificar {archive}: {exc}")
         else:
@@ -909,15 +964,15 @@ class CredenciaisBackupVerifyView(AgentPostView):
                 )
             AuditLog.objects.create(
                 actor=request.user,
-                action="credenciais_backup_verify",
+                action="arquivos_backup_verify",
                 target=archive,
                 detail=f"integrity={resultado.get('integrity')}",
                 ip=request.META.get("REMOTE_ADDR"),
             )
-        return redirect("credenciais_backup_index")
+        return redirect("arquivos_backup_index")
 
 
-class CredenciaisBackupRestoreView(AgentPostView):
+class ArquivosBackupRestoreView(AgentPostView):
     def post(self, request, archive):
         confirmacao = (request.POST.get("confirmation") or "").strip()
         if confirmacao != archive:
@@ -925,16 +980,16 @@ class CredenciaisBackupRestoreView(AgentPostView):
                 request,
                 "Para restaurar, digite o nome do arquivo exatamente como aparece.",
             )
-            return redirect("credenciais_backup_index")
+            return redirect("arquivos_backup_index")
         reiniciar = request.POST.get("restart") == "1"
         try:
-            resultado = agent.credenciais_backup_restore(archive, restart=reiniciar)
+            resultado = agent.arquivos_backup_restore(archive, restart=reiniciar)
         except AgentError as exc:
             messages.error(request, f"Restauracao falhou: {exc}")
         else:
             AuditLog.objects.create(
                 actor=request.user,
-                action="credenciais_backup_restore",
+                action="arquivos_backup_restore",
                 target=archive,
                 detail=f"restart={resultado.get('restarted')}",
                 ip=request.META.get("REMOTE_ADDR"),
@@ -949,23 +1004,23 @@ class CredenciaisBackupRestoreView(AgentPostView):
                 f"Backup {archive} restaurado. Copia do estado anterior em "
                 f"{resultado.get('security_copy')}.{aviso}",
             )
-        return redirect("credenciais_backup_index")
+        return redirect("arquivos_backup_index")
 
 
-class CredenciaisBackupDownloadView(AgentView):
+class ArquivosBackupDownloadView(AgentView):
     def get(self, request, archive):
         try:
-            resultado = agent.credenciais_backup_download(archive)
+            resultado = agent.arquivos_backup_download(archive)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel baixar {archive}: {exc}")
-            return redirect("credenciais_backup_index")
+            return redirect("arquivos_backup_index")
         destino = _safe_download_path(resultado.get("relative") or "")
         if destino is None or not destino.is_file():
             messages.error(request, "Arquivo de download nao encontrado no app.")
-            return redirect("credenciais_backup_index")
+            return redirect("arquivos_backup_index")
         AuditLog.objects.create(
             actor=request.user,
-            action="credenciais_backup_download",
+            action="arquivos_backup_download",
             target=archive,
             ip=request.META.get("REMOTE_ADDR"),
         )

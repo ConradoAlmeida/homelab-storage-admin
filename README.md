@@ -548,39 +548,33 @@ O botão **Navegar** abre um navegador read-only do snapshot:
 Restaurar uma árvore inteira para um share continua sendo uma operação manual
 via CLI; o navegador serve para inspecionar e baixar itens específicos.
 
-## 6.8 Backup do Credenciais
+## 6.8 Backup local de arquivos
 
-**Backups → Backup do Credenciais** cobre o banco SQLite, o `.env` e arquivos
-individuais do `moya-credenciais` sem depender de restic. O job aparece também
-na página principal de Backups, com status e próxima execução.
+**Backups → Backup de arquivos** é um job local, sem restic, em que o admin
+escolhe **arquivos ou pastas** do servidor. O banco SQLite e o .env do
+Credenciais entram por padrão.
 
-- **Fonte**: `CREDENCIAIS_DB`, `CREDENCIAIS_ENV` e os arquivos incluídos em
-  **Incluir arquivo** (caminho absoluto, arquivo comum, até
-  `CREDENCIAIS_MAX_FILE_BYTES`, padrão 100 MB). Symlinks, pastas, `/proc`,
-  `/sys`, `/dev` e `/run` são recusados.
-- **Configuração**: a lista fica em `/etc/homelab-backup/credenciais.json`
-  (`files`), editável pela tela; remover um item não apaga o arquivo original.
-- **Job**: timer systemd `homelab-credenciais-backup.timer`, diário às 03:30
-  (`OnCalendar=*-*-* 03:30:00`, `Persistent=true`) e **Rodar agora**.
-- **Status**: último resultado em `/etc/homelab-backup/credenciais-status.json`,
-  lista dos arquivos em `CREDENCIAIS_BACKUP_DIR` (600 root:root, pasta 700) e
-  próxima execução.
-- **Restore**: extrai em staging, confere `sha256` do manifesto e roda
-  `PRAGMA integrity_check`; só então copia banco e `.env` com dono/permissão
-  originais. O estado atual vai para `pre-restore-AAAAMMDD-HHMMSS` e o container
-  é reiniciado em instantes, depois da resposta.
+- **Fontes**: banco e .env fixos, mais os itens incluídos em **Incluir arquivo
+  ou pasta** (caminho absoluto, arquivo comum ou pasta; symlinks são ignorados).
+  Limite por fonte CREDENCIAIS_MAX_SOURCE_BYTES (padrão 2 GB).
+- **Agendamento**: diário ou semanal, com horário e retenção em dias, editável
+  na tela. O agente reescreve homelab-credenciais-backup.timer
+  (OnCalendar) e recarrega o systemd.
+- **Pacote**: db.sqlite3, .env, iles/<n>-<nome>/... e manifest.json,
+  com arquivos 600 root:root em pasta 700. Pastas preservam a estrutura
+  interna; du/espaço livre são conferidos antes de gerar.
+- **Status**: último resultado em /etc/homelab-backup/credenciais-status.json,
+  lista de pacotes, tamanho, idade e próxima execução.
+- **Restore**: extrai em staging, confere sha256 e PRAGMA integrity_check;
+  copia o estado atual para pre-restore-AAAAMMDD-HHMMSS; devolve cada arquivo
+  ou pasta ao caminho de origem com dono/permissão originais e reinicia o
+  container. Restore não apaga arquivos criados depois do backup.
+- **Download** usa o diretório temporário do restic e é auditado.
 
-O pacote guarda `db.sqlite3`, `.env` e `files/<n>-<nome>`; o **Restore** devolve
-cada arquivo individual ao caminho de origem e guarda a versão atual em
-`pre-restore-*/files/`.
-
-O banco é copiado pela API de backup do SQLite, então a cópia é consistente
-mesmo com o app rodando. A retenção (`CREDENCIAIS_RETENTION_DAYS`, 30) apaga
-apenas arquivos antigos do próprio diretório e nunca o recém-criado. O download
-usa o mesmo diretório temporário do restic e é auditado.
-
-Para instalar o timer: `sudo ./install-agent.sh` no moya (o timer só é ativado
-quando `CREDENCIAIS_DB` existe; no Pi ele fica desligado).
+A configuração fica em /etc/homelab-backup/credenciais.json (iles,
+	ime, requency, weekday, 
+etention_days). O timer só é ativado quando
+CREDENCIAIS_DB existe; no Pi fica desligado.
 
 ## 7. Samba
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=Backup local do Credenciais (banco e .env)
+Description=Backup local de arquivos
 After=network.target
 
 [Service]

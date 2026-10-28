@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Backup do Credenciais - {{ product_name }}{% endblock %}
+{% block title %}Backup local de arquivos - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="row row-between-start">
   <div>
-    <h1 class="mb-4">Backup de arquivos</h1>
-    <p class="muted">Banco SQLite, <span class="mono">.env</span> e arquivos individuais em um único pacote local, sem restic. Leitura restrita ao root.</p>
+    <h1 class="mb-4">Backup local de arquivos</h1>
+    <p class="muted">Escolha arquivos ou pastas do servidor. O banco e o <span class="mono">.env</span> do Credenciais entram por padrão. Pacote local, sem restic, com leitura restrita ao root.</p>
   </div>
   <div>
     <a class="btn small" href="{% url 'backup_index' %}">Voltar aos backups</a>
@@ -16,12 +16,12 @@
 {% elif overview %}
   {% if not overview.available %}
     <div class="alert danger">
-      <strong>Fonte incompleta.</strong> O agente não encontrou o banco ou o <span class="mono">.env</span> do Credenciais.
+      <strong>Fonte padrão incompleta.</strong> O agente não encontrou o banco ou o <span class="mono">.env</span> do Credenciais.
       Nada é gerado até os dois arquivos existirem.
     </div>
   {% endif %}
 
-  <h2>Fonte</h2>
+  <h2>Fontes</h2>
   <div class="card">
     <div class="table-wrap"><table class="file-table">
       <thead><tr><th>Item</th><th>Tipo</th><th>Caminho</th><th>Tamanho</th><th>Estado</th><th></th></tr></thead>
@@ -38,8 +38,8 @@
             </td>
             <td class="file-actions">
               {% if fonte.extra %}
-              <form method="post" action="{% url 'credenciais_backup_file_remove' %}" class="display-inline"
-                    data-confirm="Remover {{ fonte.path }} do próximo backup? O arquivo original não é apagado.">
+              <form method="post" action="{% url 'arquivos_backup_file_remove' %}" class="display-inline"
+                    data-confirm="Remover {{ fonte.path }} do próximo backup? O original não é apagado.">
                 {% csrf_token %}
                 <input type="hidden" name="path" value="{{ fonte.path }}">
                 <button class="btn small danger" type="submit">Remover</button>
@@ -52,11 +52,15 @@
         {% endfor %}
       </tbody>
     </table></div>
-    <form method="post" action="{% url 'credenciais_backup_file_add' %}" class="file-add-form">
+    <form method="post" action="{% url 'arquivos_backup_file_add' %}" class="file-add-form">
       {% csrf_token %}
-      <input type="text" name="path" placeholder="/home/conrado/algum/arquivo.conf" autocomplete="off" required>
-      <button class="btn small" type="submit">Incluir arquivo</button>
+      <input type="text" name="path" placeholder="/home/conrado/pasta ou /etc/algum/arquivo.conf" autocomplete="off" required>
+      <button class="btn small" type="submit">Incluir arquivo ou pasta</button>
     </form>
+    <p class="muted text-12">
+      Caminho absoluto, arquivo comum ou pasta (symlinks são ignorados). Limite por fonte:
+      {{ overview.config.max_source_label }}. Pastas são copiadas com a estrutura interna.
+    </p>
     <p class="muted text-12">
       Destino: <span class="mono">{{ overview.config.dir }}</span> ·
       retenção {{ overview.config.retention_days }} dias ·
@@ -69,7 +73,7 @@
     <div class="row row-between-start">
       <div>
         <p class="mb-4">
-          <span class="badge">diário {{ overview.config.time }}</span>
+          <span class="badge">{{ agenda_label }}</span>
           <span class="badge">retenção {{ overview.config.retention_days }} dias</span>
           <span class="badge">timer {{ overview.timer }}</span>
         </p>
@@ -79,10 +83,36 @@
         </p>
       </div>
       <div class="file-actions">
-        <form method="post" action="{% url 'credenciais_backup_run' %}" class="display-inline">
+        <form method="post" action="{% url 'arquivos_backup_run' %}" class="display-inline">
           {% csrf_token %}
           <button class="btn small" type="submit" {% if not overview.available %}disabled{% endif %}>Rodar agora</button>
         </form>
+        <details class="display-inline">
+          <summary class="btn small">Alterar agendamento</summary>
+          <form method="post" action="{% url 'arquivos_backup_settings' %}" class="restore-form">
+            {% csrf_token %}
+            <label class="text-12">Frequência
+              <select name="frequency">
+                <option value="daily" {% if overview.config.frequency != "weekly" %}selected{% endif %}>Diário</option>
+                <option value="weekly" {% if overview.config.frequency == "weekly" %}selected{% endif %}>Semanal</option>
+              </select>
+            </label>
+            <label class="text-12">Dia da semana
+              <select name="weekday">
+                {% for valor, rotulo in weekdays %}
+                <option value="{{ valor }}" {% if overview.config.weekday == valor %}selected{% endif %}>{{ rotulo }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="text-12">Horário
+              <input type="time" name="time" value="{{ overview.config.time }}" required>
+            </label>
+            <label class="text-12">Retenção (dias)
+              <input type="number" name="retention_days" min="1" max="3650" value="{{ overview.config.retention_days }}" required>
+            </label>
+            <button class="btn small" type="submit">Salvar agendamento</button>
+          </form>
+        </details>
       </div>
     </div>
     {% with status=overview.status %}
@@ -120,15 +150,15 @@
             <td>{{ item.size }}</td>
             <td class="muted">{{ item.age_days }}d</td>
             <td class="file-actions">
-              <form method="post" action="{% url 'credenciais_backup_verify' archive=item.name %}" class="display-inline">
+              <form method="post" action="{% url 'arquivos_backup_verify' archive=item.name %}" class="display-inline">
                 {% csrf_token %}
                 <button class="btn small" type="submit">Verificar</button>
               </form>
-              <a class="btn small" href="{% url 'credenciais_backup_download' archive=item.name %}">Baixar</a>
+              <a class="btn small" href="{% url 'arquivos_backup_download' archive=item.name %}">Baixar</a>
               <details class="display-inline">
                 <summary class="btn small danger">Restaurar</summary>
-                <form method="post" action="{% url 'credenciais_backup_restore' archive=item.name %}" class="restore-form"
-                      data-confirm="Restaurar {{ item.name }} por cima do banco em uso?">
+                <form method="post" action="{% url 'arquivos_backup_restore' archive=item.name %}" class="restore-form"
+                      data-confirm="Restaurar {{ item.name }} por cima dos arquivos em uso?">
                   {% csrf_token %}
                   <label class="text-12">Digite <span class="mono">{{ item.name }}</span> para confirmar</label>
                   <input class="input" type="text" name="confirmation" autocomplete="off" required>
@@ -148,18 +178,16 @@
   <h2>Restore</h2>
   <div class="card">
     <p class="text-12">
-      A restauração extrai o arquivo, confere o <span class="mono">sha256</span> de cada item e roda
+      A restauração extrai o pacote, confere o <span class="mono">sha256</span> de cada item e roda
       <span class="mono">PRAGMA integrity_check</span> no banco antes de tocar em qualquer coisa.
-      O banco e o <span class="mono">.env</span> atuais são copiados para
+      O banco, o <span class="mono">.env</span> e os arquivos atuais são copiados para
       <span class="mono">{{ overview.config.dir }}/pre-restore-AAAAMMDD-HHMMSS</span>.
-      Só então os arquivos voltam com dono e permissão originais; os arquivos individuais
-      retornam ao caminho de origem e o container é reiniciado em instantes, depois da resposta.
-      Cópias dos arquivos individuais ficam em <span class="mono">pre-restore-AAAAMMDD-HHMMSS/files/</span>.
+      Só então tudo volta com dono e permissão originais; arquivos e pastas retornam ao caminho de origem
+      e o container é reiniciado em instantes, depois da resposta.
     </p>
     <p class="muted text-12">
-      Para restaurar em outra máquina: baixe o arquivo, extraia <span class="mono">db.sqlite3</span> e
-      <span class="mono">.env</span> em <span class="mono">{{ overview.config.db }}</span> e
-      <span class="mono">{{ overview.config.env }}</span>, depois suba o Credenciais.
+      Para restaurar em outra máquina: baixe o arquivo e extraia <span class="mono">db.sqlite3</span>,
+      <span class="mono">.env</span> e <span class="mono">files/</span> nos caminhos correspondentes.
     </p>
   </div>
 {% endif %}

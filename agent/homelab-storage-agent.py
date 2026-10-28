@@ -58,8 +58,11 @@ CREDENCIAIS_ENV = os.environ.get(
 CREDENCIAIS_CONTAINER = os.environ.get("CREDENCIAIS_CONTAINER", "moya-credenciais")
 CREDENCIAIS_TIME = os.environ.get("CREDENCIAIS_TIME", "03:30")
 CREDENCIAIS_RETENTION_DAYS = int(os.environ.get("CREDENCIAIS_RETENTION_DAYS", "30"))
-CREDENCIAIS_MAX_FILE_BYTES = int(
-    os.environ.get("CREDENCIAIS_MAX_FILE_BYTES", str(100 * 1024 * 1024))
+CREDENCIAIS_MAX_SOURCE_BYTES = int(
+    os.environ.get(
+        "CREDENCIAIS_MAX_SOURCE_BYTES",
+        os.environ.get("CREDENCIAIS_MAX_FILE_BYTES", str(2 * 1024 * 1024 * 1024)),
+    )
 )
 CREDENCIAIS_PROIBIDOS = ("/proc", "/sys", "/dev", "/run")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
@@ -2182,6 +2185,8 @@ def _human_bytes(value: int | float) -> str:
 def _credenciais_config() -> dict:
     base = {
         "time": CREDENCIAIS_TIME,
+        "frequency": "daily",
+        "weekday": 0,
         "retention_days": CREDENCIAIS_RETENTION_DAYS,
         "db": CREDENCIAIS_DB,
         "env": CREDENCIAIS_ENV,
@@ -2195,13 +2200,20 @@ def _credenciais_config() -> dict:
     try:
         dados = json.loads(caminho.read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        raise AgentError(f"Configuracao do backup do Credenciais invalida: {exc}") from exc
+        raise AgentError(f"Configuracao do backup local invalida: {exc}") from exc
     if not isinstance(dados, dict):
         return base
     for chave in list(base):
         valor = dados.get(chave)
         if valor not in (None, ""):
             base[chave] = valor
+    base["frequency"] = (
+        "weekly" if str(base.get("frequency", "daily")).lower() == "weekly" else "daily"
+    )
+    try:
+        base["weekday"] = min(6, max(0, int(base.get("weekday", 0))))
+    except (TypeError, ValueError):
+        base["weekday"] = 0
     try:
         base["retention_days"] = max(1, int(base["retention_days"]))
     except (TypeError, ValueError):
@@ -2220,12 +2232,50 @@ def _credenciais_config() -> dict:
     return base
 
 
+def _credenciais_on_calendar(config: dict) -> str:
+    hora = str(config.get("time") or CREDENCIAIS_TIME)
+    if config.get("frequency") == "weekly":
+        dia = WEEKDAYS[min(6, max(0, int(config.get("weekday", 0))))]
+        return f"{dia} *-*-* {hora}:00"
+    return f"*-*-* {hora}:00"
+
+
+def _credenciais_apply_timer(config: dict) -> None:
+    caminho = Path("/etc/systemd/system/homelab-credenciais-backup.timer")
+    if not caminho.parent.is_dir():
+        return
+    conteudo = (
+        "[Unit]\n"
+        "Description=Backup local de arquivos\n\n"
+        "[Timer]\n"
+        f"OnCalendar={_credenciais_on_calendar(config)}\n"
+        "Persistent=true\n"
+        "Unit=homelab-credenciais-backup.service\n\n"
+        "[Install]\n"
+        "WantedBy=timers.target\n"
+    )
+    try:
+        atual = caminho.read_text() if caminho.is_file() else ""
+        if atual != conteudo:
+            caminho.write_text(conteudo)
+            os.chmod(caminho, 0o644)
+        run_optional(["systemctl", "daemon-reload"], timeout=30)
+        run_optional(
+            ["systemctl", "enable", "--now", "homelab-credenciais-backup.timer"],
+            timeout=30,
+        )
+    except OSError as exc:
+        raise AgentError(f"Nao foi possivel atualizar o agendamento: {exc}") from exc
+
+
 def _credenciais_config_write(config: dict) -> dict:
     caminho = Path(CREDENCIAIS_CONFIG)
     caminho.parent.mkdir(parents=True, exist_ok=True)
     dados = {
         "time": config["time"],
-        "retention_days": config["retention_days"],
+        "frequency": "weekly" if config.get("frequency") == "weekly" else "daily",
+        "weekday": min(6, max(0, int(config.get("weekday", 0)))),
+        "retention_days": max(1, int(config["retention_days"])),
         "db": config["db"],
         "env": config["env"],
         "dir": config["dir"],
@@ -2236,32 +2286,54 @@ def _credenciais_config_write(config: dict) -> dict:
     temporario.write_text(json.dumps(dados, indent=2, sort_keys=True))
     os.chmod(temporario, 0o600)
     temporario.replace(caminho)
+    _credenciais_apply_timer(dados)
     return dados
+
+
+def _credenciais_tamanho_fonte(alvo: Path) -> int:
+    if alvo.is_file():
+        return alvo.stat().st_size
+    total = 0
+    for raiz, pastas, arquivos in os.walk(alvo, followlinks=False):
+        pastas[:] = [nome for nome in pastas if not Path(raiz, nome).is_symlink()]
+        for nome in arquivos:
+            item = Path(raiz, nome)
+            if item.is_symlink() or not item.is_file():
+                continue
+            try:
+                total += item.stat().st_size
+            except OSError:
+                continue
+            if total > CREDENCIAIS_MAX_SOURCE_BYTES:
+                return total
+    return total
 
 
 def _credenciais_validar_arquivo(path: str) -> Path:
     texto = (path or "").strip()
     if not texto:
-        raise AgentError("Informe o caminho do arquivo")
+        raise AgentError("Informe o caminho do arquivo ou da pasta")
     alvo = Path(texto)
     if not alvo.is_absolute():
-        raise AgentError("Use um caminho absoluto, por exemplo /home/conrado/arquivo.conf")
+        raise AgentError(
+            "Use um caminho absoluto, por exemplo /home/conrado/arquivo.conf"
+        )
     for prefixo in CREDENCIAIS_PROIBIDOS:
         if str(alvo) == prefixo or str(alvo).startswith(prefixo + "/"):
             raise AgentError("Esse caminho nao pode ser copiado")
     if not alvo.exists():
-        raise AgentError(f"Arquivo nao encontrado: {alvo}")
+        raise AgentError(f"Caminho nao encontrado: {alvo}")
     if alvo.is_symlink():
         raise AgentError("Symlinks nao sao aceitos; informe o caminho real")
-    if not alvo.is_file():
-        raise AgentError("Informe um arquivo, nao uma pasta")
+    if not alvo.is_file() and not alvo.is_dir():
+        raise AgentError("Informe um arquivo ou uma pasta")
     if alvo in (Path(CREDENCIAIS_DB), Path(CREDENCIAIS_ENV)):
         raise AgentError("O banco e o .env ja entram no backup")
-    tamanho = alvo.stat().st_size
-    if tamanho > CREDENCIAIS_MAX_FILE_BYTES:
+    tamanho = _credenciais_tamanho_fonte(alvo)
+    if tamanho > CREDENCIAIS_MAX_SOURCE_BYTES:
         raise AgentError(
-            f"Arquivo grande demais ({_human_bytes(tamanho)}); "
-            f"limite {_human_bytes(CREDENCIAIS_MAX_FILE_BYTES)}"
+            f"Conteudo grande demais ({_human_bytes(tamanho)}); "
+            f"limite {_human_bytes(CREDENCIAIS_MAX_SOURCE_BYTES)}"
         )
     return alvo
 
@@ -2294,7 +2366,15 @@ def _credenciais_next_run(config: dict) -> str | None:
         return None
     agora = dt.datetime.now()
     proximo = agora.replace(hour=hora, minute=minuto, second=0, microsecond=0)
-    if proximo <= agora:
+    if config.get("frequency") == "weekly":
+        try:
+            dia = min(6, max(0, int(config.get("weekday", 0))))
+        except (TypeError, ValueError):
+            dia = 0
+        proximo += dt.timedelta(days=(dia - agora.weekday()) % 7)
+        if proximo <= agora:
+            proximo += dt.timedelta(days=7)
+    elif proximo <= agora:
         proximo += dt.timedelta(days=1)
     return proximo.isoformat(timespec="minutes")
 
@@ -2373,6 +2453,20 @@ def _credenciais_prune(pasta: Path, dias: int, manter: Path | None = None) -> li
     return removidos
 
 
+def _credenciais_entrada_pasta(caminho: Path, arcname: str) -> dict:
+    info = caminho.stat()
+    return {
+        "arcname": arcname,
+        "kind": "dir",
+        "source": str(caminho),
+        "uid": info.st_uid,
+        "gid": info.st_gid,
+        "mode": info.st_mode & 0o777,
+        "size": 0,
+        "sha256": "",
+    }
+
+
 def _credenciais_manifesto(
     copia: Path, arcname: str, origem: Path, kind: str = "file"
 ) -> dict:
@@ -2409,6 +2503,24 @@ def _credenciais_backup_run(config: dict | None = None) -> dict:
             os.chown(destino, 0, 0)
     except (OSError, NotImplementedError):
         pass
+    extras = config.get("files") or []
+    total_extras = 0
+    for caminho_extra in extras:
+        origem_extra = Path(caminho_extra)
+        if origem_extra.is_symlink() or not origem_extra.exists():
+            raise AgentError(
+                f"Fonte configurada nao esta disponivel: {origem_extra}"
+            )
+        total_extras += _credenciais_tamanho_fonte(origem_extra)
+    try:
+        livre = shutil.disk_usage(destino).free
+    except OSError:
+        livre = 0
+    if total_extras + 10 * 1024 * 1024 > livre:
+        raise AgentError(
+            f"Espaco insuficiente em {destino}: precisa de "
+            f"{_human_bytes(total_extras)}, livre {_human_bytes(livre)}"
+        )
     inicio = dt.datetime.now()
     nome = f"moya-credenciais-{inicio.strftime('%Y%m%d-%H%M%S')}.tar.gz"
     estagio = Path(tempfile.mkdtemp(prefix=".staging-", dir=destino))
@@ -2430,29 +2542,70 @@ def _credenciais_backup_run(config: dict | None = None) -> dict:
             _credenciais_manifesto(copia_env, ".env", ambiente, "env"),
         ]
         nomes = ["db.sqlite3", ".env"]
-        extras = config.get("files") or []
         if extras:
             pasta_extras = estagio / "files"
             pasta_extras.mkdir()
+            pastas_extra = []
             for indice, caminho_extra in enumerate(extras):
                 origem_extra = Path(caminho_extra)
-                if origem_extra.is_symlink() or not origem_extra.is_file():
+                if origem_extra.is_symlink() or not origem_extra.exists():
                     raise AgentError(
-                        f"Arquivo configurado nao esta disponivel: {origem_extra}"
+                        f"Fonte configurada nao esta disponivel: {origem_extra}"
                     )
-                nome_extra = f"{indice}-{origem_extra.name}"
-                copia_extra = pasta_extras / nome_extra
-                shutil.copyfile(origem_extra, copia_extra)
-                os.chmod(copia_extra, 0o600)
-                entradas.append(
-                    _credenciais_manifesto(
-                        copia_extra,
-                        f"files/{nome_extra}",
-                        origem_extra,
-                        "file",
+                base_arc = f"files/{indice}-{origem_extra.name}"
+                if origem_extra.is_file():
+                    copia_extra = pasta_extras / f"{indice}-{origem_extra.name}"
+                    shutil.copyfile(origem_extra, copia_extra)
+                    os.chmod(copia_extra, 0o600)
+                    entradas.append(
+                        _credenciais_manifesto(
+                            copia_extra, base_arc, origem_extra, "file"
+                        )
                     )
-                )
-                nomes.append(f"files/{nome_extra}")
+                    nomes.append(base_arc)
+                    continue
+                entradas.append(_credenciais_entrada_pasta(origem_extra, base_arc))
+                pastas_extra.append(base_arc)
+                copia_raiz = pasta_extras / f"{indice}-{origem_extra.name}"
+                copia_raiz.mkdir(parents=True, exist_ok=True)
+                for raiz, pastas, arquivos in os.walk(origem_extra, followlinks=False):
+                    pastas[:] = sorted(
+                        nome
+                        for nome in pastas
+                        if not (Path(raiz) / nome).is_symlink()
+                    )
+                    for nome_pasta in pastas:
+                        pasta = Path(raiz) / nome_pasta
+                        relativo_pasta = pasta.relative_to(origem_extra).as_posix()
+                        arco = f"{base_arc}/{relativo_pasta}"
+                        (copia_raiz / relativo_pasta).mkdir(
+                            parents=True, exist_ok=True
+                        )
+                        entradas.append(_credenciais_entrada_pasta(pasta, arco))
+                        pastas_extra.append(arco)
+                    for nome_arquivo in sorted(arquivos):
+                        arquivo = Path(raiz) / nome_arquivo
+                        if arquivo.is_symlink() or not arquivo.is_file():
+                            continue
+                        relativo = arquivo.relative_to(origem_extra).as_posix()
+                        copia_extra = (
+                            pasta_extras
+                            / f"{indice}-{origem_extra.name}"
+                            / relativo
+                        )
+                        copia_extra.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(arquivo, copia_extra)
+                        os.chmod(copia_extra, 0o600)
+                        entradas.append(
+                            _credenciais_manifesto(
+                                copia_extra,
+                                f"{base_arc}/{relativo}",
+                                arquivo,
+                                "tree",
+                            )
+                        )
+                        nomes.append(f"{base_arc}/{relativo}")
+            nomes.extend(pastas_extra)
         manifesto = {
             "created_at": inicio.isoformat(timespec="seconds"),
             "files": entradas,
@@ -2490,20 +2643,35 @@ def _credenciais_backup_run(config: dict | None = None) -> dict:
     return status
 
 
+def _credenciais_arcname_ok(nome: str) -> bool:
+    if nome in ("db.sqlite3", ".env", "manifest.json"):
+        return True
+    if not nome.startswith("files/"):
+        return False
+    partes = nome.split("/")[1:]
+    if not partes:
+        return False
+    return all(
+        parte and parte not in (".", "..") and "\\" not in parte and "\x00" not in parte
+        for parte in partes
+    )
+
+
 def _credenciais_extrair(arquivo: Path, destino: Path) -> None:
-    permitidos = {"db.sqlite3", ".env", "manifest.json"}
     try:
         with tarfile.open(arquivo, "r:gz") as pacote:
             for membro in pacote.getmembers():
-                valido = membro.name in permitidos or re.match(
-                    r"^files/[A-Za-z0-9._-]+$", membro.name
-                )
-                if not valido or not membro.isfile():
+                if not _credenciais_arcname_ok(membro.name):
+                    raise AgentError(f"Entrada inesperada no backup: {membro.name}")
+                alvo = destino / membro.name
+                if membro.isdir():
+                    alvo.mkdir(parents=True, exist_ok=True)
+                    continue
+                if not membro.isfile():
                     raise AgentError(f"Entrada inesperada no backup: {membro.name}")
                 origem = pacote.extractfile(membro)
                 if origem is None:
                     raise AgentError(f"Nao foi possivel ler {membro.name} do backup")
-                alvo = destino / membro.name
                 alvo.parent.mkdir(parents=True, exist_ok=True)
                 with open(alvo, "wb") as saida:
                     shutil.copyfileobj(origem, saida)
@@ -2520,6 +2688,9 @@ def _credenciais_conferir(destino: Path) -> dict:
     conferencias = []
     for item in manifesto.get("files", []):
         alvo = destino / item.get("arcname", "")
+        if item.get("kind") == "dir":
+            conferencias.append(alvo.is_dir())
+            continue
         if not alvo.is_file():
             conferencias.append(False)
             continue
@@ -2569,14 +2740,19 @@ def op_credenciais_backup_overview(**_):
     ]
     for caminho in config.get("files") or []:
         item = Path(caminho)
-        existe = item.is_file() and not item.is_symlink()
+        existe = item.exists() and not item.is_symlink()
+        pasta = existe and item.is_dir()
         fontes.append(
             {
                 "name": item.name,
                 "path": caminho,
-                "kind": "Arquivo",
+                "kind": "Pasta" if pasta else "Arquivo",
                 "ok": existe,
-                "size": _human_bytes(item.stat().st_size) if existe else "-",
+                "size": (
+                    _human_bytes(item.stat().st_size)
+                    if existe and item.is_file()
+                    else ("pasta" if pasta else "-")
+                ),
                 "extra": True,
             }
         )
@@ -2584,12 +2760,16 @@ def op_credenciais_backup_overview(**_):
         "available": banco.is_file() and ambiente.is_file(),
         "config": {
             "time": config["time"],
+            "frequency": config["frequency"],
+            "weekday": config["weekday"],
             "retention_days": config["retention_days"],
             "db": config["db"],
             "env": config["env"],
             "dir": config["dir"],
             "container": config["container"],
             "files": config.get("files") or [],
+            "max_source_bytes": CREDENCIAIS_MAX_SOURCE_BYTES,
+            "max_source_label": _human_bytes(CREDENCIAIS_MAX_SOURCE_BYTES),
         },
         "sources": fontes,
         "status": _credenciais_status_read(),
@@ -2624,6 +2804,44 @@ def op_credenciais_backup_add_file(path: str, **_):
     _credenciais_config_write(config)
     log(f"CREDENCIAIS_ADD_FILE {alvo}")
     return {"files": arquivos}
+
+
+def op_credenciais_backup_settings(
+    time: str = "",
+    frequency: str = "daily",
+    weekday: int = 0,
+    retention_days: int = 0,
+    **_,
+):
+    config = _credenciais_config()
+    if time:
+        if not TIME_RE.match(str(time)):
+            raise AgentError("Horario invalido; use HH:MM")
+        config["time"] = str(time)
+    config["frequency"] = "weekly" if frequency == "weekly" else "daily"
+    try:
+        config["weekday"] = min(6, max(0, int(weekday)))
+    except (TypeError, ValueError):
+        config["weekday"] = 0
+    try:
+        retencao = int(retention_days)
+    except (TypeError, ValueError):
+        retencao = config["retention_days"]
+    if retencao < 1 or retencao > 3650:
+        raise AgentError("Retencao deve ficar entre 1 e 3650 dias")
+    config["retention_days"] = retencao
+    _credenciais_config_write(config)
+    log(
+        "CREDENCIAIS_SETTINGS "
+        f"{config['frequency']} {config['time']} {retencao}d"
+    )
+    return {
+        "time": config["time"],
+        "frequency": config["frequency"],
+        "weekday": config["weekday"],
+        "retention_days": config["retention_days"],
+        "next_run": _credenciais_next_run(config),
+    }
 
 
 def op_credenciais_backup_remove_file(path: str, **_):
@@ -2686,10 +2904,8 @@ def op_credenciais_backup_restore(archive: str, restart: bool = True, **_):
             shutil.copy2(ambiente, seguranca / ".env")
         for item in dados["manifest"].get("files", []):
             tipo = item.get("kind", "file")
-            if tipo == "sqlite":
-                alvo = banco
-            elif tipo == "env":
-                alvo = ambiente
+            if tipo in ("sqlite", "env"):
+                alvo = banco if tipo == "sqlite" else ambiente
             else:
                 alvo = Path(str(item.get("source") or ""))
                 if not alvo.is_absolute() or any(
@@ -2699,8 +2915,21 @@ def op_credenciais_backup_restore(archive: str, restart: bool = True, **_):
                     raise AgentError(
                         f"Destino invalido no manifesto: {item.get('source')}"
                     )
+                if tipo == "dir":
+                    alvo.mkdir(parents=True, exist_ok=True)
+                    try:
+                        os.chmod(alvo, int(item.get("mode") or 0o700) & 0o777)
+                        if hasattr(os, "chown"):
+                            os.chown(
+                                alvo,
+                                int(item.get("uid", 0)),
+                                int(item.get("gid", 0)),
+                            )
+                    except (OSError, NotImplementedError, ValueError):
+                        pass
+                    continue
                 if alvo.exists():
-                    copia = seguranca / "files" / item["arcname"].split("/", 1)[-1]
+                    copia = seguranca / item["arcname"]
                     copia.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(alvo, copia)
             alvo.parent.mkdir(parents=True, exist_ok=True)
@@ -3199,6 +3428,7 @@ OPS = {
     "credenciais_backup_run": op_credenciais_backup_run,
     "credenciais_backup_add_file": op_credenciais_backup_add_file,
     "credenciais_backup_remove_file": op_credenciais_backup_remove_file,
+    "credenciais_backup_settings": op_credenciais_backup_settings,
     "credenciais_backup_verify": op_credenciais_backup_verify,
     "credenciais_backup_restore": op_credenciais_backup_restore,
     "credenciais_backup_download": op_credenciais_backup_download,
@@ -3238,6 +3468,10 @@ def main() -> int:
     if os.geteuid() != 0:
         print("O agente precisa rodar como root.", file=sys.stderr)
         return 1
+    if len(sys.argv) > 1 and sys.argv[1] == "--apply-timer":
+        _credenciais_apply_timer(_credenciais_config())
+        print("timer atualizado")
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--credenciais-backup":
         try:
             dados = _credenciais_backup_run()

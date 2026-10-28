@@ -1,5 +1,5 @@
 [Unit]
-Description=Backup diario do Credenciais
+Description=Backup local de arquivos (diario)
 
 [Timer]
 OnCalendar=*-*-* 03:30:00

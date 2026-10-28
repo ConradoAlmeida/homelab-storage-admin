@@ -193,11 +193,69 @@ def test_restauracao_devolve_arquivo_individual(agent_module, tmp_path):
     assert copia.read_text() == "depois\n"
 
 
-def test_incluir_recusa_diretorio_e_caminho_relativo(agent_module, tmp_path):
+def test_incluir_pasta_backup_e_restore(agent_module, tmp_path):
+    banco, ambiente = _fontes(agent_module)
+    _criar_banco(banco)
+    ambiente.parent.mkdir(parents=True, exist_ok=True)
+    ambiente.write_text("CHAVE=valor\n")
+    pasta = tmp_path / "projeto"
+    (pasta / "sub").mkdir(parents=True)
+    (pasta / "raiz.txt").write_text("raiz\n")
+    (pasta / "sub" / "item.txt").write_text("item\n")
+    (pasta / "vazia").mkdir()
+
+    agent_module.op_credenciais_backup_add_file(str(pasta))
+    dados = agent_module.op_credenciais_backup_overview()
+    fonte = next(item for item in dados["sources"] if item["path"] == str(pasta))
+    assert fonte["kind"] == "Pasta"
+
+    status = agent_module.op_credenciais_backup_run()
+    with tarfile.open(
+        Path(agent_module.CREDENCIAIS_BACKUP_DIR) / status["archive"], "r:gz"
+    ) as pacote:
+        nomes = pacote.getnames()
+    assert "files/0-projeto/raiz.txt" in nomes
+    assert "files/0-projeto/sub/item.txt" in nomes
+    assert "files/0-projeto/vazia" in nomes
+
+    (pasta / "raiz.txt").write_text("alterado\n")
+    (pasta / "novo.txt").write_text("novo\n")
+    resultado = agent_module.op_credenciais_backup_restore(
+        status["archive"], restart=False
+    )
+    assert (pasta / "raiz.txt").read_text() == "raiz\n"
+    assert (pasta / "sub" / "item.txt").read_text() == "item\n"
+    assert (pasta / "vazia").is_dir()
+    # Restore sobrescreve o que estava no pacote, mas nao apaga arquivos novos.
+    assert (pasta / "novo.txt").read_text() == "novo\n"
+    copia = Path(resultado["security_copy"]) / "files/0-projeto/raiz.txt"
+    assert copia.read_text() == "alterado\n"
+
+
+def test_agendamento_semanal_e_retencao(agent_module):
+    banco, ambiente = _fontes(agent_module)
+    _criar_banco(banco)
+    ambiente.parent.mkdir(parents=True, exist_ok=True)
+    ambiente.write_text("CHAVE=valor\n")
+
+    resultado = agent_module.op_credenciais_backup_settings(
+        time="04:15", frequency="weekly", weekday=2, retention_days=60
+    )
+
+    assert resultado["time"] == "04:15"
+    assert resultado["frequency"] == "weekly"
+    assert resultado["retention_days"] == 60
+    dados = agent_module.op_credenciais_backup_overview()
+    assert dados["config"]["frequency"] == "weekly"
+    assert dados["config"]["weekday"] == 2
+    assert dados["next_run"]
+
+
+def test_incluir_recusa_caminho_relativo_e_proibido(agent_module):
     with pytest.raises(agent_module.AgentError):
         agent_module.op_credenciais_backup_add_file("relativo.conf")
     with pytest.raises(agent_module.AgentError):
-        agent_module.op_credenciais_backup_add_file(str(tmp_path / "config"))
+        agent_module.op_credenciais_backup_add_file("/proc/version")
 
 
 def test_restauracao_recusa_nome_invalido(agent_module):

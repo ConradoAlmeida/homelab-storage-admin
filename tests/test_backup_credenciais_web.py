@@ -63,7 +63,7 @@ OVERVIEW = {
 }
 
 
-class CredenciaisBackupViewTests(TestCase):
+class ArquivosBackupViewTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="tester", password="test-password"
@@ -71,7 +71,7 @@ class CredenciaisBackupViewTests(TestCase):
         self.client.force_login(self.user)
         fake = fake_agent()
         fake.credenciais_backup_overview.return_value = OVERVIEW
-        fake.credenciais_backup_run.return_value = {
+        fake.arquivos_backup_run.return_value = {
             "archive": ARQUIVO,
             "size_label": "20.0 KB",
         }
@@ -80,13 +80,13 @@ class CredenciaisBackupViewTests(TestCase):
             "files": ["/home/conrado/app.conf"]
         }
         fake.credenciais_backup_remove_file.return_value = {"files": []}
-        fake.credenciais_backup_verify.return_value = {
+        fake.arquivos_backup_verify.return_value = {
             "archive": ARQUIVO,
             "integrity": "ok",
             "hashes_ok": True,
             "files": [".env", "db.sqlite3"],
         }
-        fake.credenciais_backup_restore.return_value = {
+        fake.arquivos_backup_restore.return_value = {
             "archive": ARQUIVO,
             "integrity": "ok",
             "security_copy": "/var/backups/moya-credenciais/pre-restore-20261027-040000",
@@ -111,7 +111,7 @@ class CredenciaisBackupViewTests(TestCase):
 
     def test_incluir_arquivo_individual(self):
         resposta = self.client.post(
-            "/backups/credenciais-app/files/add/",
+            "/backups/arquivos/files/add/",
             data={"path": "/home/conrado/app.conf"},
             follow=True,
         )
@@ -125,7 +125,7 @@ class CredenciaisBackupViewTests(TestCase):
 
     def test_remover_arquivo_individual(self):
         resposta = self.client.post(
-            "/backups/credenciais-app/files/remove/",
+            "/backups/arquivos/files/remove/",
             data={"path": "/home/conrado/app.conf"},
             follow=True,
         )
@@ -139,62 +139,90 @@ class CredenciaisBackupViewTests(TestCase):
             "Use um caminho absoluto"
         )
         resposta = self.client.post(
-            "/backups/credenciais-app/files/add/",
+            "/backups/arquivos/files/add/",
             data={"path": "relativo.conf"},
             follow=True,
         )
         self.assertContains(resposta, "Use um caminho absoluto")
 
+    def test_salvar_agendamento(self):
+        self.fake.credenciais_backup_settings.return_value = {
+            "time": "04:15",
+            "frequency": "weekly",
+            "weekday": 2,
+            "retention_days": 60,
+        }
+        resposta = self.client.post(
+            "/backups/arquivos/settings/",
+            data={
+                "time": "04:15",
+                "frequency": "weekly",
+                "weekday": "2",
+                "retention_days": "60",
+            },
+            follow=True,
+        )
+        self.assertContains(resposta, "Agendamento atualizado")
+        self.fake.credenciais_backup_settings.assert_called_once_with(
+            time="04:15",
+            frequency="weekly",
+            weekday="2",
+            retention_days="60",
+        )
+        self.assertTrue(
+            AuditLog.objects.filter(action="credenciais_backup_settings").exists()
+        )
+
     def test_pagina_mostra_fonte_job_e_arquivo(self):
-        resposta = self.client.get("/backups/credenciais-app/")
+        resposta = self.client.get("/backups/arquivos/")
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Backup do Credenciais")
+        self.assertContains(resposta, "Backup local de arquivos")
         self.assertContains(resposta, ARQUIVO)
         self.assertContains(resposta, "Banco SQLite")
         self.assertContains(resposta, "diário 03:30")
 
     def test_rodar_agora_aciona_o_agente(self):
-        resposta = self.client.post("/backups/credenciais-app/run/")
-        self.assertRedirects(resposta, "/backups/credenciais-app/")
-        self.fake.credenciais_backup_run.assert_called_once_with()
+        resposta = self.client.post("/backups/arquivos/run/")
+        self.assertRedirects(resposta, "/backups/arquivos/")
+        self.fake.arquivos_backup_run.assert_called_once_with()
         self.assertTrue(
-            AuditLog.objects.filter(action="credenciais_backup_run").exists()
+            AuditLog.objects.filter(action="arquivos_backup_run").exists()
         )
 
     def test_verificar_mostra_sucesso(self):
         resposta = self.client.post(
-            f"/backups/credenciais-app/{ARQUIVO}/verify/", follow=True
+            f"/backups/arquivos/{ARQUIVO}/verify/", follow=True
         )
         self.assertContains(resposta, "banco íntegro")
-        self.fake.credenciais_backup_verify.assert_called_once_with(ARQUIVO)
+        self.fake.arquivos_backup_verify.assert_called_once_with(ARQUIVO)
 
     def test_restaurar_exige_confirmacao_exata(self):
         resposta = self.client.post(
-            f"/backups/credenciais-app/{ARQUIVO}/restore/",
+            f"/backups/arquivos/{ARQUIVO}/restore/",
             data={"confirmation": "errado"},
             follow=True,
         )
         self.assertContains(resposta, "digite o nome do arquivo")
-        self.fake.credenciais_backup_restore.assert_not_called()
+        self.fake.arquivos_backup_restore.assert_not_called()
 
     def test_restaurar_com_confirmacao_reinicia(self):
         resposta = self.client.post(
-            f"/backups/credenciais-app/{ARQUIVO}/restore/",
+            f"/backups/arquivos/{ARQUIVO}/restore/",
             data={"confirmation": ARQUIVO, "restart": "1"},
             follow=True,
         )
         self.assertContains(resposta, "restaurado")
-        self.fake.credenciais_backup_restore.assert_called_once_with(
+        self.fake.arquivos_backup_restore.assert_called_once_with(
             ARQUIVO, restart=True
         )
         self.assertTrue(
-            AuditLog.objects.filter(action="credenciais_backup_restore").exists()
+            AuditLog.objects.filter(action="arquivos_backup_restore").exists()
         )
 
     def test_erro_do_agente_aparece_como_mensagem(self):
-        self.fake.credenciais_backup_run.side_effect = AgentError("sem permissao")
+        self.fake.arquivos_backup_run.side_effect = AgentError("sem permissao")
         resposta = self.client.post(
-            "/backups/credenciais-app/run/", follow=True
+            "/backups/arquivos/run/", follow=True
         )
         self.assertContains(resposta, "sem permissao")
 
@@ -204,14 +232,14 @@ class CredenciaisBackupViewTests(TestCase):
             destino.mkdir(parents=True)
             arquivo = destino / ARQUIVO
             arquivo.write_bytes(b"conteudo")
-            self.fake.credenciais_backup_download.return_value = {
+            self.fake.arquivos_backup_download.return_value = {
                 "relative": f"downloads/abc/{ARQUIVO}",
                 "filename": ARQUIVO,
                 "size": 8,
             }
             with self.settings(DATA_DIR=pasta):
                 resposta = self.client.get(
-                    f"/backups/credenciais-app/{ARQUIVO}/download/"
+                    f"/backups/arquivos/{ARQUIVO}/download/"
                 )
             self.assertEqual(resposta.status_code, 200)
             self.assertEqual(resposta["Content-Disposition"].split(";")[0], "attachment")

@@ -86,6 +86,7 @@ systemctl enable --now homelab-storage-snapshot.timer
 systemctl enable --now homelab-storage-metrics.timer
 if [[ -f "${CREDENCIAIS_DB:-/home/conrado/moya_credenciais_app/data/db.sqlite3}" ]]; then
   systemctl enable --now homelab-credenciais-backup.timer
+  /usr/local/sbin/homelab-storage-agent --apply-timer || true
 else
   systemctl disable --now homelab-credenciais-backup.timer 2>/dev/null || true
 fi

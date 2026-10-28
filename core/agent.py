@@ -199,6 +199,18 @@ class AgentClient:
     def credenciais_backup_run(self):
         return self.call("credenciais_backup_run", timeout=600)
 
+    def credenciais_backup_settings(
+        self, time="", frequency="daily", weekday=0, retention_days=0
+    ):
+        return self.call(
+            "credenciais_backup_settings",
+            timeout=60,
+            time=time,
+            frequency=frequency,
+            weekday=weekday,
+            retention_days=retention_days,
+        )
+
     def credenciais_backup_add_file(self, path):
         return self.call("credenciais_backup_add_file", timeout=30, path=path)
 

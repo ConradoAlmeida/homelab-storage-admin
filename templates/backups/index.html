@@ -11,7 +11,7 @@
     <a class="btn small" href="{% url 'cold_index' %}">Cópia fria (USB)</a>
     <a class="btn small" href="{% url 'backup_job_new' %}">Novo job</a>
     {% if capabilities.credenciais_backup %}
-    <a class="btn small" href="{% url 'credenciais_backup_index' %}">Backup do Credenciais</a>
+    <a class="btn small" href="{% url 'arquivos_backup_index' %}">Backup de arquivos</a>
     {% endif %}
     <a class="btn small" href="{% url 'backup_credentials' %}">Senha do repositório</a>
     <a class="btn small" href="#discos">Escolher disco</a>
@@ -25,9 +25,9 @@
     <p class="muted">Agente indisponível: {{ credenciais_error }}</p>
   {% elif credenciais %}
     <p class="muted text-12">
-      Banco SQLite + <span class="mono">.env</span> e
-      {{ credenciais.config.files|length }} arquivo(s) individual(is) ·
-      diário {{ credenciais.config.time }} · retenção {{ credenciais.config.retention_days }} dias ·
+      Banco SQLite + <span class="mono">.env</span> do Credenciais e
+      {{ credenciais.config.files|length }} item(ns) escolhido(s) (arquivo ou pasta) ·
+      {{ agenda_label|default:"diário" }} · retenção {{ credenciais.config.retention_days }} dias ·
       arquivos 600 root:root
     </p>
     <div class="table-wrap"><table class="file-table">
@@ -35,14 +35,14 @@
       <tbody>
         <tr>
           <td>
-            <strong>Credenciais</strong>
+            <strong>Arquivos locais</strong>
             <div class="muted mono text-11">{{ credenciais.config.dir }}</div>
           </td>
           <td class="muted text-12">
-            banco + .env{% if credenciais.config.files %} + {{ credenciais.config.files|length }} arquivo(s){% endif %}
+            banco + .env{% if credenciais.config.files %} + {{ credenciais.config.files|length }} item(ns){% endif %}
             {% if not credenciais.available %}<div class="badge danger">fonte incompleta</div>{% endif %}
           </td>
-          <td class="muted">diário {{ credenciais.config.time }}</td>
+          <td class="muted">{{ agenda_label|default:"diário" }}</td>
           <td class="muted">{{ credenciais.config.retention_days }} dias</td>
           <td>
             {% with status=credenciais.status %}
@@ -55,11 +55,11 @@
           </td>
           <td class="muted text-12">{{ credenciais.next_run|default:"-" }}</td>
           <td class="file-actions">
-            <form method="post" action="{% url 'credenciais_backup_run' %}" class="display-inline">
+            <form method="post" action="{% url 'arquivos_backup_run' %}" class="display-inline">
               {% csrf_token %}
               <button class="btn small" type="submit">Rodar agora</button>
             </form>
-            <a class="btn small" href="{% url 'credenciais_backup_index' %}">Configurar</a>
+            <a class="btn small" href="{% url 'arquivos_backup_index' %}">Configurar</a>
           </td>
         </tr>
       </tbody>
@@ -73,7 +73,7 @@
 {% elif overview %}
   {% if not overview.restic %}
     <div class="alert danger"><strong>restic não encontrado no host.</strong> A preparação de disco vai recusar até instalar o pacote.
-      {% if capabilities.credenciais_backup %}O <a href="{% url 'credenciais_backup_index' %}">backup do Credenciais</a> funciona sem restic.{% endif %}
+      {% if capabilities.credenciais_backup %}O <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> funciona sem restic.{% endif %}
     </div>
   {% endif %}
 
