@@ -825,9 +825,14 @@ entra na rede `moya` e recebe `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN`.
 
 - Quem não tem a concessão `storage` no Credenciais recebe "não tem acesso".
 - O acesso é binário: quem entra pode operar o Storage Admin; não há papéis.
-- A gestão de usuários Samba/Linux fica centralizada no Credenciais. As telas
-  de criar/alterar/excluir usuários e grupos são removidas nesse modo; a lista
-  de usuários continua somente leitura.
+- **Regra fixa:** o código é compartilhado com o Pi. Nenhuma funcionalidade do
+  Storage Admin pode ser removida por causa do Credenciais. Criar usuário,
+  senha, grupos, ativar/desativar e excluir continuam disponíveis nos dois
+  ambientes.
+- No moyaserver, porém, a fonte de identidade dos apps e do Samba é o
+  Credenciais. Alterações feitas diretamente no Storage Admin não atualizam o
+  hash do Credenciais; para acesso aos apps, use o Credenciais. O Storage Admin
+  continua sendo a ferramenta de administração do servidor.
 - O usuário local `admin` continua funcionando como acesso de emergência se o
   Credenciais estiver fora do ar.
 - No Pi, sem `CREDENTIALS_URL`, nada muda: o login local continua como antes.

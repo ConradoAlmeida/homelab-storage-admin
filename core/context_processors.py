@@ -1,8 +1,8 @@
 """Contexto comum: nome do site e capacidades do host.
 
-As capacidades são consultadas no agente e mantidas por alguns segundos para
-não abrir um socket em cada página. Se o agente estiver indisponível, o
-template recebe um dicionário vazio e simplesmente esconde os recursos
+As capacidades s├úo consultadas no agente e mantidas por alguns segundos para
+n├úo abrir um socket em cada p├ígina. Se o agente estiver indispon├¡vel, o
+template recebe um dicion├írio vazio e simplesmente esconde os recursos
 opcionais; as views continuam tratando o erro.
 """
 from __future__ import annotations
@@ -31,9 +31,6 @@ def homelab(request):
     return {
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
-        "credenciais_ativa": bool(
-            settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN
-        ),
         "capabilities": _cached_caps,
         "storage_root": settings.STORAGE_ROOT,
         "snapshot_root": settings.SNAPSHOT_ROOT,

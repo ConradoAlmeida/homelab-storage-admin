@@ -1,24 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Usuários - {{ product_name }}{% endblock %}
+{% block title %}Usu├írios - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="row row-between mb-18">
-  <h1 class="m-0">Usuários Samba</h1>
-  {% if not credenciais_ativa %}
+  <h1 class="m-0">Usu├írios Samba</h1>
   <div class="row">
     <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
-    <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
+    <a class="btn primary" href="{% url 'user_create' %}">Novo usu├írio</a>
   </div>
-  {% endif %}
 </div>
-{% if credenciais_ativa %}
-<div class="card"><strong>Gestão centralizada</strong><p class="muted">Criar, alterar senha, grupos e excluir contas é feito no Credenciais.</p></div>
-{% endif %}
 
 {% if agent_error %}
   <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
 {% elif users %}
 <div class="table-wrap"><table>
-  <thead><tr><th>Usuário</th><th>Nome</th><th>Grupos</th><th>Status</th><th>Ações</th></tr></thead>
+  <thead><tr><th>Usu├írio</th><th>Nome</th><th>Grupos</th><th>Status</th><th>A├º├╡es</th></tr></thead>
   <tbody>
     {% for u in users %}
       <tr>
@@ -27,7 +22,6 @@
         <td>{% for g in u.groups %}<span class="tag">{{ g }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td>
         <td>{% if u.enabled %}<span class="tag ok">ativo</span>{% else %}<span class="tag off">desativado</span>{% endif %}</td>
         <td>
-          {% if not credenciais_ativa %}
           <div class="row">
             <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
             <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
@@ -37,13 +31,12 @@
               <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
               <button class="btn small {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
             </form>
-            <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
+            <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home ser├úo removidos.">
               {% csrf_token %}
               <input type="hidden" name="username" value="{{ u.username }}">
               <button class="btn small danger" type="submit">Excluir</button>
             </form>
           </div>
-          {% endif %}
         </td>
       </tr>
     {% endfor %}
@@ -55,7 +48,7 @@
 
 {% if groups %}
 <h2>Grupos</h2>
-<p class="muted">O grupo privado de cada usuário sai junto com a conta. Aqui ficam as pastas compartilhadas.</p>
+<p class="muted">O grupo privado de cada usu├írio sai junto com a conta. Aqui ficam as pastas compartilhadas.</p>
 <div class="table-wrap"><table>
   <thead><tr><th>Grupo</th><th></th></tr></thead>
   <tbody>
@@ -63,13 +56,11 @@
     <tr>
       <td><strong>{{ nome }}</strong></td>
       <td>
-        {% if not credenciais_ativa %}
         <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
           {% csrf_token %}
           <input type="hidden" name="name" value="{{ nome }}">
           <button class="btn small danger" type="submit">Excluir</button>
         </form>
-        {% endif %}
       </td>
     </tr>
     {% endfor %}
