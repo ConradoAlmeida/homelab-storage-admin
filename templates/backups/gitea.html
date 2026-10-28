@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Backup do Gitea - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="row row-between-start">
@@ -19,6 +20,19 @@
 {% if error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
+  {% if overview.status.status == "running" %}
+    <div class="alert danger">
+      <strong>Backup em andamento — NÃO desconecte o drive USB.</strong>
+      Espere a página mostrar <strong>concluído</strong> e o arquivo <span class="mono">.sha256</span>.
+      A página atualiza sozinha a cada 5 s.
+    </div>
+  {% elif overview.status.usb_verified %}
+    <div class="alert">
+      <strong>Cópia no USB verificada.</strong> O hash confere com o dump do servidor.
+      Você já pode desconectar o drive com segurança.
+    </div>
+  {% endif %}
+
   {% if not overview.running %}
     <div class="alert danger"><strong>Gitea não está rodando.</strong> Inicie o container <span class="mono">{{ overview.container }}</span> antes do backup.</div>
   {% endif %}
@@ -37,8 +51,16 @@
     {% with status=overview.status %}
       {% if status %}
         <p class="text-12">
-          {% if status.status == "running" %}<span class="badge live">rodando ({{ status.stage }})</span>
-          {% elif status.status == "done" %}<span class="state-ok">concluído</span>
+          {% if status.status == "running" %}
+            <span class="badge live">rodando</span>
+            <span class="muted">
+              {% if status.stage == "dump" %}gerando o dump…
+              {% elif status.stage == "dumped" %}dump pronto, preparando a cópia…
+              {% elif status.stage == "copy" %}copiando para o USB — não desconecte
+              {% elif status.stage == "verify" %}verificando o hash — não desconecte
+              {% else %}{{ status.stage }}{% endif %}
+            </span>
+          {% elif status.status == "done" %}<span class="state-ok">concluído{% if status.usb_verified %} e verificado{% endif %}</span>
           {% elif status.status == "failed" %}<span class="state-bad">falhou</span>
           {% else %}<span class="muted">{{ status.status }}</span>{% endif %}
           <span class="muted">
@@ -131,5 +153,10 @@
       O drive é desmontado ao final. Mantenha cópias em mais de um drive e teste a restauração.
     </p>
   </div>
+
+  {% if overview.status.status == "running" %}
+  <div data-gitea-running="1" hidden></div>
+  <script src="{% static 'js/gitea-status.js' %}"></script>
+  {% endif %}
 {% endif %}
 {% endblock %}

@@ -3502,7 +3502,7 @@ def _gitea_dump() -> Path:
         {
             **_gitea_status_read(),
             "status": "running",
-            "stage": "done",
+            "stage": "dumped",
             "archive": nome,
             "size": destino.stat().st_size,
             "size_label": _human_bytes(destino.stat().st_size),
@@ -3637,7 +3637,7 @@ def _gitea_backup(target: str = "host") -> dict:
     _gitea_status_write(
         {
             "status": "running",
-            "stage": "dump" if alvo == "host" else "usb",
+            "stage": "dump",
             "target": alvo,
             "started_at": dt.datetime.now().isoformat(timespec="seconds"),
         }
@@ -3645,17 +3645,24 @@ def _gitea_backup(target: str = "host") -> dict:
     try:
         arquivo = _gitea_dump()
         dados = {
-            "status": "done",
-            "stage": "done",
             "target": alvo,
             "archive": arquivo.name,
             "path": str(arquivo),
             "size": arquivo.stat().st_size,
             "size_label": _human_bytes(arquivo.stat().st_size),
             "sha256": _sha256(arquivo),
-            "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
         }
-        if alvo != "host":
+        if alvo == "host":
+            dados.update(
+                {
+                    "status": "done",
+                    "stage": "done",
+                    "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+                }
+            )
+        else:
+            dados.update({"status": "running", "stage": "copy"})
+            _gitea_status_write(dados)
             disco = next(
                 (item for item in _gitea_usb_disks() if item["name"] == alvo), None
             )
@@ -3695,6 +3702,8 @@ def _gitea_backup(target: str = "host") -> dict:
                 except OSError:
                     pass
                 _sincronizar_discos()
+                dados.update({"stage": "verify"})
+                _gitea_status_write(dados)
                 if _sha256(destino) != dados["sha256"]:
                     destino.unlink(missing_ok=True)
                     sidecar.unlink(missing_ok=True)
@@ -3709,6 +3718,11 @@ def _gitea_backup(target: str = "host") -> dict:
                         "usb_mount": str(montado),
                         "usb_size": destino.stat().st_size,
                         "usb_verified": True,
+                        "status": "done",
+                        "stage": "done",
+                        "finished_at": dt.datetime.now().isoformat(
+                            timespec="seconds"
+                        ),
                     }
                 )
             finally:
