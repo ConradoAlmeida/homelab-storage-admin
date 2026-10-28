@@ -582,6 +582,25 @@ ame, label, nabled, sources, requency, weekday, 	ime,
 etention_days). O formato antigo (job único com iles) é migrado
 automaticamente para o job credenciais.
 
+## 6.9 restic e disco externo
+
+O módulo restic é o caminho para pastas grandes. Ele só é habilitado quando
+existe um **disco externo** disponível:
+
+- O wizard **recusa** o disco do sistema/dados (`/`, `/boot`, `/mnt/data`).
+  Repositório no mesmo disco físico não protege contra falha de disco.
+- Sem disco externo, jobs restic gravam status **`skipped`** ("aguardando
+  disco") em vez de falhar; o backup local de arquivos continua ativo.
+- Com um disco: repositório restic nele. Com dois: repositório no disco A e
+  **cópia fria** no disco B.
+- Senha do repositório em `/etc/homelab-backup/secrets/<uuid>.key`
+  (`600 root`). Guarde uma cópia offline: sem ela o backup é irrecuperável.
+- **Verificação semanal** (`homelab-restic-check.timer`, domingo 04:30) roda
+  `restic check --read-data-subset=2%` e grava
+  `/etc/homelab-backup/health/<uuid>.json`; a página de Backups mostra o último
+  check e tem o botão **Verificar repo**.
+- Antes de confiar, rode um restore de teste a partir do snapshot.
+
 ## 7. Samba
 
 O app escreve seções no `/etc/samba/smb.conf`, roda `testparm -s` e recarrega

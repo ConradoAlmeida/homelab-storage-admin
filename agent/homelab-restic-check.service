@@ -1,0 +1,10 @@
+[Unit]
+Description=Verificacao dos repositorios restic
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-storage-agent --check-repos
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=4h

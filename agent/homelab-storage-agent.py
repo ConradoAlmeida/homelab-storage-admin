@@ -40,6 +40,9 @@ BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")
 COLD_CONFIG = os.environ.get("COLD_CONFIG", "/etc/homelab-backup/cold.json")
 COLD_STATUS = os.environ.get("COLD_STATUS", "/etc/homelab-backup/cold-status.json")
 COLD_MOUNT = os.environ.get("COLD_MOUNT", "/mnt/coldcopy")
+BACKUP_HEALTH_DIR = os.environ.get(
+    "BACKUP_HEALTH_DIR", "/etc/homelab-backup/health"
+)
 CREDENCIAIS_CONFIG = os.environ.get(
     "CREDENCIAIS_CONFIG", "/etc/homelab-backup/credenciais.json"
 )
@@ -1391,6 +1394,7 @@ def _backup_disks(config: dict) -> list[dict]:
                 "label": label,
                 "uuid": uuid,
                 "mounts": mounts,
+                "system": system,
                 "has_data": has_data,
                 "has_filesystem": has_filesystem,
                 "configured": configured,
@@ -1407,10 +1411,107 @@ def _backup_disks(config: dict) -> list[dict]:
     return sorted(disks, key=lambda item: item["name"])
 
 
+def _backup_health_read(uuid: str) -> dict:
+    caminho = Path(BACKUP_HEALTH_DIR) / f"{uuid}.json"
+    if not caminho.is_file():
+        return {}
+    try:
+        dados = json.loads(caminho.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def _backup_health_write(uuid: str, dados: dict) -> dict:
+    pasta = Path(BACKUP_HEALTH_DIR)
+    pasta.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(pasta, 0o700)
+    caminho = pasta / f"{uuid}.json"
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, indent=2, sort_keys=True) + "\n")
+    os.chmod(temporario, 0o600)
+    temporario.replace(caminho)
+    return dados
+
+
+def _backup_check_disk(disk: dict, read_data: bool = False) -> dict:
+    restic = shutil.which("restic")
+    if not restic:
+        raise AgentError("restic nao esta instalado no host")
+    mountpoint = Path(disk.get("mountpoint") or "")
+    if not mountpoint or not os.path.ismount(mountpoint):
+        raise AgentError(f"Disco de backup nao montado: {mountpoint}")
+    repo = disk.get("repo") or ""
+    key_file = Path(disk.get("key_file") or "")
+    if not repo or not key_file.is_file():
+        raise AgentError("Repositorio ou senha do restic ausente")
+    try:
+        cache_dir = Path(disk["mountpoint"]) / ".restic-cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["RESTIC_CACHE_DIR"] = str(cache_dir)
+    except OSError:
+        pass
+    args = [
+        restic,
+        "-r",
+        repo,
+        "--password-file",
+        str(key_file),
+        "check",
+    ]
+    if read_data:
+        args.append("--read-data-subset=2%")
+    inicio = dt.datetime.now()
+    proc = subprocess.run(
+        args, capture_output=True, text=True, check=False, timeout=7200
+    )
+    detalhe = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()[-2000:]
+    healthy = proc.returncode == 0
+    dados = {
+        "uuid": disk.get("uuid"),
+        "label": disk.get("label"),
+        "ok": healthy,
+        "read_data": read_data,
+        "started_at": inicio.isoformat(timespec="seconds"),
+        "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "message": detalhe if not healthy else "repositorio integro",
+    }
+    _backup_health_write(str(disk.get("uuid")), dados)
+    log(f"BACKUP_CHECK {disk.get('uuid')} read_data={read_data} ok={healthy}")
+    return dados
+
+
+def op_backup_check(disk_uuid: str, read_data: bool = False, **_):
+    disk = _backup_disk_by_uuid(disk_uuid)
+    return _backup_check_disk(disk, read_data=read_data)
+
+
+def op_backup_check_all(**_):
+    resultados = []
+    for disk in _load_backup_config().get("disks", []):
+        try:
+            resultados.append(_backup_check_disk(disk, read_data=True))
+        except (AgentError, OSError, subprocess.SubprocessError) as exc:
+            resultados.append(
+                {
+                    "uuid": disk.get("uuid"),
+                    "label": disk.get("label"),
+                    "ok": False,
+                    "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+                    "message": str(exc),
+                }
+            )
+    return {"results": resultados}
+
+
 def op_backup_overview(**_):
     config = _load_backup_config()
+    discs = _backup_disks(config)
+    for disk in discs:
+        if disk.get("uuid"):
+            disk["health"] = _backup_health_read(str(disk["uuid"]))
     return {
-        "disks": _backup_disks(config),
+        "disks": discs,
         "jobs": _backup_jobs(config),
         "backup_root": BACKUP_ROOT,
         "restic": shutil.which("restic") is not None,
@@ -1725,6 +1826,14 @@ def op_backup_disk_setup(
     disk = next((item for item in _backup_disks(config) if item["path"] == device), None)
     if disk is None:
         raise AgentError(f"Disco nao encontrado: {device}")
+    criticos = {"/", "/boot", "/boot/efi", "/mnt/data"}
+    if disk.get("system") or any(
+        ponto in criticos for ponto in (disk.get("mounts") or [])
+    ):
+        raise AgentError(
+            "Esse e o disco do sistema ou dos dados. "
+            "Use um disco externo (USB) para o repositorio."
+        )
     if not disk["candidate"]:
         raise AgentError(f"Disco indisponivel: {disk['reason']}")
     if disk["extra_confirmation"] and not allow_existing:
@@ -3641,6 +3750,7 @@ OPS = {
     "backup_download": op_backup_download,
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,
+    "backup_check": op_backup_check,
     "backup_job_save": op_backup_job_save,
     "backup_job_toggle": op_backup_job_toggle,
     "backup_job_delete": op_backup_job_delete,
@@ -3735,6 +3845,9 @@ def main() -> int:
                 }
             )
         )
+        return 0
+    if len(sys.argv) > 1 and sys.argv[1] == "--check-repos":
+        print(json.dumps(op_backup_check_all(), ensure_ascii=False))
         return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--collect":
         data = op_refresh_storage()

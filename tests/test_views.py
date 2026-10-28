@@ -362,3 +362,14 @@ class ViewSmokeTests(TestCase):
                 ]
             },
         )
+
+    def test_backup_check_chama_o_agente(self):
+        self.fake.backup_check.return_value = {
+            "ok": True,
+            "finished_at": "2026-10-28T04:30:00",
+        }
+        resposta = self.client.post(
+            "/backups/disks/check/", data={"uuid": "abc"}, follow=True
+        )
+        self.assertContains(resposta, "Repositorio integro")
+        self.fake.backup_check.assert_called_once_with("abc")

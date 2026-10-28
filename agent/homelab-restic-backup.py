@@ -86,9 +86,15 @@ def main() -> int:
     if not os.path.ismount(mountpoint):
         write_status(
             name,
-            {"job": name, "status": "failed", "finished_at": now(), "message": "disco de backup nao montado"},
+            {
+                "job": name,
+                "status": "skipped",
+                "finished_at": now(),
+                "message": "disco de backup nao montado; job aguarda o disco",
+            },
         )
-        return 1
+        log(name, "disco nao montado; job ignorado")
+        return 0
     if not repo or not key_file.is_file():
         write_status(
             name,

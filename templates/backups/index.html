@@ -48,6 +48,15 @@
     </div>
   {% endif %}
 
+  {% if not tem_disco_backup %}
+    <div class="alert">
+      <strong>Nenhum repositório restic configurado.</strong>
+      Conecte um disco externo (USB) e use <strong>Preparar</strong> abaixo.
+      O disco do sistema/dados é recusado de propósito; enquanto isso, o
+      <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> continua ativo.
+    </div>
+  {% endif %}
+
   <h2 id="discos">Discos</h2>
   <div class="table-wrap"><table class="file-table">
     <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Backup</th><th></th></tr></thead>
@@ -78,12 +87,24 @@
             {% elif disk.has_filesystem %}
               <span class="badge snap">com filesystem</span>
             {% else %}
-              <span class="muted">—</span>
+              <span class="muted">-</span>
+            {% endif %}
+            {% if disk.configured and disk.health %}
+              {% if disk.health.ok %}<div><span class="badge live">check ok</span></div>
+              {% else %}<div><span class="badge danger">check falhou</span></div>{% endif %}
+              <div class="muted text-11">{{ disk.health.finished_at|default:"" }}</div>
             {% endif %}
           </td>
           <td class="file-actions">
             {% if disk.configured %}
               <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ disk.uuid|urlencode }}">Ver senha</a>
+              {% if disk.mounts %}
+              <form method="post" action="{% url 'backup_check' %}" class="display-inline">
+                {% csrf_token %}
+                <input type="hidden" name="uuid" value="{{ disk.uuid }}">
+                <button class="btn small" type="submit">Verificar repo</button>
+              </form>
+              {% endif %}
             {% endif %}
             {% if disk.candidate %}
               <a class="btn small {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
@@ -116,6 +137,7 @@
               {% if job.status.status == 'success' %}<span class="state-ok">success</span>
               {% elif job.status.status == 'failed' %}<span class="state-bad">failed</span>
               {% elif job.status.status == 'warning' %}<span class="state-standby">warning</span>
+              {% elif job.status.status == 'skipped' %}<span class="state-standby">aguardando disco</span>
               {% elif job.status.status == 'running' %}<span class="badge live">rodando</span>
               {% else %}<span class="muted">—</span>{% endif %}
               {% if job.last_run_label %}<div class="muted text-11">{{ job.last_run_label }}</div>{% endif %}

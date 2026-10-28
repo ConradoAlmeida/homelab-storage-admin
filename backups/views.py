@@ -127,6 +127,12 @@ class BackupIndexView(AgentTemplateView):
             context["overview"] = agent.backup_overview()
         except AgentError as exc:
             context["error"] = str(exc)
+        if context.get("overview"):
+            discs = context["overview"].get("disks", [])
+            context["tem_disco_backup"] = any(
+                item.get("configured") for item in discs
+            )
+            context["tem_candidato"] = any(item.get("candidate") for item in discs)
         try:
             context["arquivos"] = agent.arquivos_jobs()
         except AgentError as exc:
@@ -274,6 +280,36 @@ class ResticSnapshotDownloadView(AgentView):
             ip=request.META.get("REMOTE_ADDR"),
         )
         return file_response(target, result.get("filename") or target.name)
+
+
+class BackupCheckView(AgentPostView):
+    def post(self, request):
+        uuid = (request.POST.get("uuid") or "").strip()
+        try:
+            resultado = agent.backup_check(uuid)
+        except AgentError as exc:
+            messages.error(request, f"Verificacao do repositorio falhou: {exc}")
+        else:
+            if resultado.get("ok"):
+                messages.success(
+                    request,
+                    "Repositorio integro. "
+                    f"Verificado em {resultado.get('finished_at')}.",
+                )
+            else:
+                messages.error(
+                    request,
+                    "O restic encontrou problemas: "
+                    f"{resultado.get('message', '')[:400]}",
+                )
+            AuditLog.objects.create(
+                actor=request.user,
+                action="backup_check",
+                target=uuid,
+                detail=f"ok={resultado.get('ok')}",
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+        return redirect("backup_index")
 
 
 class DiskWizardView(AgentView):

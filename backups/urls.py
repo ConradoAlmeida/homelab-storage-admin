@@ -30,6 +30,11 @@ urlpatterns = [
         name="backup_credentials",
     ),
     path(
+        "disks/check/",
+        views.BackupCheckView.as_view(),
+        name="backup_check",
+    ),
+    path(
         "arquivos/",
         views.ArquivosJobsView.as_view(),
         name="arquivos_backup_index",

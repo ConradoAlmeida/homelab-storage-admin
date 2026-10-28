@@ -273,3 +273,35 @@ def test_dois_jobs_com_agendas_e_arquivos_independentes(agent_module, tmp_path):
     agent_module.op_arquivos_job_delete("documentos")
     nomes = [job["name"] for job in agent_module._jobs_config()["jobs"]]
     assert nomes == ["credenciais"]
+
+
+def test_disk_setup_recusa_disco_do_sistema(agent_module, monkeypatch):
+    monkeypatch.setattr(agent_module.shutil, "which", lambda nome: f"/usr/bin/{nome}")
+    disco = {
+        "path": "/dev/sda",
+        "name": "sda",
+        "candidate": False,
+        "system": True,
+        "mounts": ["/"],
+        "reason": "disco do sistema",
+        "extra_confirmation": False,
+        "required_phrase": "FORMATAR /dev/sda",
+    }
+    monkeypatch.setattr(agent_module, "_backup_disks", lambda config: [disco])
+    monkeypatch.setattr(
+        agent_module, "_load_backup_config", lambda: {"disks": [], "jobs": []}
+    )
+    with pytest.raises(agent_module.AgentError, match="disco do sistema"):
+        agent_module.op_backup_disk_setup("/dev/sda", "backup", "FORMATAR /dev/sda")
+
+
+def test_health_do_repositorio_ida_e_volta(agent_module, monkeypatch, tmp_path):
+    monkeypatch.setattr(agent_module, "BACKUP_HEALTH_DIR", str(tmp_path))
+    agent_module._backup_health_write(
+        "uuid-1", {"ok": True, "finished_at": "2026-10-28T04:30:00"}
+    )
+    dados = agent_module._backup_health_read("uuid-1")
+    assert dados["ok"] is True
+    assert dados["finished_at"] == "2026-10-28T04:30:00"
+    if os.name != "nt":
+        assert (tmp_path / "uuid-1.json").stat().st_mode & 0o777 == 0o600

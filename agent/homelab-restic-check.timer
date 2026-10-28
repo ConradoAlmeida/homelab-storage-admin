@@ -1,0 +1,10 @@
+[Unit]
+Description=Verificacao semanal dos repositorios restic
+
+[Timer]
+OnCalendar=Sun *-*-* 04:30:00
+RandomizedDelaySec=10m
+Unit=homelab-restic-check.service
+
+[Install]
+WantedBy=timers.target

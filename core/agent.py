@@ -178,6 +178,9 @@ class AgentClient:
             allow_existing=allow_existing,
         )
 
+    def backup_check(self, uuid):
+        return self.call("backup_check", timeout=7200, uuid=uuid)
+
     def backup_secret(self, uuid):
         return self.call("backup_secret", timeout=30, uuid=uuid)
 
