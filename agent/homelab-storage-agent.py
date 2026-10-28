@@ -4627,17 +4627,30 @@ def op_health_overview(**_):
     env_credenciais = Path("/home/conrado/moya_credenciais_app/.env")
     if env_credenciais.is_file():
         try:
+            config_env = {}
             for linha in env_credenciais.read_text().splitlines():
-                if linha.strip().startswith("EMAIL_HOST="):
-                    if not linha.split("=", 1)[1].strip():
-                        alertas.append(
-                            _alerta(
-                                "info",
-                                "SMTP nao configurado",
-                                "Ativacao por link continua manual.",
-                            )
-                        )
-                    break
+                limpa = linha.strip()
+                if not limpa or limpa.startswith("#") or "=" not in limpa:
+                    continue
+                chave, valor = limpa.split("=", 1)
+                config_env[chave.strip()] = valor.strip().strip("\"'")
+            smtp = bool(config_env.get("EMAIL_HOST"))
+            graph = all(
+                config_env.get(chave)
+                for chave in (
+                    "GRAPH_TENANT_ID",
+                    "GRAPH_CLIENT_ID",
+                    "GRAPH_CLIENT_SECRET",
+                )
+            )
+            if not smtp and not graph:
+                alertas.append(
+                    _alerta(
+                        "info",
+                        "Email nao configurado",
+                        "Ativacao por link continua manual (SMTP ou Graph).",
+                    )
+                )
         except OSError:
             pass
 
