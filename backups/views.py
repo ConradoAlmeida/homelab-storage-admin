@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
@@ -1108,6 +1109,21 @@ class GiteaBackupView(AgentTemplateView):
         except AgentError as exc:
             context["error"] = str(exc)
         return context
+
+
+class GiteaBackupStatusView(AgentView):
+    def get(self, request):
+        try:
+            overview = agent.gitea_overview()
+        except AgentError as exc:
+            return JsonResponse({"error": str(exc)}, status=503)
+        return JsonResponse(
+            {
+                "status": overview.get("status") or {},
+                "dumps": overview.get("dumps") or [],
+                "running": bool(overview.get("running")),
+            }
+        )
 
 
 class GiteaBackupStartView(AgentPostView):

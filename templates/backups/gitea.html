@@ -2,6 +2,13 @@
 {% load static %}
 {% block title %}Backup do Gitea - {{ product_name }}{% endblock %}
 {% block content %}
+<div
+  data-gitea-status
+  data-endpoint="{% url 'gitea_backup_status' %}"
+  data-running="{% if overview.status.status == 'running' %}1{% else %}0{% endif %}"
+  hidden
+></div>
+
 <div class="row row-between-start">
   <div>
     <h1 class="mb-4">Backup do Gitea</h1>
@@ -12,7 +19,7 @@
     <form method="post" action="{% url 'gitea_backup_start' %}" class="display-inline">
       {% csrf_token %}
       <input type="hidden" name="target" value="host">
-      <button class="btn small" type="submit" {% if not overview.running %}disabled{% endif %}>Gerar dump no servidor</button>
+      <button class="btn small" type="submit" data-gitea-run data-base-disabled="{% if not overview.running %}1{% else %}0{% endif %}" {% if not overview.running %}disabled{% endif %}>Gerar dump no servidor</button>
     </form>
   </div>
 </div>
@@ -20,18 +27,16 @@
 {% if error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
-  {% if overview.status.status == "running" %}
-    <div class="alert danger">
-      <strong>Backup em andamento — NÃO desconecte o drive USB.</strong>
-      Espere a página mostrar <strong>concluído</strong> e o arquivo <span class="mono">.sha256</span>.
-      A página atualiza sozinha a cada 5 s.
-    </div>
-  {% elif overview.status.usb_verified %}
-    <div class="alert">
-      <strong>Cópia no USB verificada.</strong> O hash confere com o dump do servidor.
-      Você já pode desconectar o drive com segurança.
-    </div>
-  {% endif %}
+  <div id="gitea-alert" class="alert danger" {% if overview.status.status != "running" %}hidden{% endif %}>
+    <strong>Cópia em andamento — NÃO desconecte o drive USB.</strong>
+    Acompanhe a etapa no cartão de estado abaixo. O aviso verde só aparece no final.
+  </div>
+  <div id="gitea-success" class="alert" {% if not overview.status.usb_verified %}hidden{% endif %}>
+    <strong>Cópia concluída e verificada.</strong> O hash confere com o dump do servidor. Você já pode desconectar o drive com segurança.
+  </div>
+  <div id="gitea-failure" class="alert danger" {% if overview.status.status != "failed" %}hidden{% endif %}>
+    <strong>O backup falhou.</strong> <span id="gitea-failure-text">{{ overview.status.error }}</span>
+  </div>
 
   {% if not overview.running %}
     <div class="alert danger"><strong>Gitea não está rodando.</strong> Inicie o container <span class="mono">{{ overview.container }}</span> antes do backup.</div>
@@ -48,38 +53,34 @@
       Volume: <span class="mono">{{ overview.volume|default:"-" }}</span> ·
       destino: <span class="mono">{{ overview.backup_dir }}</span>
     </p>
-    {% with status=overview.status %}
-      {% if status %}
-        <p class="text-12">
-          {% if status.status == "running" %}
-            <span class="badge live">rodando</span>
-            <span class="muted">
-              {% if status.stage == "queued" %}na fila do systemd…
-              {% elif status.stage == "dump" %}gerando o dump…
-              {% elif status.stage == "dumped" %}dump pronto, preparando a cópia…
-              {% elif status.stage == "copy" %}copiando para o USB — não desconecte
-              {% elif status.stage == "verify" %}verificando o hash — não desconecte
-              {% else %}{{ status.stage }}{% endif %}
-            </span>
-          {% elif status.status == "done" %}<span class="state-ok">concluído{% if status.usb_verified %} e verificado{% endif %}</span>
-          {% elif status.status == "failed" %}<span class="state-bad">falhou</span>
-          {% else %}<span class="muted">{{ status.status }}</span>{% endif %}
-          <span class="muted">
-            {% firstof status.finished_at status.started_at "" %}
-            {% if status.size_label %} · {{ status.size_label }}{% endif %}
-            {% if status.error %} · {{ status.error }}{% endif %}
-          </span>
-        </p>
-        {% if status.usb_path %}
-          <p class="muted text-12">
-            Copiado para <span class="mono">{{ status.usb_path }}</span> ·
-            sha256 <span class="mono">{{ status.sha256|slice:":16" }}…</span>
-          </p>
+    <p class="text-12" id="gitea-status-line">
+      <span id="gitea-spinner" class="spinner" {% if overview.status.status != "running" %}hidden{% endif %}></span>
+      <span id="gitea-status-badge" class="{% if overview.status.status == 'running' %}badge live{% elif overview.status.status == 'done' %}state-ok{% elif overview.status.status == 'failed' %}state-bad{% else %}muted{% endif %}">
+        {% if overview.status.status == "running" %}em andamento
+        {% elif overview.status.status == "done" %}concluído{% if overview.status.usb_verified %} e verificado{% endif %}
+        {% elif overview.status.status == "failed" %}falhou
+        {% else %}-{% endif %}
+      </span>
+      <span id="gitea-status-text" class="muted">
+        {% if overview.status.status == "running" %}
+          {% if overview.status.stage == "queued" %}na fila do systemd…
+          {% elif overview.status.stage == "dump" %}gerando o dump…
+          {% elif overview.status.stage == "dumped" %}dump pronto, preparando a cópia…
+          {% elif overview.status.stage == "copy" %}copiando para o USB — não desconecte
+          {% elif overview.status.stage == "verify" %}verificando o hash — não desconecte
+          {% else %}{{ overview.status.stage }}{% endif %}
         {% endif %}
-      {% else %}
-        <p class="muted text-12">Nenhuma execução registrada.</p>
-      {% endif %}
-    {% endwith %}
+      </span>
+    </p>
+    <p class="muted text-12" id="gitea-status-meta">
+      {% firstof overview.status.finished_at overview.status.started_at "" %}
+      {% if overview.status.size_label %} · {{ overview.status.size_label }}{% endif %}
+      {% if overview.status.error %} · {{ overview.status.error }}{% endif %}
+    </p>
+    <p class="muted text-12" id="gitea-usb-path" {% if not overview.status.usb_path %}hidden{% endif %}>
+      Copiado para <span class="mono">{{ overview.status.usb_path }}</span> ·
+      sha256 <span class="mono">{{ overview.status.sha256|slice:":16" }}…</span>
+    </p>
   </div>
 
   <h2>Drives USB</h2>
@@ -109,7 +110,7 @@
                       data-confirm="Gerar o dump e gravar em {{ disco.path }}? Os arquivos existentes no drive não são apagados.">
                   {% csrf_token %}
                   <input type="hidden" name="target" value="{{ disco.name }}">
-                  <button class="btn small" type="submit">Backup para USB</button>
+                  <button class="btn small" type="submit" data-gitea-run data-base-disabled="0">Backup para USB</button>
                 </form>
               {% else %}
                 <span class="muted text-12">indisponível</span>
@@ -128,22 +129,20 @@
   {% endif %}
 
   <h2>Dumps no servidor</h2>
-  {% if overview.dumps %}
-    <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th></tr></thead>
-      <tbody>
-        {% for item in overview.dumps %}
-          <tr>
-            <td class="mono text-12">{{ item.name }}</td>
-            <td class="muted">{{ item.created_label }}</td>
-            <td>{{ item.size_label }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-  {% else %}
-    <div class="empty">Nenhum dump no servidor ainda.</div>
-  {% endif %}
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th></tr></thead>
+    <tbody id="gitea-dumps-body">
+      {% for item in overview.dumps %}
+        <tr>
+          <td class="mono text-12">{{ item.name }}</td>
+          <td class="muted">{{ item.created_label }}</td>
+          <td>{{ item.size_label }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3"><div class="empty">Nenhum dump no servidor ainda.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
 
   <h2>Como funciona</h2>
   <div class="card">
@@ -155,6 +154,6 @@
     </p>
   </div>
 
-  <div data-auto-refresh data-status="{{ overview.status.status|default:'idle' }}" hidden></div>
+  <script src="{% static 'js/gitea-status.js' %}"></script>
 {% endif %}
 {% endblock %}

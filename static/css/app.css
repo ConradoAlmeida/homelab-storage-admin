@@ -296,3 +296,7 @@ details[open] > summary.btn { margin-bottom:8px; }
 
 .file-add-form { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px; }
 .file-add-form input { flex:1; min-width:320px; }
+
+/* Status dinamico do backup do Gitea */
+.spinner { display:inline-block; width:12px; height:12px; border:2px solid rgba(74,158,255,.25); border-top-color:var(--acc); border-radius:50%; animation:gitea-spin 1s linear infinite; vertical-align:middle; margin-right:6px; }
+@keyframes gitea-spin { to { transform: rotate(360deg); } }

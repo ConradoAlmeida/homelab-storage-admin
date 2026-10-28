@@ -94,7 +94,7 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "NÃO desconecte o drive USB")
         self.assertContains(resposta, "copiando para o USB")
         self.assertNotContains(resposta, "Cópia no USB verificada")
-        self.assertContains(resposta, "data-auto-refresh")
+        self.assertContains(resposta, "data-gitea-status")
 
     def test_status_verificando_nao_parece_concluido(self):
         self.fake.gitea_overview.return_value = {
@@ -110,6 +110,14 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "verificando o hash")
         self.assertContains(resposta, "NÃO desconecte o drive USB")
         self.assertNotContains(resposta, "Cópia no USB verificada")
+
+    def test_endpoint_de_status_entrega_json(self):
+        resposta = self.client.get("/backups/gitea/status/")
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["status"]["status"], "done")
+        self.assertEqual(dados["dumps"][0]["name"], "gitea-20261028-113707.zip")
+        self.assertTrue(dados["running"])
 
     def test_dump_no_servidor(self):
         resposta = self.client.post(

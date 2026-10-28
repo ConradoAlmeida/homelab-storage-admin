@@ -109,6 +109,7 @@ def test_static_assets_exist():
         "confirm-actions.js",
         "copy-secret.js",
         "auto-refresh.js",
+        "gitea-status.js",
         "disk-wizard.js",
         "job-form.js",
         "live-metrics.js",
