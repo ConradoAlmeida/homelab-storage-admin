@@ -70,7 +70,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="device" value="{{ disk.path }}">
                     <input type="hidden" name="kind" value="long">
-                    <button class="btn" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste longo</button>
+                    <button class="btn danger" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste longo</button>
                   </form>
                 </div>
               {% endif %}

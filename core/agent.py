@@ -317,7 +317,7 @@ class AgentClient:
         return self.call("network_metrics", timeout=15)
 
 
-if os.environ.get("STORAGE_ADMIN_DEMO") == "1":
+if settings.DEBUG and os.environ.get("STORAGE_ADMIN_DEMO") == "1":
     from .demo_agent import DemoAgent
 
     agent = DemoAgent()

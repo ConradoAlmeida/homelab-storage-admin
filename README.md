@@ -331,6 +331,14 @@ uv run pytest
 uv run manage.py runserver 0.0.0.0:8000
 ```
 
+Para pré-visualizar a UI sem agente nem host (dados fictícios):
+
+```bash
+STORAGE_ADMIN_DEMO=1 DJANGO_DEBUG=1 uv run manage.py runserver 127.0.0.1:8000
+```
+
+O modo demo só liga com `DEBUG=1` e nunca deve ser usado em produção.
+
 A suíte normal roda sem root, sem Btrfs, sem Samba e sem hardware. Testes que
 exigem loop devices/Btrfs real são marcados `lab` e devem rodar só em uma VM
 descartável. O CI roda `manage.py check` + `pytest`.

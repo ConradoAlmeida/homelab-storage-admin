@@ -103,6 +103,18 @@ main > h1,
   margin: 0;
 }
 
+.alert.danger strong {
+  color: var(--err);
+}
+
+.alert.warn strong {
+  color: var(--warn);
+}
+
+.alert.ok strong {
+  color: var(--ok);
+}
+
 .compact-card {
   padding: 6px 14px;
   border: 1px solid var(--line);
@@ -307,6 +319,11 @@ tbody tr:hover td {
   line-height: 1.4;
 }
 
+.tag + .tag,
+.badge + .badge {
+  margin-left: 10px;
+}
+
 .tag.ok,
 .badge.live {
   color: var(--ok);
@@ -397,14 +414,22 @@ tbody tr:hover td {
   margin: 0;
 }
 
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
 @media (max-width: 900px) {
-  .action-grid {
+  .action-grid,
+  .shortcut-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 620px) {
-  .action-grid {
+  .action-grid,
+  .shortcut-grid {
     grid-template-columns: 1fr;
   }
 }
