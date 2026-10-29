@@ -6,9 +6,9 @@ Documento de retomada. Última atualização: **2026-10-28**.
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `1125507` (branch `feat/credenciais-login`, espelhada em `main`) |
-| Último deploy | 28/10/2026, Pi e moyaserver |
-| Testes | `133 passed`, 26 skips de ambiente |
+| Versão em produção | `76dc5f2` (layout de painel de operação) |
+| Último deploy | 28/10/2026, moyaserver; Pi pendente (host offline) |
+| Testes | `137 passed`, 26 skips de ambiente |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
@@ -35,6 +35,9 @@ Documento de retomada. Última atualização: **2026-10-28**.
   break-glass local.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
   tabelas, chips, métricas, ações e formulários padronizados.
+- **Novo layout de painel de operação** (branch `ui/layout-telas`, merge `76dc5f2`):
+  visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
+- Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.
 - Dashboard lista jobs de arquivos e jobs restic em seções separadas.
 - Backups do Gitea e do Credenciais validados com restore de teste.
 
@@ -54,17 +57,18 @@ Documento de retomada. Última atualização: **2026-10-28**.
 
 ## Pendências, em ordem
 
-1. **Discos externos**: criar repo restic, jobs, cópia fria, `restic check` e
+1. **Deploy no Pi** — aplicar o merge `76dc5f2` quando o host estiver acessível.
+2. **Discos externos**: criar repo restic, jobs, cópia fria, `restic check` e
    restore de teste. Bloqueado por hardware.
-2. **Firewall**: decidir entre ativar UFW ou assumir Caddy em `127.0.0.1`. O
+3. **Firewall**: decidir entre ativar UFW ou assumir Caddy em `127.0.0.1`. O
    alerta “Firewall inativo” é real.
-3. **Gestão de containers**: lista/stacks, start/stop/restart, logs, uso de
+4. **Gestão de containers**: lista/stacks, start/stop/restart, logs, uso de
    CPU/RAM, confirmação e auditoria. Decidir tela própria versus Portainer.
-4. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
+5. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
    USB antigos inválidos.
-5. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
+6. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
-6. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
+7. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
 
 ## Como retomar
 
