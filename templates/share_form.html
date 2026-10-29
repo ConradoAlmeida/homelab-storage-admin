@@ -15,11 +15,9 @@
   <form class="stack" method="post">
     {% csrf_token %}
     {% include "partials/form_alert.html" %}
-    <div class="form-grid">
-      {% for field in form %}
-        {% include "partials/form_field.html" with field=field %}
-      {% endfor %}
-    </div>
+    {% for field in form %}
+      {% include "partials/form_field.html" with field=field %}
+    {% endfor %}
     <div class="help">
       O agente cria os grupos <span class="mono">&lt;nome&gt;_ro</span>,
       <span class="mono">&lt;nome&gt;_rw</span> e <span class="mono">&lt;nome&gt;</span>,

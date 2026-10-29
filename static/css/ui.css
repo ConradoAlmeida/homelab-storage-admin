@@ -138,11 +138,6 @@ main > h1,
   border-bottom: 0;
 }
 
-.check-row input[type="checkbox"] {
-  width: auto;
-  margin: 3px 0 0;
-}
-
 .restore-details {
   display: inline-block;
   text-align: left;
@@ -519,9 +514,53 @@ tbody tr:hover td {
 }
 
 .check input[type="checkbox"],
-.check input[type="radio"] {
-  width: auto;
+.check input[type="radio"],
+.check-row input[type="checkbox"],
+.check-list input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   margin: 2px 0 0;
+  border: 1px solid #4a5064;
+  border-radius: 4px;
+  background: #0b1220;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+.check input[type="checkbox"]::before,
+.check-row input[type="checkbox"]::before,
+.check-list input[type="checkbox"]::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  transform: scale(0);
+  transition: transform 0.1s ease-in-out;
+  background: #061321;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.check input[type="checkbox"]:checked,
+.check-row input[type="checkbox"]:checked,
+.check-list input[type="checkbox"]:checked {
+  background: var(--acc);
+  border-color: var(--acc);
+}
+
+.check input[type="checkbox"]:checked::before,
+.check-row input[type="checkbox"]:checked::before,
+.check-list input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.check input[type="checkbox"]:focus-visible,
+.check-row input[type="checkbox"]:focus-visible,
+.check-list input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
 }
 
 .check .help,
@@ -551,11 +590,6 @@ tbody tr:hover td {
   margin: 0;
   color: var(--txt);
   font-size: 13px;
-}
-
-.check-list input[type="checkbox"] {
-  width: auto;
-  margin: 0;
 }
 
 .actions {

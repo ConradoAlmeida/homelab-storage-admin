@@ -15,11 +15,9 @@
   <form class="stack" method="post">
     {% csrf_token %}
     {% include "partials/form_alert.html" %}
-    <div class="form-grid">
-      {% for field in form %}
-        {% include "partials/form_field.html" with field=field %}
-      {% endfor %}
-    </div>
+    {% for field in form %}
+      {% include "partials/form_field.html" with field=field %}
+    {% endfor %}
     <div class="form-actions">
       <button class="btn primary" type="submit">Criar usuário</button>
       <a class="btn" href="{% url 'users' %}">Cancelar</a>
