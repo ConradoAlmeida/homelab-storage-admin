@@ -48,6 +48,8 @@ class DashboardView(AgentTemplateView):
                 "storage": None,
                 "backups": None,
                 "backup_jobs": [],
+                "arquivos_jobs": [],
+                "arquivos_dir": "",
                 "snapshots_summary": {},
                 "raid_status": "-",
                 "health": None,
@@ -125,6 +127,13 @@ class DashboardView(AgentTemplateView):
         context["storage"] = storage
         context["backups"] = backups
         context["backup_jobs"] = backup_jobs
+        try:
+            arquivos = agent.arquivos_jobs()
+        except AgentError:
+            pass
+        else:
+            context["arquivos_jobs"] = arquivos.get("jobs", [])
+            context["arquivos_dir"] = arquivos.get("dir", "")
         try:
             context["health"] = agent.health_overview()
         except AgentError:

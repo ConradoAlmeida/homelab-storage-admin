@@ -124,6 +124,39 @@ class ViewSmokeTests(TestCase):
         self.fake.list_shares.assert_any_call(include_size=False)
         self.fake.snapshot_usage.assert_any_call(include_size=False)
 
+    def test_dashboard_lista_jobs_de_arquivos(self):
+        capacidades = dict(self.fake.host_capabilities.return_value)
+        capacidades["credenciais_backup"] = True
+        self.fake.host_capabilities.return_value = capacidades
+        context_processors._cached_caps = None
+        context_processors._cached_at = 0.0
+        self.fake.arquivos_jobs.return_value = {
+            "dir": "/var/backups/moya-credenciais",
+            "jobs": [
+                {
+                    "name": "credenciais",
+                    "label": "Credenciais",
+                    "enabled": True,
+                    "agenda": "diário 03:30",
+                    "retention_days": 30,
+                    "next_run": "2026-10-29T03:30",
+                    "sources": [{"name": "banco"}],
+                    "status": {
+                        "status": "success",
+                        "ok": True,
+                        "finished_at": "2026-10-28T09:51:06",
+                    },
+                    "archives": [],
+                    "archives_count": 7,
+                }
+            ],
+        }
+        response = self.client.get("/")
+        self.assertContains(response, "Backup de arquivos")
+        self.assertContains(response, "Credenciais")
+        self.assertContains(response, "diário 03:30")
+        self.assertNotContains(response, "Nenhum job de backup ainda")
+
     def test_storage_renders_without_btrfs_or_smartctl(self):
         response = self.client.get("/storage/")
         self.assertEqual(response.status_code, 200)

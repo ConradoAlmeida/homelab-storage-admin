@@ -155,10 +155,54 @@
   </table></div>
 </section>
 
+{% if capabilities.credenciais_backup %}
+<section class="section">
+  <div class="section-head">
+    <h2>Backup de arquivos</h2>
+    <div class="page-actions">
+      {% if arquivos_jobs %}<span class="muted text-12">destino <span class="mono">{{ arquivos_dir }}</span></span>{% endif %}
+      <a class="btn small" href="{% url 'arquivos_backup_index' %}">Gerenciar jobs</a>
+    </div>
+  </div>
+  {% if arquivos_jobs %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Job</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        {% for job in arquivos_jobs %}
+          <tr>
+            <td>
+              <a href="{% url 'arquivos_job' job=job.name %}"><strong>{{ job.label }}</strong></a>
+              <div class="muted mono text-11">{{ job.name }}</div>
+            </td>
+            <td class="muted">{{ job.sources|length }} fonte{{ job.sources|length|pluralize }}</td>
+            <td class="muted">
+              {{ job.agenda }}
+              {% if not job.enabled %}<div><span class="tag">desativado</span></div>{% endif %}
+            </td>
+            <td class="muted">{{ job.retention_days }} dias</td>
+            <td>
+              {% if job.status.status == 'running' %}<span class="tag ok">rodando</span>
+              {% elif job.status.ok %}<span class="tag ok">success</span>
+              {% elif job.status.error %}<span class="tag off">failed</span>
+              {% else %}<span class="muted">—</span>{% endif %}
+              {% if job.status.finished_at %}<div class="muted text-11">{{ job.status.finished_at }}</div>{% endif %}
+            </td>
+            <td class="muted text-12">{{ job.next_run|default:"—" }}</td>
+            <td class="file-actions"><a class="btn small" href="{% url 'arquivos_job' job=job.name %}">Abrir</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Nenhum job de arquivos ainda. <a href="{% url 'arquivos_job_new' %}">Criar o primeiro job</a>.</div>
+  {% endif %}
+</section>
+{% endif %}
+
 {% if capabilities.restic %}
 <section class="section">
   <div class="section-head">
-    <h2>Backups</h2>
+    <h2>Backups restic</h2>
     <a class="btn small" href="{% url 'backup_index' %}">Gerenciar backups</a>
   </div>
   {% if not backups.restic %}
@@ -189,7 +233,7 @@
       </tbody>
     </table></div>
   {% else %}
-    <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
+    <div class="empty">Nenhum job restic ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
   {% endif %}
 </section>
 {% endif %}
