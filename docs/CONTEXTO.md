@@ -6,9 +6,9 @@ Documento de retomada. Última atualização: **2026-10-28**.
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `76dc5f2` (layout de painel de operação) |
-| Último deploy | 28/10/2026, moyaserver; Pi pendente (host offline) |
-| Testes | `137 passed`, 26 skips de ambiente |
+| Versão em produção | `bc0d7f0` (gestão de containers) |
+| Último deploy | 29/10/2026, moyaserver; Pi pendente (host offline) |
+| Testes | `146 passed`, 26 skips de ambiente |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
