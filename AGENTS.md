@@ -32,6 +32,8 @@ sudo ./install-agent.sh                 # Pi
 sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
 ```
 
+> O deploy no Pi é responsabilidade do dono; não execute sem pedido explícito.
+
 ## Regras que não podem ser quebradas
 
 1. **O código é compartilhado com o Pi.** Nunca remova uma feature para atender

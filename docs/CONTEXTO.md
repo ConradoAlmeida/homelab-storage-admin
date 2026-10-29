@@ -57,7 +57,7 @@ Documento de retomada. Última atualização: **2026-10-28**.
 
 ## Pendências, em ordem
 
-1. **Deploy no Pi** — aplicar o merge `76dc5f2` quando o host estiver acessível.
+1. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
 2. **Discos externos**: criar repo restic, jobs, cópia fria, `restic check` e
    restore de teste. Bloqueado por hardware.
 3. **Firewall**: decidir entre ativar UFW ou assumir Caddy em `127.0.0.1`. O
@@ -91,6 +91,8 @@ cd /opt/stacks/homelab-storage-admin
 # se agent/ mudou
 sudo ./install-agent.sh
 ```
+
+> O deploy no Pi é feito pelo responsável; não execute sem pedido explícito.
 
 Diagnóstico:
 
