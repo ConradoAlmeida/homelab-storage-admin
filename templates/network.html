@@ -6,9 +6,6 @@
     <h1>Rede e firewall</h1>
     <p class="lead">Somente leitura: interfaces, rotas, portas ouvindo, mapeamentos Docker e status do UFW.</p>
   </div>
-  <div class="page-actions">
-    <a class="btn" href="{% url 'dashboard' %}">Voltar ao dashboard</a>
-  </div>
 </div>
 
 {% if error %}
@@ -17,7 +14,7 @@
   <section class="section">
     <div class="section-head">
       <h2>Firewall</h2>
-      <span class="tag {% if data.firewall == 'ativo' %}ok{% else %}off{% endif %}">UFW {{ data.firewall }}</span>
+      <span class="status {% if data.firewall == 'ativo' %}ok{% else %}off{% endif %}">UFW {{ data.firewall }}</span>
     </div>
     {% if data.rules %}
       <div class="table-wrap"><table class="file-table">

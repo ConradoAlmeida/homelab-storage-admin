@@ -1,4 +1,5 @@
 import json
+import os
 import socket
 
 from django.conf import settings
@@ -316,4 +317,9 @@ class AgentClient:
         return self.call("network_metrics", timeout=15)
 
 
-agent = AgentClient()
+if os.environ.get("STORAGE_ADMIN_DEMO") == "1":
+    from .demo_agent import DemoAgent
+
+    agent = DemoAgent()
+else:
+    agent = AgentClient()

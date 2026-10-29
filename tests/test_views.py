@@ -469,6 +469,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Disco cheio")
         self.assertContains(resposta, "/mnt em 91%")
         self.assertContains(resposta, "health-row")
+        self.assertContains(resposta, "Nível")
         self.assertNotContains(resposta, "health-list")
 
     def test_usuarios_lista_grupos_em_tabela(self):

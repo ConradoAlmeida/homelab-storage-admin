@@ -6,9 +6,10 @@ html {
 
 main > h1,
 .page-head h1 {
-  font-size: 1.65rem;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
   margin: 0;
 }
 
@@ -16,19 +17,19 @@ main > h1,
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
-  margin: 0 0 26px;
-  padding-bottom: 18px;
+  margin: 0 0 18px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
 }
 
 .page-head .lead {
   max-width: 72ch;
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .page-actions {
@@ -39,7 +40,7 @@ main > h1,
 }
 
 .section {
-  margin: 30px 0 0;
+  margin: 22px 0 0;
 }
 
 .section-head,
@@ -55,16 +56,17 @@ main > h1,
 .section-head h2,
 .health-head h2 {
   margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--txt);
+  font-weight: 600;
 }
 
 .card {
   min-width: 0;
-  padding: 20px;
-  border-radius: 14px;
+  padding: 16px;
+  border-radius: 6px;
   background: var(--panel);
   border: 1px solid var(--line);
 }
@@ -83,13 +85,13 @@ main > h1,
 .alert.warn,
 .alert.ok {
   display: block;
-  padding: 16px 18px;
+  padding: 0;
   margin: 12px 0;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--txt);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -169,16 +171,16 @@ main > h1,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 9px 14px;
-  border-radius: 9px;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 4px;
   border: 1px solid var(--line);
-  background: var(--panel-2);
+  background: transparent;
   color: var(--txt);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
 }
@@ -203,13 +205,13 @@ main > h1,
 
 .btn.danger {
   color: var(--err);
-  border-color: rgba(255, 107, 107, 0.45);
-  background: rgba(255, 107, 107, 0.06);
+  border-color: var(--line);
+  background: transparent;
 }
 
 .btn.small {
-  min-height: 32px;
-  padding: 7px 11px;
+  min-height: 28px;
+  padding: 4px 8px;
   font-size: 12px;
 }
 
@@ -218,8 +220,28 @@ main > h1,
   white-space: nowrap;
 }
 
-.file-actions .btn {
-  margin: 0 0 0 4px;
+.file-actions .btn,
+.row-actions .btn {
+  margin: 0;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--acc);
+  font-weight: 500;
+}
+
+.file-actions .btn.danger,
+.row-actions .btn.danger,
+.file-actions .btn.primary,
+.row-actions .btn.primary {
+  background: transparent;
+  border: 0;
+}
+
+.file-actions .btn.danger,
+.row-actions .btn.danger {
+  color: var(--err);
 }
 
 .row-actions {
@@ -238,7 +260,7 @@ main > h1,
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 6px;
   background: var(--panel);
 }
 
@@ -251,11 +273,11 @@ main > h1,
 
 th,
 td {
-  padding: 13px 16px;
+  padding: 9px 12px;
 }
 
 th {
-  background: rgba(46, 50, 65, 0.5);
+  background: rgba(18, 21, 31, 0.55);
 }
 
 tbody tr:hover td {
@@ -263,73 +285,79 @@ tbody tr:hover td {
 }
 
 .empty {
-  padding: 40px 24px;
+  padding: 16px 0;
   color: var(--muted);
-  text-align: center;
+  text-align: left;
   background: transparent;
   border: 0;
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .tag,
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.4;
 }
 
 .tag.ok,
 .badge.live {
   color: var(--ok);
-  border-color: rgba(92, 214, 168, 0.45);
-  background: rgba(92, 214, 168, 0.07);
+  border: 0;
+  background: transparent;
 }
 
 .tag.off,
 .badge.danger {
   color: var(--err);
-  border-color: rgba(255, 107, 107, 0.45);
-  background: rgba(255, 107, 107, 0.07);
+  border: 0;
+  background: transparent;
 }
 
 .badge.snap {
   color: var(--warn);
-  border-color: rgba(240, 160, 48, 0.45);
-  background: rgba(240, 160, 48, 0.07);
+  border: 0;
+  background: transparent;
 }
 
-.health-card {
-  margin: 0 0 6px;
-}
-
-.health-rows {
-  display: flex;
-  flex-direction: column;
-  margin-top: 4px;
-}
-
-.health-row {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 12px;
-  align-items: baseline;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-}
-
-.health-row strong {
-  display: block;
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 600;
 }
 
-.health-row .muted {
-  display: block;
-  margin-top: 2px;
+.status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status.ok::before {
+  background: var(--ok);
+}
+
+.status.warn::before {
+  background: var(--warn);
+}
+
+.status.off::before {
+  background: var(--err);
+}
+
+.health-row strong {
+  font-weight: 600;
 }
 
 .chip-list {
@@ -385,10 +413,10 @@ tbody tr:hover td {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  min-height: 86px;
-  padding: 16px 18px;
+  min-height: 56px;
+  padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 6px;
   background: var(--panel);
   color: var(--txt);
   text-decoration: none;
@@ -419,8 +447,8 @@ tbody tr:hover td {
 .panel,
 .panel-form {
   display: block;
-  padding: 20px;
-  border-radius: 14px;
+  padding: 16px;
+  border-radius: 6px;
   background: var(--panel);
   border: 1px solid var(--line);
   max-width: none;
@@ -449,8 +477,8 @@ tbody tr:hover td {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .form-control {
@@ -569,16 +597,16 @@ tbody tr:hover td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 9px 14px;
-  border-radius: 9px;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 4px;
   border: 1px solid var(--line);
-  background: var(--panel-2);
+  background: transparent;
   color: var(--txt);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
 }
@@ -606,13 +634,12 @@ tbody tr:hover td {
 }
 
 .flash {
-  padding: 14px 16px;
+  padding: 0;
   margin: 12px 0;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--warn);
-  background: var(--bg-deep);
-  font-size: 14px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
 }
 
 .flash-error {
