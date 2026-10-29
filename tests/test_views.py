@@ -608,6 +608,13 @@ class ViewSmokeTests(TestCase):
         )
         self.fake.container_action.assert_not_called()
 
+    def test_container_do_painel_nao_pode_ser_parado(self):
+        self.client.post(
+            "/containers/acao/",
+            {"name": "homelab-storage-admin", "action": "stop"},
+        )
+        self.fake.container_action.assert_not_called()
+
     def test_container_logs_renderiza(self):
         resposta = self.client.get(
             "/containers/logs/", {"name": "gitea", "tail": "100"}

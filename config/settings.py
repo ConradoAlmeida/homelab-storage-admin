@@ -17,6 +17,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Layout do NAS (precisa bater com o agente)
 SITE_NAME = os.environ.get("SITE_NAME", "Homelab Storage")
+APP_CONTAINER = os.environ.get("APP_CONTAINER", "homelab-storage-admin")
 STORAGE_ROOT = os.environ.get("STORAGE_ROOT", "/mnt/nas")
 SNAPSHOT_ROOT = os.environ.get("SNAPSHOT_ROOT", "/mnt/nas/.snapshots")
 BACKUP_ROOT = os.environ.get("BACKUP_ROOT", "/mnt/backup")

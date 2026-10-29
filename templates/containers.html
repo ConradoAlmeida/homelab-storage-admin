@@ -54,7 +54,7 @@
                 <span class="status off">{{ item.state|default:"parado" }}</span>
               {% endif %}
               {% if item.status %}<div class="muted text-11">{{ item.status }}</div>{% endif %}
-              {% if item.health %}<div class="muted text-11">health: {{ item.health }}</div>{% endif %}
+              {% if item.health and item.health not in item.status %}<div class="muted text-11">health: {{ item.health }}</div>{% endif %}
             </td>
             <td class="mono text-11">
               {% for porta in item.ports %}{{ porta }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}
@@ -62,7 +62,9 @@
             <td class="file-actions">
               <div class="row-actions">
                 <a class="btn" href="{% url 'container_logs' %}?name={{ item.name|urlencode }}">Logs</a>
-                {% if item.running %}
+                {% if item.name == app_container %}
+                  <span class="muted text-12">container do painel</span>
+                {% elif item.running %}
                   <form method="post" action="{% url 'container_action' %}"
                         data-confirm="Parar o container {{ item.name }}?">
                     {% csrf_token %}

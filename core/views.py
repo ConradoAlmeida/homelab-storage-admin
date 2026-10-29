@@ -221,6 +221,7 @@ class ContainersView(AgentTemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({"overview": None, "error": None})
+        context["app_container"] = settings.APP_CONTAINER
         try:
             context["overview"] = agent.containers_overview()
         except AgentError as exc:
@@ -234,6 +235,12 @@ class ContainerActionView(AgentPostView):
         action = (request.POST.get("action") or "").strip()
         if action not in ("start", "stop", "restart"):
             _error(request, "Ação inválida.")
+            return redirect("containers")
+        if name == settings.APP_CONTAINER:
+            _error(
+                request,
+                "Este é o container do próprio painel. Use o host para pará-lo ou reiniciá-lo.",
+            )
             return redirect("containers")
         try:
             agent.container_action(name, action)

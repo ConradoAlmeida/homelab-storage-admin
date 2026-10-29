@@ -32,7 +32,8 @@ Documento de retomada. Última atualização: **2026-10-28**.
 - Página **Rede** read-only: UFW, interfaces, rotas, portas e containers.
 - Card **Saúde** no Dashboard: discos, backups, containers e pendências.
 - **Containers** (`/containers/`): Docker ou Podman, estado, portas, iniciar,
-  parar, reiniciar e logs; sem remover nem executar comandos.
+  parar, reiniciar e logs; sem remover nem executar comandos. O container do
+  painel é protegido contra parada/reinício pela própria UI.
 - Login pelo Credenciais no moya, com `CREDENTIALS_MANAGE_USERS=1` e
   break-glass local.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,

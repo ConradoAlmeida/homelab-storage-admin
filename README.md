@@ -688,6 +688,7 @@ modelo recomendado é publicar em `127.0.0.1` e deixar o Caddy expor.
   mostra o motivo.
 - Parar um container crítico (Caddy, Credenciais ou o próprio Storage Admin)
   derruba o serviço correspondente; a confirmação existe por isso.
+- O container do próprio painel não mostra **Parar/Reiniciar**; para ele, use o host.
 
 ---
 
