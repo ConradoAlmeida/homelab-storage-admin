@@ -101,6 +101,8 @@ Variáveis principais: `SITE_NAME`, `STORAGE_ROOT`, `SNAPSHOT_ROOT`,
 `SNAPSHOT_BACKEND=auto|btrfs|rsync|none`, `BACKUP_ROOT`, `AGENT_SOCKET`,
 `BIND_ADDR`, `BIND_PORT`, `DATA_DIR`, `FIREWALL_MANAGE=0|1`,
 `FIREWALL_SAFE_PORTS=22/tcp,53/tcp,53/udp,80/tcp,443/tcp,8060/tcp,137/udp,138/udp,139/tcp,445/tcp`.
+No perfil do Pi, o exemplo também inclui `5001/tcp` (Dockge) e `8080/tcp`
+(web do Pi-hole); só entram se estiverem em uso público no momento da ativação.
 
 O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
 filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não

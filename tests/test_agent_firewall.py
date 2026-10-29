@@ -162,6 +162,35 @@ def test_ufw_public_listeners_ignora_loopback(agent_module, monkeypatch):
     }
 
 
+def test_ufw_public_listeners_perfil_pi(agent_module, monkeypatch):
+    def fake_optional(args, timeout=15):
+        if args == ["ss", "-ltn"]:
+            return (
+                0,
+                "State Recv-Q Send-Q Local Address:Port Peer Address:Port\n"
+                "LISTEN 0 4096 192.168.0.150:8060 0.0.0.0:*\n"
+                "LISTEN 0 4096 0.0.0.0:80 0.0.0.0:*\n"
+                "LISTEN 0 4096 0.0.0.0:22 0.0.0.0:*\n",
+                "",
+            )
+        if args == ["ss", "-lun"]:
+            return (
+                0,
+                "State Recv-Q Send-Q Local Address:Port Peer Address:Port\n"
+                "UNCONN 0 0 0.0.0.0:53 0.0.0.0:*\n",
+                "",
+            )
+        return 1, "", ""
+
+    monkeypatch.setattr(agent_module, "run_optional", fake_optional)
+    assert agent_module._ufw_public_listeners() == {
+        (8060, "tcp"),
+        (80, "tcp"),
+        (22, "tcp"),
+        (53, "udp"),
+    }
+
+
 def test_ufw_rule_covers_perfis_conhecidos(agent_module):
     samba = {"action": "allow", "to": "Samba"}
     openssh = {"action": "allow", "to": "OpenSSH"}
