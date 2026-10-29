@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 import backups.views as backup_views
 import core.context_processors as context_processors
@@ -48,6 +48,19 @@ def fake_agent(capabilities=None):
         "firewall": "inativo",
         "rules": [],
     }
+    agent.firewall_overview.return_value = {
+        "installed": True,
+        "active": False,
+        "status": "inativo",
+        "policies": {"incoming": "deny", "outgoing": "allow", "routed": "deny"},
+        "rules": [],
+        "ssh_allowed": True,
+        "error": "",
+    }
+    agent.firewall_enable.return_value = agent.firewall_overview.return_value
+    agent.firewall_disable.return_value = agent.firewall_overview.return_value
+    agent.firewall_add_rule.return_value = agent.firewall_overview.return_value
+    agent.firewall_delete_rule.return_value = agent.firewall_overview.return_value
     agent.containers_overview.return_value = {
         "runtime": "docker",
         "containers": [],
@@ -456,13 +469,29 @@ class ViewSmokeTests(TestCase):
             ],
             "listening": [],
             "containers": [],
-            "firewall": "ativo",
+        }
+        self.fake.firewall_overview.return_value = {
+            "installed": True,
+            "active": True,
+            "status": "ativo",
+            "policies": {
+                "incoming": "deny",
+                "outgoing": "allow",
+                "routed": "deny",
+            },
             "rules": [
-                "New profiles: skip",
-                "To                         Action      From",
-                "--                         ------      ----",
-                "22/tcp                     ALLOW IN    Anywhere",
+                {
+                    "number": 1,
+                    "spec": "allow 22/tcp",
+                    "to": "22/tcp",
+                    "action": "allow",
+                    "direction": "in",
+                    "from": "Anywhere",
+                    "signature": "allow 22/tcp",
+                }
             ],
+            "ssh_allowed": True,
+            "error": "",
         }
         resposta = self.client.get("/rede/")
         self.assertContains(resposta, "192.168.0.1")
@@ -470,8 +499,81 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "192.168.0.10")
         self.assertContains(resposta, "22/tcp")
         self.assertContains(resposta, "ALLOW IN")
+        self.assertContains(resposta, "allow 22/tcp")
+        self.assertContains(resposta, "Desativar firewall")
         self.assertNotContains(resposta, "<pre")
         self.assertNotContains(resposta, "New profiles")
+
+    def test_rede_mostra_controles_quando_gestao_ligada(self):
+        resposta = self.client.get("/rede/")
+        self.assertContains(resposta, "Adicionar regra")
+        self.assertContains(resposta, "Ativar firewall")
+
+    @override_settings(FIREWALL_MANAGE=False)
+    def test_rede_somente_leitura_quando_gestao_desligada(self):
+        resposta = self.client.get("/rede/")
+        self.assertContains(resposta, "UFW")
+        self.assertNotContains(resposta, "Adicionar regra")
+        self.assertNotContains(resposta, "Ativar firewall")
+        self.assertNotContains(resposta, "Desativar firewall")
+
+    def test_firewall_enable_chama_agente(self):
+        resposta = self.client.post(
+            "/rede/firewall/",
+            {"acao": "enable", "allow_ssh": "1"},
+        )
+        self.assertRedirects(resposta, "/rede/")
+        self.fake.firewall_enable.assert_called_once_with(allow_ssh=True)
+        self.assertTrue(AuditLog.objects.filter(action="firewall.enable").exists())
+
+    def test_firewall_disable_chama_agente(self):
+        resposta = self.client.post("/rede/firewall/", {"acao": "disable"})
+        self.assertRedirects(resposta, "/rede/")
+        self.fake.firewall_disable.assert_called_once_with()
+        self.assertTrue(AuditLog.objects.filter(action="firewall.disable").exists())
+
+    def test_firewall_add_chama_agente(self):
+        resposta = self.client.post(
+            "/rede/firewall/",
+            {
+                "acao": "add",
+                "rule_action": "allow",
+                "port": "8080",
+                "proto": "tcp",
+                "source": "192.168.0.0/24",
+            },
+        )
+        self.assertRedirects(resposta, "/rede/")
+        self.fake.firewall_add_rule.assert_called_once_with(
+            action="allow",
+            port="8080",
+            proto="tcp",
+            source="192.168.0.0/24",
+        )
+        self.assertTrue(
+            AuditLog.objects.filter(action="firewall.add", target="8080/tcp").exists()
+        )
+
+    def test_firewall_delete_chama_agente(self):
+        resposta = self.client.post(
+            "/rede/firewall/",
+            {"acao": "delete", "spec": "allow 22/tcp"},
+        )
+        self.assertRedirects(resposta, "/rede/")
+        self.fake.firewall_delete_rule.assert_called_once_with("allow 22/tcp")
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="firewall.delete", target="allow 22/tcp"
+            ).exists()
+        )
+
+    def test_firewall_acao_invalida_nao_chama_agente(self):
+        resposta = self.client.post("/rede/firewall/", {"acao": "reset"})
+        self.assertRedirects(resposta, "/rede/")
+        self.fake.firewall_enable.assert_not_called()
+        self.fake.firewall_disable.assert_not_called()
+        self.fake.firewall_add_rule.assert_not_called()
+        self.fake.firewall_delete_rule.assert_not_called()
 
     def test_saude_usa_linha_com_pilula(self):
         self.fake.health_overview.return_value = {

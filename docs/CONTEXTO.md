@@ -8,7 +8,7 @@ Documento de retomada. Última atualização: **2026-10-29**.
 |---|---|
 | Versão em produção | `8649d88` (casos de uso na ajuda) |
 | Último deploy | 29/10/2026, moyaserver; Pi pendente (host offline) |
-| Testes | `155 passed`, 26 skips de ambiente |
+| Testes | `179 passed`, 26 skips de ambiente |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
@@ -29,7 +29,8 @@ Documento de retomada. Última atualização: **2026-10-29**.
 - Jobs em produção:
   - **Credenciais** — banco + `.env`, diário 03:30, 30 dias;
   - **Dados dos apps** — 16 fontes, manual, sem timer.
-- Página **Rede** read-only: UFW, interfaces, rotas, portas e containers.
+- Página **Rede**: firewall UFW editável (ativar/desativar, adicionar/remover
+  regras), interfaces, rotas, portas e containers.
 - Card **Saúde** no Dashboard: discos, backups, containers e pendências.
 - **Containers** (`/containers/`): Docker ou Podman, estado, portas, iniciar,
   parar, reiniciar e logs; sem remover nem executar comandos. O container do
@@ -67,8 +68,8 @@ Documento de retomada. Última atualização: **2026-10-29**.
 1. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
 2. **Discos externos**: criar repo restic, jobs, cópia fria, `restic check` e
    restore de teste. Bloqueado por hardware.
-3. **Firewall**: decidir entre ativar UFW ou assumir Caddy em `127.0.0.1`. O
-   alerta “Firewall inativo” é real.
+3. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
+   O alerta "Firewall inativo" continua real até a ativação.
 4. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
    USB antigos inválidos.
 5. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”

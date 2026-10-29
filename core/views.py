@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
@@ -51,30 +49,6 @@ def parse_routes(linhas):
             }
         )
     return rotas
-
-
-def parse_firewall_rules(linhas):
-    regras = []
-    for linha in linhas or []:
-        texto = (linha or "").strip()
-        if not texto or texto.lower().startswith("new profiles"):
-            continue
-        if set(texto.replace(" ", "")) <= {"-"}:
-            continue
-        colunas = re.split(r"\s{2,}", texto)
-        if (
-            len(colunas) >= 3
-            and colunas[0].lower() == "to"
-            and colunas[1].lower().startswith("action")
-        ):
-            continue
-        if len(colunas) >= 3:
-            regras.append(
-                {"to": colunas[0], "action": colunas[1], "from": colunas[2]}
-            )
-        else:
-            regras.append({"to": texto, "action": "—", "from": "—"})
-    return regras
 
 
 def _audit(request, action, target="", detail=""):
@@ -203,16 +177,73 @@ class NetworkView(AgentTemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"data": None, "error": None})
+        context.update(
+            {
+                "data": None,
+                "error": None,
+                "firewall": None,
+                "firewall_error": None,
+                "pode_gerenciar_firewall": settings.FIREWALL_MANAGE,
+            }
+        )
         try:
             data = agent.network_overview()
         except AgentError as exc:
             context["error"] = str(exc)
         else:
             data["routes"] = parse_routes(data.get("routes"))
-            data["rules"] = parse_firewall_rules(data.get("rules"))
             context["data"] = data
+        try:
+            context["firewall"] = agent.firewall_overview()
+        except AgentError as exc:
+            context["firewall_error"] = str(exc)
         return context
+
+
+class FirewallActionView(AgentPostView):
+    def post(self, request):
+        if not settings.FIREWALL_MANAGE:
+            _error(request, "A gestão do firewall está desativada neste host.")
+            return redirect("network_index")
+        acao = (request.POST.get("acao") or "").strip()
+        try:
+            if acao == "enable":
+                allow_ssh = request.POST.get("allow_ssh") == "1"
+                agent.firewall_enable(allow_ssh=allow_ssh)
+                _audit(request, "firewall.enable", detail=f"allow_ssh={allow_ssh}")
+                messages.success(request, "Firewall ativado.")
+            elif acao == "disable":
+                agent.firewall_disable()
+                _audit(request, "firewall.disable")
+                messages.success(request, "Firewall desativado.")
+            elif acao == "add":
+                rule_action = (request.POST.get("rule_action") or "").strip()
+                port = (request.POST.get("port") or "").strip()
+                proto = (request.POST.get("proto") or "tcp").strip()
+                source = (request.POST.get("source") or "").strip()
+                agent.firewall_add_rule(
+                    action=rule_action,
+                    port=port,
+                    proto=proto,
+                    source=source,
+                )
+                _audit(
+                    request,
+                    "firewall.add",
+                    target=f"{port}/{proto}",
+                    detail=f"{rule_action} from={source or 'any'}",
+                )
+                messages.success(request, "Regra adicionada.")
+            elif acao == "delete":
+                spec = (request.POST.get("spec") or "").strip()
+                agent.firewall_delete_rule(spec)
+                _audit(request, "firewall.delete", target=spec)
+                messages.success(request, "Regra removida.")
+            else:
+                _error(request, "Ação de firewall inválida.")
+        except AgentError as exc:
+            _error(request, exc)
+        return redirect("network_index")
 
 
 class ContainersView(AgentTemplateView):

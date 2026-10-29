@@ -82,15 +82,33 @@ AJUDA: dict[str, dict[str, Any]] = {
     "network_index": {
         "title": "Rede e firewall",
         "summary": (
-            "Visão de rede do host: regras de firewall, interfaces, rotas, "
+            "Visão de rede do host: firewall UFW editável, interfaces, rotas, "
             "portas abertas e containers publicados."
         ),
         "chapters": [
             {
-                "title": "Firewall",
+                "title": "Firewall (UFW)",
                 "text": (
-                    "Lista as regras que liberam portas para a rede. A edição é "
-                    "feita fora deste painel; aqui a visão é somente leitura."
+                    "Mostra o estado, as políticas padrão e as regras salvas. "
+                    "Com a gestão habilitada, é possível ativar ou desativar o "
+                    "firewall e adicionar ou remover regras."
+                ),
+            },
+            {
+                "title": "Ativar e desativar",
+                "text": (
+                    "Ao ativar, o painel garante uma regra de SSH (22/tcp) para "
+                    "não perder o acesso. Desativar remove o filtro até que o "
+                    "firewall seja ligado de novo."
+                ),
+            },
+            {
+                "title": "Regras",
+                "text": (
+                    "As regras são salvas no UFW mesmo com o firewall parado. "
+                    "Adicione por porta, protocolo e origem; a remoção usa a "
+                    "regra exata e é recusada se for a última liberação de SSH "
+                    "com o firewall ativo."
                 ),
             },
             {
@@ -1037,9 +1055,10 @@ USE_CASES: dict[str, str] = {
         "último backup restic terminou bem."
     ),
     "network_index": (
-        "Use quando um serviço não abre ou um container não responde. Exemplo: "
-        "confira se a porta está publicada, se a interface tem endereço e se o "
-        "firewall permite a origem antes de mexer no Caddy."
+        "Use quando precisar liberar ou fechar uma porta e também para "
+        "diagnosticar a rede. Exemplo: libere 8080/tcp apenas para "
+        "192.168.0.0/24, ative o UFW com SSH garantido e, se um app parar, "
+        "confira portas, rotas e regras antes de mexer no Caddy."
     ),
     "containers": (
         "Use no dia a dia para reiniciar um serviço travado e conferir o que "

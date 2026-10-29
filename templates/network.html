@@ -4,38 +4,135 @@
 <div class="page-head">
   <div>
     <h1>Rede e firewall</h1>
-    <p class="lead">Somente leitura: interfaces, rotas, portas ouvindo, mapeamentos Docker e status do UFW.</p>
+    <p class="lead">Interfaces, rotas, portas, containers e firewall UFW. Regras e ativação ficam disponíveis quando a gestão está habilitada.</p>
   </div>
 </div>
 
 {% if error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif data %}
-  <section class="section">
+  <section class="section" id="firewall">
     <div class="section-head">
-      <h2>Firewall</h2>
-      <span class="status {% if data.firewall == 'ativo' %}ok{% else %}off{% endif %}">UFW {{ data.firewall }}</span>
+      <h2>Firewall (UFW)</h2>
+      {% if firewall %}
+        <span class="status {% if firewall.active %}ok{% else %}off{% endif %}">UFW {{ firewall.status }}</span>
+      {% else %}
+        <span class="status off">UFW indisponível</span>
+      {% endif %}
+      {% if pode_gerenciar_firewall and firewall.installed %}
+      <div class="page-actions">
+        {% if firewall.active %}
+        <form method="post" action="{% url 'firewall_action' %}" data-confirm="Desativar o UFW remove o filtro de portas do host. Continuar?">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="disable">
+          <button class="btn danger" type="submit">Desativar firewall</button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'firewall_action' %}" data-confirm="Ativar o UFW? Se não houver regra de SSH, 22/tcp será liberado. As portas essenciais em uso público (HTTP/HTTPS, DNS e o próprio painel) também são preservadas para não perder o acesso.">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="enable">
+          <input type="hidden" name="allow_ssh" value="1">
+          <button class="btn primary" type="submit">Ativar firewall</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
-    {% if data.rules %}
-      <div class="table-wrap"><table class="file-table">
-        <thead><tr><th>Para</th><th>Ação</th><th>Origem</th></tr></thead>
-        <tbody>
-          {% for rule in data.rules %}
-            <tr>
-              <td class="mono text-12">{{ rule.to }}</td>
-              <td>{{ rule.action }}</td>
-              <td class="muted">{{ rule.from }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table></div>
-    {% else %}
-      <div class="empty">Sem regras para mostrar (ou UFW não instalado).</div>
+
+    {% if firewall_error %}
+      <div class="alert danger"><strong>Firewall indisponível</strong><p>{{ firewall_error }}</p></div>
+    {% elif firewall %}
+      {% if firewall.error %}
+        <div class="alert danger"><strong>Falha ao consultar o UFW</strong><p>{{ firewall.error }}</p></div>
+      {% endif %}
+      {% if not firewall.installed %}
+        <div class="alert">O UFW não está instalado neste host. A página continua mostrando o restante da rede.</div>
+      {% else %}
+        <p class="muted text-12">
+          Padrão: entrada <strong>{{ firewall.policies.incoming|default:"—" }}</strong>,
+          saída <strong>{{ firewall.policies.outgoing|default:"—" }}</strong>,
+          roteado <strong>{{ firewall.policies.routed|default:"—" }}</strong>.
+          {% if not firewall.active %}O firewall está parado; as regras abaixo estão salvas e serão aplicadas ao ativar.{% endif %}
+        </p>
+
+        {% if firewall.rules %}
+          <div class="table-wrap"><table class="file-table">
+            <thead><tr><th>#</th><th>Regra</th><th>Para</th><th>Ação</th><th>Origem</th>{% if pode_gerenciar_firewall %}<th aria-label="Ações"></th>{% endif %}</tr></thead>
+            <tbody>
+              {% for rule in firewall.rules %}
+                <tr>
+                  <td class="muted">{{ rule.number }}</td>
+                  <td class="mono text-12">{{ rule.spec }}</td>
+                  <td class="mono text-12">{{ rule.to }}</td>
+                  <td>{{ rule.action|upper }} {{ rule.direction|upper }}</td>
+                  <td class="muted">{{ rule.from }}</td>
+                  {% if pode_gerenciar_firewall %}
+                  <td class="file-actions">
+                    <form method="post" action="{% url 'firewall_action' %}" data-confirm="Remover esta regra?">
+                      {% csrf_token %}
+                      <input type="hidden" name="acao" value="delete">
+                      <input type="hidden" name="spec" value="{{ rule.spec }}">
+                      <button class="btn danger" type="submit">Remover</button>
+                    </form>
+                  </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table></div>
+        {% else %}
+          <div class="empty">Nenhuma regra configurada.</div>
+        {% endif %}
+
+        <p class="muted text-12">
+          Docker publica portas via iptables e pode furar o UFW. O modelo mais seguro é publicar os apps em
+          <span class="mono">127.0.0.1</span> e deixar o Caddy expor.
+        </p>
+        <p class="muted text-12">
+          Ao ativar, o painel preserva as portas essenciais que estiverem em uso público
+          (SSH, DNS, HTTP/HTTPS e o próprio painel) antes de aplicar o firewall.
+        </p>
+
+        {% if pode_gerenciar_firewall %}
+        <div class="card">
+          <div class="section-head"><h2>Adicionar regra de entrada</h2></div>
+          <form method="post" action="{% url 'firewall_action' %}" class="form-grid" data-confirm="Adicionar esta regra? Regras de bloqueio podem interromper serviços.">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="add">
+            <div class="form-group">
+              <label for="fw-rule-action">Ação</label>
+              <select class="form-control" id="fw-rule-action" name="rule_action">
+                <option value="allow">Permitir</option>
+                <option value="deny">Bloquear</option>
+                <option value="reject">Rejeitar</option>
+                <option value="limit">Limitar (útil para SSH)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fw-port">Porta</label>
+              <input class="form-control" id="fw-port" name="port" placeholder="8080 ou 80,443" required>
+            </div>
+            <div class="form-group">
+              <label for="fw-proto">Protocolo</label>
+              <select class="form-control" id="fw-proto" name="proto">
+                <option value="tcp">TCP</option>
+                <option value="udp">UDP</option>
+                <option value="any">TCP + UDP</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fw-source">Origem (opcional)</label>
+              <input class="form-control" id="fw-source" name="source" placeholder="192.168.0.0/24 ou vazio = qualquer">
+            </div>
+            <div class="form-actions span-2">
+              <button class="btn primary" type="submit">Adicionar regra</button>
+            </div>
+          </form>
+          <p class="muted text-12">Para não perder o acesso, a última regra que libera SSH não pode ser removida enquanto o firewall estiver ativo.</p>
+        </div>
+        {% endif %}
+      {% endif %}
     {% endif %}
-    <p class="muted text-12">
-      Docker publica portas via iptables e pode furar o UFW. O modelo mais seguro é publicar os apps em
-      <span class="mono">127.0.0.1</span> e deixar o Caddy expor.
-    </p>
   </section>
 
   <section class="section">

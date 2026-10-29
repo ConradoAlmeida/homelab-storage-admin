@@ -132,6 +132,9 @@ CREDENTIALS_APP = os.environ.get("CREDENTIALS_APP", "storage")
 # O Pi mantém 0; o moyaserver configura 1 no host.env.
 CREDENTIALS_MANAGE_USERS = os.environ.get("CREDENTIALS_MANAGE_USERS", "0") == "1"
 
+# Gestao do firewall UFW pela pagina Rede. 0 deixa a pagina somente leitura.
+FIREWALL_MANAGE = os.environ.get("FIREWALL_MANAGE", "1") == "1"
+
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 X_FRAME_OPTIONS = "DENY"

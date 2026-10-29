@@ -10,11 +10,13 @@ import configparser
 import datetime as dt
 import grp
 import hashlib
+import ipaddress
 import json
 import os
 import pwd
 import re
 import secrets
+import shlex
 import shutil
 import socketserver
 import sqlite3
@@ -79,6 +81,15 @@ CREDENCIAIS_MAX_SOURCE_BYTES = int(
 )
 CREDENCIAIS_PROIBIDOS = ("/proc", "/sys", "/dev", "/run")
 LOG_FILE = os.environ.get("LOG_FILE", "/var/log/homelab-storage-agent.log")
+UFW_DEFAULTS = os.environ.get("UFW_DEFAULTS", "/etc/default/ufw")
+UFW_ACTIONS = {"allow", "deny", "reject", "limit"}
+UFW_PROTOS = {"tcp", "udp"}
+UFW_PORT_RE = re.compile(r"^\d{1,5}(?:,\d{1,5})*$")
+FIREWALL_SAFE_PORTS = os.environ.get(
+    "FIREWALL_SAFE_PORTS",
+    "22/tcp,53/tcp,53/udp,80/tcp,443/tcp,8060/tcp,"
+    "137/udp,138/udp,139/tcp,445/tcp",
+)
 DATA_DIR = os.environ.get("DATA_DIR", "/var/lib/homelab-storage-admin")
 DOWNLOAD_DIR = os.environ.get("DOWNLOAD_DIR", os.path.join(DATA_DIR, "downloads"))
 STORAGE_CACHE = os.environ.get(
@@ -273,6 +284,7 @@ def host_capabilities() -> dict:
         ),
         "gitea": _container_exists(GITEA_CONTAINER),
         "containers": bool(_runtime_containers()),
+        "firewall": bool(shutil.which("ufw")),
     }
 
 
@@ -4890,6 +4902,362 @@ def _validar_container(runtime: str, name: str) -> str:
     return nome
 
 
+def _ufw_available() -> bool:
+    return bool(shutil.which("ufw"))
+
+
+def _ufw_policy_name(value: str) -> str:
+    mapa = {"DROP": "deny", "ACCEPT": "allow", "REJECT": "reject"}
+    return mapa.get((value or "").strip().upper(), (value or "").strip().lower() or "-")
+
+
+def _ufw_default_policies() -> dict:
+    path = Path(UFW_DEFAULTS)
+    if not path.is_file():
+        return {}
+    try:
+        linhas = path.read_text().splitlines()
+    except OSError:
+        return {}
+    policies = {}
+    for linha in linhas:
+        if "=" not in linha:
+            continue
+        chave, valor = linha.split("=", 1)
+        chave = chave.strip()
+        valor = valor.strip().strip('"').strip("'")
+        if chave == "DEFAULT_INPUT_POLICY":
+            policies["incoming"] = _ufw_policy_name(valor)
+        elif chave == "DEFAULT_OUTPUT_POLICY":
+            policies["outgoing"] = _ufw_policy_name(valor)
+        elif chave == "DEFAULT_FORWARD_POLICY":
+            policies["routed"] = _ufw_policy_name(valor)
+    return policies
+
+
+def _ufw_status_policies(texto: str) -> dict:
+    for linha in (texto or "").splitlines():
+        if not linha.startswith("Default:"):
+            continue
+        policies = {}
+        for parte in linha.split(":", 1)[1].split(","):
+            achado = re.match(r"\s*(\w+)\s+\((incoming|outgoing|routed)\)", parte)
+            if achado:
+                policies[achado.group(2)] = _ufw_policy_name(achado.group(1))
+        return policies
+    return {}
+
+
+def _ufw_rule_target(partes: list[str]) -> tuple[str, str]:
+    source = ""
+    if "from" in partes:
+        indice = partes.index("from")
+        if indice + 1 < len(partes):
+            source = partes[indice + 1]
+    to = ""
+    if "port" in partes:
+        indice = partes.index("port")
+        if indice + 1 < len(partes):
+            to = partes[indice + 1]
+        if "proto" in partes:
+            indice = partes.index("proto")
+            if indice + 1 < len(partes):
+                to = f"{to}/{partes[indice + 1]}"
+    else:
+        pular = False
+        for token in partes[1:]:
+            if token in {"in", "out"}:
+                continue
+            if token in {"from", "to", "on"}:
+                pular = True
+                continue
+            if pular:
+                pular = False
+                continue
+            to = token
+            break
+    return to, source or "Anywhere"
+
+
+def _parse_ufw_rules(texto: str) -> list[dict]:
+    regras = []
+    for linha in (texto or "").splitlines():
+        linha = linha.strip()
+        if not linha.startswith("ufw "):
+            continue
+        spec = linha[4:].strip()
+        if not spec:
+            continue
+        try:
+            partes = shlex.split(spec)
+        except ValueError:
+            continue
+        if not partes or partes[0].lower() not in UFW_ACTIONS:
+            continue
+        action = partes[0].lower()
+        direction = "in"
+        if len(partes) > 1 and partes[1] in {"in", "out"}:
+            direction = partes[1]
+        to, source = _ufw_rule_target(partes)
+        regras.append(
+            {
+                "number": len(regras) + 1,
+                "spec": spec,
+                "action": action,
+                "direction": direction,
+                "to": to or spec,
+                "from": source,
+                "signature": spec,
+            }
+        )
+    return regras
+
+
+def _is_ssh_rule(regra: dict) -> bool:
+    if (regra.get("action") or "").lower() not in {"allow", "limit"}:
+        return False
+    to = (regra.get("to") or "").strip().lower()
+    return to == "22" or to.startswith("22/") or to.startswith("openssh")
+
+
+def _firewall_overview() -> dict:
+    if not _ufw_available():
+        return {
+            "installed": False,
+            "active": False,
+            "status": "indisponivel",
+            "policies": {},
+            "rules": [],
+            "ssh_allowed": False,
+            "error": "ufw nao esta instalado no host",
+        }
+    rc, saida, erro = run_optional(["ufw", "show", "added"], timeout=10)
+    regras = _parse_ufw_rules(saida if rc == 0 else "")
+    rc_status, status, _ = run_optional(["ufw", "status", "verbose"], timeout=10)
+    ativo = rc_status == 0 and "Status: active" in (status or "")
+    policies = _ufw_status_policies(status) if ativo else _ufw_default_policies()
+    return {
+        "installed": True,
+        "active": ativo,
+        "status": "ativo" if ativo else "inativo",
+        "policies": policies,
+        "rules": regras,
+        "ssh_allowed": any(_is_ssh_rule(regra) for regra in regras),
+        "error": "" if rc == 0 else (erro or saida).strip()[:300],
+    }
+
+
+def _ufw_port(port: str) -> str:
+    port = (port or "").strip()
+    if not UFW_PORT_RE.match(port):
+        raise AgentError("Porta invalida: use 1-65535, separadas por virgula (ex.: 80,443).")
+    for item in port.split(","):
+        if not 1 <= int(item) <= 65535:
+            raise AgentError("Porta fora da faixa 1-65535.")
+    return port
+
+
+def _ufw_source(source: str) -> str:
+    source = (source or "").strip()
+    if not source or source.lower() in {"any", "anywhere"}:
+        return ""
+    try:
+        rede = ipaddress.ip_network(source, strict=False)
+    except ValueError as exc:
+        raise AgentError("Origem invalida: use IP, CIDR ou deixe vazio para qualquer.") from exc
+    return str(rede)
+
+
+def _ufw_port_has_ssh(port: str) -> bool:
+    return "22" in {item.strip() for item in (port or "").split(",")}
+
+
+def _ufw_safe_ports() -> list[tuple[int, str]]:
+    itens = []
+    for bruto in FIREWALL_SAFE_PORTS.split(","):
+        bruto = bruto.strip().lower()
+        if not bruto:
+            continue
+        if "/" in bruto:
+            porta, proto = bruto.split("/", 1)
+        else:
+            porta, proto = bruto, "tcp"
+        try:
+            numero = int(porta)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= numero <= 65535 and proto in UFW_PROTOS:
+            itens.append((numero, proto))
+    return sorted(set(itens))
+
+
+def _ufw_public_listeners() -> set[tuple[int, str]]:
+    achados: set[tuple[int, str]] = set()
+    for flag, proto in (("-ltn", "tcp"), ("-lun", "udp")):
+        rc, saida, _ = run_optional(["ss", flag], timeout=5)
+        if rc != 0:
+            continue
+        for linha in (saida or "").splitlines()[1:]:
+            campos = linha.split()
+            if len(campos) < 4:
+                continue
+            local = campos[3]
+            if ":" not in local:
+                continue
+            endereco, porta = local.rsplit(":", 1)
+            if endereco in {"127.0.0.1", "[::1]", "::1"}:
+                continue
+            try:
+                numero = int(porta)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= numero <= 65535:
+                achados.add((numero, proto))
+    return achados
+
+
+def _ufw_rule_covers(regra: dict, porta: int, proto: str) -> bool:
+    if (regra.get("action") or "").lower() not in {"allow", "limit"}:
+        return False
+    to = (regra.get("to") or "").strip().lower()
+    if to.startswith("openssh") and porta == 22:
+        return True
+    if to.startswith("samba"):
+        return (porta, proto) in {
+            (137, "udp"),
+            (138, "udp"),
+            (139, "tcp"),
+            (445, "tcp"),
+        }
+    if "/" in to:
+        portas, proto_regra = to.split("/", 1)
+        if proto_regra != proto:
+            return False
+    else:
+        portas = to
+    if not portas:
+        return False
+    return str(porta) in {item.strip() for item in portas.split(",")}
+
+
+def _ufw_rules_cover(regras, porta: int, proto: str) -> bool:
+    return any(_ufw_rule_covers(regra, porta, proto) for regra in regras)
+
+
+def op_firewall_overview(**_):
+    return _firewall_overview()
+
+
+def op_firewall_add_rule(
+    action: str = "", port: str = "", proto: str = "tcp", source: str = "", **_
+):
+    if not _ufw_available():
+        raise AgentError("ufw nao esta instalado no host")
+    action = (action or "").strip().lower()
+    if action not in UFW_ACTIONS:
+        raise AgentError("Acao invalida: use allow, deny, reject ou limit.")
+    port = _ufw_port(port)
+    proto = (proto or "tcp").strip().lower()
+    if proto not in UFW_PROTOS and proto != "any":
+        raise AgentError("Protocolo invalido: use tcp, udp ou any.")
+    source = _ufw_source(source)
+    if action in {"deny", "reject"} and _ufw_port_has_ssh(port):
+        raise AgentError("Nao vou bloquear a porta SSH (22) pelo painel.")
+    comando = ["ufw", action]
+    if source:
+        comando += ["from", source]
+    comando += ["to", "any", "port", port]
+    if proto != "any":
+        comando += ["proto", proto]
+    run(comando, timeout=30)
+    log(f"FIREWALL_ADD {action} {port}/{proto} from={source or 'any'}")
+    return _firewall_overview()
+
+
+def op_firewall_delete_rule(spec: str = "", **_):
+    if not _ufw_available():
+        raise AgentError("ufw nao esta instalado no host")
+    spec = (spec or "").strip()
+    if not spec:
+        raise AgentError("Regra nao informada.")
+    visao = _firewall_overview()
+    regra = next((item for item in visao["rules"] if item["signature"] == spec), None)
+    if regra is None:
+        raise AgentError("Regra nao encontrada ou lista alterada; recarregue a pagina.")
+    if visao["active"] and _is_ssh_rule(regra):
+        ssh = [item for item in visao["rules"] if _is_ssh_rule(item)]
+        if len(ssh) <= 1:
+            raise AgentError(
+                "Essa e a unica regra que libera SSH. Adicione outra antes de remover."
+            )
+    try:
+        partes = shlex.split(spec)
+    except ValueError as exc:
+        raise AgentError("Regra invalida.") from exc
+    if not partes or partes[0].lower() not in UFW_ACTIONS:
+        raise AgentError("Regra invalida.")
+    # Perfis de aplicativo (ex.: Samba) podem virar mais de uma regra interna;
+    # repete a remocao ate a assinatura desaparecer.
+    for _ in range(20):
+        atual = _firewall_overview()
+        regras = [item for item in atual["rules"] if item["signature"] == spec]
+        if not regras:
+            break
+        if atual["active"] and _is_ssh_rule(regras[0]):
+            ssh = [item for item in atual["rules"] if _is_ssh_rule(item)]
+            if len(ssh) <= 1:
+                raise AgentError(
+                    "Essa e a unica regra que libera SSH. Adicione outra antes de remover."
+                )
+        run(["ufw", "--force", "delete", *partes], timeout=30)
+    else:
+        raise AgentError(
+            "Nao foi possivel remover todas as partes da regra; confira no host."
+        )
+    log(f"FIREWALL_DELETE {spec}")
+    return _firewall_overview()
+
+
+def op_firewall_enable(allow_ssh: bool = True, **_):
+    if not _ufw_available():
+        raise AgentError("ufw nao esta instalado no host")
+    if isinstance(allow_ssh, str):
+        allow_ssh = allow_ssh.strip().lower() not in {"", "0", "false", "no"}
+    visao = _firewall_overview()
+    if visao["active"]:
+        return visao
+    if not visao["ssh_allowed"]:
+        if not allow_ssh:
+            raise AgentError(
+                "Antes de ativar, adicione uma regra para SSH (22/tcp) ou permita que o painel a crie."
+            )
+        run(["ufw", "allow", "22/tcp"], timeout=30)
+        log("FIREWALL_ALLOW_SSH 22/tcp")
+        visao = _firewall_overview()
+    publicas = _ufw_public_listeners()
+    for porta, proto in _ufw_safe_ports():
+        if (porta, proto) not in publicas:
+            continue
+        if _ufw_rules_cover(visao["rules"], porta, proto):
+            continue
+        run(["ufw", "allow", f"{porta}/{proto}"], timeout=30)
+        log(f"FIREWALL_ALLOW_SAFE {porta}/{proto}")
+    run(["ufw", "--force", "enable"], timeout=60)
+    log("FIREWALL_ENABLE")
+    return _firewall_overview()
+
+
+def op_firewall_disable(**_):
+    if not _ufw_available():
+        raise AgentError("ufw nao esta instalado no host")
+    visao = _firewall_overview()
+    if not visao["active"]:
+        return visao
+    run(["ufw", "--force", "disable"], timeout=60)
+    log("FIREWALL_DISABLE")
+    return _firewall_overview()
+
+
 def op_container_action(name: str = "", action: str = "", **_):
     runtime = _runtime_containers()
     if not runtime:
@@ -4975,6 +5343,11 @@ OPS = {
     "container_logs": op_container_logs,
     "health_overview": op_health_overview,
     "network_overview": op_network_overview,
+    "firewall_overview": op_firewall_overview,
+    "firewall_add_rule": op_firewall_add_rule,
+    "firewall_delete_rule": op_firewall_delete_rule,
+    "firewall_enable": op_firewall_enable,
+    "firewall_disable": op_firewall_disable,
     "credenciais_backup_overview": op_credenciais_backup_overview,
     "credenciais_backup_run": op_credenciais_backup_run,
     "credenciais_backup_add_file": op_credenciais_backup_add_file,

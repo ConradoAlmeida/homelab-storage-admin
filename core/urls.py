@@ -5,6 +5,11 @@ from . import views
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("rede/", views.NetworkView.as_view(), name="network_index"),
+    path(
+        "rede/firewall/",
+        views.FirewallActionView.as_view(),
+        name="firewall_action",
+    ),
     path("containers/", views.ContainersView.as_view(), name="containers"),
     path(
         "containers/acao/",

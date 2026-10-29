@@ -31,7 +31,7 @@ Ubuntu+Samba via perfil de host.
 | Consultar senha do restic | Backups → Credenciais — exige senha do app |
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
 | Ver saúde do host | Dashboard — card Saúde com discos, backups, containers e pendências |
-| Ver rede e firewall (somente leitura) | Rede (`/rede/`) — interfaces, rotas, portas, Docker e UFW |
+| Ver e gerenciar rede/firewall | Rede (`/rede/`) - interfaces, rotas, portas, Docker e regras UFW |
 | Ver e operar containers | Containers (`/containers/`) — Docker ou Podman, iniciar/parar/reiniciar e logs |
 | Backup local de arquivos | Backups → Backup de arquivos — jobs independentes, retenção e restore |
 
@@ -99,7 +99,8 @@ sobrescreve um perfil existente.
 Variáveis principais: `SITE_NAME`, `STORAGE_ROOT`, `SNAPSHOT_ROOT`,
 `ALLOWED_PATH_PREFIXES`, `DF_MOUNTS`, `SHARE_OWNER`, `SNAPSHOT_DENYLIST`,
 `SNAPSHOT_BACKEND=auto|btrfs|rsync|none`, `BACKUP_ROOT`, `AGENT_SOCKET`,
-`BIND_ADDR`, `BIND_PORT`, `DATA_DIR`.
+`BIND_ADDR`, `BIND_PORT`, `DATA_DIR`, `FIREWALL_MANAGE=0|1`,
+`FIREWALL_SAFE_PORTS=22/tcp,53/tcp,53/udp,80/tcp,443/tcp,8060/tcp,137/udp,138/udp,139/tcp,445/tcp`.
 
 O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
 filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não
@@ -655,19 +656,28 @@ O card **Saúde** do Dashboard usa `health_overview` e resume, em uma lista úni
 Cada alerta tem nível (`info`, `warn`, `red`). O card mostra “tudo ok” quando não
 há alertas. Os dados vêm do agente; a UI não faz probe próprio nem aciona discos.
 
-### Rede (somente leitura)
+### Rede e firewall (UFW)
 
-`/rede/` mostra o que o host tem, sem editar nada:
+`/rede/` mostra e, para administradores, gerencia o firewall UFW:
 
-- firewall: estado do UFW e regras;
-- interfaces: estado, CIDR, velocidade, MAC e sinal;
-- rotas IPv4 em bloco com quebra de linha;
-- portas TCP ouvindo, com processo quando disponível;
-- containers publicados e portas.
+- firewall: estado, políticas padrão, regras salvas, ativar/desativar;
+- adicionar regra de entrada por ação (permitir/bloquear/rejeitar/limitar),
+  porta, protocolo e origem (IP/CIDR ou qualquer);
+- remover regra pela assinatura exata; a tabela mostra o comando `ufw` salvo;
+- interfaces, rotas, portas ouvindo e containers publicados.
 
-A página é read-only por decisão: alterar firewall/rede continua sendo operação
-de host, não do app. Docker publica portas via iptables e pode furar o UFW; o
-modelo recomendado é publicar em `127.0.0.1` e deixar o Caddy expor.
+Travas de segurança:
+
+- ao ativar, o agente garante SSH (22/tcp) e libera as portas essenciais que
+  estiverem em uso público (SSH, DNS, HTTP/HTTPS e o próprio painel) para não
+  perder o acesso; a lista é configurável em `FIREWALL_SAFE_PORTS`;
+- a última regra que libera SSH não pode ser removida com o firewall ativo;
+- bloquear ou rejeitar a porta 22 é recusado pelo agente;
+- toda ação vai para a auditoria (`firewall.enable`, `.disable`, `.add`, `.delete`);
+- `FIREWALL_MANAGE=0` deixa a página somente leitura.
+
+Docker publica portas via iptables e pode furar o UFW; o modelo recomendado é
+publicar em `127.0.0.1` e deixar o Caddy expor.
 
 ---
 

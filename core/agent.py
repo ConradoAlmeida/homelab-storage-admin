@@ -313,6 +313,28 @@ class AgentClient:
     def network_overview(self):
         return self.call("network_overview", timeout=30)
 
+    def firewall_overview(self):
+        return self.call("firewall_overview", timeout=20)
+
+    def firewall_enable(self, allow_ssh=True):
+        return self.call("firewall_enable", timeout=120, allow_ssh=allow_ssh)
+
+    def firewall_disable(self):
+        return self.call("firewall_disable", timeout=120)
+
+    def firewall_add_rule(self, action, port, proto="tcp", source=""):
+        return self.call(
+            "firewall_add_rule",
+            timeout=60,
+            action=action,
+            port=port,
+            proto=proto,
+            source=source,
+        )
+
+    def firewall_delete_rule(self, spec):
+        return self.call("firewall_delete_rule", timeout=60, spec=spec)
+
     def network_metrics(self):
         return self.call("network_metrics", timeout=15)
 
