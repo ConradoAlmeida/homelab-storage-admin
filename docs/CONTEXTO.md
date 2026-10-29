@@ -115,6 +115,11 @@ docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
 - **Sessões do Credenciais** precisam estar válidas: o app revalida a cada request.
 - **UI**: qualquer página nova sem `page-head`/`section-head`/`card` quebra o
   padrão e deve ser corrigida.
+- **Worktree antigo** em `C:\Users\Conrado\development\homelab-storage-admin`
+  (detached, 46 commits atrás) ainda tem WIP de acesso/desconexão SMB, não
+  integrado. Patch de segurança em
+  `C:\Users\Conrado\Documents\wip-acesso-smb-20261028.patch`. Decidir se integra
+  ou descarta antes de remover o worktree.
 - **Backups**: nunca apontar job restic para o disco do sistema/dados; o wizard
   recusa de propósito.
 - **Job “Dados dos apps”** não tem timer; não estranhe o status “desativado”.
