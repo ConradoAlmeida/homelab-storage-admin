@@ -62,6 +62,7 @@ main > h1,
 }
 
 .card {
+  min-width: 0;
   padding: 20px;
   border-radius: 14px;
   background: var(--panel);
@@ -74,48 +75,30 @@ main > h1,
 }
 
 .card.border-danger {
-  border-color: var(--line);
-  border-left: 3px solid var(--err);
+  border: 1px solid var(--line);
 }
 
-.alert {
+.alert,
+.alert.danger,
+.alert.warn,
+.alert.ok {
   display: block;
-  padding: 14px 16px;
+  padding: 16px 18px;
   margin: 12px 0;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--acc);
-  border-radius: 10px;
-  background: var(--bg-deep);
+  border-radius: 14px;
+  background: var(--panel);
   color: var(--txt);
   font-size: 14px;
   line-height: 1.5;
 }
 
-.alert strong {
-  color: var(--txt);
-  font-weight: 650;
-}
-
-.alert.danger {
-  border-color: var(--line);
-  border-left-color: var(--err);
-  background: var(--bg-deep);
-}
-
+.alert strong,
 .alert.danger strong {
   display: inline;
-  color: var(--err);
+  color: var(--txt);
+  font-weight: 650;
   margin: 0;
-}
-
-.alert.warn {
-  border-left-color: var(--warn);
-  background: var(--bg-deep);
-}
-
-.alert.ok {
-  border-left-color: var(--ok);
-  background: var(--bg-deep);
 }
 
 .compact-card {
@@ -324,50 +307,29 @@ tbody tr:hover td {
   margin: 0 0 6px;
 }
 
-.health-list {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
+.health-rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  margin-top: 4px;
 }
 
-.health-list li {
-  position: relative;
-  padding: 12px 14px 12px 34px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: transparent;
-  font-size: 14px;
-  line-height: 1.5;
+.health-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
 }
 
-.health-list li::before {
-  content: "";
-  position: absolute;
-  left: 15px;
-  top: 19px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-
-.health-list li.health-red::before {
-  background: var(--err);
-}
-
-.health-list li.health-warn::before {
-  background: var(--warn);
-}
-
-.health-list li.health-info::before {
-  background: var(--acc);
-}
-
-.health-list li strong {
+.health-row strong {
+  display: block;
   font-weight: 600;
+}
+
+.health-row .muted {
+  display: block;
+  margin-top: 2px;
 }
 
 .chip-list {
@@ -705,7 +667,10 @@ details.card > summary:hover {
 
 .pre,
 pre {
+  display: block;
+  width: 100%;
   max-width: 100%;
+  overflow-x: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;

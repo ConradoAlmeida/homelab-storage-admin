@@ -431,3 +431,105 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Rede e firewall")
         self.assertContains(resposta, "UFW")
         self.assertContains(resposta, "Portas ouvindo")
+
+    def test_rede_coloca_rota_e_regra_em_tabela(self):
+        self.fake.network_overview.return_value = {
+            "interfaces": [],
+            "routes": [
+                "default via 192.168.0.1 dev eth0 proto dhcp src 192.168.0.10 metric 100"
+            ],
+            "listening": [],
+            "containers": [],
+            "firewall": "ativo",
+            "rules": [
+                "New profiles: skip",
+                "To                         Action      From",
+                "--                         ------      ----",
+                "22/tcp                     ALLOW IN    Anywhere",
+            ],
+        }
+        resposta = self.client.get("/rede/")
+        self.assertContains(resposta, "192.168.0.1")
+        self.assertContains(resposta, "eth0")
+        self.assertContains(resposta, "192.168.0.10")
+        self.assertContains(resposta, "22/tcp")
+        self.assertContains(resposta, "ALLOW IN")
+        self.assertNotContains(resposta, "<pre")
+        self.assertNotContains(resposta, "New profiles")
+
+    def test_saude_usa_linha_com_pilula(self):
+        self.fake.health_overview.return_value = {
+            "alerts": [
+                {"level": "warn", "title": "Disco cheio", "detail": "/mnt em 91%"}
+            ],
+            "volumes": [],
+            "ok": False,
+        }
+        resposta = self.client.get("/")
+        self.assertContains(resposta, "Disco cheio")
+        self.assertContains(resposta, "/mnt em 91%")
+        self.assertContains(resposta, "health-row")
+        self.assertNotContains(resposta, "health-list")
+
+    def test_usuarios_lista_grupos_em_tabela(self):
+        self.fake.list_users.return_value = [
+            {
+                "username": "ana",
+                "fullname": "Ana",
+                "groups": ["midia"],
+                "enabled": True,
+            }
+        ]
+        self.fake.list_groups.return_value = ["ana", "midia"]
+        resposta = self.client.get("/usuarios/")
+        self.assertContains(resposta, "Grupos de share")
+        self.assertContains(resposta, "Novo grupo")
+        self.assertContains(resposta, "midia")
+        self.assertNotContains(resposta, 'class="chip"')
+
+    def test_discos_omite_uso_e_dump_do_dashboard(self):
+        capacidades = dict(self.fake.host_capabilities.return_value)
+        capacidades["smartctl"] = True
+        self.fake.host_capabilities.return_value = capacidades
+        context_processors._cached_caps = None
+        context_processors._cached_at = 0.0
+        self.fake.df.return_value = {
+            "volumes": [
+                {
+                    "mount": "/mnt/nas",
+                    "total": 1000,
+                    "used": 100,
+                    "free": 900,
+                    "percent": 10,
+                }
+            ]
+        }
+        self.fake.storage_overview.return_value = {
+            "collected_at": "2026-10-28T06:00:00",
+            "stale": False,
+            "disks": [
+                {
+                    "name": "sda",
+                    "path": "/dev/sda",
+                    "model": "Test",
+                    "serial": "ABC",
+                    "size": "1T",
+                    "state": "active/idle",
+                    "mounts": ["/mnt/nas"],
+                    "fstype": "ext4",
+                    "smart": {
+                        "temperature": 30,
+                        "health": "PASSED",
+                        "state": "ok",
+                    },
+                }
+            ],
+            "raid": {"mdstat": "md0 : active", "detail": ""},
+            "btrfs": {"usage": "Data,single", "stats": "", "scrub": ""},
+        }
+        resposta = self.client.get("/storage/")
+        self.assertContains(resposta, "sda")
+        self.assertContains(resposta, "Ler SMART")
+        self.assertNotContains(resposta, "md0 : active")
+        self.assertNotContains(resposta, "Data,single")
+        self.assertNotContains(resposta, "livres")

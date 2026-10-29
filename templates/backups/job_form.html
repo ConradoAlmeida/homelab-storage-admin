@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>{% if job %}Editar job {{ job.name }}{% else %}Novo job de backup{% endif %}</h1>
-    <p class="lead">Fontes, periodicidade, retenção e ativação são aplicadas ao salvar.</p>
+    <p class="lead">Fontes, periodicidade, retenção e ativação são aplicadas ao salvar.{% if job %} Para desativar, desmarque Job ativo.{% endif %}</p>
   </div>
   <div class="page-actions">
     <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
@@ -143,4 +143,16 @@
 </div>
 
 <script src="{% static 'js/job-form.js' %}" defer></script>
+{% if job %}
+<section class="section">
+  <div class="section-head"><h2>Excluir job</h2></div>
+  <div class="card">
+    <p class="muted">O repositório restic é mantido. A agenda deixa de existir.</p>
+    <form class="mt-12" method="post" action="{% url 'backup_job_delete' name=job.name %}" data-confirm="Excluir o job {{ job.name }}? O repositório restic será mantido.">
+      {% csrf_token %}
+      <button class="btn danger" type="submit">Excluir job</button>
+    </form>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

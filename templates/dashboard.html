@@ -25,14 +25,18 @@
     </span>
   </div>
   {% if health.alerts %}
-    <ul class="health-list">
+    <div class="health-rows">
       {% for item in health.alerts %}
-        <li class="health-{{ item.level }}">
-          <strong>{{ item.title }}</strong>
-          {% if item.detail %}<span class="muted"> — {{ item.detail }}</span>{% endif %}
-        </li>
+        <div class="health-row">
+          {% if item.level == "info" %}<span class="tag">info</span>
+          {% else %}<span class="tag off">atenção</span>{% endif %}
+          <div>
+            <strong>{{ item.title }}</strong>
+            {% if item.detail %}<span class="muted">{{ item.detail }}</span>{% endif %}
+          </div>
+        </div>
       {% endfor %}
-    </ul>
+    </div>
   {% else %}
     <p class="muted">Nenhum alerta.</p>
   {% endif %}
@@ -134,8 +138,8 @@
           <td>
             {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
             <div>
-              {% if disk.smart.health == 'PASSED' %}<span class="state-ok">PASSED</span>
-              {% elif disk.smart.health == 'FAILED' %}<span class="state-bad">FAILED</span>
+              {% if disk.smart.health == 'PASSED' %}<span class="tag ok">PASSED</span>
+              {% elif disk.smart.health == 'FAILED' %}<span class="tag off">FAILED</span>
               {% else %}<span class="muted">sem SMART</span>{% endif %}
             </div>
           </td>

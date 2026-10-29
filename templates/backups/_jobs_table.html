@@ -29,10 +29,9 @@
           <div class="row-actions">
             <form method="post" action="{% url 'arquivos_job_run' job=item.name %}">
               {% csrf_token %}
-              <button class="btn small" type="submit">Rodar agora</button>
+              <button class="btn" type="submit">Rodar agora</button>
             </form>
-            <a class="btn small" href="{% url 'arquivos_job_edit' job=item.name %}">Editar</a>
-            <a class="btn small" href="{% url 'arquivos_job' job=item.name %}">Abrir</a>
+            <a class="btn" href="{% url 'arquivos_job' job=item.name %}">Abrir</a>
           </div>
         </td>
       </tr>
