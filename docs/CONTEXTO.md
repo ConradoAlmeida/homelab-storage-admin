@@ -77,6 +77,15 @@ Documento de retomada. Última atualização: **2026-10-29**.
 6. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
 7. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
 
+## Testes em VM
+
+Roteiro completo para Ubuntu Server 26.04: [`docs/VM_TESTES.md`](VM_TESTES.md).
+
+- setup do host: `scripts/vm/setup-ubuntu-2604.sh`
+- suites dos dois apps: `scripts/vm/run-unit-tests.sh`
+- smoke somente leitura: `scripts/vm/smoke-moyaserver.sh`
+- E2E de identidade/Samba: no repo do Credenciais, `docs/E2E_VM.md`
+
 ## Como retomar
 
 ```bash
