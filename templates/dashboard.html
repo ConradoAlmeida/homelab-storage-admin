@@ -7,36 +7,38 @@
     <h1>Dashboard</h1>
     <p class="lead">Visão geral do host, discos, backup e shares.</p>
   </div>
-  <div class="page-actions">
-    <a class="btn" href="{% url 'network_index' %}">Rede</a>
-    <a class="btn" href="{% url 'storage_index' %}">Discos</a>
-  </div>
 </div>
 
 {% if health %}
-<div class="card health-card">
-  <div class="health-head">
-    <div>
-      <h2>Saúde</h2>
-      <p class="muted text-12">Discos, backups, containers e pendências.</p>
-    </div>
-    <span class="tag {% if health.ok %}ok{% else %}off{% endif %}">
+<section class="section">
+  <div class="section-head">
+    <h2>Saúde</h2>
+    <span class="status {% if health.ok %}ok{% else %}warn{% endif %}">
       {% if health.ok %}tudo ok{% else %}atenção{% endif %}
     </span>
   </div>
   {% if health.alerts %}
-    <ul class="health-list">
-      {% for item in health.alerts %}
-        <li class="health-{{ item.level }}">
-          <strong>{{ item.title }}</strong>
-          {% if item.detail %}<span class="muted"> — {{ item.detail }}</span>{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Nível</th><th>Aviso</th></tr></thead>
+      <tbody>
+        {% for item in health.alerts %}
+          <tr class="health-row">
+            <td>
+              {% if item.level == "info" %}<span class="status">info</span>
+              {% else %}<span class="status warn">atenção</span>{% endif %}
+            </td>
+            <td>
+              <strong>{{ item.title }}</strong>
+              {% if item.detail %}<div class="muted text-12">{{ item.detail }}</div>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
   {% else %}
-    <p class="muted">Nenhum alerta.</p>
+    <div class="empty">Nenhum alerta.</div>
   {% endif %}
-</div>
+</section>
 {% endif %}
 
 {% if services %}
@@ -134,8 +136,8 @@
           <td>
             {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
             <div>
-              {% if disk.smart.health == 'PASSED' %}<span class="state-ok">PASSED</span>
-              {% elif disk.smart.health == 'FAILED' %}<span class="state-bad">FAILED</span>
+              {% if disk.smart.health == 'PASSED' %}<span class="tag ok">PASSED</span>
+              {% elif disk.smart.health == 'FAILED' %}<span class="tag off">FAILED</span>
               {% else %}<span class="muted">sem SMART</span>{% endif %}
             </div>
           </td>

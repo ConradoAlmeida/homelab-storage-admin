@@ -17,34 +17,53 @@
 </div>
 
 <section class="section">
-  <div class="action-grid">
+  <div class="section-head"><h2>Atalhos</h2></div>
+  <div class="shortcut-grid">
     {% if capabilities.credenciais_backup %}
-    <a class="action-card" href="{% url 'arquivos_backup_index' %}">
-      <strong>Backup de arquivos</strong>
-      <span>Pastas e arquivos do servidor, com agenda e retenção por job.</span>
+    <a class="service-card" href="{% url 'arquivos_backup_index' %}">
+      <span class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h6l2 2h8v10H4z"/></svg>
+      </span>
+      <span class="service-body"><strong>Backup de arquivos</strong><small>Pastas do servidor, com agenda e retenção por job.</small></span>
+      <span class="service-arrow">↗</span>
     </a>
     {% endif %}
     {% if capabilities.gitea %}
-    <a class="action-card" href="{% url 'gitea_backup' %}">
-      <strong>Backup do Gitea</strong>
-      <span>Dump dos repositórios e cópia manual para USB.</span>
+    <a class="service-card" href="{% url 'gitea_backup' %}">
+      <span class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h6a4 4 0 0 1 4 4v0"/><path d="M8 18h6a4 4 0 0 0 4-4v0"/></svg>
+      </span>
+      <span class="service-body"><strong>Backup do Gitea</strong><small>Dump dos repositórios e cópia manual para USB.</small></span>
+      <span class="service-arrow">↗</span>
     </a>
     {% endif %}
-    <a class="action-card" href="{% url 'backup_snapshots' %}">
-      <strong>Snapshots restic</strong>
-      <span>Ver, navegar e baixar arquivos dos snapshots existentes.</span>
+    <a class="service-card" href="{% url 'backup_snapshots' %}">
+      <span class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
+      </span>
+      <span class="service-body"><strong>Snapshots restic</strong><small>Ver, navegar e baixar arquivos dos snapshots.</small></span>
+      <span class="service-arrow">↗</span>
     </a>
-    <a class="action-card" href="{% url 'cold_index' %}">
-      <strong>Cópia fria (USB)</strong>
-      <span>Cópia do repositório primário para um disco removível.</span>
+    <a class="service-card" href="{% url 'cold_index' %}">
+      <span class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 7h2"/></svg>
+      </span>
+      <span class="service-body"><strong>Cópia fria (USB)</strong><small>Cópia do repositório primário para um disco removível.</small></span>
+      <span class="service-arrow">↗</span>
     </a>
-    <a class="action-card" href="{% url 'backup_credentials' %}">
-      <strong>Senha do repositório</strong>
-      <span>Ver e copiar a senha do repositório restic.</span>
+    <a class="service-card" href="{% url 'backup_credentials' %}">
+      <span class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="14" r="4"/><path d="M11 12l9-7"/><path d="M16 6l3 3"/><path d="M14 8l2 2"/></svg>
+      </span>
+      <span class="service-body"><strong>Senha do repositório</strong><small>Ver e copiar a senha do repositório restic.</small></span>
+      <span class="service-arrow">↗</span>
     </a>
-    <a class="action-card" href="#discos">
-      <strong>Escolher disco</strong>
-      <span>Preparar ou reconfigurar um disco externo para backup.</span>
+    <a class="service-card" href="#discos">
+      <span class="service-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="7" rx="8" ry="3"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+      </span>
+      <span class="service-body"><strong>Escolher disco</strong><small>Preparar ou reconfigurar um disco externo para backup.</small></span>
+      <span class="service-arrow">↗</span>
     </a>
   </div>
 </section>
@@ -54,28 +73,22 @@
   <div class="section-head">
     <h2>Backups locais de arquivos</h2>
     {% if arquivos %}
-    <div class="page-actions">
-      <a class="btn small" href="{% url 'arquivos_job_new' %}">Novo job</a>
-      <a class="btn small" href="{% url 'arquivos_backup_index' %}">Gerenciar jobs</a>
+      <span class="muted text-12">{{ arquivos.jobs|length }} job{{ arquivos.jobs|length|pluralize }} · destino <span class="mono">{{ arquivos.dir }}</span></span>
+    {% endif %}
+  </div>
+  {% if arquivos_error %}
+    <div class="card">
+      <strong>Agente indisponível</strong>
+      <p class="muted">{{ arquivos_error }}</p>
     </div>
-    {% endif %}
-  </div>
-  <div class="card">
-    {% if arquivos_error %}
-      <p class="muted">Agente indisponível: {{ arquivos_error }}</p>
-    {% elif arquivos %}
-      <p class="muted text-12">
-        {{ arquivos.jobs|length }} job{{ arquivos.jobs|length|pluralize }} ·
-        destino <span class="mono">{{ arquivos.dir }}</span>
-      </p>
-      {% include "backups/_jobs_table.html" with overview=arquivos %}
-    {% else %}
-      <div class="empty">
-        Nenhum job de arquivos ainda.
-        <a href="{% url 'arquivos_job_new' %}">Criar o primeiro job</a>.
-      </div>
-    {% endif %}
-  </div>
+  {% elif arquivos %}
+    {% include "backups/_jobs_table.html" with overview=arquivos %}
+  {% else %}
+    <div class="empty">
+      Nenhum job de arquivos ainda.
+      <a href="{% url 'arquivos_job_new' %}">Criar o primeiro job</a>.
+    </div>
+  {% endif %}
 </section>
 {% endif %}
 
@@ -112,6 +125,7 @@
       <h2>Discos</h2>
       <span class="muted text-12">{{ overview.disks|length }} disco{{ overview.disks|length|pluralize }}</span>
     </div>
+    <p class="muted text-12 section-note">O wizard só mostra o resumo. A formatação exige senha do app e a frase digitada. Disco com filesystem existente ou já configurado pede confirmação extra.</p>
     <div class="table-wrap"><table class="file-table">
       <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Backup</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
@@ -152,20 +166,20 @@
             <td class="file-actions">
               <div class="row-actions">
                 {% if disk.configured %}
-                  <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ disk.uuid|urlencode }}">Ver senha</a>
+                  <a class="btn" href="{% url 'backup_credentials' %}?uuid={{ disk.uuid|urlencode }}">Ver senha</a>
                   {% if disk.mounts %}
                   <form method="post" action="{% url 'backup_check' %}">
                     {% csrf_token %}
                     <input type="hidden" name="uuid" value="{{ disk.uuid }}">
-                    <button class="btn small" type="submit">Verificar repo</button>
+                    <button class="btn" type="submit">Verificar repo</button>
                   </form>
                   {% endif %}
                 {% endif %}
                 {% if disk.candidate %}
-                  <a class="btn small {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
+                  <a class="btn {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
                     {% if disk.configured %}Reconfigurar{% elif disk.has_filesystem %}Preparar (apaga FS){% else %}Preparar{% endif %}
                   </a>
-                {% else %}
+                {% elif not disk.configured %}
                   <span class="muted text-12">indisponível</span>
                 {% endif %}
               </div>
@@ -208,19 +222,10 @@
               <td class="muted text-12">{{ job.next_run_label|default:"—" }}</td>
               <td class="file-actions">
                 <div class="row-actions">
-                  <a class="btn small" href="{% url 'backup_job_edit' name=job.name %}">Editar</a>
+                  <a class="btn" href="{% url 'backup_job_edit' name=job.name %}">Editar</a>
                   <form method="post" action="{% url 'backup_job_run' name=job.name %}">
                     {% csrf_token %}
-                    <button class="btn small" type="submit">Rodar agora</button>
-                  </form>
-                  <form method="post" action="{% url 'backup_job_toggle' name=job.name %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="enabled" value="{% if job.enabled %}0{% else %}1{% endif %}">
-                    <button class="btn small" type="submit">{% if job.enabled %}Desativar{% else %}Ativar{% endif %}</button>
-                  </form>
-                  <form method="post" action="{% url 'backup_job_delete' name=job.name %}" data-confirm="Excluir o job {{ job.name }}? O repositório restic será mantido.">
-                    {% csrf_token %}
-                    <button class="btn small danger" type="submit">Excluir</button>
+                    <button class="btn" type="submit">Rodar agora</button>
                   </form>
                 </div>
               </td>
@@ -231,13 +236,6 @@
     {% else %}
       <div class="empty">Nenhum job restic ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
     {% endif %}
-  </section>
-
-  <section class="section">
-    <div class="alert">
-      <strong>Fluxo seguro:</strong> o wizard só mostra o resumo. A formatação exige senha do app e frase digitada.
-      Disco com filesystem existente ou já configurado pede confirmação extra antes de continuar.
-    </div>
   </section>
 {% endif %}
 {% endblock %}

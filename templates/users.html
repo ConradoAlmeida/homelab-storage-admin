@@ -4,22 +4,14 @@
 <div class="page-head">
   <div>
     <h1>Usuários Samba</h1>
-    <p class="lead">Contas Linux/Samba do servidor. Grupos de share e operações de servidor ficam aqui; senha e identidade podem vir do Credenciais.</p>
-  </div>
-  <div class="page-actions">
-    <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
-    {% if not credenciais_gerencia_usuarios %}
-    <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
-    {% endif %}
+    <p class="lead">
+      Contas Linux/Samba do servidor. Grupos de share e operações de servidor ficam aqui.
+      {% if credenciais_gerencia_usuarios %}
+      Criar pessoa, senha, grupos e exclusão são feitos no Credenciais.
+      {% endif %}
+    </p>
   </div>
 </div>
-
-{% if credenciais_gerencia_usuarios %}
-<div class="alert">
-  <strong>Identidade centralizada.</strong>
-  Criar pessoa, senha, grupos e exclusão são feitos no Credenciais. Grupos Linux e operações de servidor continuam aqui.
-</div>
-{% endif %}
 
 {% if agent_error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
@@ -27,10 +19,15 @@
   <section class="section">
     <div class="section-head">
       <h2>Pessoas</h2>
-      <span class="muted text-12">{{ users|length }} conta{{ users|length|pluralize }}</span>
+      <div class="page-actions">
+        <span class="muted text-12">{{ users|length }} conta{{ users|length|pluralize }}</span>
+        {% if not credenciais_gerencia_usuarios %}
+        <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
+        {% endif %}
+      </div>
     </div>
     {% if users %}
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="file-table">
       <thead>
         <tr>
           <th>Pessoa</th><th>Nome</th><th>Grupos</th><th>Status</th>
@@ -41,10 +38,10 @@
         {% for u in users %}
           <tr>
             <td><strong>{{ u.username }}</strong></td>
-            <td class="muted">{{ u.fullname|default:"-" }}</td>
+            <td class="muted">{{ u.fullname|default:"—" }}</td>
             <td>
               <div class="chip-list">
-                {% for g in u.groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted">-</span>{% endfor %}
+                {% for g in u.groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted">—</span>{% endfor %}
               </div>
             </td>
             <td>
@@ -52,20 +49,20 @@
               {% else %}<span class="tag off">desativado</span>{% endif %}
             </td>
             {% if not credenciais_gerencia_usuarios %}
-            <td>
+            <td class="file-actions">
               <div class="row-actions">
-                <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
-                <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
+                <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
+                <a class="btn" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
                 <form method="post" action="{% url 'user_toggle' %}">
                   {% csrf_token %}
                   <input type="hidden" name="username" value="{{ u.username }}">
                   <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
-                  <button class="btn small {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
+                  <button class="btn {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
                 </form>
                 <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
                   {% csrf_token %}
                   <input type="hidden" name="username" value="{{ u.username }}">
-                  <button class="btn small danger" type="submit">Excluir</button>
+                  <button class="btn danger" type="submit">Excluir</button>
                 </form>
               </div>
             </td>
@@ -82,27 +79,33 @@
   <section class="section">
     <div class="section-head">
       <h2>Grupos de share</h2>
-      <span class="muted text-12">{{ groups|length }} grupo{{ groups|length|pluralize }}</span>
+      <div class="page-actions">
+        <span class="muted text-12">{{ groups|length }} grupo{{ groups|length|pluralize }}</span>
+        <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
+      </div>
     </div>
-    <div class="card">
-      <p class="muted text-12">O grupo privado de cada pessoa sai junto com a conta. Estes são os grupos usados pelas pastas compartilhadas.</p>
-      {% if groups %}
-        <div class="chip-list">
+    <p class="muted text-12 section-note">O grupo privado de cada pessoa sai junto com a conta. Estes são os grupos usados pelas pastas compartilhadas.</p>
+    {% if groups %}
+      <div class="table-wrap"><table class="file-table">
+        <thead><tr><th>Grupo</th><th aria-label="Ações"></th></tr></thead>
+        <tbody>
           {% for nome in groups %}
-            <span class="chip">
-              {{ nome }}
-              <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
-                {% csrf_token %}
-                <input type="hidden" name="name" value="{{ nome }}">
-                <button class="btn small danger" type="submit" title="Excluir grupo" aria-label="Excluir grupo {{ nome }}">Excluir</button>
-              </form>
-            </span>
+            <tr>
+              <td><strong>{{ nome }}</strong></td>
+              <td class="file-actions">
+                <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
+                  {% csrf_token %}
+                  <input type="hidden" name="name" value="{{ nome }}">
+                  <button class="btn danger" type="submit">Excluir</button>
+                </form>
+              </td>
+            </tr>
           {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty">Nenhum grupo de share ainda.</div>
-      {% endif %}
-    </div>
+        </tbody>
+      </table></div>
+    {% else %}
+      <div class="empty">Nenhum grupo de share ainda.</div>
+    {% endif %}
   </section>
 {% endif %}
 {% endblock %}

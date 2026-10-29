@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
@@ -18,6 +20,61 @@ from .hostinfo import disk_role, volume_for
 from .http import agent_json_error
 from .models import AuditLog
 from .view_base import AgentFormView, AgentPostView, AgentTemplateView, AgentView
+
+
+def _campo_rota(partes, flag):
+    if flag not in partes:
+        return "—"
+    indice = partes.index(flag)
+    if indice + 1 >= len(partes):
+        return "—"
+    return partes[indice + 1]
+
+
+def parse_routes(linhas):
+    rotas = []
+    for linha in linhas or []:
+        if isinstance(linha, dict):
+            rotas.append(linha)
+            continue
+        texto = (linha or "").strip()
+        if not texto:
+            continue
+        partes = texto.split()
+        rotas.append(
+            {
+                "destination": partes[0],
+                "via": _campo_rota(partes, "via"),
+                "interface": _campo_rota(partes, "dev"),
+                "source": _campo_rota(partes, "src"),
+                "metric": _campo_rota(partes, "metric"),
+            }
+        )
+    return rotas
+
+
+def parse_firewall_rules(linhas):
+    regras = []
+    for linha in linhas or []:
+        texto = (linha or "").strip()
+        if not texto or texto.lower().startswith("new profiles"):
+            continue
+        if set(texto.replace(" ", "")) <= {"-"}:
+            continue
+        colunas = re.split(r"\s{2,}", texto)
+        if (
+            len(colunas) >= 3
+            and colunas[0].lower() == "to"
+            and colunas[1].lower().startswith("action")
+        ):
+            continue
+        if len(colunas) >= 3:
+            regras.append(
+                {"to": colunas[0], "action": colunas[1], "from": colunas[2]}
+            )
+        else:
+            regras.append({"to": texto, "action": "—", "from": "—"})
+    return regras
 
 
 def _audit(request, action, target="", detail=""):
@@ -148,9 +205,13 @@ class NetworkView(AgentTemplateView):
         context = super().get_context_data(**kwargs)
         context.update({"data": None, "error": None})
         try:
-            context["data"] = agent.network_overview()
+            data = agent.network_overview()
         except AgentError as exc:
             context["error"] = str(exc)
+        else:
+            data["routes"] = parse_routes(data.get("routes"))
+            data["rules"] = parse_firewall_rules(data.get("rules"))
+            context["data"] = data
         return context
 
 
