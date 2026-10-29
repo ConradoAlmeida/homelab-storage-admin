@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-10-28**.
+Documento de retomada. Última atualização: **2026-10-29**.
 
 ## Estado atual
 
@@ -8,7 +8,7 @@ Documento de retomada. Última atualização: **2026-10-28**.
 |---|---|
 | Versão em produção | `bc0d7f0` (gestão de containers) |
 | Último deploy | 29/10/2026, moyaserver; Pi pendente (host offline) |
-| Testes | `146 passed`, 26 skips de ambiente |
+| Testes | `155 passed`, 26 skips de ambiente |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
@@ -38,6 +38,9 @@ Documento de retomada. Última atualização: **2026-10-28**.
   break-glass local.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
   tabelas, chips, métricas, ações e formulários padronizados.
+- **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
+  página** no topo abre um painel com capítulos por funcionalidade da própria
+  página, usando `<details>` nativo e sem JavaScript.
 - **Novo layout de painel de operação** (branch `ui/layout-telas`, merge `76dc5f2`):
   visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
 - Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.

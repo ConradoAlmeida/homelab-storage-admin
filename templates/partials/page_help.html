@@ -1,0 +1,29 @@
+{% if page_help %}
+<details class="page-help">
+  <summary class="page-help-toggle" title="Abrir a ajuda desta página">
+    <span class="page-help-icon" aria-hidden="true">?</span>
+    <span>Ajuda desta página</span>
+  </summary>
+  <div class="page-help-panel">
+    <div class="page-help-head">
+      <strong>{{ page_help.title }}</strong>
+      {% if page_help.summary %}<p>{{ page_help.summary }}</p>{% endif %}
+    </div>
+    <div class="page-help-chapters">
+      {% for chapter in page_help.chapters %}
+      <details class="page-help-chapter">
+        <summary>{{ chapter.title }}</summary>
+        <div class="page-help-body">
+          {% if chapter.text %}<p>{{ chapter.text }}</p>{% endif %}
+          {% if chapter.bullets %}
+          <ul>
+            {% for item in chapter.bullets %}<li>{{ item }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</details>
+{% endif %}
