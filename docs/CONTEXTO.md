@@ -6,7 +6,7 @@ Documento de retomada. Última atualização: **2026-10-29**.
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `e7c62bd` (ajuda contextual) |
+| Versão em produção | `8649d88` (casos de uso na ajuda) |
 | Último deploy | 29/10/2026, moyaserver; Pi pendente (host offline) |
 | Testes | `155 passed`, 26 skips de ambiente |
 | Container | `homelab-storage-admin` |
