@@ -70,6 +70,7 @@ Documento de retomada. Última atualização: **2026-10-28**.
 5. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
 6. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
+7. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
 
 ## Como retomar
 
