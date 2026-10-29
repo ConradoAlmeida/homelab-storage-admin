@@ -1,5 +1,9 @@
 /* --- Sistema de UI Moya (Storage Admin) --- */
 
+html {
+  color-scheme: dark;
+}
+
 main > h1,
 .page-head h1 {
   font-size: 1.65rem;
@@ -335,23 +339,22 @@ tbody tr:hover td {
 }
 
 .health-list li {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  padding: 12px 14px;
+  position: relative;
+  padding: 12px 14px 12px 34px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: transparent;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .health-list li::before {
   content: "";
+  position: absolute;
+  left: 15px;
+  top: 19px;
   width: 8px;
   height: 8px;
-  margin-top: 6px;
   border-radius: 50%;
   background: var(--muted);
 }
@@ -404,9 +407,21 @@ tbody tr:hover td {
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin: 0 0 26px;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .action-card {
@@ -458,6 +473,10 @@ tbody tr:hover td {
   max-width: 640px;
 }
 
+.panel-form.wide {
+  max-width: 920px;
+}
+
 .panel-form form.stack {
   max-width: none;
 }
@@ -486,14 +505,15 @@ tbody tr:hover td {
 }
 
 .check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 9px;
+  align-items: start;
   margin: 0 0 16px;
 }
 
 .check label {
-  margin: 0;
+  margin: 1px 0 0;
   color: var(--txt);
   font-size: 13px;
 }
@@ -501,7 +521,18 @@ tbody tr:hover td {
 .check input[type="checkbox"],
 .check input[type="radio"] {
   width: auto;
+  margin: 2px 0 0;
+}
+
+.check .help,
+.check .errorlist {
+  grid-column: 2;
   margin: 0;
+}
+
+.form-grid .check {
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
 }
 
 .check-list ul {
@@ -593,7 +624,15 @@ tbody tr:hover td {
 }
 
 details.card > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   list-style: none;
+}
+
+details.card > summary > div {
+  flex: 1;
+  min-width: 0;
 }
 
 details.card > summary::-webkit-details-marker {
@@ -603,7 +642,7 @@ details.card > summary::-webkit-details-marker {
 details.card > summary::before {
   content: "▸";
   display: inline-block;
-  margin-right: 8px;
+  flex: 0 0 auto;
   color: var(--muted);
   transition: transform 0.15s;
 }

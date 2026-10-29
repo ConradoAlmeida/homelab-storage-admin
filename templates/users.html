@@ -31,7 +31,12 @@
     </div>
     {% if users %}
     <div class="table-wrap"><table>
-      <thead><tr><th>Pessoa</th><th>Nome</th><th>Grupos</th><th>Status</th><th aria-label="Ações"></th></tr></thead>
+      <thead>
+        <tr>
+          <th>Pessoa</th><th>Nome</th><th>Grupos</th><th>Status</th>
+          {% if not credenciais_gerencia_usuarios %}<th aria-label="Ações"></th>{% endif %}
+        </tr>
+      </thead>
       <tbody>
         {% for u in users %}
           <tr>
@@ -46,8 +51,8 @@
               {% if u.enabled %}<span class="tag ok">ativo</span>
               {% else %}<span class="tag off">desativado</span>{% endif %}
             </td>
+            {% if not credenciais_gerencia_usuarios %}
             <td>
-              {% if not credenciais_gerencia_usuarios %}
               <div class="row-actions">
                 <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
                 <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
@@ -63,10 +68,8 @@
                   <button class="btn small danger" type="submit">Excluir</button>
                 </form>
               </div>
-              {% else %}
-              <span class="muted text-12">gerido no Credenciais</span>
-              {% endif %}
             </td>
+            {% endif %}
           </tr>
         {% endfor %}
       </tbody>

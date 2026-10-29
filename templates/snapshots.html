@@ -28,12 +28,6 @@
 
   {% for s in shares %}
     <section class="section">
-      <div class="section-head">
-        <h2>{{ s.share }}</h2>
-        <span class="muted text-12">
-          {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}
-        </span>
-      </div>
       <details class="card">
         <summary>
           <div class="row row-between-start gap-12 flex-wrap">
@@ -44,6 +38,7 @@
             <div>
               {% if s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>
               {% else %}<span class="tag off">não configurado</span>{% endif %}
+              <span class="muted text-12">· {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}</span>
             </div>
           </div>
         </summary>
