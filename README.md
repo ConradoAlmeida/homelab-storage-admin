@@ -9,6 +9,9 @@ Ubuntu+Samba via perfil de host.
 > é definida no `.env` do servidor (modo `600`) e trocada com
 > `docker compose exec web python manage.py changepassword admin`.
 
+> Retomada de contexto: [`docs/CONTEXTO.md`](docs/CONTEXTO.md)
+> Regras para agentes e automação: [`AGENTS.md`](AGENTS.md)
+
 ---
 
 ## 1. O que ele faz
@@ -27,6 +30,9 @@ Ubuntu+Samba via perfil de host.
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
 | Consultar senha do restic | Backups → Credenciais — exige senha do app |
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
+| Ver saúde do host | Dashboard — card Saúde com discos, backups, containers e pendências |
+| Ver rede e firewall (somente leitura) | Rede (`/rede/`) — interfaces, rotas, portas, Docker e UFW |
+| Backup local de arquivos | Backups → Backup de arquivos — jobs independentes, retenção e restore |
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Listar snapshots restic | Backups → Snapshots restic — data, arquivos, tamanho e fontes |
@@ -40,6 +46,8 @@ Ubuntu+Samba via perfil de host.
 
 O dashboard carrega primeiro o estado básico e busca os tamanhos dos shares
 depois, em `/metrics/shares/`; assim o `du`/`btrfs du` não bloqueia o render.
+O card **Saúde** vem de `health_overview` e o card **Backup de arquivos** lê os
+jobs de `/backups/arquivos/`; jobs restic aparecem em seção separada.
 
 Fora do escopo: Active Directory (o Samba é `tdbsam` standalone), autoatendimento
 de senha, backup externo (use `restic` no host) e o **Jellyfin**. O Jellyfin tem
@@ -575,12 +583,10 @@ fontes, periodicidade e retenção. Sem restic; leitura restrita ao root.
   criados depois do backup.
 - **Download** usa o diretório temporário do restic e é auditado.
 
-A configuração fica em /etc/homelab-backup/credenciais.json (jobs com
-
-ame, label, nabled, sources, requency, weekday, 	ime,
-
-etention_days). O formato antigo (job único com iles) é migrado
-automaticamente para o job credenciais.
+A configuração fica em `/etc/homelab-backup/credenciais.json` (jobs com
+`name`, `label`, `enabled`, `sources`, `frequency`, `weekday`, `time` e
+`retention_days`). O formato antigo (job único com `files`) é migrado
+automaticamente para o job `credenciais`.
 
 ## 6.9 restic e disco externo
 
@@ -625,6 +631,36 @@ manualmente para um drive USB. O Gitea continua rodando durante o dump.
 O backup do Gitea é **manual por decisão** (dump + USB). Quando houver
 repositório restic, a pasta `/var/backups/gitea` pode entrar em um job restic
 para versionamento e cópia fora do disco.
+
+## 6.11 Saúde e Rede
+
+### Saúde do host
+
+O card **Saúde** do Dashboard usa `health_overview` e resume, em uma lista única:
+
+- alertas de disco (SMART, uso, standby) e de volume;
+- resultado dos jobs de backup (restic e arquivos) e repositórios sem check;
+- containers que deveriam estar rodando;
+- pendências de configuração (por exemplo, firewall inativo).
+
+Cada alerta tem nível (`info`, `warn`, `red`). O card mostra “tudo ok” quando não
+há alertas. Os dados vêm do agente; a UI não faz probe próprio nem aciona discos.
+
+### Rede (somente leitura)
+
+`/rede/` mostra o que o host tem, sem editar nada:
+
+- firewall: estado do UFW e regras;
+- interfaces: estado, CIDR, velocidade, MAC e sinal;
+- rotas IPv4 em bloco com quebra de linha;
+- portas TCP ouvindo, com processo quando disponível;
+- containers publicados e portas.
+
+A página é read-only por decisão: alterar firewall/rede continua sendo operação
+de host, não do app. Docker publica portas via iptables e pode furar o UFW; o
+modelo recomendado é publicar em `127.0.0.1` e deixar o Caddy expor.
+
+---
 
 ## 7. Samba
 
@@ -859,6 +895,31 @@ sudo journalctl -u homelab-cloudflared -n 50
 ---
 
 ## 10. Estrutura
+
+### Sistema de UI
+
+A consistência visual é requisito, não preferência. Todas as páginas usam os
+mesmos componentes de `static/css/ui.css` (carregado depois de `app.css`):
+
+| Componente | Uso |
+|---|---|
+| `page-head` | título, lead e ações da página |
+| `section` + `section-head` | blocos e subtítulos |
+| `card` | conteúdo agrupado |
+| `alert` (`danger`, `warn`, `ok`) | avisos e estados |
+| `btn` (`primary`, `danger`, `small`) | ações |
+| `table-wrap` + `table` | listas |
+| `tag` / `badge` | estados |
+| `metric-grid` + `metric` | números |
+| `action-grid` + `action-card` | atalhos grandes |
+| `form-grid`, `form-group`, `form-control`, `check` | formulários |
+
+- Campos de formulário são renderizados por `partials/form_field.html`.
+- Textos longos (rotas, chaves, caminhos) usam `pre`/`mono` com quebra;
+  não podem estourar o card.
+- Evite classes novas para o mesmo papel; se precisar, promova o componente
+  para `ui.css` em vez de estilizar a página.
+- Não há `<style>` nem handlers inline nos templates.
 
 ### Views e frontend
 
