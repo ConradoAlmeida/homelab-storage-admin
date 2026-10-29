@@ -316,6 +316,15 @@ class AgentClient:
     def network_metrics(self):
         return self.call("network_metrics", timeout=15)
 
+    def containers_overview(self):
+        return self.call("containers_overview", timeout=60)
+
+    def container_action(self, name, action):
+        return self.call("container_action", timeout=90, name=name, action=action)
+
+    def container_logs(self, name, tail=200):
+        return self.call("container_logs", timeout=30, name=name, tail=tail)
+
 
 if settings.DEBUG and os.environ.get("STORAGE_ADMIN_DEMO") == "1":
     from .demo_agent import DemoAgent

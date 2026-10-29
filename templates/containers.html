@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Containers - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Containers</h1>
+    <p class="lead">
+      Docker ou Podman do host: estado, portas, iniciar, parar, reiniciar e logs.
+      Nenhum container é removido por esta tela.
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if overview.runtime %}<span class="status ok">{{ overview.runtime }}</span>{% endif %}
+    <a class="btn" href="{% url 'containers' %}">Atualizar</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ error }}</p>
+  </div>
+{% elif overview.error %}
+  <div class="alert danger"><strong>Runtime indisponível.</strong> {{ overview.error }}</div>
+{% elif overview.containers %}
+  <section class="section">
+    <div class="section-head">
+      <h2>Containers</h2>
+      <span class="muted text-12">{{ overview.containers|length }} container{{ overview.containers|length|pluralize }}</span>
+    </div>
+    <div class="table-wrap"><table class="file-table">
+      <thead>
+        <tr><th>Container</th><th>Imagem</th><th>Estado</th><th>Portas</th><th aria-label="Ações"></th></tr>
+      </thead>
+      <tbody>
+        {% for item in overview.containers %}
+          <tr>
+            <td>
+              <strong>{{ item.name }}</strong>
+              <div class="muted mono text-11">{{ item.id }}</div>
+              {% if item.project or item.service %}
+              <div class="muted text-11">
+                {{ item.project|default:"—" }}{% if item.service %} · {{ item.service }}{% endif %}
+              </div>
+              {% endif %}
+            </td>
+            <td class="mono text-12">{{ item.image|default:"—" }}</td>
+            <td>
+              {% if item.running %}
+                <span class="status {% if item.health == 'unhealthy' %}off{% else %}ok{% endif %}">{{ item.state }}</span>
+              {% elif item.state == 'paused' %}
+                <span class="status warn">{{ item.state }}</span>
+              {% else %}
+                <span class="status off">{{ item.state|default:"parado" }}</span>
+              {% endif %}
+              {% if item.status %}<div class="muted text-11">{{ item.status }}</div>{% endif %}
+              {% if item.health %}<div class="muted text-11">health: {{ item.health }}</div>{% endif %}
+            </td>
+            <td class="mono text-11">
+              {% for porta in item.ports %}{{ porta }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}
+            </td>
+            <td class="file-actions">
+              <div class="row-actions">
+                <a class="btn" href="{% url 'container_logs' %}?name={{ item.name|urlencode }}">Logs</a>
+                {% if item.running %}
+                  <form method="post" action="{% url 'container_action' %}"
+                        data-confirm="Parar o container {{ item.name }}?">
+                    {% csrf_token %}
+                    <input type="hidden" name="name" value="{{ item.name }}">
+                    <input type="hidden" name="action" value="stop">
+                    <button class="btn danger" type="submit">Parar</button>
+                  </form>
+                  <form method="post" action="{% url 'container_action' %}"
+                        data-confirm="Reiniciar o container {{ item.name }}?">
+                    {% csrf_token %}
+                    <input type="hidden" name="name" value="{{ item.name }}">
+                    <input type="hidden" name="action" value="restart">
+                    <button class="btn" type="submit">Reiniciar</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{% url 'container_action' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="name" value="{{ item.name }}">
+                    <input type="hidden" name="action" value="start">
+                    <button class="btn" type="submit">Iniciar</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+{% else %}
+  <div class="empty">Nenhum container encontrado.</div>
+{% endif %}
+{% endblock %}

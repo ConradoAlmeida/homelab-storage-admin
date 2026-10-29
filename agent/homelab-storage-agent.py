@@ -240,12 +240,19 @@ def detect_hwmon_fans(base: str = "/sys/class/hwmon") -> bool:
     return False
 
 
+def _runtime_containers() -> str:
+    """Docker ou Podman, o que estiver disponível no host."""
+    for nome in ("docker", "podman"):
+        if shutil.which(nome):
+            return nome
+    return ""
+
+
 def _container_exists(name: str) -> bool:
-    if not shutil.which("docker"):
+    runtime = _runtime_containers()
+    if not runtime:
         return False
-    rc, _, _ = run_optional(
-        ["docker", "inspect", "-f", "{{.Name}}", name], timeout=10
-    )
+    rc, _, _ = run_optional([runtime, "inspect", "-f", "{{.Name}}", name], timeout=10)
     return rc == 0
 
 
@@ -265,6 +272,7 @@ def host_capabilities() -> dict:
             Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
         ),
         "gitea": _container_exists(GITEA_CONTAINER),
+        "containers": bool(_runtime_containers()),
     }
 
 
@@ -4597,9 +4605,13 @@ def op_health_overview(**_):
     if _container_exists(GITEA_CONTAINER):
         alertas.extend(_gitea_health_alertas())
 
-    rc, saida, _ = run_optional(
-        ["docker", "ps", "--format", "{{.Names}}|{{.Status}}"], timeout=15
-    )
+    runtime = _runtime_containers()
+    if runtime:
+        rc, saida, _ = run_optional(
+            [runtime, "ps", "--format", "{{.Names}}|{{.Status}}"], timeout=15
+        )
+    else:
+        rc, saida = 1, ""
     if rc == 0:
         for linha in (saida or "").splitlines():
             if "|" not in linha:
@@ -4739,18 +4751,20 @@ def op_network_overview(**_):
             )
 
     containers = []
-    rc, saida, _ = run_optional(
-        ["docker", "ps", "--format", "{{.Names}}|{{.Ports}}|{{.Status}}"],
-        timeout=15,
-    )
-    if rc == 0:
-        for linha in (saida or "").splitlines():
-            partes = linha.split("|", 2)
-            if len(partes) != 3:
-                continue
-            containers.append(
-                {"name": partes[0], "ports": partes[1], "status": partes[2]}
-            )
+    runtime = _runtime_containers()
+    if runtime:
+        rc, saida, _ = run_optional(
+            [runtime, "ps", "--format", "{{.Names}}|{{.Ports}}|{{.Status}}"],
+            timeout=15,
+        )
+        if rc == 0:
+            for linha in (saida or "").splitlines():
+                partes = linha.split("|", 2)
+                if len(partes) != 3:
+                    continue
+                containers.append(
+                    {"name": partes[0], "ports": partes[1], "status": partes[2]}
+                )
 
     firewall = "indisponivel"
     regras: list[str] = []
@@ -4769,6 +4783,143 @@ def op_network_overview(**_):
         "rules": regras,
         "generated_at": dt.datetime.now().isoformat(timespec="seconds"),
     }
+
+
+
+ACOES_CONTAINER = ("start", "stop", "restart")
+
+
+def _nomes_containers(runtime: str) -> list[str]:
+    rc, saida, _ = run_optional(
+        [runtime, "ps", "-a", "--format", "{{.Names}}"], timeout=15
+    )
+    if rc != 0:
+        return []
+    return [linha.strip() for linha in (saida or "").splitlines() if linha.strip()]
+
+
+def _status_containers(runtime: str) -> dict[str, str]:
+    rc, saida, _ = run_optional(
+        [runtime, "ps", "-a", "--format", "{{.Names}}\t{{.Status}}"], timeout=15
+    )
+    mapa: dict[str, str] = {}
+    if rc == 0:
+        for linha in (saida or "").splitlines():
+            partes = linha.split("\t", 1)
+            if len(partes) == 2:
+                mapa[partes[0].strip()] = partes[1].strip()
+    return mapa
+
+
+def op_containers_overview(**_):
+    runtime = _runtime_containers()
+    if not runtime:
+        return {
+            "runtime": "",
+            "containers": [],
+            "error": "Docker/Podman não encontrado no host.",
+        }
+    nomes = _nomes_containers(runtime)
+    if not nomes:
+        return {"runtime": runtime, "containers": [], "error": ""}
+    rc, saida, erro = run_optional([runtime, "inspect", *nomes], timeout=30)
+    if rc != 0:
+        return {
+            "runtime": runtime,
+            "containers": [],
+            "error": (erro or saida).strip()[:300] or "falha ao inspecionar",
+        }
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError:
+        return {
+            "runtime": runtime,
+            "containers": [],
+            "error": "resposta inválida do runtime",
+        }
+    status = _status_containers(runtime)
+    containers = []
+    for item in dados:
+        estado = item.get("State") or {}
+        config = item.get("Config") or {}
+        labels = config.get("Labels") or {}
+        portas = []
+        for porta, binds in (
+            (item.get("NetworkSettings") or {}).get("Ports") or {}
+        ).items():
+            if not binds:
+                portas.append(porta)
+                continue
+            for bind in binds:
+                host_ip = bind.get("HostIp") or "0.0.0.0"
+                portas.append(f"{host_ip}:{bind.get('HostPort')}->{porta}")
+        nome = (item.get("Name") or "").lstrip("/")
+        containers.append(
+            {
+                "name": nome,
+                "id": (item.get("Id") or "")[:12],
+                "image": config.get("Image") or "",
+                "state": estado.get("Status") or "",
+                "status": status.get(nome, ""),
+                "running": bool(estado.get("Running")),
+                "health": (estado.get("Health") or {}).get("Status") or "",
+                "restart_count": int(estado.get("RestartCount") or 0),
+                "project": labels.get("com.docker.compose.project")
+                or labels.get("io.podman.compose.project")
+                or "",
+                "service": labels.get("com.docker.compose.service") or "",
+                "ports": portas,
+            }
+        )
+    containers.sort(
+        key=lambda item: (
+            not item["running"],
+            (item["project"] or "").lower(),
+            item["name"].lower(),
+        )
+    )
+    return {"runtime": runtime, "containers": containers, "error": ""}
+
+
+def _validar_container(runtime: str, name: str) -> str:
+    nome = (name or "").strip()
+    if not nome or any(ch in nome for ch in ("/", " ", "\t", "..")):
+        raise AgentError("Nome de container inválido")
+    if nome not in set(_nomes_containers(runtime)):
+        raise AgentError(f"Container não encontrado: {nome}")
+    return nome
+
+
+def op_container_action(name: str = "", action: str = "", **_):
+    runtime = _runtime_containers()
+    if not runtime:
+        raise AgentError("Docker/Podman não encontrado no host")
+    if action not in ACOES_CONTAINER:
+        raise AgentError("Ação inválida")
+    nome = _validar_container(runtime, name)
+    rc, saida, erro = run_optional([runtime, action, nome], timeout=90)
+    if rc != 0:
+        raise AgentError(f"{action} falhou: {(erro or saida).strip()[:300]}")
+    return {"name": nome, "action": action, "message": (saida or "").strip()[:300]}
+
+
+def op_container_logs(name: str = "", tail: int = 200, **_):
+    runtime = _runtime_containers()
+    if not runtime:
+        raise AgentError("Docker/Podman não encontrado no host")
+    try:
+        linhas = int(tail)
+    except (TypeError, ValueError):
+        linhas = 200
+    linhas = max(1, min(linhas, 1000))
+    nome = _validar_container(runtime, name)
+    rc, saida, erro = run_optional(
+        [runtime, "logs", "--tail", str(linhas), nome], timeout=30
+    )
+    texto = ((saida or "") + ("\n" + erro if erro else "")).strip()
+    if rc != 0 and not texto:
+        raise AgentError(f"logs falhou (código {rc})")
+    return {"name": nome, "tail": linhas, "logs": texto[-200000:], "runtime": runtime}
 
 
 OPS = {
@@ -4819,6 +4970,9 @@ OPS = {
     "arquivos_job_download": op_arquivos_job_download,
     "arquivos_job_usb_backup": op_arquivos_job_usb_backup,
     "arquivos_sugestoes": op_arquivos_sugestoes,
+    "containers_overview": op_containers_overview,
+    "container_action": op_container_action,
+    "container_logs": op_container_logs,
     "health_overview": op_health_overview,
     "network_overview": op_network_overview,
     "credenciais_backup_overview": op_credenciais_backup_overview,

@@ -5,6 +5,17 @@ from . import views
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("rede/", views.NetworkView.as_view(), name="network_index"),
+    path("containers/", views.ContainersView.as_view(), name="containers"),
+    path(
+        "containers/acao/",
+        views.ContainerActionView.as_view(),
+        name="container_action",
+    ),
+    path(
+        "containers/logs/",
+        views.ContainerLogsView.as_view(),
+        name="container_logs",
+    ),
     path("metrics/network/", views.NetworkMetricsView.as_view(), name="network_metrics"),
     path("metrics/live/", views.LiveMetricsView.as_view(), name="live_metrics"),
     path("metrics/shares/", views.ShareSizesView.as_view(), name="share_sizes"),

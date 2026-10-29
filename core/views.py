@@ -5,7 +5,7 @@ import re
 from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 
 from .agent import AgentError, agent
@@ -213,6 +213,56 @@ class NetworkView(AgentTemplateView):
             data["rules"] = parse_firewall_rules(data.get("rules"))
             context["data"] = data
         return context
+
+
+class ContainersView(AgentTemplateView):
+    template_name = "containers.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"overview": None, "error": None})
+        try:
+            context["overview"] = agent.containers_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
+class ContainerActionView(AgentPostView):
+    def post(self, request):
+        name = (request.POST.get("name") or "").strip()
+        action = (request.POST.get("action") or "").strip()
+        if action not in ("start", "stop", "restart"):
+            _error(request, "Ação inválida.")
+            return redirect("containers")
+        try:
+            agent.container_action(name, action)
+        except AgentError as exc:
+            _error(request, exc)
+        else:
+            _audit(request, f"container.{action}", name)
+            messages.success(request, f"Container {name}: {action} concluído.")
+        return redirect("containers")
+
+
+class ContainerLogsView(AgentView):
+    def get(self, request):
+        name = (request.GET.get("name") or "").strip()
+        try:
+            tail = int(request.GET.get("tail") or 200)
+        except (TypeError, ValueError):
+            tail = 200
+        tail = max(1, min(tail, 1000))
+        context = {"name": name, "tail": tail, "logs": "", "error": None, "opcoes": [100, 200, 500, 1000]}
+        try:
+            dados = agent.container_logs(name, tail)
+        except AgentError as exc:
+            context["error"] = str(exc)
+        else:
+            context["name"] = dados.get("name") or name
+            context["logs"] = dados.get("logs") or ""
+            context["runtime"] = dados.get("runtime") or ""
+        return render(request, "container_logs.html", context)
 
 
 class NetworkMetricsView(AgentView):

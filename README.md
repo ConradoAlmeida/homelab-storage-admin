@@ -32,6 +32,7 @@ Ubuntu+Samba via perfil de host.
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
 | Ver saúde do host | Dashboard — card Saúde com discos, backups, containers e pendências |
 | Ver rede e firewall (somente leitura) | Rede (`/rede/`) — interfaces, rotas, portas, Docker e UFW |
+| Ver e operar containers | Containers (`/containers/`) — Docker ou Podman, iniciar/parar/reiniciar e logs |
 | Backup local de arquivos | Backups → Backup de arquivos — jobs independentes, retenção e restore |
 
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
@@ -667,6 +668,26 @@ há alertas. Os dados vêm do agente; a UI não faz probe próprio nem aciona di
 A página é read-only por decisão: alterar firewall/rede continua sendo operação
 de host, não do app. Docker publica portas via iptables e pode furar o UFW; o
 modelo recomendado é publicar em `127.0.0.1` e deixar o Caddy expor.
+
+---
+
+## 6.12 Containers (mini Portainer)
+
+`/containers/` mostra e opera os containers do host, com **Docker ou Podman**
+(o agente usa o runtime que encontrar).
+
+- Lista nome, ID curto, imagem, estado, saúde, portas, projeto/serviço do Compose
+  e contagem de reinícios.
+- Ações: **iniciar**, **parar** e **reiniciar**, sempre com confirmação.
+- **Logs** com seletor de 100, 200, 500 ou 1000 linhas, em modo leitura.
+- Não cria, não remove, não executa comandos e não altera stacks.
+- Toda ação é registrada na auditoria (`container.start/stop/restart`).
+- O agente valida o nome contra a lista real e só aceita as três ações; não há
+  shell livre.
+- Sem Docker/Podman, a capability fica falsa, o item some do menu e a página
+  mostra o motivo.
+- Parar um container crítico (Caddy, Credenciais ou o próprio Storage Admin)
+  derruba o serviço correspondente; a confirmação existe por isso.
 
 ---
 

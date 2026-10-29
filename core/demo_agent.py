@@ -16,6 +16,7 @@ CAPS = {
     "snapshot_backend": "btrfs",
     "credenciais_backup": True,
     "gitea": True,
+    "containers": True,
 }
 
 DISKS = [
@@ -316,6 +317,83 @@ def _dados(op: str, payload: dict):
                 "link_rx_mbps": None,
                 "signal_dbm": None,
             }
+        }
+    if op == "containers_overview":
+        return {
+            "runtime": "docker",
+            "error": "",
+            "containers": [
+                {
+                    "name": "moya-caddy",
+                    "id": "3f2a1b0c9d8e",
+                    "image": "caddy:2-alpine",
+                    "state": "running",
+                    "status": "Up 3 days",
+                    "running": True,
+                    "health": "healthy",
+                    "restart_count": 0,
+                    "project": "infra",
+                    "service": "caddy",
+                    "ports": ["0.0.0.0:80->80/tcp", "0.0.0.0:443->443/tcp"],
+                },
+                {
+                    "name": "pihole",
+                    "id": "9a8b7c6d5e4f",
+                    "image": "pihole/pihole:latest",
+                    "state": "running",
+                    "status": "Up 3 days",
+                    "running": True,
+                    "health": "",
+                    "restart_count": 0,
+                    "project": "infra",
+                    "service": "pihole",
+                    "ports": ["0.0.0.0:53->53/tcp", "0.0.0.0:53->53/udp"],
+                },
+                {
+                    "name": "moya-credenciais",
+                    "id": "1a2b3c4d5e6f",
+                    "image": "moya_credenciais_app-credenciais",
+                    "state": "running",
+                    "status": "Up 3 days",
+                    "running": True,
+                    "health": "healthy",
+                    "restart_count": 1,
+                    "project": "moya-credenciais",
+                    "service": "credenciais",
+                    "ports": ["127.0.0.1:8080->8080/tcp"],
+                },
+                {
+                    "name": "teste-antigo",
+                    "id": "0f0e0d0c0b0a",
+                    "image": "alpine:3.20",
+                    "state": "exited",
+                    "status": "Exited (0) 2 days ago",
+                    "running": False,
+                    "health": "",
+                    "restart_count": 0,
+                    "project": "",
+                    "service": "",
+                    "ports": [],
+                },
+            ],
+        }
+    if op == "container_action":
+        return {
+            "name": payload.get("name", ""),
+            "action": payload.get("action", ""),
+            "message": "",
+        }
+    if op == "container_logs":
+        nome = payload.get("name", "container")
+        return {
+            "name": nome,
+            "tail": payload.get("tail", 200),
+            "runtime": "docker",
+            "logs": (
+                f"2026-10-28T23:40:01Z {nome} | iniciando\n"
+                f"2026-10-28T23:40:02Z {nome} | pronto\n"
+                f"2026-10-28T23:41:10Z {nome} | GET / 200\n"
+            ),
         }
     if op == "backup_snapshots":
         return {"snapshots": [], "errors": []}

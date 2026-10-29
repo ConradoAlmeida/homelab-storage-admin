@@ -48,6 +48,22 @@ def fake_agent(capabilities=None):
         "firewall": "inativo",
         "rules": [],
     }
+    agent.containers_overview.return_value = {
+        "runtime": "docker",
+        "containers": [],
+        "error": "",
+    }
+    agent.container_action.return_value = {
+        "name": "teste",
+        "action": "stop",
+        "message": "",
+    }
+    agent.container_logs.return_value = {
+        "name": "teste",
+        "tail": 200,
+        "logs": "linha de log",
+        "runtime": "docker",
+    }
     agent.backup_ls.return_value = {
         "snapshot_id": "a" * 64,
         "path": "/mnt/nas",
@@ -534,3 +550,67 @@ class ViewSmokeTests(TestCase):
         self.assertNotContains(resposta, "md0 : active")
         self.assertNotContains(resposta, "Data,single")
         self.assertNotContains(resposta, "livres")
+
+    def test_containers_renderiza(self):
+        self.fake.containers_overview.return_value = {
+            "runtime": "docker",
+            "error": "",
+            "containers": [
+                {
+                    "name": "gitea",
+                    "id": "abc123",
+                    "image": "gitea/gitea",
+                    "state": "running",
+                    "status": "Up 2 hours",
+                    "running": True,
+                    "health": "healthy",
+                    "restart_count": 0,
+                    "project": "gitea",
+                    "service": "server",
+                    "ports": ["127.0.0.1:3000->3000/tcp"],
+                },
+                {
+                    "name": "antigo",
+                    "id": "def456",
+                    "image": "alpine",
+                    "state": "exited",
+                    "status": "Exited (0) 2 days ago",
+                    "running": False,
+                    "health": "",
+                    "restart_count": 0,
+                    "project": "",
+                    "service": "",
+                    "ports": [],
+                },
+            ],
+        }
+        resposta = self.client.get("/containers/")
+        self.assertContains(resposta, "gitea")
+        self.assertContains(resposta, "127.0.0.1:3000")
+        self.assertContains(resposta, "Parar")
+        self.assertContains(resposta, "Reiniciar")
+        self.assertContains(resposta, "Iniciar")
+        self.assertContains(resposta, "Logs")
+
+    def test_container_action_chama_agente_e_audita(self):
+        resposta = self.client.post(
+            "/containers/acao/", {"name": "gitea", "action": "stop"}
+        )
+        self.assertRedirects(resposta, "/containers/")
+        self.fake.container_action.assert_called_once_with("gitea", "stop")
+        self.assertTrue(
+            AuditLog.objects.filter(action="container.stop", target="gitea").exists()
+        )
+
+    def test_container_action_invalida_nao_chama_agente(self):
+        self.client.post(
+            "/containers/acao/", {"name": "gitea", "action": "rm"}
+        )
+        self.fake.container_action.assert_not_called()
+
+    def test_container_logs_renderiza(self):
+        resposta = self.client.get(
+            "/containers/logs/", {"name": "gitea", "tail": "100"}
+        )
+        self.assertContains(resposta, "linha de log")
+        self.fake.container_logs.assert_called_once_with("gitea", 100)

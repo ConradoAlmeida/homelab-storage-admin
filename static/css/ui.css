@@ -161,6 +161,18 @@ main > h1,
   text-align: left;
 }
 
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+.log-toolbar .form-control {
+  max-width: 120px;
+}
+
 .spinner-inline {
   display: inline-block;
   width: 14px;

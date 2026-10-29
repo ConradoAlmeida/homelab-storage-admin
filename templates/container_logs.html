@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Logs · {{ name }} - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Logs · {{ name }}</h1>
+    <p class="lead">
+      Últimas {{ tail }} linhas{% if runtime %} do runtime <span class="mono">{{ runtime }}</span>{% endif %}.
+      Leitura apenas; nada é executado no container.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'containers' %}">Voltar aos containers</a>
+    <a class="btn primary" href="{% url 'container_logs' %}?name={{ name|urlencode }}&tail={{ tail }}">Atualizar</a>
+  </div>
+</div>
+
+<form method="get" class="log-toolbar">
+  <label for="tail" class="muted text-12">Linhas</label>
+  <select class="form-control" id="tail" name="tail">
+    {% for opcao in opcoes %}
+    <option value="{{ opcao }}" {% if opcao == tail %}selected{% endif %}>{{ opcao }}</option>
+    {% endfor %}
+  </select>
+  <input type="hidden" name="name" value="{{ name }}">
+  <button class="btn" type="submit">Carregar</button>
+</form>
+
+{% if error %}
+  <div class="card border-danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+{% elif logs %}
+  <pre class="pre mono">{{ logs }}</pre>
+{% else %}
+  <div class="empty">Sem saída de log.</div>
+{% endif %}
+{% endblock %}

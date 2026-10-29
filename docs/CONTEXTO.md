@@ -31,6 +31,8 @@ Documento de retomada. Última atualização: **2026-10-28**.
   - **Dados dos apps** — 16 fontes, manual, sem timer.
 - Página **Rede** read-only: UFW, interfaces, rotas, portas e containers.
 - Card **Saúde** no Dashboard: discos, backups, containers e pendências.
+- **Containers** (`/containers/`): Docker ou Podman, estado, portas, iniciar,
+  parar, reiniciar e logs; sem remover nem executar comandos.
 - Login pelo Credenciais no moya, com `CREDENTIALS_MANAGE_USERS=1` e
   break-glass local.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
@@ -62,13 +64,11 @@ Documento de retomada. Última atualização: **2026-10-28**.
    restore de teste. Bloqueado por hardware.
 3. **Firewall**: decidir entre ativar UFW ou assumir Caddy em `127.0.0.1`. O
    alerta “Firewall inativo” é real.
-4. **Gestão de containers**: lista/stacks, start/stop/restart, logs, uso de
-   CPU/RAM, confirmação e auditoria. Decidir tela própria versus Portainer.
-5. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
+4. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
    USB antigos inválidos.
-6. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
+5. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
-7. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
+6. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
 
 ## Como retomar
 

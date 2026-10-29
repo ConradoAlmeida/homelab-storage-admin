@@ -60,6 +60,8 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
 9. **Nunca comite `.env`, `data/`, `services.ini` real ou segredos.**
 10. **Pi-safe**: recursos que dependem do Credenciais/Gitea não devem gerar
     alerta falso quando o app não existe no host.
+11. **Containers**: só `start`, `stop`, `restart` e logs. Nunca `rm`, `exec`,
+    `prune` ou comando livre; o agente valida o nome contra a lista real.
 
 ## Mapa rápido
 
