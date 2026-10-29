@@ -4,7 +4,7 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory, SimpleTestCase
 from django.urls import get_resolver, resolve
 
-from core.ajuda import AJUDA, ajuda_para, page_help
+from core.ajuda import AJUDA, USE_CASES, ajuda_para, page_help
 
 ROTAS_ESPERADAS = {
     "dashboard",
@@ -60,6 +60,7 @@ def nomes_de_rotas() -> set[str]:
 class AjudaTests(SimpleTestCase):
     def test_cobre_as_paginas_esperadas(self):
         self.assertLessEqual(ROTAS_ESPERADAS, set(AJUDA))
+        self.assertEqual(set(USE_CASES), set(AJUDA))
 
     def test_todas_as_chaves_sao_rotas_reais(self):
         self.assertEqual(sorted(set(AJUDA) - nomes_de_rotas()), [])
@@ -69,6 +70,7 @@ class AjudaTests(SimpleTestCase):
             with self.subTest(rota=rota):
                 self.assertTrue(ajuda["title"])
                 self.assertTrue(ajuda["summary"])
+                self.assertTrue(ajuda["use_case"])
                 self.assertTrue(ajuda["chapters"])
                 for capitulo in ajuda["chapters"]:
                     self.assertTrue(capitulo["title"])
@@ -94,6 +96,8 @@ class AjudaTests(SimpleTestCase):
         self.assertIn("Ajuda desta página", html)
         self.assertIn("Saúde do sistema", html)
         self.assertIn("Backup de arquivos", html)
+        self.assertIn("No dia a dia", html)
+        self.assertIn("Visão consolidada do servidor", html)
         self.assertIn("Volumes mostram o uso das montagens do host.", html)
         self.assertNotIn("('title'", html)
         self.assertIn('class="page-help-chapter"', html)

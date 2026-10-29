@@ -9,6 +9,12 @@
       <strong>{{ page_help.title }}</strong>
       {% if page_help.summary %}<p>{{ page_help.summary }}</p>{% endif %}
     </div>
+    {% if page_help.use_case %}
+    <div class="page-help-usecase">
+      <span class="page-help-usecase-label">No dia a dia</span>
+      <p>{{ page_help.use_case }}</p>
+    </div>
+    {% endif %}
     <div class="page-help-chapters">
       {% for chapter in page_help.chapters %}
       <details class="page-help-chapter">

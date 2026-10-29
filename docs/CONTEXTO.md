@@ -39,8 +39,9 @@ Documento de retomada. Última atualização: **2026-10-29**.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
   tabelas, chips, métricas, ações e formulários padronizados.
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
-  página** no topo abre um painel com capítulos por funcionalidade da própria
-  página, usando `<details>` nativo e sem JavaScript.
+  página** no topo abre um painel com um caso de uso (**No dia a dia**) e
+  capítulos por funcionalidade da própria página, usando `<details>` nativo e
+  sem JavaScript.
 - **Novo layout de painel de operação** (branch `ui/layout-telas`, merge `76dc5f2`):
   visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
 - Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.

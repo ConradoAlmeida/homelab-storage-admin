@@ -64,7 +64,7 @@ AJUDA: dict[str, dict[str, Any]] = {
                 ),
             },
             {
-                "title": "RAID e Btrfs",
+                "title": "RAID e volumes",
                 "text": (
                     "Exibe o estado dos arrays e volumes. Membro degradado ou "
                     "ausente deve ser resolvido antes de gravar novos dados."
@@ -1027,6 +1027,173 @@ AJUDA: dict[str, dict[str, Any]] = {
         ],
     },
 }
+
+
+USE_CASES: dict[str, str] = {
+    "dashboard": (
+        "Use ao abrir o painel ou depois de um alerta para saber, em uma tela, "
+        "se discos, serviços, backups e shares estão saudáveis. Exemplo: antes "
+        "de copiar arquivos importantes, confira o espaço do volume e se o "
+        "último backup restic terminou bem."
+    ),
+    "network_index": (
+        "Use quando um serviço não abre ou um container não responde. Exemplo: "
+        "confira se a porta está publicada, se a interface tem endereço e se o "
+        "firewall permite a origem antes de mexer no Caddy."
+    ),
+    "containers": (
+        "Use no dia a dia para reiniciar um serviço travado e conferir o que "
+        "está rodando. Exemplo: depois de atualizar uma imagem, reinicie o "
+        "container e acompanhe pelos logs; o container do próprio painel fica "
+        "protegido."
+    ),
+    "container_logs": (
+        "Use quando um serviço para de responder ou reinicia sozinho. Exemplo: "
+        "se o Gitea mostrar erro 502, veja as últimas linhas do container para "
+        "identificar disco cheio, permissão ou configuração."
+    ),
+    "users": (
+        "Use para conferir quem tem conta e quais pastas cada pessoa acessa. "
+        "Exemplo: num chamado de 'não abro a pasta Projetos', verifique se a "
+        "pessoa está ativa e no grupo certo; se o Credenciais gerencia "
+        "usuários, o ajuste é feito lá."
+    ),
+    "user_create": (
+        "Use ao cadastrar alguém que ainda não existe no servidor, quando a "
+        "gestão é local. Exemplo: crie a conta, defina a senha inicial, marque "
+        "os grupos das pastas e peça a troca no primeiro acesso."
+    ),
+    "user_password": (
+        "Use quando alguém esqueceu a senha ou precisa de uma senha temporária. "
+        "Exemplo: defina uma nova senha, informe à pessoa e oriente a troca no "
+        "próximo login."
+    ),
+    "user_groups": (
+        "Use para liberar ou retirar acesso a pastas sem excluir a conta. "
+        "Exemplo: ao mudar alguém de setor, marque os grupos novos e desmarque "
+        "os antigos; o acesso ao Samba muda na hora."
+    ),
+    "group_create": (
+        "Use quando uma nova pasta compartilhada precisa de um grupo próprio. "
+        "Exemplo: crie o grupo, associe ao share e inclua as pessoas que devem "
+        "acessá-lo."
+    ),
+    "shares": (
+        "Use para ver o que está compartilhado, quanto ocupa e quem acessa. "
+        "Exemplo: antes de criar um share ou investigar espaço em disco, "
+        "confira o uso dos dados e dos snapshots."
+    ),
+    "share_create": (
+        "Use ao disponibilizar uma nova pasta na rede. Exemplo: crie o share "
+        "com snapshot, defina quantas versões manter e libere os grupos certos; "
+        "o Samba é validado e recarregado."
+    ),
+    "snapshots": (
+        "Use para proteger uma pasta antes de uma mudança ou voltar a um estado "
+        "anterior. Exemplo: antes de uma migração, crie um snapshot agora; se "
+        "algo der errado, navegue pela versão anterior."
+    ),
+    "history_index": (
+        "Use para recuperar um arquivo apagado ou comparar versões. Exemplo: "
+        "alguém apagou uma planilha por engano; escolha o share e abra o "
+        "snapshot de antes da exclusão."
+    ),
+    "history_share": (
+        "Use para restaurar um arquivo sem alterar o share atual. Exemplo: "
+        "encontre a pasta no snapshot, baixe a versão antiga e devolva ao share."
+    ),
+    "history_browse": (
+        "Use para restaurar um arquivo sem alterar o share atual. Exemplo: "
+        "encontre a pasta no snapshot, baixe a versão antiga e devolva ao share."
+    ),
+    "history_browse_root": (
+        "Use para restaurar um arquivo sem alterar o share atual. Exemplo: "
+        "encontre a pasta no snapshot, baixe a versão antiga e devolva ao share."
+    ),
+    "history_versions": (
+        "Use quando o arquivo existe, mas o conteúdo mudou ou foi sobrescrito. "
+        "Exemplo: compare as versões do contrato e baixe a que estava correta."
+    ),
+    "storage_index": (
+        "Use para acompanhar a saúde dos discos e agir antes de uma falha. "
+        "Exemplo: temperatura alta ou setores realocados aparecem aqui; rode um "
+        "teste curto e planeje a troca."
+    ),
+    "storage_smart": (
+        "Use quando precisar do detalhe técnico de um disco suspeito. Exemplo: "
+        "antes de abrir RMA ou trocar o disco, leia os atributos SMART e guarde "
+        "o diagnóstico."
+    ),
+    "backup_index": (
+        "Use para conferir se as rotinas de backup estão acontecendo e agir "
+        "quando um job falha. Exemplo: o backup diário do Credenciais falhou; "
+        "abra o job, rode agora e confira o status."
+    ),
+    "backup_snapshots": (
+        "Use quando precisar restaurar um arquivo de uma data específica. "
+        "Exemplo: recupere uma configuração de duas semanas atrás sem depender "
+        "do snapshot do share."
+    ),
+    "backup_snapshot_browse": (
+        "Use para localizar e baixar um arquivo específico de um snapshot "
+        "restic. Exemplo: encontre o .env antigo de um app e baixe para "
+        "comparar com o atual."
+    ),
+    "backup_disk_wizard": (
+        "Use quando chega um disco externo novo para backup. Exemplo: conecte o "
+        "USB, prepare o disco, crie o repositório restic e depois aponte o job "
+        "para ele."
+    ),
+    "backup_credentials": (
+        "Use quando precisa restaurar fora do painel ou guardar a senha do "
+        "repositório. Exemplo: num restore de emergência, consulte a senha e "
+        "use com o restic no terminal."
+    ),
+    "gitea_backup": (
+        "Use antes de atualizações do Gitea ou periodicamente para ter um dump "
+        "fora do servidor. Exemplo: gere o dump e copie para o USB; se o "
+        "container quebrar, você tem o arquivo e o hash."
+    ),
+    "arquivos_backup_index": (
+        "Use para proteger pastas que não estão em um repositório restic. "
+        "Exemplo: crie um job para documentos e configurações e rode antes de "
+        "uma atualização."
+    ),
+    "arquivos_job_new": (
+        "Use ao incluir uma nova pasta ou mudar a frequência do backup local. "
+        "Exemplo: adicione /etc/... como fonte e ajuste a retenção para 30 dias."
+    ),
+    "arquivos_job_edit": (
+        "Use ao ajustar um backup local existente. Exemplo: inclua uma pasta "
+        "nova ou mude o horário e salve; o job passa a usar a nova agenda."
+    ),
+    "arquivos_job": (
+        "Use para rodar um backup fora de hora, verificar um pacote ou "
+        "restaurar dados. Exemplo: antes de mexer numa configuração, rode agora "
+        "e, se precisar, restaure o pacote anterior."
+    ),
+    "cold_index": (
+        "Use periodicamente para tirar uma cópia offline do backup. Exemplo: "
+        "conecte o drive frio, copie os snapshots e ejete; guarde o drive fora "
+        "do servidor."
+    ),
+    "cold_prepare": (
+        "Use na primeira vez que um drive USB vira cópia fria. Exemplo: prepare "
+        "o drive, copie o repositório e guarde-o desconectado."
+    ),
+    "backup_job_new": (
+        "Use ao criar uma rotina restic. Exemplo: defina os shares, a agenda e "
+        "a retenção; rode uma vez manualmente para validar antes de confiar no "
+        "timer."
+    ),
+    "backup_job_edit": (
+        "Use ao ajustar uma rotina restic existente. Exemplo: inclua um share "
+        "novo ou mude o horário e rode uma vez para confirmar."
+    ),
+}
+
+for _rota, _texto in USE_CASES.items():
+    AJUDA[_rota]["use_case"] = _texto
 
 
 def ajuda_para(url_name: str | None) -> dict[str, Any] | None:

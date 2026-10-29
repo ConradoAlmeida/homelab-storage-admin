@@ -834,6 +834,30 @@ pre {
   font-size: 12px;
 }
 
+.page-help-usecase {
+  margin: 0 0 8px;
+  padding: 9px 10px;
+  border-left: 3px solid var(--acc);
+  border-radius: 4px;
+  background: rgba(74, 158, 255, .08);
+}
+
+.page-help-usecase-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--acc);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.page-help-usecase p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .page-help-chapter { border-bottom: 1px solid var(--line); }
 .page-help-chapter:last-child { border-bottom: 0; }
 
