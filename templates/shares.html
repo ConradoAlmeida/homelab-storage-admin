@@ -1,38 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Shares - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between mb-18">
-  <h1 class="m-0">Compartilhamentos</h1>
-  <a class="btn primary" href="{% url 'share_create' %}">Novo share</a>
+<div class="page-head">
+  <div>
+    <h1>Compartilhamentos</h1>
+    <p class="lead">Shares do Samba, uso em disco, snapshots e acesso por pessoa ou grupo.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn primary" href="{% url 'share_create' %}">Novo share</a>
+  </div>
 </div>
 
 {% if agent_error %}
-  <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ agent_error }}</p>
+  </div>
 {% elif shares %}
-<div class="table-wrap"><table>
-  <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Tam. snapshots</th><th>Total</th><th>Usuários/Grupos</th><th>Acesso</th></tr></thead>
-  <tbody>
-    {% for s in shares %}
-      <tr>
-        <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.comment %}<div class="muted text-12">{{ s.comment }}</div>{% endif %}</td>
-        <td class="muted">{{ s.path }}</td>
-        <td>
-          {% if s.snapshot_enabled %}
-            <span class="tag ok">sim · keep {{ s.snapshot_keep }}</span>
-            <div class="muted text-12">{{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
-          {% else %}
-            <span class="tag off">não configurado</span>
-          {% endif %}
-        </td>
-        <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
-        <td class="muted">{% if s.size_snapshots != None %}{{ s.size_snapshots|filesizeformat }}{% else %}—{% endif %}</td>
-        <td>{% if s.size_total != None %}<strong>{{ s.size_total|filesizeformat }}</strong>{% else %}—{% endif %}</td>
-        <td class="muted">{{ s.valid_users|default:"todos" }}</td>
-        <td>{% if s.read_only %}<span class="tag">somente leitura</span>{% else %}<span class="tag ok">leitura/escrita</span>{% endif %}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Snapshots</th><th>Total</th><th>Acesso</th></tr></thead>
+    <tbody>
+      {% for s in shares %}
+        <tr>
+          <td>
+            <strong>{{ s.name }}</strong>
+            {% if not s.browseable %}<span class="tag">privado</span>{% endif %}
+            {% if s.comment %}<div class="muted text-12">{{ s.comment }}</div>{% endif %}
+          </td>
+          <td class="muted mono text-12">{{ s.path }}</td>
+          <td>
+            {% if s.snapshot_enabled %}
+              <span class="tag ok">keep {{ s.snapshot_keep }}</span>
+              <div class="muted text-12">{{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
+            {% else %}
+              <span class="tag off">não configurado</span>
+            {% endif %}
+          </td>
+          <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
+          <td class="muted">{% if s.size_snapshots != None %}{{ s.size_snapshots|filesizeformat }}{% else %}—{% endif %}</td>
+          <td>{% if s.size_total != None %}<strong>{{ s.size_total|filesizeformat }}</strong>{% else %}—{% endif %}</td>
+          <td>
+            <div class="muted text-12">{{ s.valid_users|default:"todos" }}</div>
+            {% if s.read_only %}<span class="tag">somente leitura</span>{% else %}<span class="tag ok">leitura/escrita</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>
 {% endif %}

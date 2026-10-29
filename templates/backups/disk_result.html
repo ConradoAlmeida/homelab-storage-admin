@@ -1,19 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Disco preparado - Backups{% endblock %}
+{% block title %}Disco preparado - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Disco preparado</h1>
-<div class="alert border-ok">
-  <strong>{{ result.device }}</strong> formatado como ext4, montado em <code>{{ result.mountpoint }}</code> e com repositório restic em <code>{{ result.repo }}</code>.
+<div class="page-head">
+  <div>
+    <h1>Disco preparado</h1>
+    <p class="lead">O repositório restic foi criado e já pode receber jobs de backup.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+  </div>
+</div>
+
+<div class="alert ok">
+  <strong>{{ result.device }}</strong> formatado como ext4, montado em
+  <span class="mono">{{ result.mountpoint }}</span> e com repositório restic em
+  <span class="mono">{{ result.repo }}</span>.
 </div>
 
 <div class="danger-zone">
   <strong>Guarde a senha de recuperação do restic agora</strong>
-  <p class="muted">Você também pode consultá-la depois em <strong>Credenciais</strong>, com a senha do app.</p>
+  <p class="muted">Você também pode consultá-la depois em <strong>Credenciais do restic</strong>, com a senha do app.</p>
   <pre class="pre">{{ result.recovery_password }}</pre>
-  <p class="muted text-12">Arquivo root-only no host: <code>{{ result.key_file }}</code></p>
-  <p><a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ result.uuid|urlencode }}">Abrir credenciais</a></p>
+  <p class="muted text-12">Arquivo root-only no host: <span class="mono">{{ result.key_file }}</span></p>
+  <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ result.uuid|urlencode }}">Abrir credenciais</a>
 </div>
 
 <p class="muted">Próxima etapa: cadastrar o job de backup (fontes, periodicidade e retenção).</p>
-<a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+<a class="btn primary" href="{% url 'backup_job_new' %}">Criar job de backup</a>
 {% endblock %}

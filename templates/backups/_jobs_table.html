@@ -1,5 +1,5 @@
 <div class="table-wrap"><table class="file-table">
-  <thead><tr><th>Job</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th></th></tr></thead>
+  <thead><tr><th>Job</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th aria-label="Ações"></th></tr></thead>
   <tbody>
     {% for item in overview.jobs %}
       <tr>
@@ -8,30 +8,32 @@
           <div class="muted mono text-11">{{ item.name }}</div>
         </td>
         <td class="muted text-12">
-          {{ item.sources|length }} fonte(s)
-          {% if item.archives_count %}<div class="text-11">{{ item.archives_count }} pacote(s)</div>{% endif %}
+          {{ item.sources|length }} fonte{{ item.sources|length|pluralize }}
+          {% if item.archives_count %}<div class="text-11">{{ item.archives_count }} pacote{{ item.archives_count|pluralize }}</div>{% endif %}
         </td>
         <td class="muted">
           {{ item.agenda }}
-          {% if not item.enabled %}<div class="badge">desativado</div>{% endif %}
+          {% if not item.enabled %}<div><span class="tag">desativado</span></div>{% endif %}
         </td>
         <td class="muted">{{ item.retention_days }} dias</td>
         <td>
-          {% if item.status.status == "running" %}<span class="badge live">rodando</span>
-          {% elif item.status.ok %}<span class="state-ok">success</span>
-          {% elif item.status.error %}<span class="state-bad">failed</span>
-          {% else %}<span class="muted">-</span>{% endif %}
+          {% if item.status.status == "running" %}<span class="tag ok">rodando</span>
+          {% elif item.status.ok %}<span class="tag ok">success</span>
+          {% elif item.status.error %}<span class="tag off">failed</span>
+          {% else %}<span class="muted">—</span>{% endif %}
           {% if item.status.finished_at %}<div class="muted text-11">{{ item.status.finished_at }}</div>{% endif %}
           {% if item.status.error %}<div class="muted text-11">{{ item.status.error }}</div>{% endif %}
         </td>
-        <td class="muted text-12">{{ item.next_run|default:"-" }}</td>
+        <td class="muted text-12">{{ item.next_run|default:"—" }}</td>
         <td class="file-actions">
-          <form method="post" action="{% url 'arquivos_job_run' job=item.name %}" class="display-inline">
-            {% csrf_token %}
-            <button class="btn small" type="submit">Rodar agora</button>
-          </form>
-          <a class="btn small" href="{% url 'arquivos_job_edit' job=item.name %}">Editar</a>
-          <a class="btn small" href="{% url 'arquivos_job' job=item.name %}">Abrir</a>
+          <div class="row-actions">
+            <form method="post" action="{% url 'arquivos_job_run' job=item.name %}">
+              {% csrf_token %}
+              <button class="btn small" type="submit">Rodar agora</button>
+            </form>
+            <a class="btn small" href="{% url 'arquivos_job_edit' job=item.name %}">Editar</a>
+            <a class="btn small" href="{% url 'arquivos_job' job=item.name %}">Abrir</a>
+          </div>
         </td>
       </tr>
     {% empty %}

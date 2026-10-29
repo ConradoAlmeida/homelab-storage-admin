@@ -1,29 +1,42 @@
 {% extends "base.html" %}
 {% block title %}Arquivos e versões - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Arquivos e versões</h1>
-<p class="muted">Navegue, busque e baixe arquivos do conteúdo atual e dos snapshots dos shares. Tudo é somente leitura; para criar/remover snapshots, use <a href="{% url 'snapshots' %}">Snapshots</a>.</p>
+<div class="page-head">
+  <div>
+    <h1>Arquivos e versões</h1>
+    <p class="lead">
+      Navegue, busque e baixe arquivos do conteúdo atual e dos snapshots dos shares.
+      Tudo é somente leitura; para criar ou remover snapshots, use <a href="{% url 'snapshots' %}">Snapshots</a>.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'snapshots' %}">Snapshots</a>
+  </div>
+</div>
 
 {% if agent_error %}
-  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ agent_error }}</p>
+  </div>
 {% elif shares %}
-<div class="table-wrap"><table class="file-table">
-  <thead><tr><th>Share</th><th>Versões</th><th>Última</th><th></th></tr></thead>
-  <tbody>
-    {% for s in shares %}
-      <tr>
-        <td>
-          <strong>{{ s.name }}</strong>
-          {% if not s.browseable %} <span class="tag">privado</span>{% endif %}
-          <div class="muted text-12">{{ s.path }}</div>
-        </td>
-        <td class="muted">{{ s.snapshot_count }}</td>
-        <td class="muted">{{ s.last_snapshot|default:"—" }}</td>
-        <td class="file-actions"><a class="btn small" href="{{ s.url }}">Navegar</a></td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table></div>
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Share</th><th>Versões</th><th>Última</th><th aria-label="Ações"></th></tr></thead>
+    <tbody>
+      {% for s in shares %}
+        <tr>
+          <td>
+            <strong>{{ s.name }}</strong>
+            {% if not s.browseable %}<span class="tag">privado</span>{% endif %}
+            <div class="muted mono text-12">{{ s.path }}</div>
+          </td>
+          <td class="muted">{{ s.snapshot_count }}</td>
+          <td class="muted">{{ s.last_snapshot|default:"—" }}</td>
+          <td class="file-actions"><a class="btn small" href="{{ s.url }}">Navegar</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>
 {% endif %}

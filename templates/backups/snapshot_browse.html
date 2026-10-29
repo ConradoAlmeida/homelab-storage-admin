@@ -1,25 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Navegar no snapshot {{ snapshot_id }} - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between-start">
+<div class="page-head">
   <div>
-    <h1 class="mb-4">Navegar no snapshot</h1>
-    <p class="muted">
+    <h1>Navegar no snapshot</h1>
+    <p class="lead">
       Leitura somente. O conteúdo vem direto do repositório restic; nada é restaurado no share.
     </p>
   </div>
-  <a class="btn small" href="{% url 'backup_snapshots' %}">← Snapshots</a>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'backup_snapshots' %}">Voltar aos snapshots</a>
+  </div>
 </div>
 
 <div class="card">
-  <div class="row row-between items-center gap-12 flex-wrap">
+  <div class="row row-between-start gap-12 flex-wrap">
     <div>
-      <strong>Snapshot:</strong> <code>{{ snapshot_id }}</code>
+      <strong>Snapshot:</strong> <span class="mono">{{ snapshot_id }}</span>
       {% if snapshot.time %}<span class="muted"> · {{ snapshot.time }}</span>{% endif %}
       {% if snapshot.hostname %}<span class="muted"> · {{ snapshot.hostname }}</span>{% endif %}
       {% if snapshot.tags %}<span class="muted"> · tags: {{ snapshot.tags|join:", " }}</span>{% endif %}
     </div>
-    <a class="btn small" href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ parent|urlencode }}">↑ Subir</a>
+    <a class="btn small" href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ parent|urlencode }}">Subir</a>
   </div>
   {% if snapshot.paths %}
     <p class="muted text-12 mb-0">Fontes: {{ snapshot.paths|join:", " }}</p>
@@ -29,23 +31,23 @@
 {% include "partials/search_form.html" %}
 
 {% if error %}
-  <div class="card error-card"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+  <div class="card border-danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
 {% else %}
   {% if query %}
     {% include "partials/search_results.html" with search_results=search_matches %}
   {% else %}
     <div class="card">
-      <div class="row gap-4 flex-wrap items-center text-13">
+      <nav class="crumbs m-0">
         {% for crumb in breadcrumbs %}
-          {% if not forloop.first %}<span class="muted">/</span>{% endif %}
+          {% if not forloop.first %}<span class="sep">/</span>{% endif %}
           <a href="{% url 'backup_snapshot_browse' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ crumb.path|urlencode }}">{{ crumb.name }}</a>
         {% endfor %}
-      </div>
+      </nav>
     </div>
 
     {% if entries %}
     <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Nome</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th>Permissões</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th>Permissões</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
         {% for entry in entries %}
           <tr>
@@ -61,8 +63,8 @@
             </td>
             <td>{% if entry.size is not None %}{{ entry.size|filesizeformat }}{% else %}—{% endif %}</td>
             <td class="muted">{{ entry.mtime|default:"—" }}</td>
-            <td class="muted"><code>{{ entry.permissions|default:"—" }}</code></td>
-            <td>
+            <td class="muted mono text-12">{{ entry.permissions|default:"—" }}</td>
+            <td class="file-actions">
               {% if entry.type == "file" %}
                 <a class="btn small" href="{% url 'backup_snapshot_download' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ entry.path|urlencode }}">Baixar</a>
               {% endif %}

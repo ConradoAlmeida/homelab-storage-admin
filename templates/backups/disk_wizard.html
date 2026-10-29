@@ -1,35 +1,41 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Preparar {{ selected.path }} - Backups
-{% endblock %}
+{% block title %}Preparar {{ selected.path }} - {{ product_name }}{% endblock %}
 {% block content %}
+<div class="page-head">
+  <div>
+    <h1>Preparar {{ selected.path }}</h1>
+    <p class="lead">Formatar como ext4, montar e criar o repositório restic.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+  </div>
+</div>
+
 <div class="wizard-steps">
   <span class="on">1. Disco</span>
   {% if selected.extra_confirmation %}<span class="on">2. Aviso</span>{% endif %}
   <span class="on">3. Confirmação</span>
 </div>
 
-<div class="row row-between-start">
-  <div>
-    <h1 class="mb-4">Preparar {{ selected.path }}</h1>
-    <p class="muted">Formatar como ext4, montar e criar o repositório restic.</p>
-  </div>
-  <a class="btn small" href="{% url 'backup_index' %}">← Voltar</a>
-</div>
+{% if error %}
+  <div class="alert danger"><strong>Erro</strong><p>{{ error }}</p></div>
+{% endif %}
 
-{% if error %}<div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>{% endif %}
-
-<div class="table-wrap"><table class="file-table mt-12">
-  <tbody>
-    <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
-    <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
-    <tr><th>Serial</th><td class="mono">{{ selected.serial|default:"—" }}</td></tr>
-    <tr><th>Tamanho</th><td>{{ selected.size|default:"—" }}</td></tr>
-    <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
-    <tr><th>Backup</th><td>{% if selected.configured %}<span class="state-bad">já configurado</span>{% elif selected.has_filesystem %}<span class="state-standby">com filesystem</span>{% else %}vazio{% endif %}</td></tr>
-    <tr><th>Sistema de arquivos de destino</th><td><strong>ext4 (recomendado)</strong></td></tr>
-  </tbody>
-</table></div>
+<section class="section">
+  <div class="section-head"><h2>Disco selecionado</h2></div>
+  <div class="table-wrap"><table class="file-table">
+    <tbody>
+      <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
+      <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
+      <tr><th>Serial</th><td class="mono">{{ selected.serial|default:"—" }}</td></tr>
+      <tr><th>Tamanho</th><td>{{ selected.size|default:"—" }}</td></tr>
+      <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
+      <tr><th>Backup</th><td>{% if selected.configured %}<span class="tag off">já configurado</span>{% elif selected.has_filesystem %}<span class="tag">com filesystem</span>{% else %}<span class="tag ok">vazio</span>{% endif %}</td></tr>
+      <tr><th>Destino</th><td><strong>ext4 (recomendado)</strong></td></tr>
+    </tbody>
+  </table></div>
+</section>
 
 {% if selected.warnings %}
   <div class="alert danger">
@@ -39,45 +45,65 @@
 {% endif %}
 
 {% if not selected.candidate %}
-  <div class="alert danger"><strong>Disco indisponível:</strong> {{ selected.reason }}. Desmonte/remova o RAID antes de tentar de novo.</div>
+  <div class="alert danger">
+    <strong>Disco indisponível:</strong> {{ selected.reason }}. Desmonte ou remova o RAID antes de tentar de novo.
+  </div>
 {% else %}
-  <form method="post" action="{% url 'backup_disk_wizard' %}" class="card max-640" id="disk-setup-form">
-    {% csrf_token %}
-    <input type="hidden" name="device" value="{{ selected.path }}">
+  <section class="section">
+    <div class="section-head"><h2>Confirmação</h2></div>
+    <div class="panel-form">
+      <form method="post" action="{% url 'backup_disk_wizard' %}" id="disk-setup-form">
+        {% csrf_token %}
+        <input type="hidden" name="device" value="{{ selected.path }}">
 
-    <label for="label">Label do disco</label>
-    <input id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
-    <p class="muted text-12">Montagem: <code>{{ backup_root }}/{{ default_label }}</code> · repositório: <code>{{ backup_root }}/{{ default_label }}/restic</code></p>
+        <div class="form-group">
+          <label for="label">Label do disco</label>
+          <input class="form-control" id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
+          <div class="help">
+            Montagem: <span class="mono">{{ backup_root }}/{{ default_label }}</span> ·
+            repositório: <span class="mono">{{ backup_root }}/{{ default_label }}/restic</span>
+          </div>
+        </div>
 
-    <label for="filesystem">Sistema de arquivos de destino</label>
-    <input id="filesystem" value="ext4 (recomendado)" readonly>
-    <p class="muted text-12">ext4 é recomendado para restic em HDD 2,5"; nesta versão o destino é fixo em ext4.</p>
+        <div class="form-group">
+          <label for="filesystem">Sistema de arquivos de destino</label>
+          <input class="form-control" id="filesystem" value="ext4 (recomendado)" readonly>
+          <div class="help">ext4 é recomendado para restic em HDD 2,5"; nesta versão o destino é fixo em ext4.</div>
+        </div>
 
-    {% if selected.extra_confirmation %}
-      <div class="danger-zone">
-        <strong>Confirmação extra obrigatória</strong>
-        <p class="muted">Este disco contém um filesystem existente ou já está configurado. Ao continuar, o conteúdo será apagado.</p>
-        <label class="wizard-actions">
-          <input type="checkbox" name="acknowledge" value="1" required class="checkbox-inline">
-          <span>Entendo que o conteúdo deste disco será apagado e não poderá ser recuperado.</span>
-        </label>
-      </div>
-    {% endif %}
+        {% if selected.extra_confirmation %}
+          <div class="danger-zone">
+            <strong>Confirmação extra obrigatória</strong>
+            <p class="muted">Este disco contém um filesystem existente ou já está configurado. Ao continuar, o conteúdo será apagado.</p>
+            <div class="check">
+              <input type="checkbox" name="acknowledge" value="1" required>
+              <label>Entendo que o conteúdo deste disco será apagado e não poderá ser recuperado.</label>
+            </div>
+          </div>
+        {% endif %}
 
-    <label for="confirmation">Frase de confirmação</label>
-    <p class="muted text-12 mt-4">Digite exatamente:</p>
-    <p><code class="phrase">{{ selected.required_phrase }}</code></p>
-    <input id="confirmation" name="confirmation" autocomplete="off" required>
+        <div class="form-group">
+          <label for="confirmation">Frase de confirmação</label>
+          <div class="help">Digite exatamente: <code class="phrase">{{ selected.required_phrase }}</code></div>
+          <input class="form-control" id="confirmation" name="confirmation" autocomplete="off" required>
+        </div>
 
-    <label for="password">Senha do app</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <div class="form-group">
+          <label for="password">Senha do app</label>
+          <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
 
-    <div class="mt-16">
-      <button class="btn danger" id="disk-setup-submit" type="submit">Preparar disco</button>
-      <a class="btn small" href="{% url 'backup_index' %}">Cancelar</a>
+        <div class="form-actions">
+          <button class="btn danger" id="disk-setup-submit" type="submit">Preparar disco</button>
+          <a class="btn" href="{% url 'backup_index' %}">Cancelar</a>
+        </div>
+        <p class="muted text-12 mt-10">
+          A formatação, montagem e criação do repo restic podem levar alguns minutos.
+          O loading fica ativo até o fim; não feche a aba.
+        </p>
+      </form>
     </div>
-    <p class="muted text-12 mt-10">A formatação, montagem e criação do repo restic podem levar alguns minutos. O loading fica ativo até o fim; não feche a aba.</p>
-  </form>
+  </section>
 {% endif %}
 
 <div id="busy-overlay" class="busy-overlay" hidden>

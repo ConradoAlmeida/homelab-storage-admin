@@ -1,0 +1,24 @@
+{% if field.is_hidden %}
+  {{ field }}
+{% elif field.field.widget.input_type == "checkbox" %}
+  <div class="check">
+    {{ field }}
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+    {{ field.errors }}
+  </div>
+{% elif field.field.widget.allow_multiple_selected %}
+  <div class="form-group">
+    <label>{{ field.label }}</label>
+    <div class="check-list">{{ field }}</div>
+    {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+    {{ field.errors }}
+  </div>
+{% else %}
+  <div class="form-group">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+    {{ field.errors }}
+  </div>
+{% endif %}

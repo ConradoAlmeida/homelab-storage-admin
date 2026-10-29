@@ -1,22 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Grupos - {{ product_name }}{% endblock %}
+{% block title %}Grupos{% if username %} de {{ username }}{% endif %} - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Grupos{% if username %} de {{ username }}{% endif %}</h1>
-<form class="stack" method="post">
-  {% csrf_token %}
-  {% include "partials/form_alert.html" %}
-  {% for field in form %}
-    {% if field.is_hidden %}{{ field }}{% else %}
-      <div>
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {{ field.errors }}
-      </div>
-    {% endif %}
-  {% endfor %}
-  <div class="row">
-    <button class="btn primary" type="submit">Salvar grupos</button>
-    <a class="btn" href="{% url 'users' %}">Cancelar</a>
+<div class="page-head">
+  <div>
+    <h1>Grupos{% if username %} de {{ username }}{% endif %}</h1>
+    <p class="lead">Marque os grupos de share que esta conta pode acessar. O grupo privado da pessoa é gerenciado automaticamente.</p>
   </div>
-</form>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'users' %}">Voltar aos usuários</a>
+  </div>
+</div>
+
+<div class="panel-form">
+  <form class="stack" method="post">
+    {% csrf_token %}
+    {% include "partials/form_alert.html" %}
+    {% for field in form %}
+      {% include "partials/form_field.html" with field=field %}
+    {% endfor %}
+    <div class="form-actions">
+      <button class="btn primary" type="submit">Salvar grupos</button>
+      <a class="btn" href="{% url 'users' %}">Cancelar</a>
+    </div>
+  </form>
+</div>
 {% endblock %}

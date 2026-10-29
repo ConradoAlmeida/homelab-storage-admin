@@ -1,194 +1,221 @@
 {% extends "base.html" %}
 {% block title %}{% if detalhe %}{{ detalhe.job.label }}{% else %}Job{% endif %} - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between-start">
+<div class="page-head">
   <div>
     {% if detalhe %}
-    <h1 class="mb-4">{{ detalhe.job.label }}</h1>
-    <p class="muted">
+    <h1>{{ detalhe.job.label }}</h1>
+    <p class="lead">
       <span class="mono">{{ detalhe.job.name }}</span> ·
       {{ detalhe.agenda }} ·
       retenção {{ detalhe.job.retention_days }} dias
-      {% if not detalhe.job.enabled %}· <span class="badge">desativado</span>{% endif %}
+      {% if not detalhe.job.enabled %}· <span class="tag">desativado</span>{% endif %}
     </p>
     {% else %}
-    <h1 class="mb-4">Job de backup</h1>
+    <h1>Job de backup</h1>
     {% endif %}
   </div>
-  <div class="file-actions">
-    <a class="btn small" href="{% url 'arquivos_backup_index' %}">Voltar aos jobs</a>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'arquivos_backup_index' %}">Voltar aos jobs</a>
     {% if detalhe %}
-    <form method="post" action="{% url 'arquivos_job_run' job=detalhe.job.name %}" class="display-inline">
+    <a class="btn" href="{% url 'arquivos_job_edit' job=detalhe.job.name %}">Editar</a>
+    <form method="post" action="{% url 'arquivos_job_run' job=detalhe.job.name %}">
       {% csrf_token %}
-      <button class="btn small" type="submit">Rodar agora</button>
+      <button class="btn primary" type="submit">Rodar agora</button>
     </form>
-    <a class="btn small" href="{% url 'arquivos_job_edit' job=detalhe.job.name %}">Editar</a>
-    <form method="post" action="{% url 'arquivos_job_delete' job=detalhe.job.name %}" class="display-inline"
+    <form method="post" action="{% url 'arquivos_job_delete' job=detalhe.job.name %}"
           data-confirm="Excluir o job {{ detalhe.job.label }}? Os arquivos de backup continuam no disco.">
       {% csrf_token %}
-      <button class="btn small danger" type="submit">Excluir job</button>
+      <button class="btn danger" type="submit">Excluir job</button>
     </form>
     {% endif %}
   </div>
 </div>
 
 {% if error %}
-  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
-{% elif detalhe %}
-  <h2>Fontes</h2>
-  <div class="card">
-    <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Item</th><th>Tipo</th><th>Caminho</th><th>Tamanho</th><th>Estado</th></tr></thead>
-      <tbody>
-        {% for fonte in detalhe.sources %}
-          <tr>
-            <td><strong>{{ fonte.name }}</strong></td>
-            <td class="muted text-12">{{ fonte.kind }}</td>
-            <td class="mono text-12">{{ fonte.path }}</td>
-            <td class="muted">{{ fonte.size }}</td>
-            <td>
-              {% if fonte.ok %}<span class="badge live">ok</span>
-              {% else %}<span class="badge danger">ausente</span>{% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-    <p class="muted text-12">
-      Destino: <span class="mono">{{ detalhe.dir }}</span> ·
-      arquivos <span class="mono">600 root:root</span>; pastas preservam a estrutura interna.
-    </p>
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ error }}</p>
   </div>
-
-  <h2>Backup para USB</h2>
-  <div class="card">
-    <p class="muted text-12">
-      Gera um backup novo agora e copia o pacote para o drive. O drive é montado,
-      o hash é conferido e ele é desmontado. Não desconecte até a mensagem de sucesso.
-    </p>
-    {% if detalhe.usb %}
+{% elif detalhe %}
+  <section class="section">
+    <div class="section-head">
+      <h2>Fontes</h2>
+      <span class="muted text-12">{{ detalhe.sources|length }} fonte{{ detalhe.sources|length|pluralize }}</span>
+    </div>
+    <div class="card">
       <div class="table-wrap"><table class="file-table">
-        <thead><tr><th>Drive</th><th>Filesystem</th><th>Livre</th><th></th></tr></thead>
+        <thead><tr><th>Item</th><th>Tipo</th><th>Caminho</th><th>Tamanho</th><th>Estado</th></tr></thead>
         <tbody>
-          {% for disco in detalhe.usb %}
+          {% for fonte in detalhe.sources %}
             <tr>
-              <td><strong>{{ disco.name }}</strong><div class="muted text-11">{{ disco.model|default:"-" }}</div></td>
+              <td><strong>{{ fonte.name }}</strong></td>
+              <td class="muted text-12">{{ fonte.kind }}</td>
+              <td class="mono text-12">{{ fonte.path }}</td>
+              <td class="muted">{{ fonte.size }}</td>
               <td>
-                {% if disco.has_filesystem %}
-                  <span class="badge">{{ disco.fstype|default:"?" }}{% if disco.label %} · {{ disco.label }}{% endif %}</span>
-                {% else %}
-                  <span class="badge danger">sem filesystem</span>
-                {% endif %}
+                {% if fonte.ok %}<span class="tag ok">ok</span>
+                {% else %}<span class="tag off">ausente</span>{% endif %}
               </td>
-              <td class="muted">{{ disco.free_label }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+      <p class="muted text-12">
+        Destino: <span class="mono">{{ detalhe.dir }}</span> ·
+        arquivos <span class="mono">600 root:root</span>; pastas preservam a estrutura interna.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Backup para USB</h2>
+    </div>
+    <div class="card">
+      <p class="muted text-12">
+        Gera um backup novo agora e copia o pacote para o drive. O drive é montado,
+        o hash é conferido e ele é desmontado. Não desconecte até a mensagem de sucesso.
+      </p>
+      {% if detalhe.usb %}
+        <div class="table-wrap"><table class="file-table">
+          <thead><tr><th>Drive</th><th>Filesystem</th><th>Livre</th><th aria-label="Ações"></th></tr></thead>
+          <tbody>
+            {% for disco in detalhe.usb %}
+              <tr>
+                <td><strong>{{ disco.name }}</strong><div class="muted text-11">{{ disco.model|default:"-" }}</div></td>
+                <td>
+                  {% if disco.has_filesystem %}
+                    <span class="tag">{{ disco.fstype|default:"?" }}{% if disco.label %} · {{ disco.label }}{% endif %}</span>
+                  {% else %}
+                    <span class="tag off">sem filesystem</span>
+                  {% endif %}
+                </td>
+                <td class="muted">{{ disco.free_label }}</td>
+                <td class="file-actions">
+                  {% if disco.has_filesystem %}
+                    <form method="post" action="{% url 'arquivos_job_usb' job=detalhe.job.name %}"
+                          data-confirm="Gerar um backup agora e gravar em {{ disco.path }}? Os arquivos existentes não são apagados.">
+                      {% csrf_token %}
+                      <input type="hidden" name="device" value="{{ disco.name }}">
+                      <button class="btn small" type="submit">Backup para USB</button>
+                    </form>
+                  {% else %}
+                    <span class="muted text-12">indisponível</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      {% else %}
+        <div class="alert">
+          <strong>Nenhum drive USB detectado.</strong>
+          Conecte um drive ext4/exFAT no moyaserver para usar esta opção.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Agenda</h2>
+    </div>
+    <div class="card">
+      <p class="mb-4">
+        <span class="tag">{{ detalhe.agenda }}</span>
+        <span class="tag">retenção {{ detalhe.job.retention_days }} dias</span>
+        <span class="tag">timer {{ detalhe.timer }}</span>
+      </p>
+      <p class="muted text-12">
+        Próxima execução: <strong>{{ detalhe.next_run|default:"-" }}</strong>
+        {% if not detalhe.job.enabled %}· job desativado{% endif %}
+      </p>
+      {% with status=detalhe.status %}
+        {% if status %}
+          <p class="text-12">
+            {% if status.status == "running" %}<span class="tag ok">rodando</span>
+            {% elif status.ok %}<span class="tag ok">sucesso</span>
+            {% else %}<span class="tag off">falha</span>{% endif %}
+            <span class="muted">
+              {{ status.finished_at|default:status.started_at }} ·
+              {{ status.size_label|default:"-" }} ·
+              {{ status.duration_seconds|default:"-" }}s
+              {% if status.error %} · {{ status.error }}{% endif %}
+            </span>
+          </p>
+          {% if status.last_restore %}
+            <p class="muted text-12">
+              Última restauração: {{ status.last_restore }} ({{ status.restored_archive }}) ·
+              cópia anterior em <span class="mono">{{ status.pre_restore }}</span>
+            </p>
+          {% endif %}
+        {% else %}
+          <p class="muted text-12">Nenhuma execução registrada.</p>
+        {% endif %}
+      {% endwith %}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Pacotes de backup</h2>
+      <span class="muted text-12">{{ detalhe.archives|length }} pacote{{ detalhe.archives|length|pluralize }}</span>
+    </div>
+    {% if detalhe.archives %}
+      <div class="table-wrap"><table class="file-table">
+        <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th><th>Idade</th><th aria-label="Ações"></th></tr></thead>
+        <tbody>
+          {% for item in detalhe.archives %}
+            <tr>
+              <td class="mono text-12">{{ item.name }}</td>
+              <td class="muted">{{ item.created_label }}</td>
+              <td>{{ item.size }}</td>
+              <td class="muted">{{ item.age_days }}d</td>
               <td class="file-actions">
-                {% if disco.has_filesystem %}
-                  <form method="post" action="{% url 'arquivos_job_usb' job=detalhe.job.name %}" class="display-inline"
-                        data-confirm="Gerar um backup agora e gravar em {{ disco.path }}? Os arquivos existentes não são apagados.">
+                <div class="row-actions">
+                  <form method="post" action="{% url 'arquivos_job_verify' job=detalhe.job.name archive=item.name %}">
                     {% csrf_token %}
-                    <input type="hidden" name="device" value="{{ disco.name }}">
-                    <button class="btn small" type="submit">Backup para USB</button>
+                    <button class="btn small" type="submit">Verificar</button>
                   </form>
-                {% else %}
-                  <span class="muted text-12">indisponível</span>
-                {% endif %}
+                  <a class="btn small" href="{% url 'arquivos_job_download' job=detalhe.job.name archive=item.name %}">Baixar</a>
+                  <details class="restore-details">
+                    <summary class="btn small danger">Restaurar</summary>
+                    <form method="post" action="{% url 'arquivos_job_restore' job=detalhe.job.name archive=item.name %}" class="restore-form"
+                          data-confirm="Restaurar {{ item.name }} por cima dos arquivos em uso?">
+                      {% csrf_token %}
+                      <label class="text-12">Digite <span class="mono">{{ item.name }}</span> para confirmar</label>
+                      <input class="input" type="text" name="confirmation" autocomplete="off" required>
+                      <label class="text-12"><input type="checkbox" name="restart" value="1" checked> reiniciar o container</label>
+                      <button class="btn small danger" type="submit">Restaurar agora</button>
+                    </form>
+                  </details>
+                </div>
               </td>
             </tr>
           {% endfor %}
         </tbody>
       </table></div>
     {% else %}
-      <div class="alert">
-        <strong>Nenhum drive USB detectado.</strong>
-        Conecte um drive ext4/exFAT no moyaserver para usar esta opção.
-      </div>
+      <div class="empty">Nenhum backup ainda. Rode agora para criar o primeiro.</div>
     {% endif %}
-  </div>
+  </section>
 
-  <h2>Job</h2>
-  <div class="card">
-    <p class="mb-4">
-      <span class="badge">{{ detalhe.agenda }}</span>
-      <span class="badge">retenção {{ detalhe.job.retention_days }} dias</span>
-      <span class="badge">timer {{ detalhe.timer }}</span>
-    </p>
-    <p class="muted text-12">
-      Próxima execução: <strong>{{ detalhe.next_run|default:"-" }}</strong>
-      {% if not detalhe.job.enabled %}· job desativado{% endif %}
-    </p>
-    {% with status=detalhe.status %}
-      {% if status %}
-        <p class="text-12">
-          {% if status.status == "running" %}<span class="badge live">rodando</span>
-          {% elif status.ok %}<span class="state-ok">sucesso</span>
-          {% else %}<span class="state-bad">falha</span>{% endif %}
-          <span class="muted">
-            {{ status.finished_at|default:status.started_at }} ·
-            {{ status.size_label|default:"-" }} ·
-            {{ status.duration_seconds|default:"-" }}s
-            {% if status.error %} · {{ status.error }}{% endif %}
-          </span>
-        </p>
-        {% if status.last_restore %}
-          <p class="muted text-12">
-            Última restauração: {{ status.last_restore }} ({{ status.restored_archive }}) ·
-            cópia anterior em <span class="mono">{{ status.pre_restore }}</span>
-          </p>
-        {% endif %}
-      {% else %}
-        <p class="muted text-12">Nenhuma execução registrada.</p>
-      {% endif %}
-    {% endwith %}
-  </div>
-
-  <h2>Status dos arquivos</h2>
-  {% if detalhe.archives %}
-    <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th><th>Idade</th><th></th></tr></thead>
-      <tbody>
-        {% for item in detalhe.archives %}
-          <tr>
-            <td class="mono text-12">{{ item.name }}</td>
-            <td class="muted">{{ item.created_label }}</td>
-            <td>{{ item.size }}</td>
-            <td class="muted">{{ item.age_days }}d</td>
-            <td class="file-actions">
-              <form method="post" action="{% url 'arquivos_job_verify' job=detalhe.job.name archive=item.name %}" class="display-inline">
-                {% csrf_token %}
-                <button class="btn small" type="submit">Verificar</button>
-              </form>
-              <a class="btn small" href="{% url 'arquivos_job_download' job=detalhe.job.name archive=item.name %}">Baixar</a>
-              <details class="display-inline">
-                <summary class="btn small danger">Restaurar</summary>
-                <form method="post" action="{% url 'arquivos_job_restore' job=detalhe.job.name archive=item.name %}" class="restore-form"
-                      data-confirm="Restaurar {{ item.name }} por cima dos arquivos em uso?">
-                  {% csrf_token %}
-                  <label class="text-12">Digite <span class="mono">{{ item.name }}</span> para confirmar</label>
-                  <input class="input" type="text" name="confirmation" autocomplete="off" required>
-                  <label class="text-12"><input type="checkbox" name="restart" value="1" checked> reiniciar o container</label>
-                  <button class="btn small danger" type="submit">Restaurar agora</button>
-                </form>
-              </details>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-  {% else %}
-    <div class="empty">Nenhum backup ainda. Rode agora para criar o primeiro.</div>
-  {% endif %}
-
-  <h2>Restore</h2>
-  <div class="card">
-    <p class="text-12">
-      A restauração extrai o pacote, confere o <span class="mono">sha256</span> de cada item e roda
-      <span class="mono">PRAGMA integrity_check</span> quando há banco no pacote, antes de tocar em qualquer coisa.
-      Os arquivos atuais são copiados para
-      <span class="mono">/var/backups/moya-credenciais/pre-restore-AAAAMMDD-HHMMSS</span>.
-      Só então tudo volta com dono e permissão originais; arquivos e pastas retornam ao caminho de origem
-      e o container é reiniciado em instantes quando o banco do Credenciais é restaurado.
-    </p>
-  </div>
+  <section class="section">
+    <div class="section-head">
+      <h2>Restore</h2>
+    </div>
+    <div class="card">
+      <p class="text-12">
+        A restauração extrai o pacote, confere o <span class="mono">sha256</span> de cada item e roda
+        <span class="mono">PRAGMA integrity_check</span> quando há banco no pacote, antes de tocar em qualquer coisa.
+        Os arquivos atuais são copiados para
+        <span class="mono">/var/backups/moya-credenciais/pre-restore-AAAAMMDD-HHMMSS</span>.
+        Só então tudo volta com dono e permissão originais; arquivos e pastas retornam ao caminho de origem
+        e o container é reiniciado em instantes quando o banco do Credenciais é restaurado.
+      </p>
+    </div>
+  </section>
   <div data-auto-refresh data-status="{{ detalhe.status.status|default:'idle' }}" hidden></div>
 {% endif %}
 {% endblock %}

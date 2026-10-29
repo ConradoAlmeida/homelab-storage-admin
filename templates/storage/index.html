@@ -3,124 +3,109 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1 class="mb-4">Discos e sistema</h1>
-    <p class="muted">Temperaturas e estado vêm de uma coleta diária; discos em standby não são acordados. SMART completo e testes só por botão.</p>
+    <h1>Discos</h1>
+    <p class="lead">Estado, uso e SMART dos discos do host. A coleta é diária; discos em standby não são acordados. Leituras e testes SMART só por botão.</p>
   </div>
-  <form method="post" action="{% url 'storage_refresh' %}">
-    {% csrf_token %}
-    <button class="btn primary" type="submit">Atualizar agora</button>
-  </form>
+  <div class="page-actions">
+    <form method="post" action="{% url 'storage_refresh' %}">
+      {% csrf_token %}
+      <button class="btn primary" type="submit">Atualizar agora</button>
+    </form>
+  </div>
 </div>
 
 {% if error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
 {% elif overview %}
-  <p class="muted">Última coleta: {{ overview.collected_at|default:"—" }}{% if overview.stale %} · dados vencidos; use “Atualizar agora”{% endif %}</p>
-  {% if totals %}
-    <h2>Armazenamento</h2>
-    <div class="metric-grid">
-      <div class="metric"><span>Total monitorado</span><strong>{{ totals.total|filesizeformat }}</strong><div class="muted text-11">soma dos volumes abaixo</div></div>
-      <div class="metric"><span>Usado</span><strong>{{ totals.used|filesizeformat }}</strong><div class="muted text-11">soma dos volumes abaixo</div></div>
-      <div class="metric"><span>Livre</span><strong>{{ totals.free|filesizeformat }}</strong><div class="muted text-11">soma dos volumes abaixo</div></div>
+  <section class="section">
+    <div class="section-head">
+      <h2>Discos físicos</h2>
+      <span class="muted text-12">
+        {{ overview.disks|length }} disco{{ overview.disks|length|pluralize }} ·
+        última coleta {{ overview.collected_at|default:"-" }}
+        {% if overview.stale %}· <span class="state-standby">dados vencidos</span>{% endif %}
+      </span>
     </div>
-    <div class="cards">
-      {% for v in volumes %}
-        <div class="card">
-          <div class="label">{{ v.mount }}</div>
-          <div class="value">{{ v.free|filesizeformat }} livres</div>
-          <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
-          <progress class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}" value="{{v.percent}}" max="100"></progress>
-        </div>
-      {% endfor %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho / montagem</th><th>Uso</th><th>Estado</th><th>Temp.</th><th>SMART</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        {% for disk in overview.disks %}
+          <tr>
+            <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
+            <td>{{ disk.model|default:"-" }}<div class="muted mono text-11">{{ disk.serial|default:"-" }}</div></td>
+            <td>{{ disk.size|default:"-" }}<div class="muted text-11">{{ disk.mounts|join:", "|default:"sem montagem" }}</div></td>
+            <td>
+              {% if disk.volume %}
+                <strong>{{ disk.volume.used|filesizeformat }}</strong> / {{ disk.volume.total|filesizeformat }}
+                <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres · {{ disk.volume.percent }}%</div>
+                <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{ disk.volume.percent }}" max="100"></progress>
+              {% else %}
+                <span class="muted">sem volume montado</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
+              {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
+            </td>
+            <td>
+              {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>
+              {% else %}<span class="muted">-</span>{% endif %}
+            </td>
+            <td>
+              {% if disk.smart.health == 'PASSED' %}<span class="state-ok">PASSED</span>
+              {% elif disk.smart.health == 'FAILED' %}<span class="state-bad">FAILED</span>
+              {% else %}<span class="muted">-</span>{% endif %}
+              {% if disk.smart.skipped %}<div class="muted text-11">standby</div>{% endif %}
+            </td>
+            <td class="file-actions">
+              {% if not capabilities.smartctl %}
+                <span class="muted text-12">smartctl indisponível</span>
+              {% elif disk.smart.state == 'unavailable' %}
+                <span class="muted text-12">sem SMART</span>
+              {% else %}
+                <div class="row-actions">
+                  <form method="post" action="{% url 'storage_smart' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="device" value="{{ disk.path }}">
+                    <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled title="Em standby; não vou acordar"{% endif %}>Ler SMART</button>
+                  </form>
+                  <form method="post" action="{% url 'storage_smart_test' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="device" value="{{ disk.path }}">
+                    <input type="hidden" name="kind" value="short">
+                    <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste curto</button>
+                  </form>
+                  <form method="post" action="{% url 'storage_smart_test' %}" data-confirm="O teste longo pode demorar horas e ocupar o disco. Iniciar?">
+                    {% csrf_token %}
+                    <input type="hidden" name="device" value="{{ disk.path }}">
+                    <input type="hidden" name="kind" value="long">
+                    <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste longo</button>
+                  </form>
+                </div>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>RAID{% if capabilities.btrfs %} e Btrfs{% endif %}</h2>
     </div>
-  {% endif %}
-  <h2>Sistema</h2>
-  <div class="metric-grid">
-    {% include "partials/system_metrics.html" with system=overview.system %}
-  </div>
-
-  <h2>Discos</h2>
-  <div class="table-wrap"><table class="file-table">
-    <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho / montagem</th><th>Uso</th><th>Estado</th><th>Temp.</th><th>SMART</th><th></th></tr></thead>
-    <tbody>
-      {% for disk in overview.disks %}
-        <tr>
-          <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
-          <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
-          <td>{{ disk.size|default:"—" }}<div class="muted text-11">{{ disk.mounts|join:", "|default:"sem montagem" }}</div></td>
-          <td>
-            {% if disk.volume %}
-              <strong>{{ disk.volume.used|filesizeformat }}</strong> / {{ disk.volume.total|filesizeformat }}
-              <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres · {{ disk.volume.percent }}%</div>
-              <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{disk.volume.percent}}" max="100"></progress>
-            {% else %}
-              <span class="muted">sem volume montado</span>
-            {% endif %}
-          </td>
-          <td>
-            <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
-            {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
-          </td>
-          <td>
-            {% if disk.smart.temperature is not None %}
-              <strong>{{ disk.smart.temperature }} °C</strong>
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if disk.smart.health == 'PASSED' %}
-              <span class="state-ok">PASSED</span>
-            {% elif disk.smart.health == 'FAILED' %}
-              <span class="state-bad">FAILED</span>
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
-            {% if disk.smart.skipped %}<div class="muted text-11">standby</div>{% endif %}
-          </td>
-          <td class="file-actions disk-actions">
-            {% if not capabilities.smartctl %}
-              <span class="muted text-12">smartctl indisponível</span>
-            {% elif disk.smart.state == 'unavailable' %}
-              <span class="muted text-12">sem SMART</span>
-            {% else %}
-              <form method="post" action="{% url 'storage_smart' %}">
-                {% csrf_token %}
-                <input type="hidden" name="device" value="{{ disk.path }}">
-                <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled title="Em standby; não vou acordar"{% endif %}>Ler SMART</button>
-              </form>
-              <form method="post" action="{% url 'storage_smart_test' %}">
-                {% csrf_token %}
-                <input type="hidden" name="device" value="{{ disk.path }}">
-                <input type="hidden" name="kind" value="short">
-                <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste curto</button>
-              </form>
-              <form method="post" action="{% url 'storage_smart_test' %}" data-confirm="O teste longo pode demorar horas e ocupar o disco. Iniciar?">
-                {% csrf_token %}
-                <input type="hidden" name="device" value="{{ disk.path }}">
-                <input type="hidden" name="kind" value="long">
-                <button class="btn small" type="submit" {% if disk.state == 'standby' or disk.state == 'sleeping' %}disabled{% endif %}>Teste longo</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
-
-  <h2>RAID{% if capabilities.btrfs %} e Btrfs{% endif %}</h2>
-  <details class="card" open>
-    <summary>Estado do RAID{% if capabilities.btrfs %} e do Btrfs{% endif %}</summary>
-    <pre class="pre">{{ overview.raid.mdstat|default:"—" }}</pre>
-    {% if overview.raid.detail %}<pre class="pre">{{ overview.raid.detail }}</pre>{% endif %}
-    {% if capabilities.btrfs %}
-      {% if overview.btrfs.usage %}<pre class="pre">{{ overview.btrfs.usage }}</pre>{% endif %}
-      {% if overview.btrfs.stats %}<pre class="pre">{{ overview.btrfs.stats }}</pre>{% endif %}
-      {% if overview.btrfs.scrub %}<pre class="pre">{{ overview.btrfs.scrub }}</pre>{% endif %}
-    {% endif %}
-  </details>
+    <details class="card" open>
+      <summary>Estado do RAID{% if capabilities.btrfs %} e do Btrfs{% endif %}</summary>
+      <pre class="pre">{{ overview.raid.mdstat|default:"-" }}</pre>
+      {% if overview.raid.detail %}<pre class="pre">{{ overview.raid.detail }}</pre>{% endif %}
+      {% if capabilities.btrfs %}
+        {% if overview.btrfs.usage %}<pre class="pre">{{ overview.btrfs.usage }}</pre>{% endif %}
+        {% if overview.btrfs.stats %}<pre class="pre">{{ overview.btrfs.stats }}</pre>{% endif %}
+        {% if overview.btrfs.scrub %}<pre class="pre">{{ overview.btrfs.scrub }}</pre>{% endif %}
+      {% endif %}
+    </details>
+  </section>
 {% endif %}
-{% include "partials/live_metrics.html" %}
 {% endblock %}

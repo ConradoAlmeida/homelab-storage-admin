@@ -1,25 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Novo share - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Novo compartilhamento</h1>
-<form class="stack" method="post">
-  {% csrf_token %}
-  {% include "partials/form_alert.html" %}
-  {% for field in form %}
-    <div>
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field }}
-      {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
-      {{ field.errors }}
+<div class="page-head">
+  <div>
+    <h1>Novo compartilhamento</h1>
+    <p class="lead">Cria o diretório, os grupos de acesso e recarrega o Samba após validar a configuração.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'shares' %}">Voltar aos shares</a>
+  </div>
+</div>
+
+<div class="panel-form">
+  <form class="stack" method="post">
+    {% csrf_token %}
+    {% include "partials/form_alert.html" %}
+    <div class="form-grid">
+      {% for field in form %}
+        {% include "partials/form_field.html" with field=field %}
+      {% endfor %}
     </div>
-  {% endfor %}
-  <div class="help">
-    O agente cria o diretório, os grupos <code>&lt;nome&gt;_ro</code>, <code>&lt;nome&gt;_rw</code> e
-    <code>&lt;nome&gt;</code>, valida com <code>testparm</code> e recarrega o Samba.
-  </div>
-  <div class="row">
-    <button class="btn primary" type="submit">Criar share</button>
-    <a class="btn" href="{% url 'shares' %}">Cancelar</a>
-  </div>
-</form>
+    <div class="help">
+      O agente cria os grupos <span class="mono">&lt;nome&gt;_ro</span>,
+      <span class="mono">&lt;nome&gt;_rw</span> e <span class="mono">&lt;nome&gt;</span>,
+      valida com <span class="mono">testparm</span> e recarrega o Samba.
+    </div>
+    <div class="form-actions">
+      <button class="btn primary" type="submit">Criar share</button>
+      <a class="btn" href="{% url 'shares' %}">Cancelar</a>
+    </div>
+  </form>
+</div>
 {% endblock %}

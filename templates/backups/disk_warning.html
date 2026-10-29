@@ -7,8 +7,17 @@
   <span>3. Confirmação</span>
 </div>
 
-<h1>{% if selected.configured %}Este disco já está configurado{% else %}Este disco já tem um filesystem{% endif %}</h1>
-<p class="muted">Você selecionou <strong>{{ selected.path }}</strong> ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}). Ele contém um filesystem existente{% if selected.fstype %} ({{ selected.fstype }}{% if selected.label %} · {{ selected.label }}{% endif %}){% endif %}. O wizard não lê o conteúdo para não acordar o disco; pode estar vazio, mas a formatação apaga o filesystem de qualquer forma.</p>
+<div class="page-head">
+  <div>
+    <h1>{% if selected.configured %}Este disco já está configurado{% else %}Este disco já tem um filesystem{% endif %}</h1>
+    <p class="lead">
+      Você selecionou <strong>{{ selected.path }}</strong>
+      ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}).
+      Ele contém um filesystem existente{% if selected.fstype %} ({{ selected.fstype }}{% if selected.label %} · {{ selected.label }}{% endif %}){% endif %}.
+      O wizard não lê o conteúdo para não acordar o disco; pode estar vazio, mas a formatação apaga o filesystem de qualquer forma.
+    </p>
+  </div>
+</div>
 
 <div class="alert danger">
   <strong>Nada foi apagado ainda.</strong>
@@ -19,7 +28,10 @@
 
 <div class="card">
   <p><strong>Sistema de arquivos de destino: ext4 (recomendado)</strong></p>
-  <p class="muted">O restic já faz deduplicação, criptografia e verificação; ext4 é mais simples e evita CoW/fragmentação em HDD 2,5". Nesta versão o destino é fixo em ext4.</p>
+  <p class="muted">
+    O restic já faz deduplicação, criptografia e verificação; ext4 é mais simples e evita CoW/fragmentação
+    em HDD 2,5". Nesta versão o destino é fixo em ext4.
+  </p>
   <p>Se continuar, o wizard vai pedir:</p>
   <ul class="help-indent">
     <li>a frase <code class="phrase">{{ selected.required_phrase }}</code>;</li>
@@ -29,8 +41,8 @@
   <p class="muted mt-10">Só depois disso o agente vai apagar e preparar o disco.</p>
 </div>
 
-<div class="row gap-8 mt-16">
+<div class="page-actions">
   <a class="btn danger" href="?device={{ selected.path|urlencode }}&confirm=1">Continuar mesmo assim</a>
-  <a class="btn small" href="{% url 'backup_index' %}">Cancelar</a>
+  <a class="btn" href="{% url 'backup_index' %}">Cancelar</a>
 </div>
 {% endblock %}

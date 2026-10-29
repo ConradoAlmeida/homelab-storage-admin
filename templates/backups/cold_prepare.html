@@ -1,71 +1,93 @@
 {% extends "base.html" %}
-{% block title %}Preparar drive frio - Backups{% endblock %}
+{% block title %}Preparar drive frio - {{ product_name }}{% endblock %}
 {% block content %}
+<div class="page-head">
+  <div>
+    <h1>Preparar {{ selected.path }}</h1>
+    <p class="lead">Formatar ext4, montar em <span class="mono">/mnt/coldcopy</span> e criar o repositório restic frio.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'cold_index' %}">Voltar à cópia fria</a>
+  </div>
+</div>
+
 <div class="wizard-steps">
   <span class="on">1. Drive</span>
   {% if selected.extra_confirmation %}<span class="on">2. Aviso</span>{% endif %}
   <span class="on">3. Confirmação</span>
 </div>
 
-<div class="row row-between-start">
-  <div>
-    <h1 class="mb-4">Preparar {{ selected.path }}</h1>
-    <p class="muted">Formatar ext4, montar em <code>/mnt/coldcopy</code> e criar o repo restic frio.</p>
-  </div>
-  <a class="btn small" href="{% url 'cold_index' %}">← Voltar</a>
-</div>
+{% if error %}
+  <div class="alert danger"><strong>Erro</strong><p>{{ error }}</p></div>
+{% endif %}
 
-{% if error %}<div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>{% endif %}
-
-<div class="table-wrap"><table class="file-table mt-12">
-  <tbody>
-    <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
-    <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
-    <tr><th>Serial</th><td class="mono">{{ selected.serial|default:"—" }}</td></tr>
-    <tr><th>Tamanho</th><td>{{ selected.size|default:"—" }}</td></tr>
-    <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
-    <tr><th>Destino</th><td><strong>ext4</strong> · mount <code>/mnt/coldcopy</code></td></tr>
-  </tbody>
-</table></div>
+<section class="section">
+  <div class="section-head"><h2>Disco selecionado</h2></div>
+  <div class="table-wrap"><table class="file-table">
+    <tbody>
+      <tr><th>Dispositivo</th><td class="mono">{{ selected.path }}</td></tr>
+      <tr><th>Modelo</th><td>{{ selected.model|default:"—" }}</td></tr>
+      <tr><th>Serial</th><td class="mono">{{ selected.serial|default:"—" }}</td></tr>
+      <tr><th>Tamanho</th><td>{{ selected.size|default:"—" }}</td></tr>
+      <tr><th>Estado</th><td>{{ selected.fstype|default:"vazio" }}{% if selected.label %} · {{ selected.label }}{% endif %}</td></tr>
+      <tr><th>Destino</th><td><strong>ext4</strong> · montagem <span class="mono">/mnt/coldcopy</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
 
 {% if selected.warnings %}
-  <div class="alert danger"><strong>Atenção</strong><ul class="help-indent">{% for warning in selected.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div>
+  <div class="alert danger">
+    <strong>Atenção</strong>
+    <ul class="help-indent">{% for warning in selected.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+  </div>
 {% endif %}
 
 {% if not selected.candidate %}
-  <div class="alert danger"><strong>Drive indisponível:</strong> {{ selected.reason }}. Desmonte/ejecte antes de tentar.</div>
+  <div class="alert danger">
+    <strong>Drive indisponível:</strong> {{ selected.reason }}. Desmonte ou ejete antes de tentar.
+  </div>
 {% else %}
-  <form method="post" action="{% url 'cold_prepare' %}" class="card max-640">
-    {% csrf_token %}
-    <input type="hidden" name="device" value="{{ selected.path }}">
+  <section class="section">
+    <div class="section-head"><h2>Confirmação</h2></div>
+    <div class="panel-form">
+      <form method="post" action="{% url 'cold_prepare' %}">
+        {% csrf_token %}
+        <input type="hidden" name="device" value="{{ selected.path }}">
 
-    <label for="label">Label do drive</label>
-    <input id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
-    <p class="muted text-12">O repo ficará em <code>/mnt/coldcopy/restic</code>. A senha é a mesma do restic primário.</p>
+        <div class="form-group">
+          <label for="label">Label do drive</label>
+          <input class="form-control" id="label" name="label" value="{{ default_label }}" maxlength="16" pattern="[a-z0-9][a-z0-9_-]{0,15}" required>
+          <div class="help">O repo ficará em <span class="mono">/mnt/coldcopy/restic</span>. A senha é a mesma do restic primário.</div>
+        </div>
 
-    {% if selected.extra_confirmation %}
-      <div class="danger-zone">
-        <strong>Confirmação extra obrigatória</strong>
-        <p class="muted">O drive tem dados ou já é um repo frio. O conteúdo será apagado.</p>
-        <label class="wizard-actions">
-          <input type="checkbox" name="acknowledge" value="1" required class="checkbox-inline">
-          <span>Entendo que o conteúdo deste drive será apagado.</span>
-        </label>
-      </div>
-    {% endif %}
+        {% if selected.extra_confirmation %}
+          <div class="danger-zone">
+            <strong>Confirmação extra obrigatória</strong>
+            <p class="muted">O drive tem dados ou já é um repo frio. O conteúdo será apagado.</p>
+            <div class="check">
+              <input type="checkbox" name="acknowledge" value="1" required>
+              <label>Entendo que o conteúdo deste drive será apagado.</label>
+            </div>
+          </div>
+        {% endif %}
 
-    <label for="confirmation">Frase de confirmação</label>
-    <p class="muted text-12">Digite exatamente:</p>
-    <p><code class="phrase">{{ selected.required_phrase }}</code></p>
-    <input id="confirmation" name="confirmation" autocomplete="off" required>
+        <div class="form-group">
+          <label for="confirmation">Frase de confirmação</label>
+          <div class="help">Digite exatamente: <code class="phrase">{{ selected.required_phrase }}</code></div>
+          <input class="form-control" id="confirmation" name="confirmation" autocomplete="off" required>
+        </div>
 
-    <label for="password">Senha do app</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <div class="form-group">
+          <label for="password">Senha do app</label>
+          <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
 
-    <div class="mt-16">
-      <button class="btn danger" type="submit">Preparar drive</button>
-      <a class="btn small" href="{% url 'cold_index' %}">Cancelar</a>
+        <div class="form-actions">
+          <button class="btn danger" type="submit">Preparar drive</button>
+          <a class="btn" href="{% url 'cold_index' %}">Cancelar</a>
+        </div>
+      </form>
     </div>
-  </form>
+  </section>
 {% endif %}
 {% endblock %}

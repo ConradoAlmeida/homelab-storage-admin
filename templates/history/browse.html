@@ -1,13 +1,27 @@
 {% extends "base.html" %}
 {% block title %}{{ share.name }} - Explorar{% endblock %}
 {% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ share.name }}</h1>
+    <p class="lead mono">{{ share.path }}</p>
+  </div>
+  <div class="page-actions">
+    {% if is_snapshot %}
+      <span class="tag">snapshot {{ snapshot }}</span>
+    {% else %}
+      <span class="tag ok">versão atual</span>
+    {% endif %}
+    <a class="btn" href="{% url 'history_index' %}">Todos os shares</a>
+  </div>
+</div>
+
 <div class="history-shell">
   <aside class="history-sidebar">
     <h2>Share</h2>
-    <a href="{% url 'history_index' %}">← Todos os shares</a>
     <a href="{{ live_url }}" class="{% if not is_snapshot %}active{% endif %}">Versão atual</a>
 
-    <h2 class="mt-16">Snapshots</h2>
+    <h2>Snapshots</h2>
     {% for snap in snapshots %}
       <a href="{{ snap.url }}" class="{% if snapshot == snap.name %}active{% endif %}">{{ snap.label }}</a>
     {% empty %}
@@ -15,21 +29,7 @@
     {% endfor %}
   </aside>
 
-  <main class="history-main">
-    <div class="row row-between-start">
-      <div>
-        <h1 class="mb-4">{{ share.name }}</h1>
-        <div class="muted text-13">{{ share.path }}</div>
-      </div>
-      <div>
-        {% if is_snapshot %}
-          <span class="badge snap">snapshot {{ snapshot }}</span>
-        {% else %}
-          <span class="badge live">versão atual</span>
-        {% endif %}
-      </div>
-    </div>
-
+  <div class="history-main">
     <nav class="crumbs">
       {% for c in crumbs %}
         <a href="{{ c.url }}">{{ c.name }}</a>
@@ -42,17 +42,17 @@
     {% if query %}
       {% include "partials/search_results.html" with search_results=search_results %}
     {% else %}
-      <div class="row row-between mb-10">
-        <div>
-          {% if parent_url %}<a class="btn small" href="{{ parent_url }}">↑ Subir</a>{% endif %}
+      <div class="section-head">
+        <div class="page-actions">
+          {% if parent_url %}<a class="btn small" href="{{ parent_url }}">Subir</a>{% endif %}
         </div>
-        <div class="muted text-12">
+        <span class="muted text-12">
           {{ page_obj.paginator.count }} item{{ page_obj.paginator.count|pluralize }}
-        </div>
+        </span>
       </div>
 
       <div class="table-wrap"><table class="file-table">
-        <thead><tr><th>Nome</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Tamanho</th><th>Modificado</th><th aria-label="Ações"></th></tr></thead>
         <tbody>
           {% for e in entries %}
             <tr>
@@ -87,12 +87,12 @@
 
       {% if page_obj.has_other_pages %}
         <div class="pager">
-          {% if page_obj.has_previous %}<a class="btn small" href="?page={{ page_obj.previous_page_number }}">← Anterior</a>{% endif %}
+          {% if page_obj.has_previous %}<a class="btn small" href="?page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
           <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-          {% if page_obj.has_next %}<a class="btn small" href="?page={{ page_obj.next_page_number }}">Próxima →</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn small" href="?page={{ page_obj.next_page_number }}">Próxima</a>{% endif %}
         </div>
       {% endif %}
     {% endif %}
-  </main>
+  </div>
 </div>
 {% endblock %}

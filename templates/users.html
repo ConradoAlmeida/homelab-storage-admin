@@ -1,77 +1,105 @@
 {% extends "base.html" %}
 {% block title %}Usuários - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between mb-18">
-  <h1 class="m-0">Usuários Samba</h1>
-  <div class="row">
+<div class="page-head">
+  <div>
+    <h1>Usuários Samba</h1>
+    <p class="lead">Contas Linux/Samba do servidor. Grupos de share e operações de servidor ficam aqui; senha e identidade podem vir do Credenciais.</p>
+  </div>
+  <div class="page-actions">
     <a class="btn" href="{% url 'group_create' %}">Novo grupo</a>
     {% if not credenciais_gerencia_usuarios %}
     <a class="btn primary" href="{% url 'user_create' %}">Novo usuário</a>
     {% endif %}
   </div>
 </div>
+
 {% if credenciais_gerencia_usuarios %}
-<div class="card"><strong>Identidade centralizada</strong><p class="muted">Criar, senha, grupos e exclusão de usuários são feitos no Credenciais. Grupos Linux e operações de servidor continuam aqui.</p></div>
+<div class="alert">
+  <strong>Identidade centralizada.</strong>
+  Criar pessoa, senha, grupos e exclusão são feitos no Credenciais. Grupos Linux e operações de servidor continuam aqui.
+</div>
 {% endif %}
 
 {% if agent_error %}
-  <div class="card border-danger"><strong>Agente indisponivel</strong><p class="muted">{{ agent_error }}</p></div>
-{% elif users %}
-<div class="table-wrap"><table>
-  <thead><tr><th>Usuário</th><th>Nome</th><th>Grupos</th><th>Status</th><th>Ações</th></tr></thead>
-  <tbody>
-    {% for u in users %}
-      <tr>
-        <td><strong>{{ u.username }}</strong></td>
-        <td class="muted">{{ u.fullname|default:"-" }}</td>
-        <td>{% for g in u.groups %}<span class="tag">{{ g }}</span> {% empty %}<span class="muted">-</span>{% endfor %}</td>
-        <td>{% if u.enabled %}<span class="tag ok">ativo</span>{% else %}<span class="tag off">desativado</span>{% endif %}</td>
-        <td>
-          {% if not credenciais_gerencia_usuarios %}
-          <div class="row">
-            <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
-            <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
-            <form method="post" action="{% url 'user_toggle' %}">
-              {% csrf_token %}
-              <input type="hidden" name="username" value="{{ u.username }}">
-              <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
-              <button class="btn small {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
-            </form>
-            <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
-              {% csrf_token %}
-              <input type="hidden" name="username" value="{{ u.username }}">
-              <button class="btn small danger" type="submit">Excluir</button>
-            </form>
-          </div>
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table></div>
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
 {% else %}
-  <div class="empty">Nenhum usuario Samba cadastrado.</div>
-{% endif %}
+  <section class="section">
+    <div class="section-head">
+      <h2>Pessoas</h2>
+      <span class="muted text-12">{{ users|length }} conta{{ users|length|pluralize }}</span>
+    </div>
+    {% if users %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Pessoa</th><th>Nome</th><th>Grupos</th><th>Status</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td><strong>{{ u.username }}</strong></td>
+            <td class="muted">{{ u.fullname|default:"-" }}</td>
+            <td>
+              <div class="chip-list">
+                {% for g in u.groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted">-</span>{% endfor %}
+              </div>
+            </td>
+            <td>
+              {% if u.enabled %}<span class="tag ok">ativo</span>
+              {% else %}<span class="tag off">desativado</span>{% endif %}
+            </td>
+            <td>
+              {% if not credenciais_gerencia_usuarios %}
+              <div class="row-actions">
+                <a class="btn small" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
+                <a class="btn small" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
+                <form method="post" action="{% url 'user_toggle' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="username" value="{{ u.username }}">
+                  <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
+                  <button class="btn small {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
+                </form>
+                <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
+                  {% csrf_token %}
+                  <input type="hidden" name="username" value="{{ u.username }}">
+                  <button class="btn small danger" type="submit">Excluir</button>
+                </form>
+              </div>
+              {% else %}
+              <span class="muted text-12">gerido no Credenciais</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+      <div class="empty">Nenhuma conta Samba cadastrada.</div>
+    {% endif %}
+  </section>
 
-{% if groups %}
-<h2>Grupos</h2>
-<p class="muted">O grupo privado de cada usuário sai junto com a conta. Aqui ficam as pastas compartilhadas.</p>
-<div class="table-wrap"><table>
-  <thead><tr><th>Grupo</th><th></th></tr></thead>
-  <tbody>
-    {% for nome in groups %}
-    <tr>
-      <td><strong>{{ nome }}</strong></td>
-      <td>
-        <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
-          {% csrf_token %}
-          <input type="hidden" name="name" value="{{ nome }}">
-          <button class="btn small danger" type="submit">Excluir</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table></div>
+  <section class="section">
+    <div class="section-head">
+      <h2>Grupos de share</h2>
+      <span class="muted text-12">{{ groups|length }} grupo{{ groups|length|pluralize }}</span>
+    </div>
+    <div class="card">
+      <p class="muted text-12">O grupo privado de cada pessoa sai junto com a conta. Estes são os grupos usados pelas pastas compartilhadas.</p>
+      {% if groups %}
+        <div class="chip-list">
+          {% for nome in groups %}
+            <span class="chip">
+              {{ nome }}
+              <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
+                {% csrf_token %}
+                <input type="hidden" name="name" value="{{ nome }}">
+                <button class="btn small danger" type="submit" title="Excluir grupo" aria-label="Excluir grupo {{ nome }}">Excluir</button>
+              </form>
+            </span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">Nenhum grupo de share ainda.</div>
+      {% endif %}
+    </div>
+  </section>
 {% endif %}
 {% endblock %}

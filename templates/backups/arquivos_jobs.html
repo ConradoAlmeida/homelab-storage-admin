@@ -1,26 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Backup local de arquivos - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between-start">
+<div class="page-head">
   <div>
-    <h1 class="mb-4">Backup local de arquivos</h1>
-    <p class="muted">Jobs independentes, cada um com suas fontes, periodicidade e retenção. Arquivos e pastas do servidor, sem restic, com leitura restrita ao root.</p>
+    <h1>Backup local de arquivos</h1>
+    <p class="lead">
+      Jobs independentes, cada um com fontes, periodicidade e retenção próprias.
+      Arquivos e pastas do servidor, sem restic, com leitura restrita ao root.
+    </p>
   </div>
-  <div class="file-actions">
-    <a class="btn small" href="{% url 'backup_index' %}">Voltar aos backups</a>
-    <a class="btn small" href="{% url 'arquivos_job_new' %}?modelo=apps">Novo job de apps</a>
-    <a class="btn small" href="{% url 'arquivos_job_new' %}">Novo job</a>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+    <a class="btn" href="{% url 'arquivos_job_new' %}?modelo=apps">Novo job de apps</a>
+    <a class="btn primary" href="{% url 'arquivos_job_new' %}">Novo job</a>
   </div>
 </div>
 
 {% if error %}
-  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ error }}</p>
+  </div>
 {% elif overview %}
-  {% include "backups/_jobs_table.html" with overview=overview %}
-  <p class="muted text-12">
-    Destino: <span class="mono">{{ overview.dir }}</span> ·
-    arquivos <span class="mono">600 root:root</span> em pasta <span class="mono">700</span>.
-  </p>
+  <section class="section">
+    <div class="section-head">
+      <h2>Jobs</h2>
+      <span class="muted text-12">{{ overview.jobs|length }} job{{ overview.jobs|length|pluralize }}</span>
+    </div>
+    {% include "backups/_jobs_table.html" with overview=overview %}
+    <p class="muted text-12">
+      Destino: <span class="mono">{{ overview.dir }}</span> ·
+      arquivos <span class="mono">600 root:root</span> em pasta <span class="mono">700</span>.
+    </p>
+  </section>
 {% endif %}
 <div data-auto-refresh data-status="{% if rodando %}running{% else %}idle{% endif %}" hidden></div>
 {% endblock %}

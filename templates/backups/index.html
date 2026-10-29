@@ -2,178 +2,242 @@
 {% block title %}Backups - {{ product_name }}{% endblock %}
 {% block content %}
 <div data-auto-refresh data-status="{% if rodando %}running{% else %}idle{% endif %}" hidden></div>
-<div class="row row-between-start">
+
+<div class="page-head">
   <div>
-    <h1 class="mb-4">Backups</h1>
-    <p class="muted">Discos de destino e jobs restic. Nada é apagado ao abrir o wizard.</p>
+    <h1>Backups</h1>
+    <p class="lead">
+      Backups locais, do Gitea e repositórios restic. Cada job tem fontes, agenda e retenção próprias;
+      nada é apagado ao abrir esta página.
+    </p>
   </div>
-  <div>
-    <a class="btn small" href="{% url 'backup_snapshots' %}">Snapshots restic</a>
-    <a class="btn small" href="{% url 'cold_index' %}">Cópia fria (USB)</a>
-    <a class="btn small" href="{% url 'backup_job_new' %}">Novo job</a>
-    {% if capabilities.credenciais_backup %}
-    <a class="btn small" href="{% url 'arquivos_backup_index' %}">Backup de arquivos</a>
-    {% endif %}
-    {% if capabilities.gitea %}
-    <a class="btn small" href="{% url 'gitea_backup' %}">Backup do Gitea</a>
-    {% endif %}
-    <a class="btn small" href="{% url 'backup_credentials' %}">Senha do repositório</a>
-    <a class="btn small" href="#discos">Escolher disco</a>
+  <div class="page-actions">
+    <a class="btn primary" href="{% url 'backup_job_new' %}">Novo job restic</a>
   </div>
 </div>
 
+<section class="section">
+  <div class="action-grid">
+    {% if capabilities.credenciais_backup %}
+    <a class="action-card" href="{% url 'arquivos_backup_index' %}">
+      <strong>Backup de arquivos</strong>
+      <span>Pastas e arquivos do servidor, com agenda e retenção por job.</span>
+    </a>
+    {% endif %}
+    {% if capabilities.gitea %}
+    <a class="action-card" href="{% url 'gitea_backup' %}">
+      <strong>Backup do Gitea</strong>
+      <span>Dump dos repositórios e cópia manual para USB.</span>
+    </a>
+    {% endif %}
+    <a class="action-card" href="{% url 'backup_snapshots' %}">
+      <strong>Snapshots restic</strong>
+      <span>Ver, navegar e baixar arquivos dos snapshots existentes.</span>
+    </a>
+    <a class="action-card" href="{% url 'cold_index' %}">
+      <strong>Cópia fria (USB)</strong>
+      <span>Cópia do repositório primário para um disco removível.</span>
+    </a>
+    <a class="action-card" href="{% url 'backup_credentials' %}">
+      <strong>Senha do repositório</strong>
+      <span>Ver e copiar a senha do repositório restic.</span>
+    </a>
+    <a class="action-card" href="#discos">
+      <strong>Escolher disco</strong>
+      <span>Preparar ou reconfigurar um disco externo para backup.</span>
+    </a>
+  </div>
+</section>
+
 {% if capabilities.credenciais_backup %}
-<h2>Backups locais de arquivos</h2>
-<div class="card">
-  {% if arquivos_error %}
-    <p class="muted">Agente indisponível: {{ arquivos_error }}</p>
-  {% elif arquivos %}
-    <div class="row row-between-start">
+<section class="section">
+  <div class="section-head">
+    <h2>Backups locais de arquivos</h2>
+    {% if arquivos %}
+    <div class="page-actions">
+      <a class="btn small" href="{% url 'arquivos_job_new' %}">Novo job</a>
+      <a class="btn small" href="{% url 'arquivos_backup_index' %}">Gerenciar jobs</a>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card">
+    {% if arquivos_error %}
+      <p class="muted">Agente indisponível: {{ arquivos_error }}</p>
+    {% elif arquivos %}
       <p class="muted text-12">
-        Jobs independentes, cada um com fontes, periodicidade e retenção próprias ·
+        {{ arquivos.jobs|length }} job{{ arquivos.jobs|length|pluralize }} ·
         destino <span class="mono">{{ arquivos.dir }}</span>
       </p>
-      <div class="file-actions">
-        <a class="btn small" href="{% url 'arquivos_job_new' %}">Novo job</a>
-        <a class="btn small" href="{% url 'arquivos_backup_index' %}">Gerenciar jobs</a>
+      {% include "backups/_jobs_table.html" with overview=arquivos %}
+    {% else %}
+      <div class="empty">
+        Nenhum job de arquivos ainda.
+        <a href="{% url 'arquivos_job_new' %}">Criar o primeiro job</a>.
       </div>
-    </div>
-    {% include "backups/_jobs_table.html" with overview=arquivos %}
-  {% endif %}
-</div>
+    {% endif %}
+  </div>
+</section>
 {% endif %}
 
 {% if error %}
-  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ error }}</p></div>
+<section class="section">
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ error }}</p>
+  </div>
+</section>
 {% elif overview %}
-  {% if not overview.restic %}
-    <div class="alert danger"><strong>restic não encontrado no host.</strong> A preparação de disco vai recusar até instalar o pacote.
-      {% if capabilities.credenciais_backup %}O <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> funciona sem restic.{% endif %}
-    </div>
+  {% if not overview.restic or not tem_disco_backup %}
+  <section class="section">
+    {% if not overview.restic %}
+      <div class="alert danger">
+        <strong>restic não encontrado no host.</strong>
+        A preparação de disco vai recusar até instalar o pacote.
+        {% if capabilities.credenciais_backup %}O <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> funciona sem restic.{% endif %}
+      </div>
+    {% endif %}
+    {% if not tem_disco_backup %}
+      <div class="alert">
+        <strong>Nenhum repositório restic configurado.</strong>
+        Conecte um disco externo (USB) e use <strong>Preparar</strong> em Discos.
+        O disco do sistema/dados é recusado de propósito; enquanto isso, o
+        <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> continua ativo.
+      </div>
+    {% endif %}
+  </section>
   {% endif %}
 
-  {% if not tem_disco_backup %}
-    <div class="alert">
-      <strong>Nenhum repositório restic configurado.</strong>
-      Conecte um disco externo (USB) e use <strong>Preparar</strong> abaixo.
-      O disco do sistema/dados é recusado de propósito; enquanto isso, o
-      <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> continua ativo.
+  <section class="section" id="discos">
+    <div class="section-head">
+      <h2>Discos</h2>
+      <span class="muted text-12">{{ overview.disks|length }} disco{{ overview.disks|length|pluralize }}</span>
     </div>
-  {% endif %}
-
-  <h2 id="discos">Discos</h2>
-  <div class="table-wrap"><table class="file-table">
-    <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Backup</th><th></th></tr></thead>
-    <tbody>
-      {% for disk in overview.disks %}
-        <tr>
-          <td>
-            <strong>{{ disk.name }}</strong>
-            <div class="muted mono text-11">{{ disk.path }}</div>
-          </td>
-          <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
-          <td>{{ disk.size|default:"—" }}</td>
-          <td>
-            {% if disk.mounts %}
-              <span class="badge live">montado</span>
-              <div class="muted text-11">{{ disk.mounts|join:", " }}</div>
-            {% elif disk.fstype %}
-              <span class="badge">{{ disk.fstype }}{% if disk.label %} · {{ disk.label }}{% endif %}</span>
-            {% else %}
-              <span class="badge">vazio</span>
-            {% endif %}
-            {% if not disk.candidate %}<div class="muted text-11">{{ disk.reason }}</div>{% endif %}
-          </td>
-          <td>
-            {% if disk.configured %}
-              <span class="badge snap">configurado</span>
-              {% if disk.jobs %}<div class="muted text-11">{{ disk.jobs|join:", " }}</div>{% endif %}
-            {% elif disk.has_filesystem %}
-              <span class="badge snap">com filesystem</span>
-            {% else %}
-              <span class="muted">-</span>
-            {% endif %}
-            {% if disk.configured and disk.health %}
-              {% if disk.health.ok %}<div><span class="badge live">check ok</span></div>
-              {% else %}<div><span class="badge danger">check falhou</span></div>{% endif %}
-              <div class="muted text-11">{{ disk.health.finished_at|default:"" }}</div>
-            {% endif %}
-          </td>
-          <td class="file-actions">
-            {% if disk.configured %}
-              <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ disk.uuid|urlencode }}">Ver senha</a>
-              {% if disk.mounts %}
-              <form method="post" action="{% url 'backup_check' %}" class="display-inline">
-                {% csrf_token %}
-                <input type="hidden" name="uuid" value="{{ disk.uuid }}">
-                <button class="btn small" type="submit">Verificar repo</button>
-              </form>
-              {% endif %}
-            {% endif %}
-            {% if disk.candidate %}
-              <a class="btn small {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
-                {% if disk.configured %}Reconfigurar{% elif disk.has_filesystem %}Preparar (apaga FS){% else %}Preparar{% endif %}
-              </a>
-            {% else %}
-              <span class="muted text-12">indisponível</span>
-            {% endif %}
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="6"><div class="empty">Nenhum disco encontrado.</div></td></tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
-
-  <h2>Jobs de backup</h2>
-  {% if overview.jobs %}
     <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Job</th><th>Destino</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th></th></tr></thead>
+      <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Backup</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
-        {% for job in overview.jobs %}
+        {% for disk in overview.disks %}
           <tr>
-            <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted text-11">desativado</div>{% endif %}</td>
-            <td>{{ job.disk_label }}</td>
-            <td class="muted text-12">{{ job.sources|join:", " }}</td>
-            <td class="muted">{{ job.schedule.label|default:"—" }}</td>
-            <td class="muted text-12">{{ job.retention.daily }}d / {{ job.retention.weekly }}s / {{ job.retention.monthly }}m</td>
             <td>
-              {% if job.status.status == 'success' %}<span class="state-ok">success</span>
-              {% elif job.status.status == 'failed' %}<span class="state-bad">failed</span>
-              {% elif job.status.status == 'warning' %}<span class="state-standby">warning</span>
-              {% elif job.status.status == 'skipped' %}<span class="state-standby">aguardando disco</span>
-              {% elif job.status.status == 'running' %}<span class="badge live">rodando</span>
-              {% else %}<span class="muted">—</span>{% endif %}
-              {% if job.last_run_label %}<div class="muted text-11">{{ job.last_run_label }}</div>{% endif %}
+              <strong>{{ disk.name }}</strong>
+              <div class="muted mono text-11">{{ disk.path }}</div>
             </td>
-            <td class="muted text-12">{{ job.next_run_label|default:"—" }}</td>
+            <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
+            <td>{{ disk.size|default:"—" }}</td>
+            <td>
+              {% if disk.mounts %}
+                <span class="tag ok">montado</span>
+                <div class="muted text-11">{{ disk.mounts|join:", " }}</div>
+              {% elif disk.fstype %}
+                <span class="tag">{{ disk.fstype }}{% if disk.label %} · {{ disk.label }}{% endif %}</span>
+              {% else %}
+                <span class="tag">vazio</span>
+              {% endif %}
+              {% if not disk.candidate %}<div class="muted text-11">{{ disk.reason }}</div>{% endif %}
+            </td>
+            <td>
+              {% if disk.configured %}
+                <span class="tag">configurado</span>
+                {% if disk.jobs %}<div class="muted text-11">{{ disk.jobs|join:", " }}</div>{% endif %}
+              {% elif disk.has_filesystem %}
+                <span class="tag">com filesystem</span>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+              {% if disk.configured and disk.health %}
+                {% if disk.health.ok %}<div><span class="tag ok">check ok</span></div>
+                {% else %}<div><span class="tag off">check falhou</span></div>{% endif %}
+                <div class="muted text-11">{{ disk.health.finished_at|default:"" }}</div>
+              {% endif %}
+            </td>
             <td class="file-actions">
-              <a class="btn small" href="{% url 'backup_job_edit' name=job.name %}">Editar</a>
-              <form method="post" action="{% url 'backup_job_run' name=job.name %}" class="display-inline">
-                {% csrf_token %}
-                <button class="btn small" type="submit">Rodar agora</button>
-              </form>
-              <form method="post" action="{% url 'backup_job_toggle' name=job.name %}" class="display-inline">
-                {% csrf_token %}
-                <input type="hidden" name="enabled" value="{% if job.enabled %}0{% else %}1{% endif %}">
-                <button class="btn small" type="submit">{% if job.enabled %}Desativar{% else %}Ativar{% endif %}</button>
-              </form>
-              <form method="post" action="{% url 'backup_job_delete' name=job.name %}" data-confirm="Excluir o job {{ job.name }}? O repositório restic será mantido." class="display-inline">
-                {% csrf_token %}
-                <button class="btn small danger" type="submit">Excluir</button>
-              </form>
+              <div class="row-actions">
+                {% if disk.configured %}
+                  <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ disk.uuid|urlencode }}">Ver senha</a>
+                  {% if disk.mounts %}
+                  <form method="post" action="{% url 'backup_check' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="uuid" value="{{ disk.uuid }}">
+                    <button class="btn small" type="submit">Verificar repo</button>
+                  </form>
+                  {% endif %}
+                {% endif %}
+                {% if disk.candidate %}
+                  <a class="btn small {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
+                    {% if disk.configured %}Reconfigurar{% elif disk.has_filesystem %}Preparar (apaga FS){% else %}Preparar{% endif %}
+                  </a>
+                {% else %}
+                  <span class="muted text-12">indisponível</span>
+                {% endif %}
+              </div>
             </td>
           </tr>
+        {% empty %}
+          <tr><td colspan="6"><div class="empty">Nenhum disco encontrado.</div></td></tr>
         {% endfor %}
       </tbody>
     </table></div>
-  {% else %}
-    <div class="empty">Nenhum job ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
-  {% endif %}
+  </section>
 
-  <div class="alert">
-    <strong>Fluxo seguro:</strong> o wizard só mostra o resumo. A formatação exige senha do app + frase digitada.
-    Disco com filesystem existente ou já configurado pede uma confirmação extra antes de continuar.
-  </div>
+  <section class="section">
+    <div class="section-head">
+      <h2>Jobs restic</h2>
+      {% if overview.jobs %}
+        <span class="muted text-12">{{ overview.jobs|length }} job{{ overview.jobs|length|pluralize }}</span>
+      {% endif %}
+    </div>
+    {% if overview.jobs %}
+      <div class="table-wrap"><table class="file-table">
+        <thead><tr><th>Job</th><th>Destino</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th aria-label="Ações"></th></tr></thead>
+        <tbody>
+          {% for job in overview.jobs %}
+            <tr>
+              <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted text-11">desativado</div>{% endif %}</td>
+              <td>{{ job.disk_label }}</td>
+              <td class="muted text-12">{{ job.sources|join:", " }}</td>
+              <td class="muted">{{ job.schedule.label|default:"—" }}</td>
+              <td class="muted text-12">{{ job.retention.daily }}d / {{ job.retention.weekly }}s / {{ job.retention.monthly }}m</td>
+              <td>
+                {% if job.status.status == 'success' %}<span class="tag ok">success</span>
+                {% elif job.status.status == 'failed' %}<span class="tag off">failed</span>
+                {% elif job.status.status == 'warning' %}<span class="tag">warning</span>
+                {% elif job.status.status == 'skipped' %}<span class="tag">aguardando disco</span>
+                {% elif job.status.status == 'running' %}<span class="tag ok">rodando</span>
+                {% else %}<span class="muted">—</span>{% endif %}
+                {% if job.last_run_label %}<div class="muted text-11">{{ job.last_run_label }}</div>{% endif %}
+              </td>
+              <td class="muted text-12">{{ job.next_run_label|default:"—" }}</td>
+              <td class="file-actions">
+                <div class="row-actions">
+                  <a class="btn small" href="{% url 'backup_job_edit' name=job.name %}">Editar</a>
+                  <form method="post" action="{% url 'backup_job_run' name=job.name %}">
+                    {% csrf_token %}
+                    <button class="btn small" type="submit">Rodar agora</button>
+                  </form>
+                  <form method="post" action="{% url 'backup_job_toggle' name=job.name %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="enabled" value="{% if job.enabled %}0{% else %}1{% endif %}">
+                    <button class="btn small" type="submit">{% if job.enabled %}Desativar{% else %}Ativar{% endif %}</button>
+                  </form>
+                  <form method="post" action="{% url 'backup_job_delete' name=job.name %}" data-confirm="Excluir o job {{ job.name }}? O repositório restic será mantido.">
+                    {% csrf_token %}
+                    <button class="btn small danger" type="submit">Excluir</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <div class="empty">Nenhum job restic ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
+    {% endif %}
+  </section>
+
+  <section class="section">
+    <div class="alert">
+      <strong>Fluxo seguro:</strong> o wizard só mostra o resumo. A formatação exige senha do app e frase digitada.
+      Disco com filesystem existente ou já configurado pede confirmação extra antes de continuar.
+    </div>
+  </section>
 {% endif %}
 {% endblock %}

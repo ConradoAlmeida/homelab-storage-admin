@@ -2,17 +2,25 @@
 {% load static %}
 {% block title %}Dashboard - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Dashboard</h1>
-<p class="muted">Visão geral do host, discos, backup e shares.</p>
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="lead">Visão geral do host, discos, backup e shares.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'network_index' %}">Rede</a>
+    <a class="btn" href="{% url 'storage_index' %}">Discos</a>
+  </div>
+</div>
 
 {% if health %}
 <div class="card health-card">
-  <div class="row row-between-start">
+  <div class="health-head">
     <div>
-      <h2 class="mt-0">Saúde</h2>
-      <p class="muted text-12">Alertas de disco, backups, containers e pendências.</p>
+      <h2>Saúde</h2>
+      <p class="muted text-12">Discos, backups, containers e pendências.</p>
     </div>
-    <span class="badge {% if health.ok %}live{% else %}danger{% endif %}">
+    <span class="tag {% if health.ok %}ok{% else %}off{% endif %}">
       {% if health.ok %}tudo ok{% else %}atenção{% endif %}
     </span>
   </div>
@@ -32,28 +40,32 @@
 {% endif %}
 
 {% if services %}
-<h2 class="mt-0">Serviços</h2>
-<div class="service-cards">
-  {% for service in services %}
-    <a class="service-card {{ service.icon }}" href="{{ service.url }}" target="_blank" rel="noopener">
-      <span class="service-icon">
-        {% if service.icon == 'jellyfin' %}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>
-        {% elif service.icon == 'cockpit' %}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1.5"/></svg>
-        {% elif service.icon == 'dockge' %}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
-        {% elif service.icon == 'pihole' %}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-        {% else %}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5"/></svg>
-        {% endif %}
-      </span>
-      <span class="service-body"><strong>{{ service.name }}</strong>{% if service.description %}<small>{{ service.description }}</small>{% endif %}</span>
-      <span class="service-arrow">↗</span>
-    </a>
-  {% endfor %}
-</div>
+<section class="section">
+  <div class="section-head">
+    <h2>Serviços</h2>
+  </div>
+  <div class="service-cards">
+    {% for service in services %}
+      <a class="service-card {{ service.icon }}" href="{{ service.url }}" target="_blank" rel="noopener">
+        <span class="service-icon">
+          {% if service.icon == 'jellyfin' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>
+          {% elif service.icon == 'cockpit' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1.5"/></svg>
+          {% elif service.icon == 'dockge' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
+          {% elif service.icon == 'pihole' %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          {% else %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5"/></svg>
+          {% endif %}
+        </span>
+        <span class="service-body"><strong>{{ service.name }}</strong>{% if service.description %}<small>{{ service.description }}</small>{% endif %}</span>
+        <span class="service-arrow">↗</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
 {% endif %}
 
 {% if agent_error %}
@@ -64,134 +76,161 @@
   </div>
 {% else %}
 
-<h2>Sistema e rede</h2>
-<div class="metric-grid">
-  {% include "partials/system_metrics.html" with system=storage.system %}
-  <div class="metric net" id="network-metrics" data-endpoint="{% url 'network_metrics' %}">
-    <span>Rede · <span id="net-iface">—</span> <span id="net-state" class="muted"></span></span>
-    <strong class="net-rates"><span id="net-rx">—</span> <span class="muted">↓</span> · <span id="net-tx">—</span> <span class="muted">↑</span></strong>
-    <div class="muted text-11"><span id="net-link">—</span> · <span id="net-signal">—</span></div>
-    <div class="muted text-11"><span id="net-rx-sub">—</span> ↓ · <span id="net-tx-sub">—</span> ↑</div>
+<section class="section">
+  <div class="section-head">
+    <h2>Sistema e rede</h2>
+    <span class="muted text-12">Rede: amostra de 0,5 s a cada 3 s; mede o tráfego total do host.</span>
   </div>
-</div>
-<p class="muted text-12 mt-n8">Rede: amostra de 0,5 s a cada 3 s; mede o tráfego total do host.</p>
+  <div class="metric-grid">
+    {% include "partials/system_metrics.html" with system=storage.system %}
+    <div class="metric net" id="network-metrics" data-endpoint="{% url 'network_metrics' %}">
+      <span>Rede · <span id="net-iface">—</span> <span id="net-state" class="muted"></span></span>
+      <strong class="net-rates"><span id="net-rx">—</span> <span class="muted">↓</span> · <span id="net-tx">—</span> <span class="muted">↑</span></strong>
+      <div class="muted text-11"><span id="net-link">—</span> · <span id="net-signal">—</span></div>
+      <div class="muted text-11"><span id="net-rx-sub">—</span> ↓ · <span id="net-tx-sub">—</span> ↑</div>
+    </div>
+  </div>
+</section>
 
-
+<section class="section">
+  <div class="section-head">
+    <h2>Volumes</h2>
+    <span class="muted text-12">{{ volumes|length }} volume{{ volumes|length|pluralize }}</span>
+  </div>
+  <div class="metric-grid">
+    {% for v in volumes %}
+      <div class="metric">
+        <span>{{ v.mount }}</span>
+        <strong>{{ v.free|filesizeformat }} livres</strong>
+        <div class="muted text-12">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
+        <progress class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}" value="{{ v.percent }}" max="100"></progress>
+      </div>
+    {% empty %}
+      <div class="empty">Nenhum volume retornado.</div>
+    {% endfor %}
+  </div>
+</section>
 
 <div data-share-sizes-endpoint="{% url 'share_sizes' %}" hidden></div>
-<h2>Volumes</h2>
-<div class="cards">
-  {% for v in volumes %}
-    <div class="card">
-      <div class="label">{{ v.mount }}</div>
-      <div class="value">{{ v.free|filesizeformat }} livres</div>
-      <div class="sub">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
-      <progress class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}" value="{{v.percent}}" max="100"></progress>
-    </div>
-  {% empty %}
-    <div class="empty">Nenhum volume retornado.</div>
-  {% endfor %}
-</div>
 
-<h2>Discos</h2>
-<div class="table-wrap"><table class="file-table">
-  <thead><tr><th>Disco</th><th>Papel</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Temp. / SMART</th><th>Montagem / uso</th><th></th></tr></thead>
-  <tbody>
-    {% for disk in storage.disks %}
-      <tr>
-        <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
-        <td>{{ disk.role }}</td>
-        <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
-        <td>{{ disk.size|default:"—" }}<div class="muted text-11">{{ disk.fstype|default:"sem FS" }}</div></td>
-        <td>
-          <span class="badge {% if disk.state == 'active/idle' or disk.state == 'active' %}live{% elif disk.state == 'standby' or disk.state == 'sleeping' %}snap{% endif %}">{{ disk.state }}</span>
-          {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
-        </td>
-        <td>
-          {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
-          <div>
-            {% if disk.smart.health == 'PASSED' %}<span class="state-ok">PASSED</span>
-            {% elif disk.smart.health == 'FAILED' %}<span class="state-bad">FAILED</span>
-            {% else %}<span class="muted">sem SMART</span>{% endif %}
-          </div>
-        </td>
-        <td>
-          {% if disk.mounts %}<span class="muted">{{ disk.mounts|join:", " }}</span>{% else %}<span class="muted">sem montagem</span>{% endif %}
-          {% if disk.volume %}
-            <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres de {{ disk.volume.total|filesizeformat }} ({{ disk.volume.percent }}%)</div>
-            <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{disk.volume.percent}}" max="100"></progress>
-          {% endif %}
-        </td>
-        <td class="file-actions"><a class="btn small" href="{% url 'storage_index' %}">Detalhes</a></td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
-    {% endfor %}
-  </tbody>
-</table></div>
+<section class="section">
+  <div class="section-head">
+    <h2>Discos</h2>
+    <span class="muted text-12">{{ storage.disks|length }} disco{{ storage.disks|length|pluralize }}</span>
+  </div>
+  <div class="table-wrap"><table class="file-table">
+    <thead><tr><th>Disco</th><th>Papel</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Temp. / SMART</th><th>Montagem / uso</th><th aria-label="Ações"></th></tr></thead>
+    <tbody>
+      {% for disk in storage.disks %}
+        <tr>
+          <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
+          <td>{{ disk.role }}</td>
+          <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
+          <td>{{ disk.size|default:"—" }}<div class="muted text-11">{{ disk.fstype|default:"sem FS" }}</div></td>
+          <td>
+            <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
+            {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
+          </td>
+          <td>
+            {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
+            <div>
+              {% if disk.smart.health == 'PASSED' %}<span class="state-ok">PASSED</span>
+              {% elif disk.smart.health == 'FAILED' %}<span class="state-bad">FAILED</span>
+              {% else %}<span class="muted">sem SMART</span>{% endif %}
+            </div>
+          </td>
+          <td>
+            {% if disk.mounts %}<span class="muted">{{ disk.mounts|join:", " }}</span>{% else %}<span class="muted">sem montagem</span>{% endif %}
+            {% if disk.volume %}
+              <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres de {{ disk.volume.total|filesizeformat }} ({{ disk.volume.percent }}%)</div>
+              <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{ disk.volume.percent }}" max="100"></progress>
+            {% endif %}
+          </td>
+          <td class="file-actions"><a class="btn small" href="{% url 'storage_index' %}">Detalhes</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
 
 {% if capabilities.restic %}
-<h2>Backups</h2>
-{% if not backups.restic %}
-  <div class="alert danger"><strong>restic não encontrado no host.</strong></div>
-{% endif %}
-{% if backup_jobs %}
-  <div class="table-wrap"><table class="file-table">
-    <thead><tr><th>Job</th><th>Status</th><th>Periodicidade</th><th>Próxima</th><th>Fontes</th><th>Destino</th><th></th></tr></thead>
-    <tbody>
-      {% for job in backup_jobs %}
-        <tr>
-          <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted text-11">desativado</div>{% endif %}</td>
-          <td>
-            {% if job.status.status == 'success' %}<span class="state-ok">success</span>
-            {% elif job.status.status == 'failed' %}<span class="state-bad">failed</span>
-            {% elif job.status.status == 'warning' %}<span class="state-standby">warning</span>
-            {% elif job.status.status == 'running' %}<span class="badge live">rodando</span>
-            {% else %}<span class="muted">—</span>{% endif %}
-            {% if job.last_run_label %}<div class="muted text-11">{{ job.last_run_label }}</div>{% endif %}
-          </td>
-          <td>{{ job.schedule.label|default:"—" }}</td>
-          <td class="muted">{{ job.next_run_label|default:"—" }}</td>
-          <td class="muted">{{ job.source_count }} share{{ job.source_count|pluralize }}</td>
-          <td>{{ job.disk_label }}{% if job.volume %}<div class="muted text-11">{{ job.volume.free|filesizeformat }} livres</div>{% endif %}</td>
-          <td class="file-actions"><a class="btn small" href="{% url 'backup_index' %}">Gerenciar</a></td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
-{% else %}
-  <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
-{% endif %}
+<section class="section">
+  <div class="section-head">
+    <h2>Backups</h2>
+    <a class="btn small" href="{% url 'backup_index' %}">Gerenciar backups</a>
+  </div>
+  {% if not backups.restic %}
+    <div class="alert danger"><strong>restic não encontrado no host.</strong></div>
+  {% endif %}
+  {% if backup_jobs %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Job</th><th>Status</th><th>Periodicidade</th><th>Próxima</th><th>Fontes</th><th>Destino</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        {% for job in backup_jobs %}
+          <tr>
+            <td><strong>{{ job.name }}</strong>{% if not job.enabled %}<div class="muted text-11">desativado</div>{% endif %}</td>
+            <td>
+              {% if job.status.status == 'success' %}<span class="tag ok">success</span>
+              {% elif job.status.status == 'failed' %}<span class="tag off">failed</span>
+              {% elif job.status.status == 'warning' %}<span class="tag">warning</span>
+              {% elif job.status.status == 'running' %}<span class="tag ok">rodando</span>
+              {% else %}<span class="muted">—</span>{% endif %}
+              {% if job.last_run_label %}<div class="muted text-11">{{ job.last_run_label }}</div>{% endif %}
+            </td>
+            <td>{{ job.schedule.label|default:"—" }}</td>
+            <td class="muted">{{ job.next_run_label|default:"—" }}</td>
+            <td class="muted">{{ job.source_count }} share{{ job.source_count|pluralize }}</td>
+            <td>{{ job.disk_label }}{% if job.volume %}<div class="muted text-11">{{ job.volume.free|filesizeformat }} livres</div>{% endif %}</td>
+            <td class="file-actions"><a class="btn small" href="{% url 'backup_index' %}">Gerenciar</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Nenhum job de backup ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
+  {% endif %}
+</section>
 {% endif %}
 
-<h2>RAID{% if capabilities.btrfs %} e Btrfs{% endif %}</h2>
-<div class="card">
-  <p>RAID: <span class="badge {% if raid_status == 'degradado' %}snap{% elif raid_status == 'ok' %}live{% endif %}">{{ raid_status }}</span></p>
-  <pre class="pre">{{ storage.raid.mdstat|default:"—" }}</pre>
-  {% if capabilities.btrfs and storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
-</div>
+<section class="section">
+  <div class="section-head">
+    <h2>RAID{% if capabilities.btrfs %} e Btrfs{% endif %}</h2>
+    <span class="tag {% if raid_status == 'degradado' %}off{% elif raid_status == 'ok' %}ok{% endif %}">RAID {{ raid_status }}</span>
+  </div>
+  <div class="card">
+    <pre class="pre">{{ storage.raid.mdstat|default:"—" }}</pre>
+    {% if capabilities.btrfs and storage.btrfs.usage %}<pre class="pre">{{ storage.btrfs.usage }}</pre>{% endif %}
+  </div>
+</section>
 
-<h2>Shares</h2>
-{% if shares %}
-  <div class="table-wrap"><table class="file-table">
-    <thead><tr><th>Share</th><th>Backend</th><th>Dados</th><th>Extra snapshots</th><th>Total</th><th>Snapshots</th><th></th></tr></thead>
-    <tbody>
-      {% for s in shares %}
-        <tr data-share="{{ s.name }}">
-          <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.read_only %} <span class="tag">RO</span>{% endif %}</td>
-          <td class="muted">{{ s.backend|default:"—" }}</td>
-          <td class="muted" data-size>—</td>
-          <td class="muted" data-snap-size>—</td>
-          <td data-total><strong>—</strong></td>
-          <td>{% if s.snapshot_enabled %}<span class="tag ok">{{ s.snapshot_count }} · keep {{ s.snapshot_keep }}</span>{% else %}<span class="tag off">sem snap</span>{% endif %}</td>
-          <td class="file-actions"><a class="btn small" href="{% url 'shares' %}">Gerenciar</a></td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
-{% else %}
-  <div class="empty">Nenhum share encontrado.</div>
-{% endif %}
+<section class="section">
+  <div class="section-head">
+    <h2>Shares</h2>
+    <a class="btn small" href="{% url 'shares' %}">Gerenciar shares</a>
+  </div>
+  {% if shares %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Share</th><th>Backend</th><th>Dados</th><th>Extra snapshots</th><th>Total</th><th>Snapshots</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        {% for s in shares %}
+          <tr data-share="{{ s.name }}">
+            <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.read_only %} <span class="tag">RO</span>{% endif %}</td>
+            <td class="muted">{{ s.backend|default:"—" }}</td>
+            <td class="muted" data-size>—</td>
+            <td class="muted" data-snap-size>—</td>
+            <td data-total><strong>—</strong></td>
+            <td>{% if s.snapshot_enabled %}<span class="tag ok">{{ s.snapshot_count }} · keep {{ s.snapshot_keep }}</span>{% else %}<span class="tag off">sem snap</span>{% endif %}</td>
+            <td class="file-actions"><a class="btn small" href="{% url 'shares' %}">Gerenciar</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    <div class="empty">Nenhum share encontrado.</div>
+  {% endif %}
+</section>
 
 {% endif %}
 <script src="{% static 'js/network-metrics.js' %}" defer></script>

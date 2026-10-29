@@ -7,8 +7,15 @@
   <span>3. Confirmação</span>
 </div>
 
-<h1>Este drive já tem conteúdo</h1>
-<p class="muted">Você selecionou <strong>{{ selected.path }}</strong> ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}).</p>
+<div class="page-head">
+  <div>
+    <h1>Este drive já tem conteúdo</h1>
+    <p class="lead">
+      Você selecionou <strong>{{ selected.path }}</strong>
+      ({{ selected.model|default:"modelo desconhecido" }}, serial {{ selected.serial|default:"—" }}).
+    </p>
+  </div>
+</div>
 
 <div class="alert danger">
   <strong>Nada foi apagado ainda.</strong>
@@ -19,11 +26,14 @@
 
 <div class="card">
   <p><strong>Destino: ext4 + repositório restic no USB.</strong></p>
-  <p class="muted">O drive será formatado e o repo frio será criado. Se continuar, o wizard pedirá a frase <code class="phrase">{{ selected.required_phrase }}</code>, a senha do app e a confirmação extra.</p>
+  <p class="muted">
+    O drive será formatado e o repo frio será criado. Se continuar, o wizard pedirá a frase
+    <code class="phrase">{{ selected.required_phrase }}</code>, a senha do app e a confirmação extra.
+  </p>
 </div>
 
-<div class="row gap-8 mt-16">
+<div class="page-actions">
   <a class="btn danger" href="?device={{ selected.path|urlencode }}&confirm=1">Continuar mesmo assim</a>
-  <a class="btn small" href="{% url 'cold_index' %}">Cancelar</a>
+  <a class="btn" href="{% url 'cold_index' %}">Cancelar</a>
 </div>
 {% endblock %}

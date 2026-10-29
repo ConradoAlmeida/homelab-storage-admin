@@ -1,28 +1,33 @@
 {% extends "base.html" %}
 {% block title %}SMART {{ device }} - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between-start">
+<div class="page-head">
   <div>
-    <h1 class="mb-4">SMART {{ device }}</h1>
-    <div class="muted text-13">Leitura sob demanda; nenhum teste é iniciado aqui.</div>
+    <h1>SMART {{ device }}</h1>
+    <p class="lead">Leitura sob demanda; nenhum teste é iniciado aqui.</p>
   </div>
-  <a class="btn small" href="{% url 'storage_index' %}">← Voltar aos discos</a>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'storage_index' %}">Voltar aos discos</a>
+  </div>
 </div>
 
 {% if error %}
-  <div class="card border-danger mt-16"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+  <div class="card border-danger">
+    <strong>Erro</strong>
+    <p class="muted">{{ error }}</p>
+  </div>
 {% elif result %}
   {% if result.skipped %}
-    <div class="card mt-16">
+    <div class="card">
       <strong>Disco em {{ result.state }}</strong>
       <p class="muted">{{ result.message|default:"Não vou acordar o disco para ler SMART." }}</p>
     </div>
   {% else %}
     <div class="metric-grid">
-      <div class="metric"><span>Saúde</span><strong class="{% if result.health == 'PASSED' %}state-ok{% elif result.health == 'FAILED' %}state-bad{% endif %}">{{ result.health|default:"—" }}</strong></div>
-      <div class="metric"><span>Temperatura</span><strong>{{ result.temperature|default:"—" }} °C</strong></div>
-      <div class="metric"><span>Horas ligado</span><strong>{{ result.power_on_hours|default:"—" }}</strong></div>
-      <div class="metric"><span>Modelo</span><strong class="text-14">{{ result.model|default:"—" }}</strong><div class="muted mono text-11">{{ result.serial|default:"—" }}</div></div>
+      <div class="metric"><span>Saúde</span><strong class="{% if result.health == 'PASSED' %}state-ok{% elif result.health == 'FAILED' %}state-bad{% endif %}">{{ result.health|default:"-" }}</strong></div>
+      <div class="metric"><span>Temperatura</span><strong>{{ result.temperature|default:"-" }} °C</strong></div>
+      <div class="metric"><span>Horas ligado</span><strong>{{ result.power_on_hours|default:"-" }}</strong></div>
+      <div class="metric"><span>Modelo</span><strong class="text-14">{{ result.model|default:"-" }}</strong><div class="muted mono text-11">{{ result.serial|default:"-" }}</div></div>
     </div>
 
     {% if result.attributes %}
@@ -33,10 +38,10 @@
             <tr>
               <td class="muted mono">{{ id }}</td>
               <td>{{ attr.name }}</td>
-              <td>{{ attr.value|default:"—" }}</td>
-              <td>{{ attr.worst|default:"—" }}</td>
-              <td>{{ attr.thresh|default:"—" }}</td>
-              <td class="muted mono">{{ attr.raw|default:"—" }}</td>
+              <td>{{ attr.value|default:"-" }}</td>
+              <td>{{ attr.worst|default:"-" }}</td>
+              <td>{{ attr.thresh|default:"-" }}</td>
+              <td class="muted mono">{{ attr.raw|default:"-" }}</td>
             </tr>
           {% endfor %}
         </tbody>

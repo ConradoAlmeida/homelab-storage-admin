@@ -1,21 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Novo usuário - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Novo usuário Samba</h1>
-<form class="stack" method="post">
-  {% csrf_token %}
-  {% include "partials/form_alert.html" %}
-  {% for field in form %}
-    <div>
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field }}
-      {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
-      {{ field.errors }}
-    </div>
-  {% endfor %}
-  <div class="row">
-    <button class="btn primary" type="submit">Criar usuário</button>
-    <a class="btn" href="{% url 'users' %}">Cancelar</a>
+<div class="page-head">
+  <div>
+    <h1>Novo usuário Samba</h1>
+    <p class="lead">Cria a conta Linux, o usuário Samba e a pasta home. A senha pode ser trocada depois.</p>
   </div>
-</form>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'users' %}">Voltar aos usuários</a>
+  </div>
+</div>
+
+<div class="panel-form">
+  <form class="stack" method="post">
+    {% csrf_token %}
+    {% include "partials/form_alert.html" %}
+    <div class="form-grid">
+      {% for field in form %}
+        {% include "partials/form_field.html" with field=field %}
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      <button class="btn primary" type="submit">Criar usuário</button>
+      <a class="btn" href="{% url 'users' %}">Cancelar</a>
+    </div>
+  </form>
+</div>
 {% endblock %}

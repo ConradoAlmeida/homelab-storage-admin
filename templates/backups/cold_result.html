@@ -1,10 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Drive frio preparado - Backups{% endblock %}
+{% block title %}Drive frio preparado - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Drive frio preparado</h1>
-<div class="alert border-ok">
-  <strong>{{ result.device }}</strong> formatado ext4, montado em <code>{{ result.mountpoint }}</code> e com repo restic em <code>{{ result.repo }}</code>.
+<div class="page-head">
+  <div>
+    <h1>Drive frio preparado</h1>
+    <p class="lead">O repositório frio está pronto para receber a cópia dos snapshots.</p>
+  </div>
 </div>
-<p class="muted">O repo frio usa a mesma senha do restic primário. Agora você pode iniciar a cópia pela tela de Cópia fria.</p>
-<a class="btn" href="{% url 'cold_index' %}">Ir para Cópia fria</a>
+
+<div class="alert ok">
+  <strong>{{ result.device }}</strong> formatado ext4, montado em <span class="mono">{{ result.mountpoint }}</span>
+  e com repo restic em <span class="mono">{{ result.repo }}</span>.
+</div>
+
+<p class="muted">
+  O repo frio usa a mesma senha do restic primário. Agora você pode iniciar a cópia pela tela de Cópia fria.
+</p>
+
+<div class="page-actions">
+  <a class="btn primary" href="{% url 'cold_index' %}">Ir para Cópia fria</a>
+  <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+</div>
 {% endblock %}

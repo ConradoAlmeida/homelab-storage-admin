@@ -1,11 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Snapshots - {{ product_name }}{% endblock %}
 {% block content %}
-<h1>Snapshots</h1>
-<p class="muted">Gerencie políticas, crie e remova snapshots. Para navegar, buscar e baixar arquivos de um snapshot, use <strong>Navegar</strong>. O tamanho é aproximado porque extents compartilhados contam uma vez.</p>
+<div class="page-head">
+  <div>
+    <h1>Snapshots</h1>
+    <p class="lead">
+      Políticas, criação e remoção de snapshots por share. Para navegar, buscar e baixar arquivos,
+      use <strong>Navegar</strong>. O tamanho é aproximado porque extents compartilhados contam uma vez.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'history_index' %}">Explorar arquivos</a>
+  </div>
+</div>
 
 {% if agent_error %}
-  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ agent_error }}</p>
+  </div>
 {% elif shares %}
   <div class="metric-grid">
     <div class="metric"><span>Shares com política</span><strong>{{ summary.enabled }}/{{ summary.total }}</strong></div>
@@ -14,59 +27,72 @@
   </div>
 
   {% for s in shares %}
-    <details class="card mb-10">
-      <summary>
-        <div class="row row-between gap-12 flex-wrap">
-          <div><strong>{{ s.share }}</strong><span class="muted text-12"> · {{ s.path }}</span></div>
-          <div>
-            {% if s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>{% else %}<span class="tag off">não configurado</span>{% endif %}
-            <span class="muted text-12"> · {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}</span>
-          </div>
-        </div>
-      </summary>
-
-      <div class="px-16 pb-16">
-        {% if s.enabled %}
-          <div class="row row-between items-center gap-10 flex-wrap mb-10">
-            <form method="post" action="{% url 'snapshot_create' %}">
-              {% csrf_token %}
-              <input type="hidden" name="share" value="{{ s.share }}">
-              <button class="btn small" type="submit">Criar snapshot agora</button>
-            </form>
-            {% if s.snapshots %}
-              <span class="muted text-12">Mais recente: {{ s.snapshots.0.mtime }}</span>
-            {% endif %}
-          </div>
-
-          {% if s.snapshots %}
-            <div class="table-wrap"><table class="file-table">
-              <thead><tr><th>Snapshot</th><th>Data</th><th></th></tr></thead>
-              <tbody>
-                {% for snap in s.snapshots %}
-                  <tr>
-                    <td><code>{{ snap.name }}</code></td>
-                    <td class="muted">{{ snap.mtime }}</td>
-                    <td class="file-actions">
-                      <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Navegar</a>
-                      <form method="post" action="{% url 'snapshot_delete' %}" class="display-inline">
-                        {% csrf_token %}
-                        <input type="hidden" name="share" value="{{ s.share }}">
-                        <input type="hidden" name="name" value="{{ snap.name }}">
-                        <button class="btn small danger" type="submit">Remover</button>
-                      </form>
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table></div>
-          {% else %}
-            <div class="empty">Nenhum snapshot existente.</div>
-          {% endif %}
-        {% else %}
-          <div class="empty">Sem política de snapshot configurada para este share.</div>
-        {% endif %}
+    <section class="section">
+      <div class="section-head">
+        <h2>{{ s.share }}</h2>
+        <span class="muted text-12">
+          {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}
+        </span>
       </div>
-    </details>
+      <details class="card">
+        <summary>
+          <div class="row row-between-start gap-12 flex-wrap">
+            <div>
+              <strong>{{ s.share }}</strong>
+              <span class="muted mono text-12">· {{ s.path }}</span>
+            </div>
+            <div>
+              {% if s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>
+              {% else %}<span class="tag off">não configurado</span>{% endif %}
+            </div>
+          </div>
+        </summary>
+
+        <div class="px-16 pb-16">
+          {% if s.enabled %}
+            <div class="row row-between-start gap-10 flex-wrap mb-10">
+              <form method="post" action="{% url 'snapshot_create' %}">
+                {% csrf_token %}
+                <input type="hidden" name="share" value="{{ s.share }}">
+                <button class="btn small" type="submit">Criar snapshot agora</button>
+              </form>
+              {% if s.snapshots %}
+                <span class="muted text-12">Mais recente: {{ s.snapshots.0.mtime }}</span>
+              {% endif %}
+            </div>
+
+            {% if s.snapshots %}
+              <div class="table-wrap"><table class="file-table">
+                <thead><tr><th>Snapshot</th><th>Data</th><th aria-label="Ações"></th></tr></thead>
+                <tbody>
+                  {% for snap in s.snapshots %}
+                    <tr>
+                      <td class="mono text-12">{{ snap.name }}</td>
+                      <td class="muted">{{ snap.mtime }}</td>
+                      <td class="file-actions">
+                        <div class="row-actions">
+                          <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Navegar</a>
+                          <form method="post" action="{% url 'snapshot_delete' %}" data-confirm="Remover o snapshot {{ snap.name }}?">
+                            {% csrf_token %}
+                            <input type="hidden" name="share" value="{{ s.share }}">
+                            <input type="hidden" name="name" value="{{ snap.name }}">
+                            <button class="btn small danger" type="submit">Remover</button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table></div>
+            {% else %}
+              <div class="empty">Nenhum snapshot existente.</div>
+            {% endif %}
+          {% else %}
+            <div class="empty">Sem política de snapshot configurada para este share.</div>
+          {% endif %}
+        </div>
+      </details>
+    </section>
   {% endfor %}
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>

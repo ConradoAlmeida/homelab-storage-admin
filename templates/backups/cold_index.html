@@ -1,103 +1,126 @@
 {% extends "base.html" %}
-{% block title %}Cópia fria USB - Backups{% endblock %}
+{% block title %}Cópia fria USB - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="row row-between-start">
+<div class="page-head">
   <div>
-    <h1 class="mb-4">Cópia fria (USB)</h1>
-    <p class="muted">Copia os snapshots do repo primário para um drive USB, verifica e deixa o drive pronto para ficar offline.</p>
+    <h1>Cópia fria (USB)</h1>
+    <p class="lead">
+      Copia os snapshots do repositório primário para um drive USB, verifica e deixa o drive
+      pronto para ficar offline.
+    </p>
   </div>
-  <a class="btn small" href="{% url 'backup_index' %}">← Voltar</a>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
+  </div>
 </div>
 
 {% if error %}
-  <div class="alert danger"><strong>Erro</strong><p class="muted">{{ error }}</p></div>
+  <div class="alert danger"><strong>Erro</strong><p>{{ error }}</p></div>
 {% elif overview %}
-  <div class="cards">
-    <div class="card">
-      <div class="label">Origem</div>
-      <div class="value text-18">{{ overview.primary.label|default:"—" }}</div>
-      <div class="sub">{{ overview.primary.repo|default:overview.primary_error|default:"sem repo primário" }}</div>
+  <div class="metric-grid">
+    <div class="metric">
+      <span>Origem</span>
+      <strong class="text-14">{{ overview.primary.label|default:"—" }}</strong>
+      <div class="muted text-12">{{ overview.primary.repo|default:overview.primary_error|default:"sem repo primário" }}</div>
     </div>
-    <div class="card">
-      <div class="label">Destino frio</div>
-      <div class="value text-18">{% if overview.config %}{{ overview.config.label|default:overview.config.device }}{% else %}não configurado{% endif %}</div>
-      <div class="sub">{% if overview.config %}{{ overview.config.repo }}{% else %}conecte um drive USB{% endif %}</div>
+    <div class="metric">
+      <span>Destino frio</span>
+      <strong class="text-14">{% if overview.config %}{{ overview.config.label|default:overview.config.device }}{% else %}não configurado{% endif %}</strong>
+      <div class="muted text-12">{% if overview.config %}{{ overview.config.repo }}{% else %}conecte um drive USB{% endif %}</div>
     </div>
-    <div class="card">
-      <div class="label">Última cópia</div>
-      <div class="value text-18">
+    <div class="metric">
+      <span>Última cópia</span>
+      <strong class="text-14">
         {% if overview.status.status == 'success' %}<span class="state-ok">success</span>
         {% elif overview.status.status == 'failed' %}<span class="state-bad">failed</span>
-        {% elif overview.status.status == 'running' %}<span class="badge live">rodando</span>
+        {% elif overview.status.status == 'running' %}<span class="tag ok">rodando</span>
         {% elif overview.status.status == 'prepared' %}<span class="tag ok">preparado</span>
         {% else %}<span class="muted">—</span>{% endif %}
-      </div>
-      <div class="sub">
+      </strong>
+      <div class="muted text-12">
         {% if overview.status.finished_at %}{{ overview.status.finished_at }}{% elif overview.status.started_at %}{{ overview.status.started_at }}{% else %}nunca{% endif %}
         {% if overview.status.snapshots %} · {{ overview.status.snapshots }} snapshots{% endif %}
       </div>
     </div>
   </div>
 
-  <h2>Drives USB detectados</h2>
-  {% if overview.disks %}
-    <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Drive</th><th>Modelo / serial</th><th>Tamanho</th><th>FS / label</th><th>Estado</th><th></th></tr></thead>
-      <tbody>
-        {% for disk in overview.disks %}
-          <tr>
-            <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
-            <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
-            <td>{{ disk.size|default:"—" }}</td>
-            <td>{{ disk.fstype|default:"vazio" }}{% if disk.label %} · {{ disk.label }}{% endif %}</td>
-            <td>
-              {% if disk.configured %}<span class="tag ok">configurado</span>
-              {% elif disk.mounts %}<span class="tag">montado</span>
-              {% elif disk.has_filesystem %}<span class="tag">com FS</span>
-              {% else %}<span class="muted">vazio</span>{% endif %}
-              {% if disk.mounts %}<div class="muted text-11">{{ disk.mounts|join:", " }}</div>{% endif %}
-              {% if not disk.candidate %}<div class="muted text-11">{{ disk.reason }}</div>{% endif %}
-            </td>
-            <td class="file-actions">
-              {% if disk.configured %}
-                <a class="btn small" href="{% url 'cold_prepare' %}?device={{ disk.path|urlencode }}">Reconfigurar</a>
-              {% elif disk.candidate %}
-                <a class="btn small danger" href="{% url 'cold_prepare' %}?device={{ disk.path|urlencode }}">Preparar drive</a>
-              {% else %}
-                <span class="muted text-12">indisponível</span>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-  {% else %}
-    <div class="empty">Nenhum drive USB detectado. Conecte o drive e atualize esta página.</div>
-  {% endif %}
+  <section class="section">
+    <div class="section-head">
+      <h2>Drives USB detectados</h2>
+      <span class="muted text-12">{{ overview.disks|length }} drive{{ overview.disks|length|pluralize }}</span>
+    </div>
+    {% if overview.disks %}
+      <div class="table-wrap"><table class="file-table">
+        <thead><tr><th>Drive</th><th>Modelo / serial</th><th>Tamanho</th><th>FS / label</th><th>Estado</th><th aria-label="Ações"></th></tr></thead>
+        <tbody>
+          {% for disk in overview.disks %}
+            <tr>
+              <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
+              <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
+              <td>{{ disk.size|default:"—" }}</td>
+              <td>{{ disk.fstype|default:"vazio" }}{% if disk.label %} · {{ disk.label }}{% endif %}</td>
+              <td>
+                {% if disk.configured %}<span class="tag ok">configurado</span>
+                {% elif disk.mounts %}<span class="tag">montado</span>
+                {% elif disk.has_filesystem %}<span class="tag">com FS</span>
+                {% else %}<span class="muted">vazio</span>{% endif %}
+                {% if disk.mounts %}<div class="muted text-11">{{ disk.mounts|join:", " }}</div>{% endif %}
+                {% if not disk.candidate %}<div class="muted text-11">{{ disk.reason }}</div>{% endif %}
+              </td>
+              <td class="file-actions">
+                {% if disk.configured %}
+                  <a class="btn small" href="{% url 'cold_prepare' %}?device={{ disk.path|urlencode }}">Reconfigurar</a>
+                {% elif disk.candidate %}
+                  <a class="btn small danger" href="{% url 'cold_prepare' %}?device={{ disk.path|urlencode }}">Preparar drive</a>
+                {% else %}
+                  <span class="muted text-12">indisponível</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <div class="empty">Nenhum drive USB detectado. Conecte o drive e atualize esta página.</div>
+    {% endif %}
+  </section>
 
   {% if overview.config %}
-    <h2>Cópia</h2>
-    <div class="card">
-      <p class="muted">O serviço copia os snapshots do repo de 750 GB para <code>{{ overview.config.repo }}</code>, roda <code>restic check</code> e grava o status. A cópia roda em segundo plano.</p>
-      {% if overview.status.status == 'running' %}
-        <div class="alert warn"><strong>Cópia em execução.</strong> Atualize a página para acompanhar; não ejete o drive.</div>
-      {% elif overview.status.status == 'failed' %}
-        <div class="alert danger"><strong>Última cópia falhou.</strong><p class="muted">{{ overview.status.message }}</p></div>
-      {% elif overview.status.status == 'success' %}
-        <div class="alert"><strong>Última cópia OK.</strong> {{ overview.status.snapshots|default:0 }} snapshots verificados.</div>
-      {% endif %}
-      <form method="post" action="{% url 'cold_copy' %}" class="display-inline">
-        {% csrf_token %}
-        <button class="btn" type="submit" {% if overview.status.status == 'running' %}disabled{% endif %}>Copiar agora</button>
-      </form>
-      <form method="post" action="{% url 'cold_eject' %}" class="display-inline">
-        {% csrf_token %}
-        <button class="btn small" type="submit" {% if overview.status.status == 'running' %}disabled{% endif %}>Ejetar com segurança</button>
-      </form>
-      <p class="muted text-12 mt-10">A cópia é manual; não há timer. Depois de ejetar, pode desconectar o USB.</p>
-    </div>
+    <section class="section">
+      <div class="section-head">
+        <h2>Cópia</h2>
+      </div>
+      <div class="card">
+        <p class="muted">
+          O serviço copia os snapshots do repositório primário para
+          <span class="mono">{{ overview.config.repo }}</span>, roda <span class="mono">restic check</span>
+          e grava o status. A cópia roda em segundo plano.
+        </p>
+        {% if overview.status.status == 'running' %}
+          <div class="alert warn"><strong>Cópia em execução.</strong> Atualize a página para acompanhar; não ejete o drive.</div>
+        {% elif overview.status.status == 'failed' %}
+          <div class="alert danger"><strong>Última cópia falhou.</strong><p>{{ overview.status.message }}</p></div>
+        {% elif overview.status.status == 'success' %}
+          <div class="alert ok"><strong>Última cópia OK.</strong> {{ overview.status.snapshots|default:0 }} snapshots verificados.</div>
+        {% endif %}
+        <div class="page-actions">
+          <form method="post" action="{% url 'cold_copy' %}">
+            {% csrf_token %}
+            <button class="btn primary" type="submit" {% if overview.status.status == 'running' %}disabled{% endif %}>Copiar agora</button>
+          </form>
+          <form method="post" action="{% url 'cold_eject' %}">
+            {% csrf_token %}
+            <button class="btn" type="submit" {% if overview.status.status == 'running' %}disabled{% endif %}>Ejetar com segurança</button>
+          </form>
+        </div>
+        <p class="muted text-12">A cópia é manual; não há timer. Depois de ejetar, pode desconectar o USB.</p>
+      </div>
+    </section>
   {% else %}
-    <div class="alert">Conecte um drive USB e use <strong>Preparar drive</strong> para criar o repositório frio. Nada é apagado sem confirmação.</div>
+    <div class="alert">
+      Conecte um drive USB e use <strong>Preparar drive</strong> para criar o repositório frio.
+      Nada é apagado sem confirmação.
+    </div>
   {% endif %}
 {% endif %}
 {% endblock %}
