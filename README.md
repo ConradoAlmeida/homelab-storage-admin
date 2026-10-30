@@ -640,6 +640,9 @@ manualmente para um drive USB. O Gitea continua rodando durante o dump.
 - **Restauração**: pare o Gitea, extraia o zip e restaure banco, repositórios e
   configuração; teste em um ambiente separado antes de confiar.
 
+> O fluxo **dump + cópia para pendrive** foi validado manualmente. Não é
+> necessário repetir o teste enquanto o código de dump/cópia USB não mudar.
+
 O backup do Gitea é **manual por decisão** (dump + USB). Quando houver
 repositório restic, a pasta `/var/backups/gitea` pode entrar em um job restic
 para versionamento e cópia fora do disco.
