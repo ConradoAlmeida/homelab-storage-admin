@@ -18,8 +18,21 @@ VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
 - UFW: **OK** — ativacao, portas essenciais, SSH, bloqueio da ultima regra de
   SSH e desativacao.
 - Docker: **OK** — `nginx:alpine` com start/stop/restart e logs pelo agente.
-- Ainda pendente: restic/RAID/USB/SMART reais, Graph, login web cruzado e
-  hardware do RPi5.
+- Laboratório (`tests/lab`): **5 passed** — restic copy/check/restore, mdadm
+  RAID1, Btrfs subvolume/snapshot, share/snapshot do agente e grupo real.
+- Ainda pendente: hardware real de disco/USB/SMART/RAID, Graph, login web
+  cruzado e hardware do RPi5.
+
+## Estrategia de testes
+
+- **Windows/local:** testes unitarios e de contrato, rapidos, com agente mock.
+  Nao exigem host real.
+- **VM Ubuntu 26.04 no Fedora:** testes server-like:
+  suites dos dois apps, `tests/lab`, E2E de identidade/Samba, Mailpit, UFW,
+  Docker e backups em loop/virtual disk.
+- **moyaserver:** apenas smoke read-only (`scripts/vm/smoke-moyaserver.sh`).
+- **WSL2:** nao usar para Samba/UFW; a porta 445 conflita com o Windows e a
+  rede nao representa o host real. As distros WSL de teste foram removidas.
 
 Ajustes descobertos nessa execucao:
 
@@ -78,6 +91,23 @@ uv run --python 3.12 pytest -q
 
 Esperado: **201 testes passando no Linux** (5 skips de laboratório/hardware).
 No Windows, a mesma suíte roda 180 e pula os testes POSIX.
+
+### Laboratório server-like
+
+```bash
+cd /home/conrado/homelab-storage-admin
+sudo bash scripts/vm/run-lab-tests.sh
+```
+
+Equivalente a:
+
+```bash
+sudo env HOMELAB_LAB=1 /usr/local/bin/uv run --python 3.12 pytest tests/lab -q
+```
+
+Esperado: **5 passed** — restic, mdadm RAID1, Btrfs, snapshot do agente e grupo
+real. Esses testes criam loop devices, montam filesystems e apagam tudo no
+final; rode somente na VM descartável, como root.
 
 ## 3. Perfil moyaserver
 
