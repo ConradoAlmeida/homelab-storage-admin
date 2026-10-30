@@ -24,7 +24,7 @@ Documento de retomada. Última atualização: **2026-10-29**.
   - jobs restic por disco, com agenda, retenção e verificação semanal;
   - **backup local de arquivos** com jobs independentes (fontes, agenda,
     retenção, restore verificado, cópia para USB);
-  - backup do Gitea (dump + USB, hash conferido);
+  - backup do Gitea (dump + USB, hash conferido), **validado manualmente**;
   - cópia fria USB implementada, dependente de repo primário.
 - Jobs em produção:
   - **Credenciais** — banco + `.env`, diário 03:30, 30 dias;
@@ -48,6 +48,8 @@ Documento de retomada. Última atualização: **2026-10-29**.
 - Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.
 - Dashboard lista jobs de arquivos e jobs restic em seções separadas.
 - Backups do Gitea e do Credenciais validados com restore de teste.
+  O Gitea para pendrive também foi validado manualmente; não retestar sem
+  mudança no fluxo de dump/cópia USB.
 
 ## Decisões que não devem ser revertidas sem conversa
 

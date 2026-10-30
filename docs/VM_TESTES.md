@@ -20,8 +20,10 @@ VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
 - Docker: **OK** — `nginx:alpine` com start/stop/restart e logs pelo agente.
 - Laboratório (`tests/lab`): **5 passed** — restic copy/check/restore, mdadm
   RAID1, Btrfs subvolume/snapshot, share/snapshot do agente e grupo real.
-- Ainda pendente: hardware real de disco/USB/SMART/RAID, Graph, login web
-  cruzado e hardware do RPi5.
+- Ainda pendente: hardware real de disco/USB de copia fria/SMART/RAID, Graph,
+  login web cruzado e hardware do RPi5.
+- Gitea dump + pendrive: **validado manualmente** em teste anterior; o fluxo
+  nuclear nao mudou desde entao e nao foi repetido aqui por falta do pendrive.
 
 ## Estrategia de testes
 
