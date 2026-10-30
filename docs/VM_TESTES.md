@@ -4,6 +4,34 @@ Roteiro para validar o ecossistema Moya em uma VM descartavel, com Ubuntu
 Server 26.04 LTS. A VM e o ambiente recomendado para testes de host; o WSL2
 nao serve para Samba/UFW reais.
 
+## Resultados da primeira execucao (2026-10-30)
+
+VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
+`192.168.122.26` (libvirt `linux2024`).
+
+- Credenciais: **115 testes OK** dentro da VM.
+- Storage Admin: **201 passed, 5 skips** de laboratorio/hardware
+  (Python 3.12, Linux; no Windows a mesma suite roda 180 e pula os POSIX).
+- E2E de identidade/Samba: **OK** — criacao, ativacao, Samba real, `smbclient`,
+  login, troca de senha, `/api/verificar` com `storage` e exclusao limpa.
+- Mailpit: **OK** — envio SMTP real e mensagem encontrada na API.
+- UFW: **OK** — ativacao, portas essenciais, SSH, bloqueio da ultima regra de
+  SSH e desativacao.
+- Docker: **OK** — `nginx:alpine` com start/stop/restart e logs pelo agente.
+- Ainda pendente: restic/RAID/USB/SMART reais, Graph, login web cruzado e
+  hardware do RPi5.
+
+Ajustes descobertos nessa execucao:
+
+- caminhos legados do backup do agente foram isolados no conftest;
+- Mailpit passou a aceitar AUTH no setup;
+- o script de e-mail ganhou a raiz do projeto no `sys.path` e credenciais
+  dummy para o Mailpit;
+- comandos do roteiro passaram de `sudo -E` para `sudo env`.
+
+Para testar restic/backups, aumente o disco da VM; 10 GB e pouco para
+repositorios e pacotes de teste.
+
 ## 1. Preparar a VM
 
 Sugestao: 4 vCPU, 4 GB RAM, 40 GB de disco, rede bridgeada ou host-only com IP
