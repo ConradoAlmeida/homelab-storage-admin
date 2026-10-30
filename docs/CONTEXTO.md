@@ -2,6 +2,8 @@
 
 Documento de retomada. Última atualização: **2026-10-29**.
 
+Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
+
 ## Estado atual
 
 | Item | Valor |

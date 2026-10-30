@@ -11,6 +11,10 @@ Painel Django que administra o NAS do homelab (Raspberry Pi 5) e também roda no
 Leia `README.md` para o comportamento completo e `docs/CONTEXTO.md` para o
 estado atual, decisões e pendências.
 
+Para o histórico da sessão que consolidou o ecossistema, leia
+`docs/SESSAO-2026-10-29.md`. O transcript bruto contém segredos e fica fora do
+Git.
+
 ## Comandos
 
 ```bash
