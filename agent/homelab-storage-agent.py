@@ -2354,11 +2354,15 @@ def op_backup_job_run(name: str, **_):
 # --- backup local de arquivos (jobs independentes, sem restic) ---
 
 ARQUIVOS_CONFIG = CREDENCIAIS_CONFIG
-ARQUIVOS_CONFIG_LEGADO = "/etc/homelab-backup/credenciais.json"
+ARQUIVOS_CONFIG_LEGADO = os.environ.get(
+    "ARQUIVOS_CONFIG_LEGADO", "/etc/homelab-backup/credenciais.json"
+)
 ARQUIVOS_STATUS_DIR = os.environ.get(
     "ARQUIVOS_STATUS_DIR", "/etc/homelab-backup/status"
 )
-ARQUIVOS_LEGACY_STATUS = "/etc/homelab-backup/credenciais-status.json"
+ARQUIVOS_LEGACY_STATUS = os.environ.get(
+    "ARQUIVOS_LEGACY_STATUS", "/etc/homelab-backup/credenciais-status.json"
+)
 ARQUIVOS_SERVICE = "homelab-arquivos-backup@.service"
 ARQUIVOS_TIMER = "homelab-arquivos-backup-{name}.timer"
 ARQUIVOS_LEGACY_TIMER = "homelab-credenciais-backup.timer"
