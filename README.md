@@ -347,6 +347,9 @@ A suíte normal roda sem root, sem Btrfs, sem Samba e sem hardware. Testes que
 exigem loop devices/Btrfs real são marcados `lab` e devem rodar só em uma VM
 descartável. O CI roda `manage.py check` + `pytest`.
 
+Na VM Ubuntu 26.04, a suíte roda **201 testes** (+ **5 lab**); no Windows,
+**180** e os testes POSIX são pulados.
+
 O container também usa uv (`ghcr.io/astral-sh/uv`) e não tem `requirements.txt`.
 
 > No host do Pi, `data` é um symlink para
