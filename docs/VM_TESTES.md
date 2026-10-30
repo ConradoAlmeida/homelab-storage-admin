@@ -48,7 +48,8 @@ uv sync --dev --python 3.12 --frozen
 uv run --python 3.12 pytest -q
 ```
 
-Esperado: **180 testes passando** (menos skips de hardware, se houver).
+Esperado: **201 testes passando no Linux** (5 skips de laboratório/hardware).
+No Windows, a mesma suíte roda 180 e pula os testes POSIX.
 
 ## 3. Perfil moyaserver
 
@@ -102,12 +103,12 @@ O teste cria um usuario real e apaga no final. Ele recusa o hostname
 
 ```bash
 cd /home/conrado/moya_credenciais_app
-sudo -E \
+sudo env \
   MOYA_E2E=1 \
   MOYA_E2E_HOST="$(hostname)" \
   AGENTE_SOCKET=/run/moya-credenciais/agent.sock \
   DATA_DIR=/home/conrado/e2e-data \
-  uv run python manage.py test contas.e2e_vm.E2EIdentidadeTests -v 2
+  /usr/local/bin/uv run python manage.py test contas.e2e_vm.E2EIdentidadeTests -v 2
 ```
 
 Ele valida:
@@ -134,11 +135,11 @@ O setup instala o Mailpit em `127.0.0.1:1025` e UI/API em `127.0.0.1:8025`.
 
 ```bash
 cd /home/conrado/moya_credenciais_app
-sudo -E \
+sudo env \
   MOYA_E2E=1 \
   MOYA_E2E_HOST="$(hostname)" \
   DATA_DIR=/home/conrado/e2e-data \
-  uv run python scripts/vm/email_mailpit.py
+  /usr/local/bin/uv run python scripts/vm/email_mailpit.py
 ```
 
 Esperado: `MAILPIT_OK ...` e a configuracao anterior restaurada.

@@ -8,7 +8,7 @@ Documento de retomada. Última atualização: **2026-10-29**.
 |---|---|
 | Versão em produção | `de29ec1` (gestão de firewall) |
 | Último deploy | 29/10/2026, moyaserver; Pi pendente (host offline) |
-| Testes | `180 passed`, 26 skips de ambiente |
+| Testes | `201 passed` no Linux (5 skips de lab); `180/26` no Windows |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |

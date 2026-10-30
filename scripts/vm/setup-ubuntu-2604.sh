@@ -88,7 +88,7 @@ Description=Mailpit (SMTP de teste)
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025
+ExecStart=/usr/local/bin/mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025 --smtp-auth-accept-any --smtp-auth-allow-insecure
 Restart=on-failure
 
 [Install]
