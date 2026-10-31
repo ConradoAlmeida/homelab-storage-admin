@@ -19,7 +19,8 @@ _cached_at = 0.0
 _cached_caps: dict | None = None
 
 
-def homelab(request):
+def capacidades_do_host() -> dict:
+    """Capacidades do agente, reutilizadas por alguns segundos."""
     global _cached_at, _cached_caps
     now = time.monotonic()
     if _cached_caps is None or now - _cached_at > _CACHE_SECONDS:
@@ -28,11 +29,18 @@ def homelab(request):
         except AgentError:
             _cached_caps = {}
         _cached_at = now
+    return _cached_caps
+
+
+def homelab(request):
     return {
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
-        "capabilities": _cached_caps,
+        "capabilities": capacidades_do_host(),
         "credenciais_gerencia_usuarios": settings.CREDENTIALS_MANAGE_USERS,
+        "login_pelo_credenciais": bool(
+            settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN
+        ),
         "storage_root": settings.STORAGE_ROOT,
         "snapshot_root": settings.SNAPSHOT_ROOT,
         "backup_root": settings.BACKUP_ROOT,

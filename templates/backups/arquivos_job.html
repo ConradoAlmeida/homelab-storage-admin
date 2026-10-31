@@ -111,7 +111,7 @@
       {% else %}
         <div class="alert">
           <strong>Nenhum drive USB detectado.</strong>
-          Conecte um drive ext4/exFAT no moyaserver para usar esta opção.
+          Conecte um drive ext4/exFAT neste servidor para usar esta opção.
         </div>
       {% endif %}
     </div>
@@ -210,9 +210,9 @@
         A restauração extrai o pacote, confere o <span class="mono">sha256</span> de cada item e roda
         <span class="mono">PRAGMA integrity_check</span> quando há banco no pacote, antes de tocar em qualquer coisa.
         Os arquivos atuais são copiados para
-        <span class="mono">/var/backups/moya-credenciais/pre-restore-AAAAMMDD-HHMMSS</span>.
+        <span class="mono">{{ detalhe.dir }}/pre-restore-AAAAMMDD-HHMMSS</span>.
         Só então tudo volta com dono e permissão originais; arquivos e pastas retornam ao caminho de origem
-        e o container é reiniciado em instantes quando o banco do Credenciais é restaurado.
+        e o container do app é reiniciado em instantes quando o pacote inclui um banco.
       </p>
     </div>
   </section>

@@ -69,8 +69,24 @@ class GiteaBackupViewTests(TestCase):
         context_processors._cached_caps = {
             "restic": True,
             "credenciais_backup": True,
+            "gitea": True,
         }
         context_processors._cached_at = time.monotonic()
+
+    def test_escopo_do_moya_mantem_gitea_e_arquivos(self):
+        self.fake.arquivos_jobs.return_value = {
+            "dir": "/var/backups/moya-credenciais",
+            "jobs": [],
+        }
+        resposta = self.client.get("/backups/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(
+            resposta, "Backups locais, do Gitea e repositórios restic."
+        )
+        self.assertContains(resposta, "Backup do Gitea")
+        self.assertContains(resposta, "Backup de arquivos")
+        pagina = self.client.get("/backups/gitea/")
+        self.assertEqual(pagina.status_code, 200)
 
     def test_pagina_mostra_estado_e_usb(self):
         resposta = self.client.get("/backups/gitea/")

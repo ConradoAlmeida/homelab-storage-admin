@@ -890,8 +890,26 @@ class ColdEjectView(AgentPostView):
         return redirect("cold_index")
 
 
+class ExigeCapacidadeMixin:
+    """Recusa a página quando o host não tem o recurso."""
 
-class ArquivosJobsView(AgentTemplateView):
+    capacidade = ""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
+        from core.context_processors import capacidades_do_host
+
+        if self.capacidade and not capacidades_do_host().get(self.capacidade):
+            messages.error(
+                request, "Este recurso não está disponível neste servidor."
+            )
+            return redirect("backup_index")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class ArquivosJobsView(ExigeCapacidadeMixin, AgentTemplateView):
+    capacidade = "credenciais_backup"
     template_name = "backups/arquivos_jobs.html"
 
     def get_context_data(self, **kwargs):
@@ -905,7 +923,8 @@ class ArquivosJobsView(AgentTemplateView):
         return context
 
 
-class ArquivosJobView(AgentTemplateView):
+class ArquivosJobView(ExigeCapacidadeMixin, AgentTemplateView):
+    capacidade = "credenciais_backup"
     template_name = "backups/arquivos_job.html"
 
     def get_context_data(self, **kwargs):
@@ -930,7 +949,8 @@ TRABALHO_PADRAO = {
 }
 
 
-class ArquivosJobFormView(AgentTemplateView):
+class ArquivosJobFormView(ExigeCapacidadeMixin, AgentTemplateView):
+    capacidade = "credenciais_backup"
     template_name = "backups/arquivos_job_form.html"
 
     def get_context_data(self, **kwargs):
@@ -1017,7 +1037,8 @@ class ArquivosJobFormView(AgentTemplateView):
         return redirect("arquivos_job", job=detalhe["job"]["name"])
 
 
-class ArquivosJobRunView(AgentPostView):
+class ArquivosJobRunView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "credenciais_backup"
     def post(self, request, job):
         try:
             agent.arquivos_job_run(job)
@@ -1037,7 +1058,8 @@ class ArquivosJobRunView(AgentPostView):
         return redirect("arquivos_job", job=job)
 
 
-class ArquivosJobUsbView(AgentPostView):
+class ArquivosJobUsbView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "credenciais_backup"
     def post(self, request, job):
         device = (request.POST.get("device") or "").strip()
         try:
@@ -1060,7 +1082,8 @@ class ArquivosJobUsbView(AgentPostView):
         return redirect("arquivos_job", job=job)
 
 
-class ArquivosJobDeleteView(AgentPostView):
+class ArquivosJobDeleteView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "credenciais_backup"
     def post(self, request, job):
         try:
             agent.arquivos_job_delete(job)
@@ -1079,7 +1102,8 @@ class ArquivosJobDeleteView(AgentPostView):
         return redirect("arquivos_backup_index")
 
 
-class ArquivosJobVerifyView(AgentPostView):
+class ArquivosJobVerifyView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "credenciais_backup"
     def post(self, request, job, archive):
         try:
             resultado = agent.arquivos_job_verify(job, archive)
@@ -1109,7 +1133,8 @@ class ArquivosJobVerifyView(AgentPostView):
         return redirect("arquivos_job", job=job)
 
 
-class ArquivosJobRestoreView(AgentPostView):
+class ArquivosJobRestoreView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "credenciais_backup"
     def post(self, request, job, archive):
         confirmacao = (request.POST.get("confirmation") or "").strip()
         if confirmacao != archive:
@@ -1144,7 +1169,8 @@ class ArquivosJobRestoreView(AgentPostView):
         return redirect("arquivos_job", job=job)
 
 
-class ArquivosJobDownloadView(AgentView):
+class ArquivosJobDownloadView(ExigeCapacidadeMixin, AgentView):
+    capacidade = "credenciais_backup"
     def get(self, request, job, archive):
         try:
             resultado = agent.arquivos_job_download(job, archive)
@@ -1164,7 +1190,8 @@ class ArquivosJobDownloadView(AgentView):
         return file_response(destino, resultado.get("filename") or destino.name)
 
 
-class GiteaBackupView(AgentTemplateView):
+class GiteaBackupView(ExigeCapacidadeMixin, AgentTemplateView):
+    capacidade = "gitea"
     template_name = "backups/gitea.html"
 
     def get_context_data(self, **kwargs):
@@ -1180,7 +1207,8 @@ class GiteaBackupView(AgentTemplateView):
         return context
 
 
-class GiteaBackupStatusView(AgentView):
+class GiteaBackupStatusView(ExigeCapacidadeMixin, AgentView):
+    capacidade = "gitea"
     def get(self, request):
         try:
             overview = agent.gitea_overview()
@@ -1197,7 +1225,8 @@ class GiteaBackupStatusView(AgentView):
         )
 
 
-class GiteaBackupStartView(AgentPostView):
+class GiteaBackupStartView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "gitea"
     def post(self, request):
         alvo = (request.POST.get("target") or "host").strip()
         try:

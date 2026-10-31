@@ -4,7 +4,7 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory, SimpleTestCase
 from django.urls import get_resolver, resolve
 
-from core.ajuda import AJUDA, USE_CASES, ajuda_para, page_help
+from core.ajuda import AJUDA, USE_CASES, ajuda_para, ajuda_visivel, page_help
 
 ROTAS_ESPERADAS = {
     "dashboard",
@@ -112,3 +112,27 @@ class AjudaTests(SimpleTestCase):
         origem = get_template("base.html").template.source
         self.assertIn("partials/page_help.html", origem)
         self.assertIn("topbar", origem)
+
+    def test_ajuda_omite_capitulos_fora_do_escopo(self):
+        import time
+
+        import core.context_processors as context_processors
+
+        context_processors._cached_caps = {"restic": True}
+        context_processors._cached_at = time.monotonic()
+        self.addCleanup(setattr, context_processors, "_cached_caps", None)
+        ajuda = ajuda_visivel("backup_index")
+        titulos = [capitulo["title"] for capitulo in ajuda["chapters"]]
+        self.assertNotIn("Backup do Gitea", titulos)
+        self.assertNotIn("Backup de arquivos", titulos)
+        self.assertNotIn("Gitea", ajuda["summary"] + ajuda["use_case"])
+
+        context_processors._cached_caps = {
+            "restic": True,
+            "gitea": True,
+            "credenciais_backup": True,
+        }
+        ajuda = ajuda_visivel("backup_index")
+        titulos = [capitulo["title"] for capitulo in ajuda["chapters"]]
+        self.assertIn("Backup do Gitea", titulos)
+        self.assertIn("Backup de arquivos", titulos)

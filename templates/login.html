@@ -3,7 +3,11 @@
 {% block content %}
 <div class="card login-box">
   <h1>Entrar</h1>
+  {% if login_pelo_credenciais %}
   <p class="muted text-12">Use a mesma conta do Credenciais.</p>
+  {% else %}
+  <p class="muted text-12">Use a conta deste servidor.</p>
+  {% endif %}
   {% if erro %}<p class="errorlist">{{ erro }}</p>{% elif form.errors %}<p class="errorlist">Usuário ou senha inválidos.</p>{% endif %}
   <form class="stack" method="post">
     {% csrf_token %}

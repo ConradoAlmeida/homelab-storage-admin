@@ -13,6 +13,19 @@ pytestmark = pytest.mark.django_db
     CREDENTIALS_API_TOKEN="segredo",
     CREDENTIALS_APP="storage",
 )
+def test_login_do_moya_pede_a_conta_do_credenciais():
+    pagina = Client().get("/login/")
+    texto = pagina.content.decode("utf-8")
+    assert "mesma conta do Credenciais" in texto
+    assert "conta deste servidor" not in texto
+
+
+@override_settings(
+    ROOT_URLCONF="tests.urls_credenciais",
+    CREDENTIALS_URL="http://credenciais",
+    CREDENTIALS_API_TOKEN="segredo",
+    CREDENTIALS_APP="storage",
+)
 def test_login_aceito_cria_usuario_local():
     with patch(
         "core.auth.consultar",
@@ -92,3 +105,23 @@ def test_admin_local_funciona_como_emergencia():
         )
     assert resposta.status_code == 302
     assert "_auth_user_id" in cliente.session
+
+
+@override_settings(
+    ROOT_URLCONF="tests.urls_credenciais",
+    CREDENTIALS_URL="",
+    CREDENTIALS_API_TOKEN="",
+)
+def test_login_local_quando_credenciais_nao_esta_no_host():
+    get_user_model().objects.create_user("conrado", password="senha-local-forte")
+    cliente = Client()
+    pagina = cliente.get("/login/")
+    texto = pagina.content.decode("utf-8")
+    assert "Credenciais" not in texto
+    assert "conta deste servidor" in texto
+    with patch("core.auth.consultar") as consultar:
+        resposta = cliente.post(
+            "/login/", {"username": "conrado", "password": "senha-local-forte"}
+        )
+    consultar.assert_not_called()
+    assert resposta.status_code == 302

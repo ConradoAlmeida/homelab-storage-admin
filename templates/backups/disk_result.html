@@ -19,10 +19,10 @@
 
 <div class="danger-zone">
   <strong>Guarde a senha de recuperação do restic agora</strong>
-  <p class="muted">Você também pode consultá-la depois em <strong>Credenciais do restic</strong>, com a senha do app.</p>
+  <p class="muted">Você também pode consultá-la depois em <strong>Senha do repositório</strong>, com a senha do app.</p>
   <pre class="pre">{{ result.recovery_password }}</pre>
   <p class="muted text-12">Arquivo root-only no host: <span class="mono">{{ result.key_file }}</span></p>
-  <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ result.uuid|urlencode }}">Abrir credenciais</a>
+  <a class="btn small" href="{% url 'backup_credentials' %}?uuid={{ result.uuid|urlencode }}">Ver senha</a>
 </div>
 
 <p class="muted">Próxima etapa: cadastrar o job de backup (fontes, periodicidade e retenção).</p>

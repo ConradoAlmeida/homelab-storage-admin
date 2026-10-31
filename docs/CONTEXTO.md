@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-10-29**.
+Documento de retomada. Última atualização: **2026-10-31**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -38,7 +38,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   parar, reiniciar e logs; sem remover nem executar comandos. O container do
   painel é protegido contra parada/reinício pela própria UI.
 - Login pelo Credenciais no moya, com `CREDENTIALS_MANAGE_USERS=1` e
-  break-glass local.
+  break-glass local. No Pi, sem `CREDENTIALS_URL`, o login é local.
+- Textos, ajuda e rotas de Gitea, backup local de arquivos e gestão pelo
+  Credenciais só aparecem quando o host tem o recurso. O código continua o
+  mesmo nos dois ambientes.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
   tabelas, chips, métricas, ações e formulários padronizados.
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta

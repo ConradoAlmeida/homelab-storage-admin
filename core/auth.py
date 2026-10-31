@@ -40,12 +40,21 @@ def login_view(request):
         nome = (request.POST.get("username") or "").strip()
         senha = request.POST.get("password") or ""
 
-        # Emergência: mantém o admin local funcionando se o Credenciais cair.
-        if nome == "admin":
+        # Sem Credenciais neste host, o login é o do próprio servidor.
+        # Com Credenciais, admin local continua como emergência.
+        credenciais_ativo = bool(
+            settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN
+        )
+        if not credenciais_ativo or nome == "admin":
             local = authenticate(request, username=nome, password=senha)
             if local is not None:
                 login(request, local)
                 return _destino(request, next_url)
+            if not credenciais_ativo:
+                erro = "Usuário ou senha inválidos."
+                return render(
+                    request, "login.html", {"erro": erro, "next": next_url}
+                )
 
         resultado = consultar(nome, senha)
         if resultado.get("ok") and settings.CREDENTIALS_APP in (resultado.get("apps") or []):

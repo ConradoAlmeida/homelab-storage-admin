@@ -50,6 +50,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Backup de arquivos",
+                "requires": "credenciais_backup",
                 "text": (
                     "Jobs locais que geram pacotes em disco. A tabela resume "
                     "agenda, retenção e o último resultado; Gerenciar jobs abre "
@@ -58,6 +59,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Backups restic",
+                "requires": "restic",
                 "text": (
                     "Jobs incrementais com repositório restic. O status "
                     "'aguardando disco' aparece quando o destino não está montado."
@@ -218,6 +220,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Gestão pelo Credenciais",
+                "requires": "credenciais_usuarios",
                 "text": (
                     "Quando o Credenciais gerencia usuários, criar pessoa, "
                     "senha, grupos e exclusão são feitos lá. Esta página fica "
@@ -226,6 +229,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Gestão local",
+                "requires": "usuarios_locais",
                 "text": (
                     "Quando a gestão é local, use Novo usuário, Senha, Grupos, "
                     "Desativar e Excluir diretamente nesta página."
@@ -649,11 +653,21 @@ AJUDA: dict[str, dict[str, Any]] = {
     },
     "backup_index": {
         "title": "Backups",
-        "summary": "Backups locais, do Gitea e repositórios restic.",
+        "summary": "Repositórios restic e os atalhos disponíveis neste servidor.",
         "chapters": [
             {
                 "title": "Atalhos",
-                "text": "Levam para backup de arquivos, Gitea, snapshots, cópia fria e senha do repositório.",
+                "text": "Levam para snapshots, cópia fria e senha do repositório.",
+            },
+            {
+                "title": "Backup de arquivos",
+                "requires": "credenciais_backup",
+                "text": "O atalho abre os jobs locais de pastas, sem restic.",
+            },
+            {
+                "title": "Backup do Gitea",
+                "requires": "gitea",
+                "text": "O atalho abre o dump do Gitea e a cópia manual para USB.",
             },
             {
                 "title": "Discos",
@@ -677,8 +691,8 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Avisos",
                 "text": (
-                    "Sem restic ou sem disco configurado, os jobs ficam "
-                    "aguardando; o backup local de arquivos continua funcionando."
+                    "Sem restic ou sem disco configurado, os jobs restic ficam "
+                    "aguardando."
                 ),
             },
         ],
@@ -757,7 +771,7 @@ AJUDA: dict[str, dict[str, Any]] = {
         ],
     },
     "backup_credentials": {
-        "title": "Credenciais do restic",
+        "title": "Senha do repositório",
         "summary": "Consulta a senha do repositório restic de um disco.",
         "chapters": [
             {
@@ -1052,13 +1066,13 @@ USE_CASES: dict[str, str] = {
         "Use ao abrir o painel ou depois de um alerta para saber, em uma tela, "
         "se discos, serviços, backups e shares estão saudáveis. Exemplo: antes "
         "de copiar arquivos importantes, confira o espaço do volume e se o "
-        "último backup restic terminou bem."
+        "último backup terminou bem."
     ),
     "network_index": (
         "Use quando precisar liberar ou fechar uma porta e também para "
         "diagnosticar a rede. Exemplo: libere 8080/tcp apenas para "
         "192.168.0.0/24, ative o UFW com SSH garantido e, se um app parar, "
-        "confira portas, rotas e regras antes de mexer no Caddy."
+        "confira portas, rotas e regras antes de mexer no proxy."
     ),
     "containers": (
         "Use no dia a dia para reiniciar um serviço travado e conferir o que "
@@ -1068,14 +1082,13 @@ USE_CASES: dict[str, str] = {
     ),
     "container_logs": (
         "Use quando um serviço para de responder ou reinicia sozinho. Exemplo: "
-        "se o Gitea mostrar erro 502, veja as últimas linhas do container para "
+        "se um serviço mostrar erro 502, veja as últimas linhas do container para "
         "identificar disco cheio, permissão ou configuração."
     ),
     "users": (
         "Use para conferir quem tem conta e quais pastas cada pessoa acessa. "
         "Exemplo: num chamado de 'não abro a pasta Projetos', verifique se a "
-        "pessoa está ativa e no grupo certo; se o Credenciais gerencia "
-        "usuários, o ajuste é feito lá."
+        "pessoa está ativa e no grupo certo."
     ),
     "user_create": (
         "Use ao cadastrar alguém que ainda não existe no servidor, quando a "
@@ -1145,8 +1158,8 @@ USE_CASES: dict[str, str] = {
     ),
     "backup_index": (
         "Use para conferir se as rotinas de backup estão acontecendo e agir "
-        "quando um job falha. Exemplo: o backup diário do Credenciais falhou; "
-        "abra o job, rode agora e confira o status."
+        "quando um job falha. Exemplo: um job falhou; abra o job, rode agora e "
+        "confira o status."
     ),
     "backup_snapshots": (
         "Use quando precisar restaurar um arquivo de uma data específica. "
@@ -1222,8 +1235,42 @@ def ajuda_para(url_name: str | None) -> dict[str, Any] | None:
     return AJUDA.get(url_name)
 
 
+def _flags_de_escopo() -> dict[str, bool]:
+    from django.conf import settings
+
+    from core.context_processors import capacidades_do_host
+
+    caps = capacidades_do_host()
+    gerencia = bool(settings.CREDENTIALS_MANAGE_USERS)
+    return {
+        "gitea": bool(caps.get("gitea")),
+        "credenciais_backup": bool(caps.get("credenciais_backup")),
+        "restic": bool(caps.get("restic")),
+        "credenciais_usuarios": gerencia,
+        "usuarios_locais": not gerencia,
+    }
+
+
+def ajuda_visivel(url_name: str | None) -> dict[str, Any] | None:
+    """Ajuda da rota, sem capítulos de recursos que este host não tem."""
+    bruto = ajuda_para(url_name)
+    if not bruto:
+        return None
+    flags = _flags_de_escopo()
+    return {
+        "title": bruto["title"],
+        "summary": bruto.get("summary", ""),
+        "use_case": bruto.get("use_case", ""),
+        "chapters": [
+            {chave: valor for chave, valor in capitulo.items() if chave != "requires"}
+            for capitulo in bruto["chapters"]
+            if not capitulo.get("requires") or flags.get(capitulo["requires"])
+        ],
+    }
+
+
 def page_help(request) -> dict[str, Any | None]:
     """Context processor: ajuda correspondente à rota resolvida."""
     match = getattr(request, "resolver_match", None)
     url_name = getattr(match, "url_name", None) if match else None
-    return {"page_help": ajuda_para(url_name)}
+    return {"page_help": ajuda_visivel(url_name)}

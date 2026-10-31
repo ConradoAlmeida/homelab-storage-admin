@@ -200,6 +200,15 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/backups/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "restic não encontrado")
+        self.assertContains(response, "Repositórios restic.")
+        self.assertNotContains(response, "Gitea")
+        self.assertNotContains(response, "Credenciais")
+
+    def test_gitea_e_arquivos_ficam_fora_sem_o_recurso(self):
+        gitea = self.client.get("/backups/gitea/")
+        self.assertRedirects(gitea, "/backups/")
+        arquivos = self.client.get("/backups/arquivos/")
+        self.assertRedirects(arquivos, "/backups/")
 
     def test_restic_snapshots_page_renders(self):
         response = self.client.get("/backups/snapshots/")

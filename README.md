@@ -28,7 +28,7 @@ Ubuntu+Samba via perfil de host.
 | Ver temperatura/SMART dos discos | Discos (`/storage/`) — leitura sob demanda, standby-safe |
 | Visão geral do host | Dashboard — sistema, todos os discos, volumes, RAID/Btrfs, backup e resumo de snapshots |
 | Preparar disco de backup | Backups (`/backups/`) — wizard com confirmação extra |
-| Consultar senha do restic | Backups → Credenciais — exige senha do app |
+| Consultar senha do restic | Backups → Senha do repositório — exige senha do app |
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
 | Ver saúde do host | Dashboard — card Saúde com discos, backups, containers e pendências |
 | Ver e gerenciar rede/firewall | Rede (`/rede/`) - interfaces, rotas, portas, Docker e regras UFW |
@@ -515,7 +515,7 @@ Regras de standby:
 O wizard formata ext4, cria entrada no fstab por UUID, monta em
 `/mnt/backup/<label>`, inicializa o restic e mostra a senha de recuperação.
 A senha fica em arquivo root-only em `/etc/homelab-backup/secrets/` e também
-pode ser consultada em **Backups → Credenciais**, mediante a senha do app
+pode ser consultada em **Backups → Senha do repositório**, mediante a senha do app
 (com registro no audit log). O submit mostra um loading em tela cheia enquanto
 formata/monta/inicializa; a requisição usa timeout de 900 s no Gunicorn.
 
@@ -1032,4 +1032,11 @@ entra na rede `moya` e recebe `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN`.
   Credenciais; para acesso aos apps, use o Credenciais.
 - O usuário local `admin` continua funcionando como acesso de emergência se o
   Credenciais estiver fora do ar.
-- No Pi, sem `CREDENTIALS_URL`, nada muda: o login local continua como antes.
+- No Pi, sem `CREDENTIALS_URL`, o login é o usuário local deste servidor.
+  A tela diz "conta deste servidor". No moyaserver, com URL e token, continua
+  "mesma conta do Credenciais".
+- Textos, ajuda e páginas de Gitea e de backup local de arquivos seguem as
+  capacidades do host. No Pi, sem o container do Gitea e sem o app Credenciais,
+  esses blocos não aparecem. No moyaserver, com o container e com
+  `CREDENCIAIS_DB`/`CREDENCIAIS_ENV`, o atalho do Gitea, os jobs de arquivos e
+  a gestão de usuários pelo Credenciais continuam.

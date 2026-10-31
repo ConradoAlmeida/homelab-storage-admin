@@ -7,7 +7,16 @@
   <div>
     <h1>Backups</h1>
     <p class="lead">
-      Backups locais, do Gitea e repositórios restic. Cada job tem fontes, agenda e retenção próprias;
+      {% if capabilities.gitea and capabilities.credenciais_backup %}
+      Backups locais, do Gitea e repositórios restic.
+      {% elif capabilities.gitea %}
+      Backup do Gitea e repositórios restic.
+      {% elif capabilities.credenciais_backup %}
+      Backups locais e repositórios restic.
+      {% else %}
+      Repositórios restic.
+      {% endif %}
+      Cada job tem fontes, agenda e retenção próprias;
       nada é apagado ao abrir esta página.
     </p>
   </div>
@@ -113,8 +122,10 @@
       <div class="alert">
         <strong>Nenhum repositório restic configurado.</strong>
         Conecte um disco externo (USB) e use <strong>Preparar</strong> em Discos.
-        O disco do sistema/dados é recusado de propósito; enquanto isso, o
-        <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> continua ativo.
+        O disco do sistema/dados é recusado de propósito.
+        {% if capabilities.credenciais_backup %}
+        Enquanto isso, o <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> continua ativo.
+        {% endif %}
       </div>
     {% endif %}
   </section>
