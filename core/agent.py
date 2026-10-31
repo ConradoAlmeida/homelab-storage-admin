@@ -118,6 +118,16 @@ class AgentClient:
     def snapshot_delete(self, share, name):
         return self.call("snapshot_delete", share=share, name=name)
 
+    def snapshot_policy_save(self, share, enabled=True, keep=7, create_now=False):
+        return self.call(
+            "snapshot_policy_save",
+            timeout=1800,
+            share=share,
+            enabled=enabled,
+            keep=keep,
+            create_now=create_now,
+        )
+
     def storage_overview(self):
         # lê o cache diário; coleta só se ainda não existir
         return self.call("storage_overview", timeout=90)
@@ -346,6 +356,20 @@ class AgentClient:
 
     def container_logs(self, name, tail=200):
         return self.call("container_logs", timeout=30, name=name, tail=tail)
+
+    def torrent_overview(self):
+        return self.call("torrent_overview", timeout=30)
+
+    def torrent_add(self, magnet, library):
+        return self.call("torrent_add", timeout=60, magnet=magnet, library=library)
+
+    def torrent_action(self, torrent_hash, action):
+        return self.call(
+            "torrent_action",
+            timeout=60,
+            torrent_hash=torrent_hash,
+            action=action,
+        )
 
 
 if settings.DEBUG and os.environ.get("STORAGE_ADMIN_DEMO") == "1":

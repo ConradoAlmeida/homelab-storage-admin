@@ -5,11 +5,13 @@
   <div>
     <h1>Snapshots</h1>
     <p class="lead">
-      Políticas, criação e remoção de snapshots por share. Para navegar, buscar e baixar arquivos,
-      use <strong>Navegar</strong>. O tamanho é aproximado porque extents compartilhados contam uma vez.
+      Configure um share que ainda não tem política, edite a retenção de um que já tem
+      e crie ou remova snapshots. Para navegar, buscar e baixar arquivos, use <strong>Navegar</strong>.
+      O tamanho é aproximado porque extents compartilhados contam uma vez.
     </p>
   </div>
   <div class="page-actions">
+    <a class="btn primary" href="{% url 'snapshot_policy_new' %}">Nova política</a>
     <a class="btn" href="{% url 'history_index' %}">Explorar arquivos</a>
   </div>
 </div>
@@ -21,7 +23,7 @@
   </div>
 {% elif shares %}
   <div class="metric-grid">
-    <div class="metric"><span>Shares com política</span><strong>{{ summary.enabled }}/{{ summary.total }}</strong></div>
+    <div class="metric"><span>Políticas ativas</span><strong>{{ summary.enabled }}/{{ summary.total }}</strong></div>
     <div class="metric"><span>Snapshots</span><strong>{{ summary.count }}</strong></div>
     <div class="metric"><span>Tamanho aprox.</span><strong>{{ summary.size|filesizeformat }}</strong></div>
   </div>
@@ -36,26 +38,40 @@
               <span class="muted mono text-12">· {{ s.path }}</span>
             </div>
             <div>
-              {% if s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>
-              {% else %}<span class="tag off">não configurado</span>{% endif %}
-              <span class="muted text-12">· {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}</span>
+              {% if not s.configured %}<span class="tag off">não configurado</span>
+              {% elif s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>
+              {% else %}<span class="tag off">desativada</span>{% endif %}
+              {% if s.enabled %}
+                <span class="muted text-12">· {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}</span>
+              {% elif s.configured %}
+                <span class="muted text-12">· keep {{ s.keep }}</span>
+              {% endif %}
             </div>
           </div>
         </summary>
 
         <div class="px-16 pb-16">
-          {% if s.enabled %}
-            <div class="row row-between-start gap-10 flex-wrap mb-10">
-              <form method="post" action="{% url 'snapshot_create' %}">
-                {% csrf_token %}
-                <input type="hidden" name="share" value="{{ s.share }}">
-                <button class="btn small" type="submit">Criar snapshot agora</button>
-              </form>
-              {% if s.snapshots %}
-                <span class="muted text-12">Mais recente: {{ s.snapshots.0.mtime }}</span>
+          <div class="row row-between-start gap-10 flex-wrap mb-10">
+            <div class="row gap-10 flex-wrap">
+              {% if s.configured %}
+                <a class="btn small" href="{% url 'snapshot_policy_edit' share=s.share %}">Editar política</a>
+              {% else %}
+                <a class="btn small" href="{% url 'snapshot_policy_edit' share=s.share %}">Configurar</a>
+              {% endif %}
+              {% if s.enabled %}
+                <form method="post" action="{% url 'snapshot_create' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="share" value="{{ s.share }}">
+                  <button class="btn small" type="submit">Criar snapshot agora</button>
+                </form>
               {% endif %}
             </div>
+            {% if s.enabled and s.snapshots %}
+              <span class="muted text-12">Mais recente: {{ s.snapshots.0.mtime }}</span>
+            {% endif %}
+          </div>
 
+          {% if s.enabled %}
             {% if s.snapshots %}
               <div class="table-wrap"><table class="file-table">
                 <thead><tr><th>Snapshot</th><th>Data</th><th aria-label="Ações"></th></tr></thead>
@@ -82,6 +98,8 @@
             {% else %}
               <div class="empty">Nenhum snapshot existente.</div>
             {% endif %}
+          {% elif s.configured %}
+            <div class="empty">Política desativada. Os snapshots já criados permanecem no disco.</div>
           {% else %}
             <div class="empty">Sem política de snapshot configurada para este share.</div>
           {% endif %}

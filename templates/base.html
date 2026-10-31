@@ -28,6 +28,9 @@
         {% if capabilities.containers %}
         <a href="{% url 'containers' %}" class="{% if '/containers/' in request.path %}active{% endif %}">Containers</a>
         {% endif %}
+        {% if capabilities.jellyfin %}
+        <a href="{% url 'torrents' %}" class="{% if '/torrents/' in request.path %}active{% endif %}">Torrents</a>
+        {% endif %}
         {% if capabilities.restic or capabilities.credenciais_backup %}
         <a href="{% url 'backup_index' %}" class="{% if '/backups/' in request.path %}active{% endif %}">Backups</a>
         {% endif %}

@@ -58,6 +58,76 @@ class GroupsForm(forms.Form):
             self.initial["groups"] = initial_groups
 
 
+class TorrentAddForm(forms.Form):
+    magnet = forms.CharField(
+        label="Link magnético",
+        widget=forms.Textarea(attrs={"rows": 4}),
+        help_text="Somente magnet:?xt=urn:btih:.... Endereços http não são aceitos.",
+    )
+    library = forms.ChoiceField(
+        label="Pasta do Jellyfin",
+        help_text="O torrent entra numa das bibliotecas já configuradas no Jellyfin.",
+    )
+
+    def __init__(self, *args, libraries=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["library"].choices = [
+            (item["id"], f"{item['name']} — {item['path']}") for item in (libraries or [])
+        ]
+
+    def clean_magnet(self):
+        valor = "".join(self.cleaned_data["magnet"].split())
+        if len(valor) > 4096 or not valor.lower().startswith("magnet:?"):
+            raise forms.ValidationError("Use um link magnet:?xt=urn:btih:...")
+        if "xt=urn:btih:" not in valor.lower():
+            raise forms.ValidationError("O link precisa ter xt=urn:btih:.")
+        return valor
+
+
+class SnapshotPolicyForm(forms.Form):
+    share = forms.ChoiceField(
+        label="Share",
+        help_text="Somente shares que ainda não têm política.",
+    )
+    keep = forms.IntegerField(
+        label="Versões a manter",
+        min_value=1,
+        max_value=168,
+        initial=7,
+        help_text="Reduzir o número só apaga versões antigas no próximo snapshot.",
+    )
+    enabled = forms.BooleanField(
+        label="Política ativa",
+        required=False,
+        initial=True,
+        help_text="Desativar impede novos snapshots. Os que já existem permanecem no disco.",
+    )
+    create_now = forms.BooleanField(
+        label="Criar um snapshot agora",
+        required=False,
+        initial=False,
+        help_text="Gera a primeira versão assim que a política for salva.",
+    )
+
+    def __init__(
+        self,
+        *args,
+        share_choices=None,
+        lock_share=None,
+        show_create_now=True,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        if lock_share:
+            self.fields["share"] = forms.CharField(
+                widget=forms.HiddenInput, initial=lock_share
+            )
+        else:
+            self.fields["share"].choices = share_choices or []
+        if not show_create_now:
+            del self.fields["create_now"]
+
+
 class ShareCreateForm(forms.Form):
     name = forms.RegexField(
         regex=r"^[A-Za-z0-9_-]{1,32}$",

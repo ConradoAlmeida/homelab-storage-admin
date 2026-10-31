@@ -21,6 +21,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 ## O que está pronto
 
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
+  A política de snapshot também se configura e se edita pela UI, inclusive em
+  share que nasceu sem ela. Desativar não apaga os snapshots já criados.
+- No host com Jellyfin, a página Torrents envia um link magnético para uma
+  biblioteca dele pelo qBittorrent em localhost. Sem o container, a página
+  não aparece.
 - Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo.
 - Backups:
   - jobs restic por disco, com agenda, retenção e verificação semanal;

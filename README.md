@@ -52,11 +52,12 @@ O card **Saúde** vem de `health_overview` e o card **Backup de arquivos** lê o
 jobs de `/backups/arquivos/`; jobs restic aparecem em seção separada.
 
 Fora do escopo: Active Directory (o Samba é `tdbsam` standalone), autoatendimento
-de senha, backup externo (use `restic` no host) e o **Jellyfin**. O Jellyfin tem
-stack, bibliotecas, plugins, transcoding e config próprios em `/opt/stacks/jellyfin`;
-este repo não instala, atualiza, configura nem faz backup dele. O dashboard só
-mostra um atalho, e o share Samba `jellyfin` é gerenciado como share comum (sem
-snapshot/restic).
+de senha, backup externo (use `restic` no host) e a **administração do Jellyfin**.
+O Jellyfin tem stack, bibliotecas, plugins, transcoding e config próprios; este
+repo não instala, atualiza, configura nem faz backup dele. O dashboard mostra um
+atalho, o share Samba `jellyfin` segue como share comum (sem snapshot/restic) e,
+somente quando o container existe, a página **Torrents** envia um link magnético
+para uma pasta de mídia já configurada nele.
 
 ---
 
@@ -108,8 +109,9 @@ No perfil do Pi, o exemplo também inclui `5001/tcp` (Dockge) e `8080/tcp`
 O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
 filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não
 existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
-Caddy, DNS, Jellyfin ou o data-root do Docker. O Jellyfin é um vizinho: só
-aparece como atalho no dashboard e como share Samba `jellyfin` (sem snapshot/restic).
+Caddy, DNS, a configuração do Jellyfin ou o data-root do Docker. O Jellyfin é um
+vizinho: atalho no dashboard, share Samba `jellyfin` (sem snapshot/restic) e,
+se o container existir, downloads por magnet para as pastas das bibliotecas.
 
 No moyaserver, primeira instalação:
 
@@ -433,7 +435,12 @@ O unit `homelab-storage-agent.service` e o socket **não são renomeados**. O
 
 ## 6. Snapshots
 
-- **Manual:** botão “Criar snapshot agora” na tela Snapshots.
+- **Política:** em Snapshots, **Nova política** configura um share que ainda
+  não tem. **Editar política** muda quantas versões manter e ativa ou desativa.
+  Desativar não apaga os snapshots. Na criação dá para gerar o primeiro snapshot
+  na hora.
+- **Manual:** botão “Criar snapshot agora” na tela Snapshots, para shares com
+  política ativa.
 - **Diário:** `homelab-storage-snapshot.timer` roda às 03:00 e cria um snapshot
   para cada share com política ativa.
 - **Retenção:** campo `keep` da política (padrão 7).
@@ -451,6 +458,24 @@ No backend Btrfs o agente exige que o share seja um subvolume e que
 `STORAGE_ROOT` esteja montado; se o mount cair, ele aborta em vez de escrever no
 microSD. No backend rsync não há essa exigência, mas o path precisa estar dentro
 de um prefixo permitido.
+
+### Downloads para o Jellyfin
+
+A página **Torrents** só aparece quando o container `jellyfin` existe. Ela lê
+as bibliotecas em `/config/root/default/*/options.xml` (no Pi, Filmes e Séries)
+e traduz o caminho do container para o diretório do host. O destino não é livre:
+o agente só aceita uma dessas pastas.
+
+O download em si é do **qBittorrent** (`qbittorrent-nox`), pela API em
+`QBITTORRENT_URL` (padrão `http://127.0.0.1:8090`). A porta 8080 deste homelab
+já é do Pi-hole. O WebUI fica só em localhost. Se ele exigir senha, defina
+`QBITTORRENT_USER` e `QBITTORRENT_PASSWORD` no `host.env`; se a autenticação de
+localhost estiver desligada, a senha pode ficar vazia. Sem o qBittorrent, a
+página explica o motivo e não oferece o formulário.
+
+Pausar, retomar e remover passam pela mesma API. **Apagar arquivos** pede
+confirmação e só vale para um torrent cuja pasta está dentro de uma biblioteca.
+A pasta da biblioteca não é removida.
 
 ---
 

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if modo == "editar" %}Editar política{% elif modo == "configurar" %}Configurar snapshot{% else %}Nova política{% endif %} - {{ product_name }}
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    {% if modo == "editar" %}
+      <h1>Editar política de {{ share }}</h1>
+      <p class="lead">Altere a retenção ou desative a política. Os snapshots já criados permanecem no disco.</p>
+    {% elif modo == "configurar" %}
+      <h1>Configurar snapshot de {{ share }}</h1>
+      <p class="lead">Este share ainda não tem política. Ao salvar, o Samba passa a expor as versões anteriores.</p>
+    {% else %}
+      <h1>Nova política de snapshot</h1>
+      <p class="lead">Escolha um share sem política, defina quantas versões manter e, se quiser, crie a primeira agora.</p>
+    {% endif %}
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'snapshots' %}">Voltar aos snapshots</a>
+  </div>
+</div>
+
+{% if agent_error %}
+  <div class="alert danger" role="alert">
+    <strong>Agente indisponível</strong>
+    <p>{{ agent_error }}</p>
+  </div>
+{% elif sem_share %}
+  <div class="empty">
+    {% if sem_compartilhamento %}
+      Nenhum share encontrado. Crie um compartilhamento antes de configurar snapshots.
+    {% else %}
+      Todos os shares já têm política de snapshot. Use Editar política em cada um.
+    {% endif %}
+  </div>
+{% else %}
+  <div class="panel-form">
+    <form method="post">
+      {% csrf_token %}
+      {% include "partials/form_alert.html" %}
+      {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+      <div class="form-grid">
+        {% for field in form.visible_fields %}
+          {% include "partials/form_field.html" with field=field %}
+        {% endfor %}
+      </div>
+      <div class="help">
+        Desativar a política não apaga snapshots. Reduzir as versões a manter só remove as antigas quando o próximo snapshot for criado.
+      </div>
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Salvar política</button>
+        <a class="btn" href="{% url 'snapshots' %}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

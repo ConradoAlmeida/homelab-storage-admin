@@ -9,6 +9,7 @@ from django.test import TestCase, override_settings
 
 import backups.views as backup_views
 import core.context_processors as context_processors
+import core.downloads as core_downloads
 import core.views as core_views
 import storage.views as storage_views
 from core.agent import AgentError
@@ -139,7 +140,13 @@ class ViewSmokeTests(TestCase):
         self.client.force_login(self.user)
         fake = fake_agent()
         self.fake = fake
-        for module in (core_views, storage_views, backup_views, context_processors):
+        for module in (
+            core_views,
+            core_downloads,
+            storage_views,
+            backup_views,
+            context_processors,
+        ):
             patcher = patch.object(module, "agent", fake)
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -150,8 +157,115 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "restic não encontrado")
+        self.assertNotContains(response, 'href="/torrents/"')
         self.fake.list_shares.assert_any_call(include_size=False)
         self.fake.snapshot_usage.assert_any_call(include_size=False)
+
+    def _liga_jellyfin(self):
+        capacidades = dict(self.fake.host_capabilities.return_value)
+        capacidades["jellyfin"] = True
+        self.fake.host_capabilities.return_value = capacidades
+        context_processors._cached_caps = None
+        context_processors._cached_at = 0.0
+
+    def test_torrents_somem_sem_jellyfin_e_aparecem_com_ele(self):
+        self.assertRedirects(self.client.get("/torrents/"), "/")
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+            "client": {
+                "available": True,
+                "version": "v5.0.1",
+                "reason": "",
+            },
+            "torrents": [
+                {
+                    "hash": "a" * 40,
+                    "name": "Filme",
+                    "progress_label": "10%",
+                    "state": "downloading",
+                    "state_label": "baixando",
+                    "speed": "1 MB/s",
+                    "eta": "5 min",
+                    "size": "1 GB",
+                    "library": "Filmes",
+                    "active": True,
+                    "can_pause": True,
+                    "can_resume": False,
+                }
+            ],
+            "error": "",
+            "active": True,
+        }
+        resposta = self.client.get("/torrents/")
+        self.assertContains(resposta, "Filmes — /mnt/jellyfin/filmes")
+        self.assertContains(resposta, "Pausar")
+        self.assertContains(resposta, "Apagar os arquivos deste torrent")
+        self.assertContains(resposta, "downloads.js")
+        painel = self.client.get("/")
+        self.assertContains(painel, 'href="/torrents/"')
+
+    def test_torrent_recusa_endereco_http_e_audita_magnet(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+            "client": {"available": True, "version": "v5", "reason": ""},
+            "torrents": [],
+            "error": "",
+            "active": False,
+        }
+        recusa = self.client.post(
+            "/torrents/adicionar/",
+            {"magnet": "https://example.test/filme.torrent", "library": "filmes"},
+        )
+        self.assertContains(recusa, "magnet:?xt=urn:btih:")
+        self.fake.torrent_add.assert_not_called()
+        self.fake.torrent_add.return_value = {
+            "library": "Filmes",
+            "path": "/mnt/jellyfin/filmes",
+        }
+        magnet = "magnet:?xt=urn:btih:" + "a" * 40
+        ok = self.client.post(
+            "/torrents/adicionar/",
+            {"magnet": magnet, "library": "filmes"},
+        )
+        self.assertRedirects(ok, "/torrents/")
+        self.fake.torrent_add.assert_called_once_with(magnet, "filmes")
+        self.assertTrue(
+            AuditLog.objects.filter(action="torrent.add", target="Filmes").exists()
+        )
+
+    def test_apagar_arquivos_de_torrent_audita(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [],
+            "libraries_error": "",
+            "client": {"available": False, "version": "", "reason": "parado"},
+            "torrents": [],
+            "error": "",
+            "active": False,
+        }
+        self.fake.torrent_action.return_value = {
+            "hash": "a" * 40,
+            "action": "delete_files",
+        }
+        resposta = self.client.post(
+            "/torrents/acao/",
+            {"hash": "a" * 40, "action": "delete_files"},
+        )
+        self.assertRedirects(resposta, "/torrents/")
+        self.fake.torrent_action.assert_called_once_with("a" * 40, "delete_files")
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="torrent.delete_files", target="a" * 40
+            ).exists()
+        )
 
     def test_dashboard_lista_jobs_de_arquivos(self):
         capacidades = dict(self.fake.host_capabilities.return_value)
@@ -384,6 +498,7 @@ class ViewSmokeTests(TestCase):
             "/shares/",
             "/shares/novo/",
             "/snapshots/",
+            "/snapshots/politica/nova/",
             "/backups/",
             "/backups/snapshots/",
             "/backups/credentials/",
@@ -469,6 +584,169 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "keep 7")
         self.fake.list_shares.assert_called_once_with(include_size=False)
         self.fake.snapshot_usage.assert_called_once_with(include_size=False)
+
+    def test_snapshots_oferece_configurar_editar_e_criar(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"},
+            {"name": "midia", "path": "/mnt/nas/midia"},
+            {"name": "arquivo", "path": "/mnt/nas/arquivo"},
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {
+                "share": "midia",
+                "path": "/mnt/nas/midia",
+                "enabled": True,
+                "keep": 7,
+                "count": 1,
+                "size": 0,
+                "snapshots": [{"name": "@GMT-2026.01.01-00.00.00", "mtime": "01/01/2026 00:00"}],
+            },
+            {
+                "share": "arquivo",
+                "path": "/mnt/nas/arquivo",
+                "enabled": False,
+                "keep": 4,
+                "count": 0,
+                "size": 0,
+                "snapshots": [],
+            },
+        ]
+        response = self.client.get("/snapshots/")
+        self.assertContains(response, "Nova política")
+        self.assertContains(response, "Configurar")
+        self.assertContains(response, "Editar política")
+        self.assertContains(response, "Criar snapshot agora")
+        self.assertContains(response, "Sem política de snapshot")
+        self.assertContains(response, "desativada")
+        self.assertContains(response, "permanecem no disco")
+
+    def test_nova_politica_lista_somente_share_sem_politica(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"},
+            {"name": "midia", "path": "/mnt/nas/midia"},
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {"share": "midia", "enabled": True, "keep": 7}
+        ]
+        response = self.client.get("/snapshots/politica/nova/")
+        self.assertContains(response, "docs — /mnt/nas/docs")
+        self.assertNotContains(response, "midia —")
+        self.assertContains(response, "Criar um snapshot agora")
+        self.fake.list_shares.assert_called_with(include_size=False)
+        self.fake.snapshot_usage.assert_called_with(include_size=False)
+
+    def test_nova_politica_salva_e_audita(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = []
+        self.fake.snapshot_policy_save.return_value = {
+            "share": "docs",
+            "enabled": True,
+            "keep": 5,
+            "created": "@GMT-2026.01.01-00.00.00",
+        }
+        response = self.client.post(
+            "/snapshots/politica/nova/",
+            {
+                "share": "docs",
+                "keep": "5",
+                "enabled": "on",
+                "create_now": "on",
+            },
+        )
+        self.assertRedirects(response, "/snapshots/")
+        self.fake.snapshot_policy_save.assert_called_once_with(
+            share="docs", enabled=True, keep=5, create_now=True
+        )
+        self.assertTrue(
+            AuditLog.objects.filter(action="snapshot.policy", target="docs").exists()
+        )
+
+    def test_editar_politica_atualiza_sem_criar_snapshot(self):
+        self.fake.list_shares.return_value = [
+            {"name": "midia", "path": "/mnt/nas/midia"}
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {"share": "midia", "enabled": True, "keep": 7}
+        ]
+        pagina = self.client.get("/snapshots/midia/politica/")
+        self.assertContains(pagina, "Editar política de midia")
+        self.assertNotContains(pagina, "Criar um snapshot agora")
+        self.fake.snapshot_policy_save.return_value = {
+            "share": "midia",
+            "enabled": True,
+            "keep": 9,
+            "created": None,
+        }
+        response = self.client.post(
+            "/snapshots/midia/politica/",
+            {"share": "outro", "keep": "9", "enabled": "on"},
+        )
+        self.assertRedirects(response, "/snapshots/")
+        self.fake.snapshot_policy_save.assert_called_once_with(
+            share="midia", enabled=True, keep=9, create_now=False
+        )
+
+    def test_editar_politica_pode_desativar(self):
+        self.fake.list_shares.return_value = [
+            {"name": "midia", "path": "/mnt/nas/midia"}
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {"share": "midia", "enabled": True, "keep": 7}
+        ]
+        self.fake.snapshot_policy_save.return_value = {
+            "share": "midia",
+            "enabled": False,
+            "keep": 7,
+            "created": None,
+        }
+        response = self.client.post(
+            "/snapshots/midia/politica/",
+            {"share": "midia", "keep": "7"},
+        )
+        self.assertRedirects(response, "/snapshots/")
+        self.fake.snapshot_policy_save.assert_called_once_with(
+            share="midia", enabled=False, keep=7, create_now=False
+        )
+
+    def test_configurar_share_especifico_oferece_o_primeiro_snapshot(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = []
+        response = self.client.get("/snapshots/docs/politica/")
+        self.assertContains(response, "Configurar snapshot de docs")
+        self.assertContains(response, "Criar um snapshot agora")
+
+    def test_politica_de_share_inexistente_volta_para_a_lista(self):
+        response = self.client.get("/snapshots/ausente/politica/")
+        self.assertRedirects(response, "/snapshots/")
+
+    def test_nova_politica_avisa_quando_nao_ha_share_livre(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {"share": "docs", "enabled": True, "keep": 2}
+        ]
+        response = self.client.get("/snapshots/politica/nova/")
+        self.assertContains(response, "já têm política")
+
+    def test_politica_mostra_erro_do_agente(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = []
+        self.fake.snapshot_policy_save.side_effect = AgentError(
+            "Politica salva, mas o snapshot nao foi criado: rsync falhou"
+        )
+        response = self.client.post(
+            "/snapshots/politica/nova/",
+            {"share": "docs", "keep": "7", "enabled": "on", "create_now": "on"},
+        )
+        self.assertContains(response, "snapshot nao foi criado")
+        self.assertFalse(AuditLog.objects.filter(action="snapshot.policy").exists())
 
     def test_backup_check_chama_o_agente(self):
         self.fake.backup_check.return_value = {

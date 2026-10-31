@@ -12,6 +12,7 @@ from .forms import (
     GroupsForm,
     PasswordForm,
     ShareCreateForm,
+    SnapshotPolicyForm,
     UserCreateForm,
 )
 from .hostinfo import disk_role, volume_for
@@ -651,12 +652,15 @@ class SnapshotsView(AgentTemplateView):
                         "count": 0,
                         "size": 0,
                         "snapshots": [],
+                        "configured": False,
                     }
+                else:
+                    item = {**item, "configured": True}
                 result.append(item)
                 seen.add(name)
             for name, item in policies.items():
                 if name not in seen:
-                    result.append(item)
+                    result.append({**item, "configured": True})
             context["shares"] = sorted(
                 result, key=lambda item: item.get("share", "")
             )
@@ -669,6 +673,165 @@ class SnapshotsView(AgentTemplateView):
         except AgentError as exc:
             context["agent_error"] = str(exc)
         return context
+
+
+class SnapshotPolicyView(AgentView):
+    template_name = "snapshot_policy.html"
+
+    def get(self, request, share=None):
+        try:
+            shares, politicas = self._dados()
+        except AgentError as exc:
+            return self._render(request, agent_error=str(exc))
+        if share and not self._share_conhecido(share, shares, politicas):
+            messages.error(request, f"Share {share} não encontrado.")
+            return redirect("snapshots")
+        return self._render(request, share=share, shares=shares, politicas=politicas)
+
+    def post(self, request, share=None):
+        try:
+            shares, politicas = self._dados()
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            return redirect("snapshots")
+        if share and not self._share_conhecido(share, shares, politicas):
+            messages.error(request, f"Share {share} não encontrado.")
+            return redirect("snapshots")
+        form, _politica = self._form(
+            share, shares, politicas, data=request.POST
+        )
+        if form is None or not form.is_valid():
+            return self._render(
+                request,
+                share=share,
+                shares=shares,
+                politicas=politicas,
+                data=request.POST,
+            )
+        alvo = share or form.cleaned_data["share"]
+        if not self._share_conhecido(alvo, shares, politicas):
+            form.add_error("share", "Share não encontrado.")
+            return self._render(
+                request,
+                share=share,
+                shares=shares,
+                politicas=politicas,
+                form=form,
+            )
+        ja_existia = alvo in politicas
+        try:
+            resultado = agent.snapshot_policy_save(
+                share=alvo,
+                enabled=bool(form.cleaned_data.get("enabled")),
+                keep=form.cleaned_data["keep"],
+                create_now=bool(form.cleaned_data.get("create_now")),
+            )
+        except AgentError as exc:
+            form.add_error(None, str(exc))
+            return self._render(
+                request,
+                share=share,
+                shares=shares,
+                politicas=politicas,
+                form=form,
+            )
+        _audit(
+            request,
+            "snapshot.policy",
+            alvo,
+            f"enabled={resultado.get('enabled')} keep={resultado.get('keep')} "
+            f"created={resultado.get('created') or ''}",
+        )
+        if resultado.get("created"):
+            messages.success(
+                request,
+                f"Política de {alvo} salva e snapshot {resultado['created']} criado.",
+            )
+        elif ja_existia:
+            messages.success(request, f"Política de snapshot de {alvo} atualizada.")
+        else:
+            messages.success(request, f"Política de snapshot de {alvo} configurada.")
+        return redirect("snapshots")
+
+    def _dados(self):
+        shares = agent.list_shares(include_size=False)
+        politicas = {
+            item.get("share"): item
+            for item in agent.snapshot_usage(include_size=False)
+        }
+        return shares, politicas
+
+    def _share_conhecido(self, share, shares, politicas):
+        nomes = {item.get("name") for item in shares}
+        return share in nomes or share in politicas
+
+    def _form(self, share, shares, politicas, data=None):
+        politica = politicas.get(share) if share else None
+        if share:
+            return (
+                SnapshotPolicyForm(
+                    data,
+                    lock_share=share,
+                    show_create_now=politica is None,
+                    initial={
+                        "share": share,
+                        "keep": (politica or {}).get("keep") or 7,
+                        "enabled": True if politica is None else bool(politica.get("enabled")),
+                    },
+                ),
+                politica,
+            )
+        livres = [
+            (item.get("name"), f"{item.get('name')} — {item.get('path') or ''}")
+            for item in shares
+            if item.get("name") and item.get("name") not in politicas
+        ]
+        if data is None and not livres:
+            return None, None
+        return (
+            SnapshotPolicyForm(
+                data,
+                share_choices=livres,
+                show_create_now=True,
+                initial={"keep": 7, "enabled": True},
+            ),
+            None,
+        )
+
+    def _render(
+        self,
+        request,
+        *,
+        share=None,
+        shares=None,
+        politicas=None,
+        data=None,
+        form=None,
+        agent_error=None,
+    ):
+        shares = shares or []
+        politicas = politicas or {}
+        if form is None and agent_error is None:
+            form, _politica = self._form(share, shares, politicas, data=data)
+        politica = politicas.get(share) if share else None
+        if share and politica:
+            modo = "editar"
+        elif share:
+            modo = "configurar"
+        else:
+            modo = "nova"
+        return render(
+            request,
+            self.template_name,
+            {
+                "form": form,
+                "modo": modo,
+                "share": share,
+                "agent_error": agent_error,
+                "sem_share": form is None and agent_error is None,
+                "sem_compartilhamento": not shares and not share,
+            },
+        )
 
 
 class SnapshotCreateView(AgentPostView):

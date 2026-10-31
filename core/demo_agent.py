@@ -16,6 +16,7 @@ CAPS = {
     "snapshot_backend": "btrfs",
     "credenciais_backup": True,
     "gitea": True,
+    "jellyfin": True,
     "containers": True,
 }
 
@@ -394,6 +395,53 @@ def _dados(op: str, payload: dict):
                 f"2026-10-28T23:40:02Z {nome} | pronto\n"
                 f"2026-10-28T23:41:10Z {nome} | GET / 200\n"
             ),
+        }
+    if op == "torrent_overview":
+        return {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"},
+                {"id": "series", "name": "Séries", "path": "/mnt/jellyfin/series"},
+            ],
+            "libraries_error": "",
+            "client": {"available": True, "version": "v5.0.1", "reason": ""},
+            "torrents": [
+                {
+                    "hash": "a" * 40,
+                    "name": "Exemplo",
+                    "progress": 42,
+                    "progress_label": "42%",
+                    "state": "downloading",
+                    "state_label": "baixando",
+                    "speed": "1,2 MB/s",
+                    "eta": "12 min",
+                    "size": "2,0 GB",
+                    "library": "Filmes",
+                    "active": True,
+                    "can_pause": True,
+                    "can_resume": False,
+                }
+            ],
+            "error": "",
+            "active": True,
+        }
+    if op == "torrent_add":
+        nomes = {"filmes": "Filmes", "series": "Séries"}
+        escolhida = str(payload.get("library") or "filmes")
+        return {
+            "library": nomes.get(escolhida, escolhida),
+            "path": "/mnt/jellyfin/" + escolhida,
+        }
+    if op == "torrent_action":
+        return {"hash": payload.get("torrent_hash", ""), "action": payload.get("action", "")}
+    if op == "snapshot_policy_save":
+        return {
+            "share": payload.get("share", ""),
+            "path": "/mnt/nas/" + str(payload.get("share", "")),
+            "enabled": bool(payload.get("enabled", True)),
+            "keep": int(payload.get("keep") or 7),
+            "backend": "rsync",
+            "snapdir": "",
+            "created": "@GMT-demo" if payload.get("create_now") else None,
         }
     if op == "backup_snapshots":
         return {"snapshots": [], "errors": []}

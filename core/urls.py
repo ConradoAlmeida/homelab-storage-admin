@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import downloads, views
 
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
@@ -42,7 +42,21 @@ urlpatterns = [
     ),
     path("shares/", views.SharesView.as_view(), name="shares"),
     path("shares/novo/", views.ShareCreateView.as_view(), name="share_create"),
+    path("torrents/", downloads.TorrentsView.as_view(), name="torrents"),
+    path("torrents/estado/", downloads.TorrentStatusView.as_view(), name="torrent_status"),
+    path("torrents/adicionar/", downloads.TorrentAddView.as_view(), name="torrent_add"),
+    path("torrents/acao/", downloads.TorrentActionView.as_view(), name="torrent_action"),
     path("snapshots/", views.SnapshotsView.as_view(), name="snapshots"),
+    path(
+        "snapshots/politica/nova/",
+        views.SnapshotPolicyView.as_view(),
+        name="snapshot_policy_new",
+    ),
+    path(
+        "snapshots/<str:share>/politica/",
+        views.SnapshotPolicyView.as_view(),
+        name="snapshot_policy_edit",
+    ),
     path(
         "snapshots/criar/",
         views.SnapshotCreateView.as_view(),

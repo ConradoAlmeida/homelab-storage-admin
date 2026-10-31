@@ -33,6 +33,7 @@ def test_capabilities_false_without_optional_tools(agent, monkeypatch):
     assert caps["storage_root_mounted"] is False
     assert caps["storage_root_fstype"] == "ext4"
     assert caps["snapshot_backend"] == "rsync"
+    assert caps["jellyfin"] is False
 
 
 def test_capabilities_true_with_tools(agent, monkeypatch):

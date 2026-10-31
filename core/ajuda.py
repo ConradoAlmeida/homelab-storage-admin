@@ -210,6 +210,45 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
         ],
     },
+    "torrents": {
+        "title": "Torrents",
+        "summary": "Envia um link magnético para uma pasta de mídia do Jellyfin.",
+        "chapters": [
+            {
+                "title": "Link magnético",
+                "text": "Aceita somente magnet:?xt=urn:btih:. Endereços http são recusados.",
+            },
+            {
+                "title": "Pasta do Jellyfin",
+                "text": (
+                    "A lista vem das bibliotecas configuradas no Jellyfin, como "
+                    "Filmes e Séries. Não dá para escolher uma pasta arbitrária."
+                ),
+            },
+            {
+                "title": "Andamento",
+                "text": (
+                    "Mostra progresso, velocidade e tempo restante. A lista "
+                    "atualiza sozinha enquanto há download."
+                ),
+            },
+            {
+                "title": "Pausar e retomar",
+                "text": "Interrompe ou continua o torrent sem apagar o que já chegou.",
+            },
+            {
+                "title": "Remover",
+                "text": "Tira o torrent da fila e mantém os arquivos na pasta.",
+            },
+            {
+                "title": "Apagar arquivos",
+                "text": (
+                    "Remove o torrent e apaga o conteúdo baixado. A pasta da "
+                    "biblioteca em si permanece."
+                ),
+            },
+        ],
+    },
     "users": {
         "title": "Usuários Samba",
         "summary": "Contas Linux/Samba e grupos de share do servidor.",
@@ -449,13 +488,34 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Resumo",
                 "text": (
-                    "Mostra quantos shares têm política, o total de snapshots e "
-                    "o tamanho aproximado."
+                    "Mostra quantas políticas estão ativas, o total de snapshots "
+                    "e o tamanho aproximado."
+                ),
+            },
+            {
+                "title": "Nova política",
+                "text": (
+                    "Escolhe um share que ainda não tem política e configura "
+                    "versões, ativação e, se quiser, o primeiro snapshot."
+                ),
+            },
+            {
+                "title": "Configurar",
+                "text": (
+                    "Faz o mesmo para o share aberto no card, quando ele ainda "
+                    "não tem política."
+                ),
+            },
+            {
+                "title": "Editar política",
+                "text": (
+                    "Muda quantas versões manter e ativa ou desativa. Desativar "
+                    "não apaga os snapshots já criados."
                 ),
             },
             {
                 "title": "Criar snapshot agora",
-                "text": "Gera um snapshot imediato do share selecionado.",
+                "text": "Gera um snapshot imediato de um share com política ativa.",
             },
             {
                 "title": "Navegar",
@@ -473,6 +533,61 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": (
                     "Blocos compartilhados entre snapshots contam uma única vez, "
                     "por isso o total é aproximado."
+                ),
+            },
+        ],
+    },
+    "snapshot_policy_new": {
+        "title": "Nova política de snapshot",
+        "summary": "Cria a política de snapshot de um share que ainda não tem.",
+        "chapters": [
+            {
+                "title": "Share",
+                "text": "Lista só os compartilhamentos que ainda não têm política.",
+            },
+            {
+                "title": "Versões a manter",
+                "text": (
+                    "Define quantos snapshots a política preserva. Reduzir o "
+                    "número só apaga versões antigas no próximo snapshot."
+                ),
+            },
+            {
+                "title": "Política ativa",
+                "text": (
+                    "Desativar impede novos snapshots. Os que já existem "
+                    "permanecem no disco."
+                ),
+            },
+            {
+                "title": "Criar um snapshot agora",
+                "text": "Gera a primeira versão assim que a política for salva.",
+            },
+        ],
+    },
+    "snapshot_policy_edit": {
+        "title": "Política de snapshot",
+        "summary": "Cria a política de um share ou altera a que já existe, sem apagar os snapshots.",
+        "chapters": [
+            {
+                "title": "Versões a manter",
+                "text": (
+                    "Define quantos snapshots a política preserva. Reduzir o "
+                    "número só apaga versões antigas no próximo snapshot."
+                ),
+            },
+            {
+                "title": "Política ativa",
+                "text": (
+                    "Desativar retira as versões anteriores do Samba e impede "
+                    "snapshots novos. Os arquivos já criados permanecem no disco."
+                ),
+            },
+            {
+                "title": "Primeiro snapshot",
+                "text": (
+                    "Ao configurar um share que ainda não tem política, dá para "
+                    "criar a primeira versão no mesmo passo."
                 ),
             },
         ],
@@ -1074,6 +1189,11 @@ USE_CASES: dict[str, str] = {
         "192.168.0.0/24, ative o UFW com SSH garantido e, se um app parar, "
         "confira portas, rotas e regras antes de mexer no proxy."
     ),
+    "torrents": (
+        "Use para colocar um filme ou episódio na biblioteca do Jellyfin a "
+        "partir de um link magnético. Exemplo: cole o magnet, escolha Filmes "
+        "e acompanhe o progresso até o arquivo aparecer na pasta."
+    ),
     "containers": (
         "Use no dia a dia para reiniciar um serviço travado e conferir o que "
         "está rodando. Exemplo: depois de atualizar uma imagem, reinicie o "
@@ -1122,8 +1242,17 @@ USE_CASES: dict[str, str] = {
     ),
     "snapshots": (
         "Use para proteger uma pasta antes de uma mudança ou voltar a um estado "
-        "anterior. Exemplo: antes de uma migração, crie um snapshot agora; se "
-        "algo der errado, navegue pela versão anterior."
+        "anterior. Exemplo: configure a política de um share que ainda não tem "
+        "e crie um snapshot agora antes de uma migração."
+    ),
+    "snapshot_policy_new": (
+        "Use quando um share já existe, mas nasceu sem snapshot. Exemplo: "
+        "escolha a pasta, mantenha 7 versões e marque criar um snapshot agora."
+    ),
+    "snapshot_policy_edit": (
+        "Use para criar a política de um share que nasceu sem snapshot, ou para "
+        "ajustar uma que já existe. Exemplo: mantenha 7 versões e crie a primeira "
+        "agora; depois, aumente a retenção ou desative sem apagar o que já foi criado."
     ),
     "history_index": (
         "Use para recuperar um arquivo apagado ou comparar versões. Exemplo: "

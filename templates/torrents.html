@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Torrents - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Torrents</h1>
+    <p class="lead">
+      Envie um link magnético para uma pasta de mídia do Jellyfin e acompanhe o download.
+      O arquivo cai direto na biblioteca escolhida.
+    </p>
+  </div>
+  <div class="page-actions">
+    {% if overview.client.version %}<span class="status ok">qBittorrent {{ overview.client.version }}</span>{% endif %}
+    <a class="btn" href="{% url 'torrents' %}">Atualizar</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="alert danger" role="alert">
+    <strong>Agente indisponível</strong>
+    <p>{{ error }}</p>
+  </div>
+{% elif overview %}
+  {% if not overview.client.available %}
+    <div class="alert danger" role="alert">
+      <strong>Cliente de torrent indisponível</strong>
+      <p>{{ overview.client.reason }}</p>
+    </div>
+  {% endif %}
+  {% if overview.libraries_error and not overview.libraries %}
+    <div class="alert danger" role="alert">
+      <strong>Nenhuma biblioteca</strong>
+      <p>{{ overview.libraries_error }}</p>
+    </div>
+  {% endif %}
+  {% if overview.error %}
+    <div class="alert danger" role="alert">
+      <strong>Não foi possível listar os downloads</strong>
+      <p>{{ overview.error }}</p>
+    </div>
+  {% endif %}
+
+  {% if form %}
+    <section class="section">
+      <div class="section-head"><h2>Novo download</h2></div>
+      <div class="panel-form">
+        <form method="post" action="{% url 'torrent_add' %}">
+          {% csrf_token %}
+          {% include "partials/form_alert.html" %}
+          <div class="form-grid">
+            {% for field in form.visible_fields %}
+              {% include "partials/form_field.html" with field=field %}
+            {% endfor %}
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">Adicionar torrent</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Andamento</h2>
+      <span class="muted text-12">{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
+    </div>
+    {% if overview.torrents %}
+      <div class="table-wrap" {% if overview.active %}data-torrent-poll="{% url 'torrent_status' %}"{% endif %}>
+        <table class="file-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Pasta</th>
+              <th>Estado</th>
+              <th>Progresso</th>
+              <th>Velocidade</th>
+              <th aria-label="Ações"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in overview.torrents %}
+              <tr data-hash="{{ item.hash }}" data-state-code="{{ item.state }}">
+                <td>
+                  <strong data-name>{{ item.name }}</strong>
+                  <div class="muted text-11">{{ item.size }}</div>
+                </td>
+                <td>{{ item.library }}</td>
+                <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.can_resume %}warn{% else %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
+                <td class="mono"><span data-percent>{{ item.progress_label }}</span> <span class="muted" data-eta>{% if item.eta %}· {{ item.eta }}{% endif %}</span></td>
+                <td class="mono" data-speed>{{ item.speed }}</td>
+                <td class="file-actions">
+                  <div class="row-actions">
+                    {% if item.can_pause %}
+                      <form method="post" action="{% url 'torrent_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="hash" value="{{ item.hash }}">
+                        <input type="hidden" name="action" value="pause">
+                        <button class="btn small" type="submit">Pausar</button>
+                      </form>
+                    {% elif item.can_resume %}
+                      <form method="post" action="{% url 'torrent_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="hash" value="{{ item.hash }}">
+                        <input type="hidden" name="action" value="resume">
+                        <button class="btn small" type="submit">Retomar</button>
+                      </form>
+                    {% endif %}
+                    <form method="post" action="{% url 'torrent_action' %}" data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
+                      {% csrf_token %}
+                      <input type="hidden" name="hash" value="{{ item.hash }}">
+                      <input type="hidden" name="action" value="delete">
+                      <button class="btn small" type="submit">Remover</button>
+                    </form>
+                    <form method="post" action="{% url 'torrent_action' %}" data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
+                      {% csrf_token %}
+                      <input type="hidden" name="hash" value="{{ item.hash }}">
+                      <input type="hidden" name="action" value="delete_files">
+                      <button class="btn small danger" type="submit">Apagar arquivos</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">Nenhum torrent nas pastas do Jellyfin.</div>
+    {% endif %}
+  </section>
+{% endif %}
+<script src="{% static 'js/downloads.js' %}" defer></script>
+{% endblock %}

@@ -27,7 +27,12 @@ import tarfile
 import tempfile
 import time
 import traceback
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 import zipfile
+from http.cookiejar import CookieJar
 from pathlib import Path, PurePosixPath
 
 SOCKET_PATH = os.environ.get(
@@ -67,6 +72,10 @@ CREDENCIAIS_CONTAINER = os.environ.get("CREDENCIAIS_CONTAINER", "moya-credenciai
 CREDENCIAIS_TIME = os.environ.get("CREDENCIAIS_TIME", "03:30")
 CREDENCIAIS_RETENTION_DAYS = int(os.environ.get("CREDENCIAIS_RETENTION_DAYS", "30"))
 GITEA_CONTAINER = os.environ.get("GITEA_CONTAINER", "gitea")
+JELLYFIN_CONTAINER = os.environ.get("JELLYFIN_CONTAINER", "jellyfin")
+QBIT_URL = os.environ.get("QBITTORRENT_URL", "http://127.0.0.1:8090")
+QBIT_USER = os.environ.get("QBITTORRENT_USER", "admin")
+QBIT_PASSWORD = os.environ.get("QBITTORRENT_PASSWORD", "")
 GITEA_BACKUP_DIR = os.environ.get("GITEA_BACKUP_DIR", "/var/backups/gitea")
 GITEA_STATUS = os.environ.get("GITEA_STATUS", "/etc/homelab-backup/gitea.json")
 GITEA_KEEP = int(os.environ.get("GITEA_KEEP", "2"))
@@ -282,6 +291,7 @@ def host_capabilities() -> dict:
         "snapshot_backend": snapshot_backend_for(STORAGE_ROOT),
         "credenciais_backup": _credenciais_instalado(),
         "gitea": _container_exists(GITEA_CONTAINER),
+        "jellyfin": _container_exists(JELLYFIN_CONTAINER),
         "containers": bool(_runtime_containers()),
         "firewall": bool(shutil.which("ufw")),
     }
@@ -1333,6 +1343,231 @@ def op_snapshot_delete(share: str, name: str, **_):
     log(f"DELETE_SNAPSHOT {share}/{name}")
     _forget_size_cache()
     return {"share": share, "name": name}
+
+
+def _smb_parts(text: str) -> tuple[list[str], list[tuple[str, list[str]]]]:
+    preamble: list[str] = []
+    sections: list[tuple[str, list[str]]] = []
+    current: tuple[str, list[str]] | None = None
+    for line in text.splitlines():
+        match = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
+        if match:
+            if current is not None:
+                sections.append(current)
+            current = (match.group(1).strip(), [line])
+            continue
+        if current is None:
+            preamble.append(line)
+        else:
+            current[1].append(line)
+    if current is not None:
+        sections.append(current)
+    return preamble, sections
+
+
+def _smb_join(preamble: list[str], sections: list[tuple[str, list[str]]]) -> str:
+    chunks = []
+    if any(line.strip() for line in preamble):
+        chunks.append("\n".join(preamble).rstrip("\n"))
+    for _name, lines in sections:
+        chunks.append("\n".join(lines).rstrip("\n"))
+    return "\n\n".join(chunks).rstrip("\n") + "\n"
+
+
+def _share_path_from_conf(share: str) -> str:
+    path = Path(SMB_CONF)
+    if not path.is_file():
+        raise AgentError("smb.conf nao encontrado")
+    _preamble, sections = _smb_parts(path.read_text(encoding="utf-8"))
+    for name, lines in sections:
+        if name != share:
+            continue
+        for line in lines:
+            if line.lstrip().startswith(("#", ";")):
+                continue
+            match = re.match(r"^\s*path\s*=\s*(.*?)\s*$", line, re.I)
+            if not match or not match.group(1):
+                continue
+            valor = match.group(1).strip()
+            if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in {'"', "'"}:
+                valor = valor[1:-1]
+            if valor:
+                return valor
+        raise AgentError(f"Share {share} sem caminho no smb.conf")
+    raise AgentError(f"Share nao encontrado: {share}")
+
+
+def _smb_set_shadow(lines: list[str], path: str, snapdir: str) -> list[str]:
+    wanted = {
+        "shadow:snapdir": snapdir,
+        "shadow:basedir": path,
+        "shadow:format": "@GMT-%Y.%m.%d-%H.%M.%S",
+        "shadow:sort": "desc",
+        "shadow:localtime": "yes",
+    }
+    found_vfs = False
+    result: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        vfs = re.match(r"^(\s*)vfs objects\s*=\s*(.*)$", line, re.I)
+        if vfs and not line.lstrip().startswith(("#", ";")):
+            found_vfs = True
+            tokens = vfs.group(2).split()
+            if "shadow_copy2" not in tokens:
+                tokens.append("shadow_copy2")
+            result.append(f"{vfs.group(1)}vfs objects = {' '.join(tokens)}")
+            continue
+        replaced = False
+        for key, value in wanted.items():
+            match = re.match(rf"^(\s*){re.escape(key)}\s*=", line, re.I)
+            if match and not line.lstrip().startswith(("#", ";")):
+                result.append(f"{match.group(1)}{key} = {value}")
+                seen.add(key)
+                replaced = True
+                break
+        if not replaced:
+            result.append(line)
+    if not found_vfs:
+        result.append("    vfs objects = shadow_copy2")
+    for key, value in wanted.items():
+        if key not in seen:
+            result.append(f"    {key} = {value}")
+    return result
+
+
+def _smb_clear_shadow(lines: list[str]) -> list[str]:
+    result = []
+    for line in lines:
+        if line.lstrip().startswith(("#", ";")):
+            result.append(line)
+            continue
+        vfs = re.match(r"^(\s*)vfs objects\s*=\s*(.*)$", line, re.I)
+        if vfs:
+            tokens = [token for token in vfs.group(2).split() if token != "shadow_copy2"]
+            if tokens:
+                result.append(f"{vfs.group(1)}vfs objects = {' '.join(tokens)}")
+            continue
+        if re.match(r"^\s*shadow:", line, re.I):
+            continue
+        result.append(line)
+    return result
+
+
+def _smb_commit(text: str) -> None:
+    path = Path(SMB_CONF)
+    backup = f"{SMB_CONF}.bak-{dt.datetime.now():%Y%m%d-%H%M%S}"
+    if path.is_file():
+        shutil.copy2(path, backup)
+    path.write_text(text, encoding="utf-8")
+    try:
+        run(["testparm", "-s"])
+    except AgentError:
+        if os.path.exists(backup):
+            shutil.copy2(backup, path)
+        raise AgentError("Configuracao invalida; smb.conf restaurado")
+    try:
+        run(["smbcontrol", "smbd", "reload-config"])
+    except AgentError as exc:
+        log(f"WARN reload: {exc}")
+
+
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def op_snapshot_policy_save(share: str, enabled=True, keep=7, create_now=False, **_):
+    """Cria ou edita a política de snapshot de um share que já existe no Samba."""
+    if not SHARE_RE.match(share or ""):
+        raise AgentError("Nome de share invalido (1-32: A-Z a-z 0-9 _ -)")
+    if share in DENY_SNAPSHOT:
+        raise AgentError(f"Snapshot nao permitido para {share} (denylist)")
+    try:
+        keep_n = int(keep)
+    except (TypeError, ValueError) as exc:
+        raise AgentError("Versoes a manter invalidas") from exc
+    if keep_n < 1 or keep_n > 168:
+        raise AgentError("Versoes a manter deve ficar entre 1 e 168")
+    ativa = _as_bool(enabled)
+    criar = _as_bool(create_now) and ativa
+    path = _validate_share_path(_share_path_from_conf(share))
+    policy = load_policies()
+    atual = policy.get(share) or {}
+    backend = atual.get("backend") or ""
+    snapdir = atual.get("snapdir") or ""
+
+    if ativa:
+        backend = snapshot_backend_for(path)
+        if backend == "none":
+            raise AgentError(
+                f"Snapshots indisponiveis para {path}; backend={SNAPSHOT_BACKEND}"
+            )
+        if backend == "btrfs":
+            if not os.path.ismount(STORAGE_ROOT):
+                raise AgentError(
+                    f"{STORAGE_ROOT} nao esta montado; monte o Btrfs antes de criar snapshots"
+                )
+            _ensure_subvolume(path)
+        elif not shutil.which("rsync"):
+            raise AgentError("rsync nao encontrado; snapshots rsync indisponiveis")
+        else:
+            os.makedirs(path, exist_ok=True)
+        mesmo_lugar = (
+            bool(snapdir)
+            and atual.get("backend") == backend
+            and os.path.abspath(atual.get("path") or "") == os.path.abspath(path)
+        )
+        if not mesmo_lugar:
+            snapdir = snapshot_dir_for(share, path, backend)
+        os.makedirs(snapdir, exist_ok=True)
+        os.chmod(snapdir, 0o755)
+
+    texto = Path(SMB_CONF).read_text(encoding="utf-8")
+    preamble, sections = _smb_parts(texto)
+    novo = []
+    achou = False
+    for name, lines in sections:
+        if name != share:
+            novo.append((name, lines))
+            continue
+        achou = True
+        if ativa:
+            lines = _smb_set_shadow(lines, path, snapdir)
+        else:
+            lines = _smb_clear_shadow(lines)
+        novo.append((name, lines))
+    if not achou:
+        raise AgentError(f"Share nao encontrado: {share}")
+    _smb_commit(_smb_join(preamble, novo))
+
+    policy[share] = {
+        "path": path,
+        "enabled": ativa,
+        "keep": keep_n,
+        "backend": backend or "none",
+        "snapdir": snapdir,
+    }
+    save_policies(policy)
+    log(f"SNAPSHOT_POLICY {share} enabled={ativa} keep={keep_n}")
+    _forget_size_cache()
+    criado = None
+    if criar:
+        try:
+            criado = op_snapshot_create(share)["name"]
+        except AgentError as exc:
+            raise AgentError(
+                f"Politica salva, mas o snapshot nao foi criado: {exc}"
+            ) from exc
+    return {
+        "share": share,
+        "path": path,
+        "enabled": ativa,
+        "keep": keep_n,
+        "backend": policy[share]["backend"],
+        "snapdir": snapdir,
+        "created": criado,
+    }
 
 
 def _load_backup_config() -> dict:
@@ -5339,6 +5574,387 @@ def op_container_logs(name: str = "", tail: int = 200, **_):
     return {"name": nome, "tail": linhas, "logs": texto[-200000:], "runtime": runtime}
 
 
+_QBIT_JAR = CookieJar()
+_QBIT_LOCK = threading.Lock()
+_MAGNET_RE = re.compile(r"(?:^|[?&])xt=urn:btih:([0-9a-zA-Z]{32,64})(?:&|$)", re.I)
+_HASH_RE = re.compile(r"^[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?$")
+_TORRENT_ATIVOS = {
+    "downloading",
+    "metaDL",
+    "forcedDL",
+    "stalledDL",
+    "queuedDL",
+    "checkingDL",
+    "allocating",
+    "moving",
+}
+_TORRENT_ESTADOS = {
+    "downloading": "baixando",
+    "metaDL": "lendo metadados",
+    "forcedDL": "baixando",
+    "stalledDL": "aguardando",
+    "queuedDL": "na fila",
+    "checkingDL": "verificando",
+    "allocating": "alocando",
+    "moving": "movendo",
+    "pausedDL": "pausado",
+    "stoppedDL": "pausado",
+    "uploading": "enviando",
+    "forcedUP": "enviando",
+    "stalledUP": "concluído",
+    "pausedUP": "concluído",
+    "stoppedUP": "concluído",
+    "queuedUP": "concluído",
+    "checkingUP": "verificando",
+    "error": "erro",
+    "missingFiles": "arquivos ausentes",
+}
+_TORRENT_PAUSADOS = {"pausedDL", "stoppedDL", "pausedUP", "stoppedUP"}
+
+
+def _magnet_valido(valor: str) -> bool:
+    if not valor or len(valor) > 4096 or any(c in valor for c in "\r\n\x00"):
+        return False
+    if not valor.lower().startswith("magnet:?"):
+        return False
+    return _MAGNET_RE.search(valor) is not None
+
+
+def _qbit_base() -> str:
+    bruto = (QBIT_URL or "").strip()
+    parsed = urllib.parse.urlparse(bruto)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise AgentError("QBITTORRENT_URL invalida")
+    if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise AgentError("qBittorrent so pode ser acessado em localhost")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise AgentError("QBITTORRENT_URL nao pode levar usuario, senha ou query")
+    return bruto.rstrip("/")
+
+
+def _qbit_open(method: str, path: str, data: dict | None = None, timeout: int = 20) -> tuple[int, str]:
+    url = _qbit_base() + path
+    body = None
+    headers = {"Accept": "application/json, text/plain"}
+    if data is not None:
+        body = urllib.parse.urlencode(data).encode()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_QBIT_JAR))
+    try:
+        with _QBIT_LOCK:
+            with opener.open(request, timeout=timeout) as response:
+                return response.status, response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", "replace")
+        return exc.code, raw
+    except urllib.error.URLError as exc:
+        raise AgentError(f"qBittorrent indisponivel em {_qbit_base()}: {exc.reason}") from exc
+
+
+def _qbit_login() -> bool:
+    if not QBIT_PASSWORD:
+        return False
+    code, body = _qbit_open(
+        "POST",
+        "/api/v2/auth/login",
+        {"username": QBIT_USER, "password": QBIT_PASSWORD},
+    )
+    return code == 200 and body.strip().lower().startswith("ok")
+
+
+def _qbit_disponivel() -> dict:
+    try:
+        code, body = _qbit_open("GET", "/api/v2/app/version")
+    except AgentError as exc:
+        return {"available": False, "version": "", "reason": str(exc)}
+    if code == 403:
+        if not _qbit_login():
+            return {
+                "available": False,
+                "version": "",
+                "reason": (
+                    "qBittorrent exige login. Defina QBITTORRENT_USER e "
+                    "QBITTORRENT_PASSWORD no host.env, ou desative a autenticacao "
+                    "de localhost no WebUI."
+                ),
+            }
+        code, body = _qbit_open("GET", "/api/v2/app/version")
+    if code == 200 and body.strip():
+        return {"available": True, "version": body.strip(), "reason": ""}
+    return {
+        "available": False,
+        "version": "",
+        "reason": f"qBittorrent respondeu HTTP {code}.",
+    }
+
+
+def _qbit_post(caminhos: list[str], data: dict) -> tuple[int, str]:
+    ultimo = (404, "")
+    for caminho in caminhos:
+        code, body = _qbit_open("POST", caminho, data, timeout=60)
+        if code != 404:
+            return code, body
+        ultimo = (code, body)
+    return ultimo
+
+
+def _jellyfin_mounts() -> list[dict]:
+    runtime = _runtime_containers()
+    if not runtime:
+        return []
+    try:
+        raw = run([runtime, "inspect", JELLYFIN_CONTAINER], timeout=15)
+    except AgentError:
+        return []
+    try:
+        data = json.loads(raw)[0]
+    except (json.JSONDecodeError, IndexError, TypeError):
+        return []
+    mounts = []
+    for item in data.get("Mounts") or []:
+        source = item.get("Source") or ""
+        dest = (item.get("Destination") or "").rstrip("/") or "/"
+        if source and dest:
+            mounts.append({"source": source, "dest": dest})
+    return mounts
+
+
+def _caminho_no_host(caminho: str, mounts: list[dict]) -> str:
+    if not caminho.startswith("/") or ".." in Path(caminho).parts:
+        return ""
+    normal = os.path.normpath(caminho)
+    melhor = None
+    for mount in mounts:
+        dest = mount["dest"]
+        if normal == dest or normal.startswith(dest + os.sep):
+            if melhor is None or len(dest) > len(melhor["dest"]):
+                melhor = mount
+    if melhor is None or melhor["dest"] in {"/config", "/cache"}:
+        return ""
+    relativo = normal[len(melhor["dest"]) :].lstrip("/")
+    host = os.path.realpath(os.path.join(melhor["source"], relativo))
+    base = os.path.realpath(melhor["source"])
+    if host != base and not host.startswith(base + os.sep):
+        return ""
+    return host
+
+
+def _bibliotecas_jellyfin() -> list[dict]:
+    mounts = _jellyfin_mounts()
+    config = next((item for item in mounts if item["dest"] == "/config"), None)
+    if config is None:
+        return []
+    base = Path(config["source"]) / "root" / "default"
+    if not base.is_dir():
+        return []
+    encontradas = []
+    for options in sorted(base.glob("*/options.xml")):
+        nome = options.parent.name
+        try:
+            tree = ET.parse(options)
+        except ET.ParseError:
+            continue
+        for elemento in tree.iter("Path"):
+            bruto = (elemento.text or "").strip()
+            if not bruto.startswith("/"):
+                continue
+            host = _caminho_no_host(bruto, mounts)
+            if not host or not os.path.isdir(host):
+                continue
+            encontradas.append(
+                {
+                    "id": hashlib.sha256(host.encode()).hexdigest()[:16],
+                    "name": nome,
+                    "path": host,
+                }
+            )
+    vistos = set()
+    unicas = []
+    nomes = [item["name"] for item in encontradas]
+    for item in encontradas:
+        if item["id"] in vistos:
+            continue
+        vistos.add(item["id"])
+        if nomes.count(item["name"]) > 1:
+            item = {**item, "name": f"{item['name']} ({Path(item['path']).name})"}
+        unicas.append(item)
+    return unicas
+
+
+def _biblioteca_do_caminho(caminho: str, bibliotecas: list[dict]) -> dict | None:
+    if not caminho:
+        return None
+    real = os.path.realpath(caminho)
+    for biblioteca in bibliotecas:
+        base = os.path.realpath(biblioteca["path"])
+        if real == base or real.startswith(base + os.sep):
+            return biblioteca
+    return None
+
+
+def _rotulo_bytes(valor: int) -> str:
+    tamanho = float(max(0, int(valor or 0)))
+    unidade = "B"
+    for unidade in ("B", "KB", "MB", "GB", "TB"):
+        if tamanho < 1024 or unidade == "TB":
+            break
+        tamanho /= 1024
+    if unidade == "B":
+        return f"{int(tamanho)} B"
+    return f"{tamanho:.1f} {unidade}".replace(".", ",")
+
+
+def _rotulo_eta(segundos) -> str:
+    try:
+        total = int(segundos)
+    except (TypeError, ValueError):
+        return ""
+    if total < 0 or total > 8640000:
+        return ""
+    minutos, _resto = divmod(total, 60)
+    horas, minutos = divmod(minutos, 60)
+    if horas:
+        return f"{horas} h {minutos} min"
+    if minutos:
+        return f"{minutos} min"
+    return f"{total} s"
+
+
+def _torrent_publico(item: dict, bibliotecas: list[dict]) -> dict | None:
+    biblioteca = _biblioteca_do_caminho(item.get("save_path") or "", bibliotecas)
+    if biblioteca is None:
+        return None
+    estado = item.get("state") or ""
+    try:
+        progresso = int(round(float(item.get("progress") or 0) * 100))
+    except (TypeError, ValueError):
+        progresso = 0
+    progresso = max(0, min(100, progresso))
+    return {
+        "hash": (item.get("hash") or "").lower(),
+        "name": item.get("name") or "sem nome",
+        "progress": progresso,
+        "progress_label": f"{progresso}%",
+        "state": estado,
+        "state_label": _TORRENT_ESTADOS.get(estado, estado or "desconhecido"),
+        "speed": _rotulo_bytes(item.get("dlspeed") or 0) + "/s",
+        "eta": _rotulo_eta(item.get("eta")),
+        "size": _rotulo_bytes(item.get("size") or 0),
+        "library": biblioteca["name"],
+        "active": estado in _TORRENT_ATIVOS,
+        "can_pause": estado not in _TORRENT_PAUSADOS and estado not in {"error", "missingFiles"},
+        "can_resume": estado in _TORRENT_PAUSADOS,
+    }
+
+
+def _torrents_jellyfin(bibliotecas: list[dict]) -> list[dict]:
+    code, body = _qbit_open("GET", "/api/v2/torrents/info")
+    if code != 200:
+        raise AgentError(f"Nao foi possivel listar os torrents (HTTP {code})")
+    try:
+        itens = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise AgentError("Resposta invalida do qBittorrent") from exc
+    if not isinstance(itens, list):
+        raise AgentError("Resposta invalida do qBittorrent")
+    torrents = []
+    for item in itens:
+        publico = _torrent_publico(item, bibliotecas)
+        if publico and _HASH_RE.match(publico["hash"]):
+            torrents.append(publico)
+    return torrents
+
+
+def op_torrent_overview(**_):
+    bibliotecas = _bibliotecas_jellyfin() if _container_exists(JELLYFIN_CONTAINER) else []
+    cliente = _qbit_disponivel() if bibliotecas or _container_exists(JELLYFIN_CONTAINER) else {
+        "available": False,
+        "version": "",
+        "reason": "Jellyfin nao instalado",
+    }
+    torrents = []
+    erro = ""
+    if cliente.get("available"):
+        try:
+            torrents = _torrents_jellyfin(bibliotecas)
+        except AgentError as exc:
+            erro = str(exc)
+    return {
+        "libraries": bibliotecas,
+        "libraries_error": "" if bibliotecas else "Nenhuma pasta de midia encontrada na configuracao do Jellyfin.",
+        "client": cliente,
+        "torrents": torrents,
+        "error": erro,
+        "active": any(item.get("active") for item in torrents),
+    }
+
+
+def op_torrent_add(magnet: str = "", library: str = "", **_):
+    if not _magnet_valido(magnet or ""):
+        raise AgentError("Link magnetico invalido")
+    bibliotecas = {item["id"]: item for item in _bibliotecas_jellyfin()}
+    destino = bibliotecas.get(library or "")
+    if destino is None:
+        raise AgentError("Pasta de midia invalida")
+    cliente = _qbit_disponivel()
+    if not cliente.get("available"):
+        raise AgentError(cliente.get("reason") or "qBittorrent indisponivel")
+    code, body = _qbit_open(
+        "POST",
+        "/api/v2/torrents/add",
+        {
+            "urls": magnet.strip(),
+            "savepath": destino["path"],
+            "category": "jellyfin",
+            "paused": "false",
+        },
+        timeout=60,
+    )
+    if code != 200 or body.strip().lower().startswith("fail"):
+        raise AgentError("qBittorrent recusou o link magnetico")
+    log(f"TORRENT_ADD library={destino['name']} path={destino['path']}")
+    return {"library": destino["name"], "path": destino["path"]}
+
+
+def _torrent_bruto(hash_torrent: str) -> dict:
+    code, body = _qbit_open("GET", "/api/v2/torrents/info?hashes=" + urllib.parse.quote(hash_torrent))
+    if code != 200:
+        raise AgentError(f"Nao foi possivel consultar o torrent (HTTP {code})")
+    try:
+        itens = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise AgentError("Resposta invalida do qBittorrent") from exc
+    if not isinstance(itens, list) or not itens:
+        raise AgentError("Torrent nao encontrado")
+    return itens[0]
+
+
+def op_torrent_action(torrent_hash: str = "", action: str = "", **_):
+    if action not in {"pause", "resume", "delete", "delete_files"}:
+        raise AgentError("Acao invalida")
+    if not _HASH_RE.match(torrent_hash or ""):
+        raise AgentError("Hash invalido")
+    cliente = _qbit_disponivel()
+    if not cliente.get("available"):
+        raise AgentError(cliente.get("reason") or "qBittorrent indisponivel")
+    item = _torrent_bruto(torrent_hash)
+    if _biblioteca_do_caminho(item.get("save_path") or "", _bibliotecas_jellyfin()) is None:
+        raise AgentError("Esse torrent nao esta numa pasta do Jellyfin")
+    dados = {"hashes": torrent_hash}
+    if action == "pause":
+        code, _body = _qbit_post(["/api/v2/torrents/stop", "/api/v2/torrents/pause"], dados)
+    elif action == "resume":
+        code, _body = _qbit_post(["/api/v2/torrents/start", "/api/v2/torrents/resume"], dados)
+    else:
+        dados["deleteFiles"] = "true" if action == "delete_files" else "false"
+        code, _body = _qbit_open("POST", "/api/v2/torrents/delete", dados, timeout=60)
+    if code != 200:
+        raise AgentError(f"qBittorrent recusou a acao (HTTP {code})")
+    log(f"TORRENT_{action.upper()} {torrent_hash}")
+    return {"hash": torrent_hash, "action": action}
+
+
 OPS = {
     "ping": op_ping,
     "host_capabilities": op_host_capabilities,
@@ -5358,6 +5974,7 @@ OPS = {
     "snapshot_list": op_snapshot_list,
     "snapshot_create": op_snapshot_create,
     "snapshot_delete": op_snapshot_delete,
+    "snapshot_policy_save": op_snapshot_policy_save,
     "storage_overview": op_storage_overview,
     "live_metrics": op_live_metrics,
     "refresh_storage": op_refresh_storage,
@@ -5390,6 +6007,9 @@ OPS = {
     "containers_overview": op_containers_overview,
     "container_action": op_container_action,
     "container_logs": op_container_logs,
+    "torrent_overview": op_torrent_overview,
+    "torrent_add": op_torrent_add,
+    "torrent_action": op_torrent_action,
     "health_overview": op_health_overview,
     "network_overview": op_network_overview,
     "firewall_overview": op_firewall_overview,
