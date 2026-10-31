@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Shares - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -17,11 +18,12 @@
     <p class="muted">{{ agent_error }}</p>
   </div>
 {% elif shares %}
+  <div data-share-sizes-endpoint="{% url 'share_sizes' %}" hidden></div>
   <div class="table-wrap"><table>
     <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Snapshots</th><th>Total</th><th>Acesso</th></tr></thead>
     <tbody>
       {% for s in shares %}
-        <tr>
+        <tr data-share="{{ s.name }}">
           <td>
             <strong>{{ s.name }}</strong>
             {% if not s.browseable %}<span class="tag">privado</span>{% endif %}
@@ -36,9 +38,9 @@
               <span class="tag off">não configurado</span>
             {% endif %}
           </td>
-          <td class="muted">{% if s.size != None %}{{ s.size|filesizeformat }}{% else %}—{% endif %}</td>
-          <td class="muted">{% if s.size_snapshots != None %}{{ s.size_snapshots|filesizeformat }}{% else %}—{% endif %}</td>
-          <td>{% if s.size_total != None %}<strong>{{ s.size_total|filesizeformat }}</strong>{% else %}—{% endif %}</td>
+          <td class="muted" data-size><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></td>
+          <td class="muted" data-snap-size><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></td>
+          <td data-total><strong><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></strong></td>
           <td>
             <div class="muted text-12">{{ s.valid_users|default:"todos" }}</div>
             {% if s.read_only %}<span class="tag">somente leitura</span>{% else %}<span class="tag ok">leitura/escrita</span>{% endif %}
@@ -50,4 +52,5 @@
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>
 {% endif %}
+<script src="{% static 'js/share-sizes.js' %}" defer></script>
 {% endblock %}

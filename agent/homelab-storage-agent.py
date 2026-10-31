@@ -20,6 +20,7 @@ import shlex
 import shutil
 import socketserver
 import sqlite3
+import threading
 import subprocess
 import sys
 import tarfile
@@ -882,23 +883,56 @@ def _parse_smb_conf() -> configparser.ConfigParser:
     return parser
 
 
+_SIZE_CACHE_SECONDS = 180
+_size_cache_lock = threading.Lock()
+_size_cache: dict[tuple, tuple[float, int]] = {}
+
+
+def _recall_size(key: tuple) -> int | None:
+    with _size_cache_lock:
+        hit = _size_cache.get(key)
+        if hit and time.monotonic() - hit[0] < _SIZE_CACHE_SECONDS:
+            return hit[1]
+    return None
+
+
+def _remember_size(key: tuple, value: int) -> int:
+    with _size_cache_lock:
+        _size_cache[key] = (time.monotonic(), value)
+    return value
+
+
+def _forget_size_cache() -> None:
+    with _size_cache_lock:
+        _size_cache.clear()
+
+
 def _dir_size_bytes(path: str, exclude: str | None = None, timeout: int = 120) -> int:
     if not path or not os.path.isdir(path):
         return 0
+    key = ("du", path, exclude or "")
+    cached = _recall_size(key)
+    if cached is not None:
+        return cached
     args = ["du", "-sb"]
     if exclude:
         args.append(f"--exclude={exclude}")
     args.append(path)
     try:
-        return int(run(args, timeout=timeout).split()[0])
+        value = int(run(args, timeout=timeout).split()[0])
     except (AgentError, ValueError, IndexError):
         return 0
+    return _remember_size(key, value)
 
 
 def _btrfs_du_bytes(path: str) -> int:
     """Tamanho aproximado do diretorio de snapshots Btrfs (inclui extents compartilhados)."""
     if not path or not os.path.isdir(path):
         return 0
+    key = ("btrfs", path)
+    cached = _recall_size(key)
+    if cached is not None:
+        return cached
     try:
         out = run(["btrfs", "filesystem", "du", "-s", "--raw", path], timeout=180)
     except AgentError:
@@ -908,7 +942,7 @@ def _btrfs_du_bytes(path: str) -> int:
         parts = line.split()
         if len(parts) >= 4 and parts[0].isdigit():
             try:
-                return int(parts[0])
+                return _remember_size(key, int(parts[0]))
             except ValueError:
                 continue
     return 0
@@ -1107,6 +1141,7 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
         save_policies(policy)
 
     log(f"CREATE_SHARE {name} path={path}")
+    _forget_size_cache()
     return {"name": name, "path": path, "groups": [ro_group, rw_group], "backup": backup}
 
 
@@ -1280,6 +1315,7 @@ def op_snapshot_create(share: str, **_):
         _delete_snapshot(os.path.join(snapdir, old), backend)
         log(f"PRUNE {share}/{old}")
     log(f"SNAPSHOT {share} {stamp}")
+    _forget_size_cache()
     return {"share": share, "name": stamp, "backend": backend}
 
 
@@ -1295,6 +1331,7 @@ def op_snapshot_delete(share: str, name: str, **_):
         raise AgentError(f"Snapshot nao encontrado: {name}")
     _delete_snapshot(real, backend)
     log(f"DELETE_SNAPSHOT {share}/{name}")
+    _forget_size_cache()
     return {"share": share, "name": name}
 
 

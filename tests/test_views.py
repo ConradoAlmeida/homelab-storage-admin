@@ -447,6 +447,29 @@ class ViewSmokeTests(TestCase):
             },
         )
 
+    def test_shares_renderiza_antes_de_medir_o_disco(self):
+        self.fake.list_shares.return_value = [
+            {
+                "name": "docs",
+                "path": "/mnt/nas/docs",
+                "browseable": True,
+                "read_only": False,
+                "comment": "",
+                "valid_users": "",
+            }
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {"share": "docs", "enabled": True, "keep": 7, "count": 2}
+        ]
+        response = self.client.get("/shares/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-share="docs"')
+        self.assertContains(response, "/metrics/shares/")
+        self.assertContains(response, "share-sizes.js")
+        self.assertContains(response, "keep 7")
+        self.fake.list_shares.assert_called_once_with(include_size=False)
+        self.fake.snapshot_usage.assert_called_once_with(include_size=False)
+
     def test_backup_check_chama_o_agente(self):
         self.fake.backup_check.return_value = {
             "ok": True,

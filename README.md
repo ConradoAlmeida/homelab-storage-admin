@@ -45,8 +45,9 @@ Ubuntu+Samba via perfil de host.
 | Ver dados e snapshots | Dashboard / Shares |
 | Criar/remover snapshot Btrfs | Snapshots |
 
-O dashboard carrega primeiro o estado básico e busca os tamanhos dos shares
-depois, em `/metrics/shares/`; assim o `du`/`btrfs du` não bloqueia o render.
+O dashboard e a página de shares carregam primeiro a lista e buscam os
+tamanhos depois, em `/metrics/shares/`. O agente reaproveita cada `du` por
+3 minutos, então abrir a página de novo não mede o disco outra vez.
 O card **Saúde** vem de `health_overview` e o card **Backup de arquivos** lê os
 jobs de `/backups/arquivos/`; jobs restic aparecem em seção separada.
 

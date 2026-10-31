@@ -17,13 +17,22 @@
     return value.toFixed(index > 1 ? 1 : 0) + " " + units[index];
   }
 
+  function stopSpinners() {
+    document.querySelectorAll("[data-size], [data-snap-size], [data-total] strong").forEach((cell) => {
+      if (cell.querySelector(".spinner")) cell.textContent = "—";
+    });
+  }
+
   async function loadSizes() {
     try {
       const response = await fetch(endpoint, {
         headers: {"Accept": "application/json"},
         cache: "no-store"
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        stopSpinners();
+        return;
+      }
       const data = await response.json();
       const byName = new Map((data.shares || []).map((item) => [item.name, item]));
       document.querySelectorAll("tr[data-share]").forEach((row) => {
@@ -37,7 +46,7 @@
         if (total) total.textContent = fmtBytes(item.size_total);
       });
     } catch (error) {
-      // Mantem os placeholders; o dashboard continua utilizavel.
+      stopSpinners();
     }
   }
 

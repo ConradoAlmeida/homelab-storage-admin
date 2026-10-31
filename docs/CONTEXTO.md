@@ -52,6 +52,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
 - Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.
 - Dashboard lista jobs de arquivos e jobs restic em seções separadas.
+  Os tamanhos dos shares chegam depois do HTML, com cache de 3 minutos no
+  agente; a página Shares usa o mesmo caminho.
 - Backups do Gitea e do Credenciais validados com restore de teste.
   O Gitea para pendrive também foi validado manualmente; não retestar sem
   mudança no fluxo de dump/cópia USB.

@@ -123,3 +123,34 @@ def test_list_shares_size_payload_has_live_extra_total(agent_module, monkeypatch
     assert shares[0]["size"] == 100
     assert shares[0]["size_snapshots"] == 150
     assert shares[0]["size_total"] == 250
+
+
+def test_dir_size_reaproveita_medicao_por_tres_minutos(agent_module, monkeypatch, tmp_path):
+    agent = agent_module
+    calls = {"n": 0}
+
+    def fake_run(args, input_text=None, timeout=60):
+        calls["n"] += 1
+        return "10\t" + args[-1]
+
+    monkeypatch.setattr(agent, "run", fake_run)
+    agent._size_cache.clear()
+    path = str(tmp_path)
+    assert agent._dir_size_bytes(path) == 10
+    assert agent._dir_size_bytes(path) == 10
+    assert calls["n"] == 1
+    agent._forget_size_cache()
+    assert agent._dir_size_bytes(path) == 10
+    assert calls["n"] == 2
+
+
+def test_dir_size_nao_grava_falha_no_cache(agent_module, monkeypatch, tmp_path):
+    agent = agent_module
+
+    def boom(args, input_text=None, timeout=60):
+        raise agent.AgentError("du falhou")
+
+    monkeypatch.setattr(agent, "run", boom)
+    agent._size_cache.clear()
+    assert agent._dir_size_bytes(str(tmp_path)) == 0
+    assert agent._size_cache == {}

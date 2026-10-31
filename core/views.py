@@ -580,9 +580,10 @@ class SharesView(AgentTemplateView):
         context = super().get_context_data(**kwargs)
         context.update({"agent_error": None, "shares": []})
         try:
-            shares = agent.list_shares(include_size=True)
+            shares = agent.list_shares(include_size=False)
             snap_by_name = {
-                item.get("share"): item for item in agent.snapshot_usage()
+                item.get("share"): item
+                for item in agent.snapshot_usage(include_size=False)
             }
             for share in shares:
                 snap = snap_by_name.get(share.get("name"))
