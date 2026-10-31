@@ -279,9 +279,7 @@ def host_capabilities() -> dict:
         "storage_root_mounted": os.path.ismount(STORAGE_ROOT),
         "storage_root_fstype": fstype,
         "snapshot_backend": snapshot_backend_for(STORAGE_ROOT),
-        "credenciais_backup": bool(
-            Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
-        ),
+        "credenciais_backup": _credenciais_instalado(),
         "gitea": _container_exists(GITEA_CONTAINER),
         "containers": bool(_runtime_containers()),
         "firewall": bool(shutil.which("ufw")),
@@ -4483,6 +4481,81 @@ def _gitea_health_alertas() -> list[dict]:
     return alertas
 
 
+def _credenciais_instalado() -> bool:
+    return Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
+
+
+def _email_health_alertas() -> list[dict]:
+    """Avisos de SMTP/Graph do Moya Credenciais. No Pi o app nao existe."""
+    if not _credenciais_instalado():
+        return []
+    email_ok = False
+    email_off = False
+    ui_email = Path(CREDENCIAIS_DB).parent / "email.json"
+    provedor_email = "env"
+    if ui_email.is_file():
+        try:
+            dados_email = json.loads(ui_email.read_text())
+        except (OSError, json.JSONDecodeError):
+            dados_email = {}
+        if isinstance(dados_email, dict):
+            provedor_email = str(dados_email.get("provider") or "env")
+            if provedor_email == "off":
+                email_off = True
+            elif provedor_email == "smtp":
+                smtp = dados_email.get("smtp") or {}
+                email_ok = all(
+                    smtp.get(chave)
+                    for chave in ("host", "user", "password", "from")
+                )
+            elif provedor_email == "graph":
+                graph = dados_email.get("graph") or {}
+                email_ok = all(
+                    graph.get(chave)
+                    for chave in ("tenant", "client", "secret", "sender")
+                )
+    if provedor_email == "env":
+        env_credenciais = Path(CREDENCIAIS_ENV)
+        if env_credenciais.is_file():
+            try:
+                config_env = {}
+                for linha in env_credenciais.read_text().splitlines():
+                    limpa = linha.strip()
+                    if not limpa or limpa.startswith("#") or "=" not in limpa:
+                        continue
+                    chave, valor = limpa.split("=", 1)
+                    config_env[chave.strip()] = valor.strip().strip("\"'")
+                smtp_env = bool(config_env.get("EMAIL_HOST"))
+                graph_env = all(
+                    config_env.get(chave)
+                    for chave in (
+                        "GRAPH_TENANT_ID",
+                        "GRAPH_CLIENT_ID",
+                        "GRAPH_CLIENT_SECRET",
+                    )
+                )
+                email_ok = smtp_env or graph_env
+            except OSError:
+                pass
+    if email_off:
+        return [
+            _alerta(
+                "info",
+                "Envio de email desativado na interface",
+                "Ativacao por link continua manual.",
+            )
+        ]
+    if not email_ok:
+        return [
+            _alerta(
+                "info",
+                "Email nao configurado",
+                "Ativacao por link continua manual (SMTP ou Graph).",
+            )
+        ]
+    return []
+
+
 def op_health_overview(**_):
     alertas: list[dict] = []
 
@@ -4514,9 +4587,7 @@ def op_health_overview(**_):
     except AgentError:
         config = {"jobs": []}
     for job in config.get("jobs", []):
-        if job["name"] == "credenciais" and not (
-            Path(CREDENCIAIS_DB).is_file() and Path(CREDENCIAIS_ENV).is_file()
-        ):
+        if job["name"] == "credenciais" and not _credenciais_instalado():
             continue
         rotulo = job.get("label") or job["name"]
         faltando = [
@@ -4652,70 +4723,7 @@ def op_health_overview(**_):
             )
         )
 
-    email_ok = False
-    email_off = False
-    ui_email = Path("/home/conrado/moya_credenciais_app/data/email.json")
-    provedor_email = "env"
-    if ui_email.is_file():
-        try:
-            dados_email = json.loads(ui_email.read_text())
-        except (OSError, json.JSONDecodeError):
-            dados_email = {}
-        if isinstance(dados_email, dict):
-            provedor_email = str(dados_email.get("provider") or "env")
-            if provedor_email == "off":
-                email_off = True
-            elif provedor_email == "smtp":
-                smtp = dados_email.get("smtp") or {}
-                email_ok = all(
-                    smtp.get(chave)
-                    for chave in ("host", "user", "password", "from")
-                )
-            elif provedor_email == "graph":
-                graph = dados_email.get("graph") or {}
-                email_ok = all(
-                    graph.get(chave)
-                    for chave in ("tenant", "client", "secret", "sender")
-                )
-    if provedor_email == "env":
-        env_credenciais = Path("/home/conrado/moya_credenciais_app/.env")
-        if env_credenciais.is_file():
-            try:
-                config_env = {}
-                for linha in env_credenciais.read_text().splitlines():
-                    limpa = linha.strip()
-                    if not limpa or limpa.startswith("#") or "=" not in limpa:
-                        continue
-                    chave, valor = limpa.split("=", 1)
-                    config_env[chave.strip()] = valor.strip().strip("\"'")
-                smtp_env = bool(config_env.get("EMAIL_HOST"))
-                graph_env = all(
-                    config_env.get(chave)
-                    for chave in (
-                        "GRAPH_TENANT_ID",
-                        "GRAPH_CLIENT_ID",
-                        "GRAPH_CLIENT_SECRET",
-                    )
-                )
-                email_ok = smtp_env or graph_env
-            except OSError:
-                pass
-    if email_off:
-        alertas.append(
-            _alerta(
-                "info",
-                "Envio de email desativado na interface",
-                "Ativacao por link continua manual.",
-            )
-        )
-    elif not email_ok:
-        alertas.append(
-            _alerta(
-                "info",
-                "Email nao configurado",
-                "Ativacao por link continua manual (SMTP ou Graph).",
-            )
-        )
+    alertas.extend(_email_health_alertas())
 
     ordem = {"red": 0, "warn": 1, "info": 2}
     alertas.sort(key=lambda item: ordem.get(item["level"], 9))

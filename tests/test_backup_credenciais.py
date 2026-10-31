@@ -370,3 +370,22 @@ def test_job_backup_para_usb_com_hash(agent_module, monkeypatch, tmp_path):
     assert resultado["verified"] is True
     sidecar = usb / "apps" / "apps" / f"{resultado['archive']}.sha256"
     assert resultado["sha256"] in sidecar.read_text()
+
+
+def test_saude_ignora_email_sem_credenciais(agent_module):
+    titulos = [item["title"] for item in agent_module._email_health_alertas()]
+    assert titulos == []
+
+
+def test_saude_avisa_email_quando_credenciais_existe(agent_module):
+    _preparar(agent_module)
+    titulos = [item["title"] for item in agent_module._email_health_alertas()]
+    assert titulos == ["Email nao configurado"]
+
+
+def test_saude_aceita_email_configurado_no_env(agent_module):
+    banco, ambiente = _fontes(agent_module)
+    _criar_banco(banco)
+    ambiente.parent.mkdir(parents=True, exist_ok=True)
+    ambiente.write_text("EMAIL_HOST=smtp.example\n")
+    assert agent_module._email_health_alertas() == []
