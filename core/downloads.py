@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
+from . import qbittorrent
 from .agent import AgentError, agent
 from .forms import TorrentAddForm
 from .models import AuditLog
@@ -26,8 +27,32 @@ class ExigeJellyfinMixin:
         return super().dispatch(request, *args, **kwargs)
 
 
+def _bibliotecas(overview) -> list:
+    libraries = overview.get("libraries") if isinstance(overview, dict) else []
+    if not isinstance(libraries, list):
+        return []
+    return [item for item in libraries if isinstance(item, dict)]
+
+
 def _visao():
-    return agent.torrent_overview()
+    bruto = agent.torrent_overview()
+    if not isinstance(bruto, dict):
+        bruto = {}
+    libraries = _bibliotecas(bruto)
+    client, torrents, erro = qbittorrent.estado(libraries)
+    return {
+        "libraries": libraries,
+        "libraries_error": bruto.get("libraries_error")
+        or (
+            ""
+            if libraries
+            else "Nenhuma pasta de mídia encontrada na configuração do Jellyfin."
+        ),
+        "client": client if isinstance(client, dict) else {},
+        "torrents": torrents if isinstance(torrents, list) else [],
+        "error": erro or "",
+        "active": any(isinstance(item, dict) and item.get("active") for item in (torrents or [])),
+    }
 
 
 def _auditar(request, action, target):
@@ -93,7 +118,9 @@ class TorrentAddView(ExigeJellyfinMixin, AgentView):
             )
         data = form.cleaned_data
         try:
-            resultado = agent.torrent_add(data["magnet"], data["library"])
+            resultado = qbittorrent.adicionar(
+                data["magnet"], data["library"], _bibliotecas(overview)
+            )
         except AgentError as exc:
             form.add_error(None, str(exc))
             return render(
@@ -114,7 +141,8 @@ class TorrentActionView(ExigeJellyfinMixin, AgentPostView):
         torrent_hash = request.POST.get("hash", "")
         action = request.POST.get("action", "")
         try:
-            agent.torrent_action(torrent_hash, action)
+            overview = _visao()
+            qbittorrent.acao(torrent_hash, action, _bibliotecas(overview))
         except AgentError as exc:
             messages.error(request, str(exc))
         else:

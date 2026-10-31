@@ -2,8 +2,31 @@
 # Use junto com host.env: deploy.sh carrega /etc/homelab-storage-admin/host.env.
 services:
   web:
+    environment:
+      QBITTORRENT_URL: http://qbittorrent:8080
+    depends_on:
+      - qbittorrent
     volumes:
       - /mnt/nas/apps/homelab-storage-admin/data:/app/data
       - /mnt/nas:/mnt/nas:ro
       - ${JELLYFIN_ROOT:-/mnt/jellyfin}:${JELLYFIN_ROOT:-/mnt/jellyfin}:ro
       - /run/homelab-storage-admin:/run/homelab-storage-admin:ro
+  # Download de mídia para o Jellyfin. A API fica só na rede do Compose;
+  # o celular usa a página Torrents. PGID 1024 é o grupo jellyfin deste Pi.
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1024"
+      TZ: America/Sao_Paulo
+      WEBUI_PORT: "8080"
+      TORRENTING_PORT: "6881"
+    volumes:
+      - /mnt/nas/apps/qbittorrent/config:/config
+      - ${JELLYFIN_ROOT:-/mnt/jellyfin}:${JELLYFIN_ROOT:-/mnt/jellyfin}
+    ports:
+      - "6881:6881"
+      - "6881:6881/udp"
+    stop_grace_period: 30s

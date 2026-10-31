@@ -22,6 +22,10 @@ def test_homelab_overlay_keeps_current_paths():
     assert "/mnt/nas:/mnt/nas:ro" in text
     assert "${JELLYFIN_ROOT:-/mnt/jellyfin}:${JELLYFIN_ROOT:-/mnt/jellyfin}:ro" in text
     assert "/run/homelab-storage-admin:/run/homelab-storage-admin:ro" in text
+    assert "container_name: qbittorrent" in text
+    assert "QBITTORRENT_URL: http://qbittorrent:8080" in text
+    assert "6881:6881" in text
+    assert "8080:8080" not in text
 
 
 def test_host_env_example_is_pi_profile():

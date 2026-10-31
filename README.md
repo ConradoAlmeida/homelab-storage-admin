@@ -464,16 +464,16 @@ de um prefixo permitido.
 A página **Torrents** só aparece quando o container `jellyfin` existe. Ela lê
 as bibliotecas em `/config/root/default/*/options.xml` (no Pi, Filmes e Séries)
 e traduz o caminho do container para o diretório do host. O destino não é livre:
-o agente só aceita uma dessas pastas.
+só uma dessas pastas.
 
-O download em si é do **qBittorrent** (`qbittorrent-nox`), pela API em
-`QBITTORRENT_URL` (padrão `http://127.0.0.1:8090`). A porta 8080 deste homelab
-já é do Pi-hole. O WebUI fica só em localhost. Se ele exigir senha, defina
-`QBITTORRENT_USER` e `QBITTORRENT_PASSWORD` no `host.env`; se a autenticação de
-localhost estiver desligada, a senha pode ficar vazia. Sem o qBittorrent, a
-página explica o motivo e não oferece o formulário.
+O download roda no container `qbittorrent` do overlay do homelab
+(`lscr.io/linuxserver/qbittorrent`), na mesma rede do painel. A WebUI não é
+publicada no host — a porta 8080 deste Pi continua com o Pi-hole. O celular
+usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
+A porta de pares `6881` é a única publicada. Sem o container, a página explica
+o motivo e não oferece o formulário.
 
-Pausar, retomar e remover passam pela mesma API. **Apagar arquivos** pede
+Pausar, retomar e remover passam pela API interna. **Apagar arquivos** pede
 confirmação e só vale para um torrent cuja pasta está dentro de uma biblioteca.
 A pasta da biblioteca não é removida.
 

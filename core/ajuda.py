@@ -212,7 +212,7 @@ AJUDA: dict[str, dict[str, Any]] = {
     },
     "torrents": {
         "title": "Torrents",
-        "summary": "Envia um link magnético para uma pasta de mídia do Jellyfin.",
+        "summary": "Envia um link magnético para uma pasta de mídia do Jellyfin. O download roda no servidor.",
         "chapters": [
             {
                 "title": "Link magnético",

@@ -360,17 +360,6 @@ class AgentClient:
     def torrent_overview(self):
         return self.call("torrent_overview", timeout=30)
 
-    def torrent_add(self, magnet, library):
-        return self.call("torrent_add", timeout=60, magnet=magnet, library=library)
-
-    def torrent_action(self, torrent_hash, action):
-        return self.call(
-            "torrent_action",
-            timeout=60,
-            torrent_hash=torrent_hash,
-            action=action,
-        )
-
 
 if settings.DEBUG and os.environ.get("STORAGE_ADMIN_DEMO") == "1":
     from .demo_agent import DemoAgent

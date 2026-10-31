@@ -52,6 +52,15 @@ if [[ ! -f /etc/systemd/system/homelab-storage-snapshot.service ]] || ! cmp -s a
   NEED_AGENT=1
 fi
 
+if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
+  qbit_conf="/mnt/nas/apps/qbittorrent/config/qBittorrent/qBittorrent.conf"
+  if [[ ! -f "$qbit_conf" ]]; then
+    mkdir -p "$(dirname "$qbit_conf")" "${JELLYFIN_ROOT:-/mnt/jellyfin}/.incomplete"
+    cp "$HERE/deploy/pi/qbittorrent.conf" "$qbit_conf"
+    echo "==> Configuracao inicial do qBittorrent"
+  fi
+fi
+
 echo "==> docker compose up -d --build"
 docker compose "${COMPOSE_FILES[@]}" up -d --build
 

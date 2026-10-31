@@ -150,6 +150,15 @@ class ViewSmokeTests(TestCase):
             patcher = patch.object(module, "agent", fake)
             patcher.start()
             self.addCleanup(patcher.stop)
+        self.qbit = Mock()
+        self.qbit.estado.return_value = (
+            {"available": False, "version": "", "reason": ""},
+            [],
+            "",
+        )
+        qbit_patch = patch.object(core_downloads, "qbittorrent", self.qbit)
+        qbit_patch.start()
+        self.addCleanup(qbit_patch.stop)
         context_processors._cached_caps = None
         context_processors._cached_at = 0.0
 
@@ -176,12 +185,10 @@ class ViewSmokeTests(TestCase):
                 {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
             ],
             "libraries_error": "",
-            "client": {
-                "available": True,
-                "version": "v5.0.1",
-                "reason": "",
-            },
-            "torrents": [
+        }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5.0.1", "reason": ""},
+            [
                 {
                     "hash": "a" * 40,
                     "name": "Filme",
@@ -197,9 +204,8 @@ class ViewSmokeTests(TestCase):
                     "can_resume": False,
                 }
             ],
-            "error": "",
-            "active": True,
-        }
+            "",
+        )
         resposta = self.client.get("/torrents/")
         self.assertContains(resposta, "Filmes — /mnt/jellyfin/filmes")
         self.assertContains(resposta, "Pausar")
@@ -210,23 +216,25 @@ class ViewSmokeTests(TestCase):
 
     def test_torrent_recusa_endereco_http_e_audita_magnet(self):
         self._liga_jellyfin()
+        libraries = [
+            {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+        ]
         self.fake.torrent_overview.return_value = {
-            "libraries": [
-                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
-            ],
+            "libraries": libraries,
             "libraries_error": "",
-            "client": {"available": True, "version": "v5", "reason": ""},
-            "torrents": [],
-            "error": "",
-            "active": False,
         }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5", "reason": ""},
+            [],
+            "",
+        )
         recusa = self.client.post(
             "/torrents/adicionar/",
             {"magnet": "https://example.test/filme.torrent", "library": "filmes"},
         )
         self.assertContains(recusa, "magnet:?xt=urn:btih:")
-        self.fake.torrent_add.assert_not_called()
-        self.fake.torrent_add.return_value = {
+        self.qbit.adicionar.assert_not_called()
+        self.qbit.adicionar.return_value = {
             "library": "Filmes",
             "path": "/mnt/jellyfin/filmes",
         }
@@ -236,7 +244,7 @@ class ViewSmokeTests(TestCase):
             {"magnet": magnet, "library": "filmes"},
         )
         self.assertRedirects(ok, "/torrents/")
-        self.fake.torrent_add.assert_called_once_with(magnet, "filmes")
+        self.qbit.adicionar.assert_called_once_with(magnet, "filmes", libraries)
         self.assertTrue(
             AuditLog.objects.filter(action="torrent.add", target="Filmes").exists()
         )
@@ -251,7 +259,7 @@ class ViewSmokeTests(TestCase):
             "error": "",
             "active": False,
         }
-        self.fake.torrent_action.return_value = {
+        self.qbit.acao.return_value = {
             "hash": "a" * 40,
             "action": "delete_files",
         }
@@ -260,7 +268,7 @@ class ViewSmokeTests(TestCase):
             {"hash": "a" * 40, "action": "delete_files"},
         )
         self.assertRedirects(resposta, "/torrents/")
-        self.fake.torrent_action.assert_called_once_with("a" * 40, "delete_files")
+        self.qbit.acao.assert_called_once_with("a" * 40, "delete_files", [])
         self.assertTrue(
             AuditLog.objects.filter(
                 action="torrent.delete_files", target="a" * 40
