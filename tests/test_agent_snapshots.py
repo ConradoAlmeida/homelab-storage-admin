@@ -259,6 +259,7 @@ def test_policy_save_btrfs_recusa_diretorio_que_nao_e_subvolume(agent_module, mo
     agent = agent_module
     gravar_smb(agent)
     agent.SNAPSHOT_BACKEND = "btrfs"
+    monkeypatch.setattr(agent, "_fstype", lambda path: "btrfs")
     monkeypatch.setattr(agent.os.path, "ismount", lambda path: True)
     falso_run(agent, monkeypatch, falhar="btrfs")
     original = Path(agent.SMB_CONF).read_text()
