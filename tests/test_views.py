@@ -209,6 +209,8 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/torrents/")
         self.assertContains(resposta, "Filmes — /mnt/jellyfin/filmes")
         self.assertContains(resposta, "Pausar")
+        self.assertContains(resposta, "Download")
+        self.assertContains(resposta, "Upload")
         self.assertContains(resposta, "Apagar os arquivos deste torrent")
         self.assertContains(resposta, "downloads.js")
         painel = self.client.get("/")

@@ -76,7 +76,8 @@
               <th>Pasta</th>
               <th>Estado</th>
               <th>Progresso</th>
-              <th>Velocidade</th>
+              <th>Download</th>
+              <th>Upload</th>
               <th aria-label="Ações"></th>
             </tr>
           </thead>
@@ -90,7 +91,8 @@
                 <td>{{ item.library }}</td>
                 <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.can_resume %}warn{% else %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
                 <td class="mono"><span data-percent>{{ item.progress_label }}</span> <span class="muted" data-eta>{% if item.eta %}· {{ item.eta }}{% endif %}</span></td>
-                <td class="mono" data-speed>{{ item.speed }}</td>
+                <td class="mono" data-download>{{ item.download_speed }}</td>
+                <td class="mono" data-upload>{{ item.upload_speed }}</td>
                 <td class="file-actions">
                   <div class="row-actions">
                     {% if item.can_pause %}

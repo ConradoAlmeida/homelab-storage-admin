@@ -37,7 +37,8 @@
             return;
           }
           texto(linha, "[data-state]", item.state_label);
-          texto(linha, "[data-speed]", item.speed);
+          texto(linha, "[data-download]", item.download_speed);
+          texto(linha, "[data-upload]", item.upload_speed);
           texto(linha, "[data-percent]", item.progress_label);
           texto(linha, "[data-eta]", item.eta ? "· " + item.eta : "");
         }

@@ -216,10 +216,14 @@ def _publico(item: dict, libraries: list[dict]) -> dict | None:
         progresso = 0
     progresso = max(0, min(100, progresso))
     concluido = estado_bruto in _CONCLUIDOS
-    if concluido:
-        velocidade = ""
-    else:
-        velocidade = _rotulo_bytes(item.get("dlspeed") or 0) + "/s"
+    try:
+        baixando = max(0, int(item.get("dlspeed") or 0))
+    except (TypeError, ValueError):
+        baixando = 0
+    try:
+        enviando = max(0, int(item.get("upspeed") or 0))
+    except (TypeError, ValueError):
+        enviando = 0
     return {
         "hash": (item.get("hash") or "").lower(),
         "name": item.get("name") or "sem nome",
@@ -227,11 +231,15 @@ def _publico(item: dict, libraries: list[dict]) -> dict | None:
         "progress_label": f"{progresso}%",
         "state": estado_bruto,
         "state_label": _ESTADOS.get(estado_bruto, estado_bruto or "desconhecido"),
-        "speed": velocidade,
+        "download_speed": _rotulo_bytes(baixando) + "/s",
+        "upload_speed": _rotulo_bytes(enviando) + "/s",
         "eta": "" if concluido else _rotulo_eta(item.get("eta")),
         "size": _rotulo_bytes(item.get("size") or 0),
         "library": biblioteca.get("name") or "",
-        "active": estado_bruto in _ATIVOS,
+        "active": estado_bruto in _ATIVOS
+        or estado_bruto in {"uploading", "forcedUP"}
+        or baixando > 0
+        or enviando > 0,
         "can_pause": estado_bruto in _ATIVOS,
         "can_resume": estado_bruto in _BAIXANDO_PAUSADO,
     }
@@ -265,7 +273,8 @@ def _demo_torrent() -> dict:
         "progress_label": "42%",
         "state": "downloading",
         "state_label": "baixando",
-        "speed": "1,2 MB/s",
+        "download_speed": "1,2 MB/s",
+        "upload_speed": "80 KB/s",
         "eta": "12 min",
         "size": "2,0 GB",
         "library": "Filmes",

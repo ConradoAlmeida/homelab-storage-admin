@@ -228,8 +228,8 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Andamento",
                 "text": (
-                    "Mostra progresso, velocidade e tempo restante. A lista "
-                    "atualiza sozinha enquanto há download."
+                    "Mostra progresso, taxa de download, taxa de upload e tempo "
+                    "restante. A lista atualiza sozinha enquanto há tráfego."
                 ),
             },
             {
