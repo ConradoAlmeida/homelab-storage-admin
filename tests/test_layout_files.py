@@ -72,6 +72,16 @@ def test_pi_boot_unit_uses_host_env_and_overlay():
     assert "show dev wlan0" not in text
 
 
+def test_jellyfin_boot_unit_waits_for_media_mount():
+    text = read("deploy/pi/jellyfin-compose.service")
+    assert "Requires=docker.service mnt-jellyfin.mount mnt-nas.mount" in text
+    assert "BindsTo=mnt-jellyfin.mount" in text
+    assert "After=docker.service mnt-jellyfin.mount mnt-nas.mount" in text
+    assert "WorkingDirectory=/opt/stacks/jellyfin" in text
+    assert "findmnt --mountpoint /mnt/jellyfin" in text
+    assert "unless-stopped" not in text
+
+
 def test_pi_motd_points_to_storage_admin():
     text = read("deploy/pi/motd")
     assert "Storage admin:" in text
