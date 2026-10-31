@@ -234,7 +234,10 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Pausar e retomar",
-                "text": "Interrompe ou continua o torrent sem apagar o que já chegou.",
+                "text": (
+                    "Enquanto o arquivo baixa, interrompe ou continua sem apagar "
+                    "o que já chegou. No torrent concluído esses botões somem."
+                ),
             },
             {
                 "title": "Remover",

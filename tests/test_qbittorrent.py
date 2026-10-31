@@ -99,6 +99,34 @@ def test_estado_esconde_torrent_fora_da_biblioteca(monkeypatch, tmp_path):
     assert torrents[0]["progress"] == 50
     assert torrents[0]["library"] == "Filmes"
     assert torrents[0]["active"] is True
+    assert torrents[0]["can_pause"] is True
+
+
+def test_concluido_nao_oferece_pausar(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    cliente(
+        monkeypatch,
+        info=[
+            {
+                "hash": "a" * 40,
+                "name": "Filme",
+                "save_path": os.path.realpath(filmes),
+                "progress": 1,
+                "state": "stalledUP",
+                "dlspeed": 0,
+                "eta": 8640000,
+                "size": 1024,
+            }
+        ],
+    )
+    _client, torrents, erro = qbit.estado(bibliotecas(filmes))
+    assert erro == ""
+    assert torrents[0]["state_label"] == "concluído"
+    assert torrents[0]["can_pause"] is False
+    assert torrents[0]["can_resume"] is False
+    assert torrents[0]["speed"] == ""
+    assert torrents[0]["eta"] == ""
 
 
 def test_apagar_arquivos_recusa_torrent_fora_da_biblioteca(monkeypatch, tmp_path):

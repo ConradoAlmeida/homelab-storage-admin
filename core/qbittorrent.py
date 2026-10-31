@@ -57,7 +57,16 @@ _ESTADOS = {
     "error": "erro",
     "missingFiles": "arquivos ausentes",
 }
-_PAUSADOS = {"pausedDL", "stoppedDL", "pausedUP", "stoppedUP"}
+_BAIXANDO_PAUSADO = {"pausedDL", "stoppedDL"}
+_CONCLUIDOS = {
+    "uploading",
+    "forcedUP",
+    "stalledUP",
+    "pausedUP",
+    "stoppedUP",
+    "queuedUP",
+    "checkingUP",
+}
 
 
 def _demo() -> bool:
@@ -206,6 +215,11 @@ def _publico(item: dict, libraries: list[dict]) -> dict | None:
     except (TypeError, ValueError):
         progresso = 0
     progresso = max(0, min(100, progresso))
+    concluido = estado_bruto in _CONCLUIDOS
+    if concluido:
+        velocidade = ""
+    else:
+        velocidade = _rotulo_bytes(item.get("dlspeed") or 0) + "/s"
     return {
         "hash": (item.get("hash") or "").lower(),
         "name": item.get("name") or "sem nome",
@@ -213,13 +227,13 @@ def _publico(item: dict, libraries: list[dict]) -> dict | None:
         "progress_label": f"{progresso}%",
         "state": estado_bruto,
         "state_label": _ESTADOS.get(estado_bruto, estado_bruto or "desconhecido"),
-        "speed": _rotulo_bytes(item.get("dlspeed") or 0) + "/s",
-        "eta": _rotulo_eta(item.get("eta")),
+        "speed": velocidade,
+        "eta": "" if concluido else _rotulo_eta(item.get("eta")),
         "size": _rotulo_bytes(item.get("size") or 0),
         "library": biblioteca.get("name") or "",
         "active": estado_bruto in _ATIVOS,
-        "can_pause": estado_bruto not in _PAUSADOS and estado_bruto not in {"error", "missingFiles"},
-        "can_resume": estado_bruto in _PAUSADOS,
+        "can_pause": estado_bruto in _ATIVOS,
+        "can_resume": estado_bruto in _BAIXANDO_PAUSADO,
     }
 
 

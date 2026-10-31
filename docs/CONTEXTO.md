@@ -25,7 +25,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent é um container do overlay do homelab, na rede
-  interna do Compose; a WebUI não fica no host. Sem o Jellyfin, a página
+  interna do Compose; a WebUI não fica no host. Pausar só aparece enquanto
+  baixa; no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
   não aparece.
 - Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo.
 - Backups:

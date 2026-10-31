@@ -473,7 +473,8 @@ usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
 A porta de pares `6881` é a única publicada. Sem o container, a página explica
 o motivo e não oferece o formulário.
 
-Pausar, retomar e remover passam pela API interna. **Apagar arquivos** pede
+Pausar e retomar valem enquanto o arquivo baixa. No torrent concluído esses
+botões somem; **Remover** tira o item da fila e o arquivo permanece. **Apagar arquivos** pede
 confirmação e só vale para um torrent cuja pasta está dentro de uma biblioteca.
 A pasta da biblioteca não é removida.
 
