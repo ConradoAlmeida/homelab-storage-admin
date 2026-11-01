@@ -30,7 +30,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent é um container do overlay do homelab, na rede
   interna do Compose; a WebUI não fica no host. A lista mostra as taxas de
-  download e de upload. Pausar só aparece enquanto
+  download e de upload, com filtro por nome, pasta e estado, e ordenação. Pausar só aparece enquanto
   baixa; no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
   não aparece. `POST /api/torrents/` repete esse envio com Bearer.
   Token vazio no banco desliga a rota. A categoria no qBittorrent é

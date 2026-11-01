@@ -229,7 +229,8 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "title": "Andamento",
                 "text": (
                     "Mostra progresso, taxa de download, taxa de upload e tempo "
-                    "restante. A lista atualiza sozinha enquanto há tráfego."
+                    "restante. Dá para filtrar por nome, pasta e estado, e "
+                    "ordenar pelo cabeçalho. A lista atualiza sozinha enquanto há tráfego."
                 ),
             },
             {

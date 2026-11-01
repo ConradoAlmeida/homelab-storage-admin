@@ -147,6 +147,8 @@ def test_estado_esconde_torrent_fora_da_biblioteca(monkeypatch, tmp_path):
     assert [item["name"] for item in torrents] == ["Filme"]
     assert torrents[0]["progress"] == 50
     assert torrents[0]["download_speed"] == "1,0 MB/s"
+    assert torrents[0]["download_bps"] == 1048576
+    assert torrents[0]["size_bytes"] == 1024
     assert torrents[0]["upload_speed"] == "0 B/s"
     assert torrents[0]["library"] == "Filmes"
     assert torrents[0]["active"] is True

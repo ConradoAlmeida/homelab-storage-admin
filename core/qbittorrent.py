@@ -237,6 +237,9 @@ def _publico(item: dict, libraries: list[dict]) -> dict | None:
         "upload_speed": _rotulo_bytes(enviando) + "/s",
         "eta": "" if concluido else _rotulo_eta(item.get("eta")),
         "size": _rotulo_bytes(item.get("size") or 0),
+        "size_bytes": max(0, int(item.get("size") or 0)),
+        "download_bps": baixando,
+        "upload_bps": enviando,
         "library": biblioteca.get("name") or "",
         "active": estado_bruto in _ATIVOS
         or estado_bruto in {"uploading", "forcedUP"}

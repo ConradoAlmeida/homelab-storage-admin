@@ -65,25 +65,81 @@
   <section class="section">
     <div class="section-head">
       <h2>Andamento</h2>
-      <span class="muted text-12">{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
+      <span class="muted text-12" data-torrent-count>{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
     </div>
     {% if overview.torrents %}
-      <div class="table-wrap" {% if overview.active %}data-torrent-poll="{% url 'torrent_status' %}"{% endif %}>
+      <div class="form-grid" data-torrent-filters>
+        <div class="form-group">
+          <label for="torrent-filtro-nome">Nome</label>
+          <input id="torrent-filtro-nome" class="form-control" type="search" placeholder="Filtrar pelo nome" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="torrent-filtro-pasta">Pasta</label>
+          <select id="torrent-filtro-pasta" class="form-control">
+            <option value="">Todas</option>
+            {% for biblioteca in overview.libraries %}
+              <option value="{{ biblioteca.name }}">{{ biblioteca.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="torrent-filtro-estado">Estado</label>
+          <select id="torrent-filtro-estado" class="form-control">
+            <option value="">Todos</option>
+            <option value="baixando">Baixando</option>
+            <option value="fila">Na fila</option>
+            <option value="pausado">Pausado</option>
+            <option value="concluido">Concluído</option>
+            <option value="erro">Erro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="torrent-ordem">Ordenar por</label>
+          <select id="torrent-ordem" class="form-control">
+            <option value="">Como chegaram</option>
+            <option value="name">Nome</option>
+            <option value="library">Pasta</option>
+            <option value="state">Estado</option>
+            <option value="progress">Progresso</option>
+            <option value="download">Download</option>
+            <option value="upload">Upload</option>
+            <option value="size">Tamanho</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="torrent-sentido">Sentido</label>
+          <select id="torrent-sentido" class="form-control">
+            <option value="asc">Crescente</option>
+            <option value="desc">Decrescente</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap" data-torrent-table {% if overview.active %}data-torrent-poll="{% url 'torrent_status' %}"{% endif %}>
         <table class="file-table">
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Pasta</th>
-              <th>Estado</th>
-              <th>Progresso</th>
-              <th>Download</th>
-              <th>Upload</th>
+              <th><button type="button" class="th-sort" data-sort="name">Nome</button></th>
+              <th><button type="button" class="th-sort" data-sort="library">Pasta</button></th>
+              <th><button type="button" class="th-sort" data-sort="state">Estado</button></th>
+              <th><button type="button" class="th-sort" data-sort="progress">Progresso</button></th>
+              <th><button type="button" class="th-sort" data-sort="download">Download</button></th>
+              <th><button type="button" class="th-sort" data-sort="upload">Upload</button></th>
               <th aria-label="Ações"></th>
             </tr>
           </thead>
           <tbody>
             {% for item in overview.torrents %}
-              <tr data-hash="{{ item.hash }}" data-state-code="{{ item.state }}">
+              <tr
+                data-hash="{{ item.hash }}"
+                data-state-code="{{ item.state }}"
+                data-name="{{ item.name }}"
+                data-library="{{ item.library }}"
+                data-state-label="{{ item.state_label }}"
+                data-progress="{{ item.progress|default:0 }}"
+                data-download="{{ item.download_bps|default:0 }}"
+                data-upload="{{ item.upload_bps|default:0 }}"
+                data-size="{{ item.size_bytes|default:0 }}"
+              >
                 <td>
                   <strong data-name>{{ item.name }}</strong>
                   <div class="muted text-11">{{ item.size }}</div>
@@ -129,6 +185,7 @@
           </tbody>
         </table>
       </div>
+      <p class="empty" data-torrent-empty hidden>Nenhum torrent com esse filtro.</p>
     {% else %}
       <div class="empty">Nenhum torrent nas pastas do Jellyfin.</div>
     {% endif %}
