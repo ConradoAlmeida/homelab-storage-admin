@@ -12,7 +12,9 @@ a:hover { color:#82bcff; }
 .sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:12px; padding:12px 10px; background:#12151f; border-right:1px solid var(--line); }
 .sidebar .brand { display:flex; flex-direction:column; gap:6px; padding:8px 10px 12px; border-bottom:1px solid var(--line); color:var(--txt); text-decoration:none; }
 .sidebar .brand img { width:176px; max-width:100%; height:auto; display:block; }
-.sidebar .brand img.mark { width:80px; }
+.sidebar .brand.brand-homelab { align-items:center; gap:2px; }
+.sidebar .brand.brand-homelab .brand-house { width:40px; }
+.sidebar .brand.brand-homelab .brand-word { width:100%; }
 .sidebar .brand span { color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
 .side-nav { display:flex; flex-direction:column; gap:2px; }
 .side-nav a { display:block; padding:8px 12px; border-radius:4px; color:var(--muted); font-size:13px; text-decoration:none; border:0; }

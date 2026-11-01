@@ -24,8 +24,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
 - No homelab o login centraliza a casa, menor, e o nome Conrado Homelab, um pouco
-  maior, os dois em roxo. A barra e os ícones do navegador usam só a casa.
-  No moya (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
+  maior, os dois em roxo. A barra repete essa marca, com a casa no tamanho de
+  um ícone. Os ícones do navegador usam só a casa. No moya
+  (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent é um container do overlay do homelab, na rede
   interna do Compose; a WebUI não fica no host. A lista mostra as taxas de
