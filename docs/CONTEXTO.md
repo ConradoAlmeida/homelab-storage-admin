@@ -8,7 +8,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `c5c6223` (criar token na página e no /admin) |
+| Versão em produção | `8f07b21` (filtro da tabela e fila do qBittorrent) |
 | Último deploy | 01/11/2026, Pi |
 | Testes | `264 passed` no Linux, sem a suíte `lab` |
 | Container | `homelab-storage-admin` |
