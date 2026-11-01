@@ -66,7 +66,7 @@ docker compose "${COMPOSE_FILES[@]}" up -d --build
 
 if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
   echo "==> firewall do qBittorrent e UPnP"
-  docker exec homelab-storage-admin python - << 'PY'
+  docker exec -i homelab-storage-admin python - << 'PY'
 import json
 import socket
 import time

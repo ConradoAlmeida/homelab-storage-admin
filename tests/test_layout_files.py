@@ -104,6 +104,7 @@ def test_deploy_loads_host_env_and_selected_overlay():
     assert "COMPOSE_OVERLAY" in text
     assert "docker-compose.homelab.yml" not in text
     assert 'docker compose "${COMPOSE_FILES[@]}" up -d --build' in text
+    assert "docker exec -i homelab-storage-admin python -" in text
     assert "6881/tcp" in text
     assert "6881/udp" in text
     assert "8090/tcp" in text
