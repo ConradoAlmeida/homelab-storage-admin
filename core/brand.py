@@ -22,7 +22,7 @@ def marca() -> dict:
     return {
         "homelab": True,
         "logo": "images/conrado/mark.png",
-        "login_logo": "images/conrado/lockup.png",
+        "login_logo": "images/conrado/wordmark.png",
         "alt": "Conrado Homelab",
         "favicon": "images/conrado/favicon.ico",
     }

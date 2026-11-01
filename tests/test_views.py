@@ -178,8 +178,10 @@ class ViewSmokeTests(TestCase):
     def test_login_e_favicon_usam_a_marca_do_homelab(self):
         self.client.logout()
         login = self.client.get("/login/")
-        self.assertContains(login, "images/conrado/lockup.png")
+        self.assertContains(login, "images/conrado/login-house.png")
+        self.assertContains(login, "images/conrado/wordmark.png")
         self.assertContains(login, 'alt="Conrado Homelab"')
+        self.assertNotContains(login, "images/conrado/lockup.png")
         self.assertContains(login, "images/conrado/favicon-32.png")
         icone = self.client.get("/favicon.ico")
         self.assertRedirects(
@@ -194,7 +196,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "moya_wordmark_official.svg")
         self.assertContains(response, 'alt="Moya"')
         self.assertNotContains(response, "images/conrado/mark.png")
-        self.assertNotContains(response, "images/conrado/lockup.png")
+        self.assertNotContains(response, "images/conrado/wordmark.png")
+        self.assertNotContains(response, "images/conrado/login-house.png")
         icone = self.client.get("/favicon.ico")
         self.assertRedirects(
             icone,
