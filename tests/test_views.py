@@ -249,9 +249,99 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Download")
         self.assertContains(resposta, "Upload")
         self.assertContains(resposta, "Apagar os arquivos deste torrent")
+        self.assertContains(resposta, "API de envio")
+        self.assertContains(resposta, "http://storage.homelab.lan/api/torrents/")
+        self.assertContains(resposta, "torrent já existe na lista")
+        self.assertContains(resposta, "GET /api/torrents/bibliotecas/")
         self.assertContains(resposta, "downloads.js")
         painel = self.client.get("/")
         self.assertContains(painel, 'href="/torrents/"')
+        self.assertContains(resposta, "A consulta do valor pede a senha do administrador.")
+        self.assertNotContains(resposta, 'name="password"')
+
+    @override_settings(TORRENT_API_TOKEN="token-da-api")
+    def test_admin_consulta_o_token_com_a_propria_senha(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+        }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5", "reason": ""},
+            [],
+            "",
+        )
+        self.user.is_superuser = True
+        self.user.set_password("test-password")
+        self.user.save()
+        self.client.force_login(self.user)
+        pagina = self.client.get("/torrents/")
+        self.assertContains(pagina, "Senha do administrador")
+        self.assertNotContains(pagina, "token-da-api")
+        recusa = self.client.post("/torrents/", {"password": "errada"})
+        self.assertContains(recusa, "Senha do administrador incorreta.")
+        self.assertNotContains(recusa, "token-da-api")
+        ok = self.client.post("/torrents/", {"password": "test-password"})
+        self.assertContains(ok, "token-da-api")
+        self.assertEqual(ok.headers["Cache-Control"], "no-store")
+        log = AuditLog.objects.get(action="torrent.token.view")
+        self.assertEqual(log.target, "TORRENT_API_TOKEN")
+        self.assertNotIn("token-da-api", log.detail)
+        self.user.is_superuser = False
+        self.user.save()
+        self.client.force_login(self.user)
+        bloqueado = self.client.post("/torrents/", {"password": "test-password"})
+        self.assertContains(bloqueado, "Só o administrador consulta o token.")
+        self.assertNotContains(bloqueado, "token-da-api")
+
+    def test_admin_troca_o_token_e_o_host_env_nao_volta(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+        }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5", "reason": ""},
+            [],
+            "",
+        )
+        self.user.is_superuser = True
+        self.user.set_password("test-password")
+        self.user.save()
+        self.client.force_login(self.user)
+        novo = "token-novo-da-api"
+        with self.settings(TORRENT_API_TOKEN="token-antigo-env"):
+            troca = self.client.post(
+                "/torrents/",
+                {"password": "test-password", "acao": "trocar", "token": novo},
+            )
+            self.assertContains(troca, novo)
+            self.assertContains(troca, "Token da API atualizado.")
+            log = AuditLog.objects.get(action="torrent.token.replace")
+            self.assertNotIn(novo, log.detail)
+            self.assertNotIn(novo, log.target)
+            curto = self.client.post(
+                "/torrents/",
+                {"password": "test-password", "acao": "trocar", "token": "curto"},
+            )
+            self.assertContains(curto, "16 a 256")
+            from core.models import token_da_api
+
+            self.assertEqual(token_da_api(), novo)
+            errada = self.client.post(
+                "/torrents/",
+                {
+                    "password": "errada",
+                    "acao": "trocar",
+                    "token": "outro-token-longo-16",
+                },
+            )
+            self.assertContains(errada, "Senha do administrador incorreta.")
+            self.assertEqual(token_da_api(), novo)
 
     def test_torrent_recusa_endereco_http_e_audita_magnet(self):
         self._liga_jellyfin()

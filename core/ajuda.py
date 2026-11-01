@@ -250,6 +250,25 @@ AJUDA: dict[str, dict[str, Any]] = {
                     "biblioteca em si permanece."
                 ),
             },
+            {
+                "title": "API de envio",
+                "text": (
+                    "A seção API de envio, no fim da página, mostra o curl. "
+                    "O header é Authorization: Bearer com o token guardado "
+                    "neste painel. O host.env só grava o primeiro valor. O "
+                    "corpo JSON leva magnet e library (id ou nome, como "
+                    "Filmes). A categoria no qBittorrent é jellyfin."
+                ),
+                "bullets": [
+                    "201 devolve o nome da biblioteca.",
+                    "409 significa que o torrent já existe na lista.",
+                    "400 recusa o magnet ou a pasta.",
+                    "503 é agente ou qBittorrent parado.",
+                    "Token vazio responde 404.",
+                    "GET /api/torrents/bibliotecas/ lista id e nome das pastas.",
+                    "O administrador consulta e troca o token com a senha da própria conta. A troca vale na hora.",
+                ],
+            },
         ],
     },
     "users": {

@@ -14,6 +14,7 @@ def test_generic_compose_has_no_pi_ip():
     assert "192.168.0.150" not in text
     assert "BIND_ADDR" in text
     assert "AGENT_SOCKET" in text
+    assert "TORRENT_API_TOKEN=${TORRENT_API_TOKEN:-}" in text
 
 
 def test_homelab_overlay_keeps_current_paths():
@@ -35,6 +36,7 @@ def test_host_env_example_is_pi_profile():
     assert values["BIND_ADDR"] == "192.168.0.150"
     assert values["SNAPSHOT_BACKEND"] == "auto"
     assert values["COMPOSE_OVERLAY"] == "docker-compose.homelab.yml"
+    assert values["TORRENT_API_TOKEN"] == ""
 
 
 def test_metrics_timer_is_installed_and_daily():

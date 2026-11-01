@@ -43,7 +43,14 @@ class GestaoUsuariosCredenciaisMiddleware:
 class SessaoCredenciaisMiddleware:
     """Revalida a sessão a cada request quando o Credenciais está ativo."""
 
-    PUBLICOS = ("/login/", "/logout/", "/static/", "/health/", "/favicon.ico")
+    PUBLICOS = (
+        "/login/",
+        "/logout/",
+        "/static/",
+        "/health/",
+        "/favicon.ico",
+        "/api/torrents/",
+    )
 
     def __init__(self, get_response):
         self.get_response = get_response

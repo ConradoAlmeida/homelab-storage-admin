@@ -133,6 +133,64 @@
       <div class="empty">Nenhum torrent nas pastas do Jellyfin.</div>
     {% endif %}
   </section>
+
+  <section class="section">
+    <div class="section-head"><h2>API de envio</h2></div>
+    <div class="card">
+      <p>
+        Um cliente envia o magnet com o token guardado neste painel. O
+        <span class="mono">TORRENT_API_TOKEN</span> do host.env só grava o
+        primeiro valor. O destino é o id ou o nome da biblioteca, como Filmes.
+        A categoria no qBittorrent fica <span class="mono">jellyfin</span>.
+      </p>
+      <pre class="pre mono">curl -X POST http://storage.homelab.lan/api/torrents/ \
+  -H "Authorization: Bearer $TORRENT_API_TOKEN" \
+  -d '{"magnet":"magnet:?xt=urn:btih:...","library":"Filmes"}'</pre>
+      <p class="muted text-12">
+        201 devolve o nome da biblioteca. 409 significa que o torrent já existe
+        na lista. 400 recusa o magnet ou a pasta. 503 é agente ou qBittorrent
+        parado. Token vazio responde 404. As pastas saem em
+        <span class="mono">GET /api/torrents/bibliotecas/</span>.
+      </p>
+      {% if token_erro %}
+        <div class="alert danger" role="alert">
+          <strong>Token</strong>
+          <p>{{ token_erro }}</p>
+        </div>
+      {% endif %}
+      {% if token_revelado %}
+        <div class="danger-zone">
+          <strong>TORRENT_API_TOKEN</strong>
+          <div class="row gap-8 items-center">
+            <input id="torrent-api-token" value="{{ token_revelado }}" readonly class="mono flex-1">
+            <button type="button" class="btn" data-copy-target="torrent-api-token">Copiar</button>
+          </div>
+          <p class="muted text-12">O valor em uso está no banco deste painel.</p>
+        </div>
+      {% endif %}
+      {% if pode_ver_token %}
+        <form method="post" action="{% url 'torrents' %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="torrent-token-password">Senha do administrador</label>
+            <input id="torrent-token-password" name="password" type="password" autocomplete="current-password" required>
+            <p class="help">A senha de quem administra esta página.</p>
+          </div>
+          <div class="form-group">
+            <label for="torrent-token-novo">Token novo</label>
+            <input id="torrent-token-novo" name="token" type="text" autocomplete="off" spellcheck="false">
+            <p class="help">De 16 a 256 caracteres, sem espaços. Preencha só para trocar.</p>
+          </div>
+          <div class="form-actions">
+            <button class="btn" type="submit" name="acao" value="consultar">Consultar token</button>
+            <button class="btn primary" type="submit" name="acao" value="trocar">Trocar token</button>
+          </div>
+        </form>
+      {% else %}
+        <p class="muted text-12">A consulta do valor pede a senha do administrador.</p>
+      {% endif %}
+    </div>
+  </section>
 {% endif %}
 <script src="{% static 'js/downloads.js' %}" defer></script>
 {% endblock %}

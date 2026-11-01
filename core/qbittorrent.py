@@ -6,6 +6,7 @@ publicada no host: o celular usa esta página, e o download segue no Pi.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -25,6 +26,7 @@ _JAR = CookieJar()
 _LOCK = threading.Lock()
 _MAGNET_RE = re.compile(r"(?:^|[?&])xt=urn:btih:([0-9a-zA-Z]{32,64})(?:&|$)", re.I)
 _HASH_RE = re.compile(r"^[0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?$")
+JA_EXISTE = "torrent já existe na lista"
 _HOSTS = {"qbittorrent", "localhost", "127.0.0.1", "::1"}
 _ATIVOS = {
     "downloading",
@@ -302,6 +304,42 @@ def estado(libraries: list[dict]) -> tuple[dict, list, str]:
     return client, torrents, erro
 
 
+def _infohash(magnet: str) -> str:
+    match = _MAGNET_RE.search(magnet or "")
+    if not match:
+        return ""
+    bruto = match.group(1)
+    if re.fullmatch(r"[0-9a-fA-F]{40}", bruto) or re.fullmatch(r"[0-9a-fA-F]{64}", bruto):
+        return bruto.lower()
+    if re.fullmatch(r"[A-Za-z2-7]{32}", bruto):
+        try:
+            return base64.b32decode(bruto.upper()).hex()
+        except ValueError:
+            return ""
+    return ""
+
+
+def _ja_na_lista(infohash: str) -> bool:
+    if not infohash or not _HASH_RE.match(infohash):
+        return False
+    code, body = _abrir(
+        "GET",
+        "/api/v2/torrents/info?hashes=" + urllib.parse.quote(infohash),
+    )
+    if code != 200:
+        return False
+    try:
+        itens = json.loads(body)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(itens, list):
+        return False
+    alvo = infohash.lower()
+    return any(
+        isinstance(item, dict) and (item.get("hash") or "").lower() == alvo for item in itens
+    )
+
+
 def adicionar(magnet: str, library: str, libraries: list[dict]) -> dict:
     if _demo():
         destino = next((item for item in libraries if item.get("id") == library), None)
@@ -317,6 +355,9 @@ def adicionar(magnet: str, library: str, libraries: list[dict]) -> dict:
     client = disponivel()
     if not client.get("available"):
         raise AgentError(client.get("reason") or "qBittorrent indisponível")
+    infohash = _infohash(magnet.strip())
+    if _ja_na_lista(infohash):
+        raise AgentError(JA_EXISTE)
     code, body = _abrir(
         "POST",
         "/api/v2/torrents/add",
@@ -330,6 +371,8 @@ def adicionar(magnet: str, library: str, libraries: list[dict]) -> dict:
         timeout=60,
     )
     if code != 200 or body.strip().lower().startswith("fail"):
+        if _ja_na_lista(infohash):
+            raise AgentError(JA_EXISTE)
         raise AgentError("qBittorrent recusou o link magnético")
     return {"library": destino.get("name") or library, "path": destino["path"]}
 

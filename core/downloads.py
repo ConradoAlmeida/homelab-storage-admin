@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
+
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 from . import qbittorrent
 from .agent import AgentError, agent
 from .forms import TorrentAddForm
-from .models import AuditLog
+from .models import AuditLog, definir_token_da_api, token_da_api
 from .view_base import AgentPostView, AgentTemplateView, AgentView
 
 
@@ -64,12 +71,36 @@ def _auditar(request, action, target):
     )
 
 
+def _administrador(user) -> bool:
+    return bool(
+        getattr(user, "is_authenticated", False)
+        and (user.is_superuser or user.username == "admin")
+    )
+
+
+def _token_aceitavel(valor: str) -> bool:
+    if not valor or valor != valor.strip():
+        return False
+    if any(caractere.isspace() or caractere in "\r\n\x00" for caractere in valor):
+        return False
+    return 16 <= len(valor) <= 256
+
+
 class TorrentsView(ExigeJellyfinMixin, AgentTemplateView):
     template_name = "torrents.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"overview": None, "error": None, "form": None})
+        context.update(
+            {
+                "overview": None,
+                "error": None,
+                "form": None,
+                "pode_ver_token": _administrador(self.request.user),
+                "token_revelado": "",
+                "token_erro": "",
+            }
+        )
         try:
             overview = _visao()
         except AgentError as exc:
@@ -86,6 +117,50 @@ class TorrentsView(ExigeJellyfinMixin, AgentTemplateView):
         ):
             context["form"] = TorrentAddForm(libraries=libraries)
         return context
+
+    def post(self, request):
+        context = self.get_context_data()
+        if not context["pode_ver_token"]:
+            context["token_erro"] = "Só o administrador consulta o token."
+            return self.render_to_response(context)
+        senha = request.POST.get("password") or ""
+        if not request.user.check_password(senha):
+            context["token_erro"] = "Senha do administrador incorreta."
+            return self.render_to_response(context)
+        acao = request.POST.get("acao") or "consultar"
+        if acao == "trocar":
+            novo = request.POST.get("token") or ""
+            if not _token_aceitavel(novo):
+                context["token_erro"] = (
+                    "O token novo precisa ter de 16 a 256 caracteres, sem espaços."
+                )
+                return self.render_to_response(context)
+            definir_token_da_api(novo)
+            context["token_revelado"] = novo
+            AuditLog.objects.create(
+                actor=request.user,
+                action="torrent.token.replace",
+                target="TORRENT_API_TOKEN",
+                ip=request.META.get("REMOTE_ADDR") or None,
+            )
+            messages.success(request, "Token da API atualizado.")
+        else:
+            valor = token_da_api()
+            if not valor:
+                context["token_erro"] = (
+                    "A API está desligada. Grave um token nesta página."
+                )
+                return self.render_to_response(context)
+            context["token_revelado"] = valor
+            AuditLog.objects.create(
+                actor=request.user,
+                action="torrent.token.view",
+                target="TORRENT_API_TOKEN",
+                ip=request.META.get("REMOTE_ADDR") or None,
+            )
+        resposta = self.render_to_response(context)
+        resposta["Cache-Control"] = "no-store"
+        return resposta
 
 
 class TorrentStatusView(ExigeJellyfinMixin, AgentView):
@@ -156,3 +231,153 @@ class TorrentActionView(ExigeJellyfinMixin, AgentPostView):
             elif action == "resume":
                 messages.success(request, "Download retomado.")
         return redirect("torrents")
+
+
+def _token_confere(request) -> bool:
+    esperado = token_da_api()
+    header = request.META.get("HTTP_AUTHORIZATION", "")
+    partes = header.split(None, 1)
+    if len(partes) != 2 or partes[0].lower() != "bearer":
+        return False
+    apresentado = partes[1].strip()
+    if not esperado or not apresentado or any(caractere in apresentado for caractere in "\r\n"):
+        return False
+    return hmac.compare_digest(
+        hashlib.sha256(apresentado.encode()).digest(),
+        hashlib.sha256(esperado.encode()).digest(),
+    )
+
+
+def _recusa_api(request):
+    if not token_da_api():
+        return JsonResponse({"error": "Não encontrado."}, status=404)
+    if not _token_confere(request):
+        return JsonResponse({"error": "Token inválido."}, status=401)
+    from core.context_processors import capacidades_do_host
+
+    if not capacidades_do_host().get("jellyfin"):
+        return JsonResponse(
+            {"error": "O Jellyfin não está instalado neste servidor."},
+            status=404,
+        )
+    return None
+
+
+def _bibliotecas_validas(overview) -> list:
+    return [
+        item
+        for item in _bibliotecas(overview)
+        if item.get("id") and item.get("name") and item.get("path")
+    ]
+
+
+def _escolher_biblioteca(valor: str, libraries: list) -> dict | None:
+    pedido = (valor or "").strip()
+    if not pedido:
+        return None
+    por_id = [item for item in libraries if item.get("id") == pedido]
+    if len(por_id) == 1:
+        return por_id[0]
+    por_nome = [item for item in libraries if item.get("name") == pedido]
+    if len(por_nome) == 1:
+        return por_nome[0]
+    return None
+
+
+def _corpo_json(request):
+    bruto = request.body or b""
+    if len(bruto) > 8192:
+        return None
+    try:
+        payload = json.loads(bruto.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def _mensagem_form(form) -> str:
+    for erros in form.errors.values():
+        if erros:
+            return str(erros[0])
+    return "Dados inválidos."
+
+
+def _resposta_qbit(exc: AgentError) -> JsonResponse:
+    texto = str(exc)
+    if texto == "torrent já existe na lista":
+        return JsonResponse({"error": texto}, status=409)
+    if texto in {"Link magnético inválido", "Pasta de mídia inválida"}:
+        return JsonResponse({"error": texto}, status=400)
+    return JsonResponse({"error": texto}, status=503)
+
+
+class _TorrentApiBase(View):
+    """Envio por Bearer. Sessão e CSRF não autorizam esta rota."""
+
+    def dispatch(self, request, *args, **kwargs):
+        recusa = _recusa_api(request)
+        if recusa is not None:
+            return recusa
+        return super().dispatch(request, *args, **kwargs)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class TorrentBibliotecasApiView(_TorrentApiBase):
+    http_method_names = ["get"]
+
+    def get(self, request):
+        try:
+            overview = agent.torrent_overview()
+        except AgentError as exc:
+            return JsonResponse({"error": str(exc)}, status=503)
+        bibliotecas = [
+            {"id": item["id"], "name": item["name"]} for item in _bibliotecas_validas(overview)
+        ]
+        return JsonResponse({"libraries": bibliotecas})
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class TorrentEnvioApiView(_TorrentApiBase):
+    http_method_names = ["post"]
+
+    def post(self, request):
+        payload = _corpo_json(request)
+        if payload is None:
+            return JsonResponse({"error": "JSON inválido."}, status=400)
+        magnet = payload.get("magnet", "")
+        library = payload.get("library", "")
+        if not isinstance(magnet, str) or not isinstance(library, str):
+            return JsonResponse({"error": "JSON inválido."}, status=400)
+        try:
+            overview = agent.torrent_overview()
+        except AgentError as exc:
+            return JsonResponse({"error": str(exc)}, status=503)
+        libraries = _bibliotecas_validas(overview)
+        destino = _escolher_biblioteca(library, libraries)
+        if destino is None:
+            return JsonResponse({"error": "Pasta de mídia inválida."}, status=400)
+        form = TorrentAddForm(
+            {"magnet": magnet, "library": destino["id"]},
+            libraries=libraries,
+        )
+        if not form.is_valid():
+            return JsonResponse({"error": _mensagem_form(form)}, status=400)
+        try:
+            resultado = qbittorrent.adicionar(
+                form.cleaned_data["magnet"], destino["id"], libraries
+            )
+        except AgentError as exc:
+            return _resposta_qbit(exc)
+        AuditLog.objects.create(
+            actor=None,
+            action="torrent.add",
+            target=resultado.get("library") or destino.get("name") or destino["id"],
+            detail="api",
+            ip=request.META.get("REMOTE_ADDR") or None,
+        )
+        return JsonResponse(
+            {"library": resultado.get("library") or destino.get("name")},
+            status=201,
+        )

@@ -58,11 +58,60 @@ def test_add_so_aceita_magnet_e_pasta_conhecida(monkeypatch, tmp_path):
     envio = next(item for item in chamadas if item[1] == "/api/v2/torrents/add")
     assert envio[2]["savepath"] == os.path.realpath(filmes)
     assert envio[2]["urls"] == magnet
+    assert envio[2]["category"] == "jellyfin"
     assert envio[2]["autoTMM"] == "false"
     with pytest.raises(AgentError, match="magnético"):
         qbit.adicionar("https://example.test/filme.torrent", "filmes", pasta)
     with pytest.raises(AgentError, match="Pasta"):
         qbit.adicionar(magnet, "nao-existe", pasta)
+
+
+def test_add_duplicado_nao_reenvia(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    infohash = "ab" * 20
+    chamadas = cliente(
+        monkeypatch,
+        info=[{"hash": infohash, "name": "Filme"}],
+    )
+    magnet = "magnet:?xt=urn:btih:" + infohash
+    with pytest.raises(AgentError, match="já existe"):
+        qbit.adicionar(magnet, "filmes", bibliotecas(filmes))
+    assert all(item[1] != "/api/v2/torrents/add" for item in chamadas)
+
+
+def test_add_fails_com_hash_na_lista_e_duplicata(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    infohash = "cd" * 20
+    consultas = {"n": 0}
+
+    def abrir(method, path, data=None, timeout=20):
+        if path == "/api/v2/app/version":
+            return 200, "v5.0.1"
+        if path.startswith("/api/v2/torrents/info"):
+            consultas["n"] += 1
+            if consultas["n"] == 1:
+                return 200, "[]"
+            return 200, json.dumps([{"hash": infohash}])
+        if path == "/api/v2/torrents/add":
+            return 200, "Fails."
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    magnet = "magnet:?xt=urn:btih:" + infohash
+    with pytest.raises(AgentError, match="já existe"):
+        qbit.adicionar(magnet, "filmes", bibliotecas(filmes))
+
+
+def test_add_fails_sem_o_hash_continua_recusa(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    cliente(monkeypatch, info=[], posts={"/api/v2/torrents/add": (200, "Fails.")})
+    magnet = "magnet:?xt=urn:btih:" + "ef" * 20
+    with pytest.raises(AgentError, match="recusou"):
+        qbit.adicionar(magnet, "filmes", bibliotecas(filmes))
 
 
 def test_estado_esconde_torrent_fora_da_biblioteca(monkeypatch, tmp_path):

@@ -21,6 +21,7 @@ services:
       - SNAPSHOT_DENYLIST=${SNAPSHOT_DENYLIST:-}
       - CREDENTIALS_MANAGE_USERS=${CREDENTIALS_MANAGE_USERS:-0}
       - FIREWALL_MANAGE=${FIREWALL_MANAGE:-1}
+      - TORRENT_API_TOKEN=${TORRENT_API_TOKEN:-}
     volumes:
       - "${DATA_DIR:-./data}:/app/data"
       - "${STORAGE_ROOT:-/mnt/nas}:${STORAGE_ROOT:-/mnt/nas}:ro"

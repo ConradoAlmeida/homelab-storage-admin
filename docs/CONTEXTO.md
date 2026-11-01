@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-10-31**.
+Documento de retomada. Última atualização: **2026-11-01**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -32,7 +32,13 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   interna do Compose; a WebUI não fica no host. A lista mostra as taxas de
   download e de upload. Pausar só aparece enquanto
   baixa; no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
-  não aparece.
+  não aparece. `POST /api/torrents/` repete esse envio com Bearer.
+  Token vazio no banco desliga a rota. A categoria no qBittorrent é
+  sempre `jellyfin`. Hash já presente na lista responde `409`. O token fica
+  legível no banco do painel. O `host.env` só grava o primeiro valor. O
+  administrador consulta e troca na página Torrents com a senha da própria
+  conta. Quem acompanha o término do arquivo faz isso pelo SMB, na pasta da
+  biblioteca: stat remoto e comparação de tamanho, o mesmo critério dos transfers.
 - Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo.
 - Backups:
   - jobs restic por disco, com agenda, retenção e verificação semanal;

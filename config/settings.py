@@ -138,6 +138,9 @@ CREDENTIALS_MANAGE_USERS = os.environ.get("CREDENTIALS_MANAGE_USERS", "0") == "1
 # Gestao do firewall UFW pela pagina Rede. 0 deixa a pagina somente leitura.
 FIREWALL_MANAGE = os.environ.get("FIREWALL_MANAGE", "1") == "1"
 
+# Bearer da API de envio de torrents. Vazio desliga /api/torrents/.
+TORRENT_API_TOKEN = os.environ.get("TORRENT_API_TOKEN", "")
+
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 X_FRAME_OPTIONS = "DENY"

@@ -423,6 +423,7 @@ No homelab, a tela de entrada centraliza a casa, menor, e o nome Conrado Homelab
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 | `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
+| `TORRENT_API_TOKEN` | vazio | Primeiro token da API, se o banco ainda não tiver um. Depois a página Torrents é quem troca |
 | `CREDENCIAIS_DB` | `/home/conrado/moya_credenciais_app/data/db.sqlite3` | banco do Credenciais (moya) |
 | `CREDENCIAIS_ENV` | `/home/conrado/moya_credenciais_app/.env` | `.env` do Credenciais (moya) |
 | `CREDENCIAIS_BACKUP_DIR` | `/var/backups/moya-credenciais` | destino dos arquivos, `700 root:root` |
@@ -474,6 +475,30 @@ publicada no host — a porta 8080 deste Pi continua com o Pi-hole. O celular
 usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
 A porta de pares `6881` é a única publicada. Sem o container, a página explica
 o motivo e não oferece o formulário.
+
+A API de envio usa o mesmo caminho. `POST /api/torrents/` e
+`GET /api/torrents/bibliotecas/` exigem `Authorization: Bearer ...`. O token
+fica legível no banco do painel. `TORRENT_API_TOKEN` no `host.env` só grava
+esse valor na primeira vez, se a linha ainda não existir. A troca é na página
+Torrents, com a senha do administrador, e vale na hora. Rebuild do container
+não desfaz a troca. Sessão do painel e token na query não autorizam. O corpo
+é JSON com `magnet` e `library` (id ou nome da biblioteca, por exemplo
+`Filmes`). O corpo JSON vale também quando o curl manda `-d` com o
+content-type de formulário. Sucesso é `201` com o nome da biblioteca. Magnet
+inválido ou pasta fora do Jellyfin é `400`. Hash que o qBittorrent já tem na
+lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado é
+`503`. Token vazio ou host sem Jellyfin é `404`.
+
+A categoria gravada no qBittorrent é sempre `jellyfin`. A organização do lote
+é a pasta da biblioteca. Na LAN o Caddy
+publica `http://storage.homelab.lan` e o token segue no header. TLS interno no
+Caddy fecharia esse trecho.
+
+```bash
+curl -X POST http://storage.homelab.lan/api/torrents/ \
+  -H "Authorization: Bearer $TORRENT_API_TOKEN" \
+  -d '{"magnet":"magnet:?xt=urn:btih:...","library":"Filmes"}'
+```
 
 A lista mostra a taxa de download e a de upload, e atualiza sozinha enquanto
 há tráfego. Pausar e retomar valem enquanto o arquivo baixa. No torrent concluído esses
