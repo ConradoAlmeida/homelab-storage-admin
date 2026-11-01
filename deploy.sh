@@ -122,6 +122,12 @@ if visao.get("installed") and visao.get("active"):
 else:
     print("ufw inativo; portas do qBittorrent nao foram alteradas")
 
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+import django
+
+django.setup()
 from core import qbittorrent as qbit
 
 ultimo = ""
