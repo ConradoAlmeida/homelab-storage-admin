@@ -347,8 +347,11 @@ STORAGE_ADMIN_DEMO=1 DJANGO_DEBUG=1 uv run manage.py runserver 127.0.0.1:8000
 O modo demo só liga com `DEBUG=1` e nunca deve ser usado em produção.
 
 A suíte normal roda sem root, sem Btrfs, sem Samba e sem hardware. Testes que
-exigem loop devices/Btrfs real são marcados `lab` e devem rodar só em uma VM
-descartável. O CI roda `manage.py check` + `pytest`.
+exigem loop devices/Btrfs/restic reais são marcados `lab` e **entram na
+bancada**: no desktop Fedora, rode-os na VM do virt-manager
+(`docs/VM_TESTES.md`, `linux2024`). Só pule se este host não tiver
+libvirt/virt-manager, e deixe isso explícito. O CI roda `manage.py check` +
+`pytest` e **não** substitui a VM.
 
 Na VM Ubuntu 26.04, a suíte roda **201 testes** (+ **5 lab**); no Windows,
 **180** e os testes POSIX são pulados.

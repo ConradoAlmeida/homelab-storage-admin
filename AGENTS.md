@@ -24,6 +24,16 @@ uv run pytest
 uv run manage.py runserver 0.0.0.0:8000
 ```
 
+Bancada de testes (obrigatória neste desktop Fedora, com virt-manager):
+
+1. `uv run pytest` neste clone — contrato, UI, Pi-safe, moya.
+2. Testes **server-like na VM** do virt-manager, roteiro em
+   `docs/VM_TESTES.md` (`linux2024`, libvirt). Inclui `tests/lab`
+   (restic/Btrfs/RAID/snapshot reais), Samba/UFW e os dois perfis.
+3. Só pule o passo 2 se **não houver virt-manager/libvirt neste host**
+   (notebook, SSH em outro PC, CI). Diga isso no resumo. Pytest local
+   **não** substitui a VM.
+
 Deploy:
 
 ```bash
@@ -98,3 +108,7 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
 - backup: agendamento, retenção, restore e falha abortando;
 - confirmações e auditoria das ações;
 - UI: nenhuma página nova sem os componentes padrão.
+- **Server-like na VM** (`docs/VM_TESTES.md`) quando este host tem
+  virt-manager. Restore restic, snapshot de share, RAID/Btrfs e Samba
+  não se encerram no pytest local. Sem VM neste host, declare a
+  exceção; não invente que o laboratório rodou.

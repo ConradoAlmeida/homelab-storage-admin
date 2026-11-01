@@ -114,10 +114,13 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## Testes em VM
 
-Roteiro completo para Ubuntu Server 26.04: [`docs/VM_TESTES.md`](VM_TESTES.md).
+Roteiro: [`docs/VM_TESTES.md`](VM_TESTES.md). No desktop Fedora, a bancada
+**precisa** dos testes server-like no virt-manager (`linux2024`). Pytest
+local nao substitui. Sem virt-manager neste host, declare a excecao.
 
 - setup do host: `scripts/vm/setup-ubuntu-2604.sh`
 - suites dos dois apps: `scripts/vm/run-unit-tests.sh`
+- laboratorio: `sudo bash scripts/vm/run-lab-tests.sh`
 - smoke somente leitura: `scripts/vm/smoke-moyaserver.sh`
 - E2E de identidade/Samba: no repo do Credenciais, `docs/E2E_VM.md`
 

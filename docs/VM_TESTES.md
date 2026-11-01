@@ -1,8 +1,14 @@
 # Testes de integracao na VM Ubuntu 26.04
 
 Roteiro para validar o ecossistema Moya em uma VM descartavel, com Ubuntu
-Server 26.04 LTS. A VM e o ambiente recomendado para testes de host; o WSL2
-nao serve para Samba/UFW reais.
+Server 26.04 LTS.
+
+A bancada de testes **inclui** esta VM. Pytest no clone (Windows, Fedora ou
+CI) cobre contrato e UI; **nao** cobre Samba, UFW, restic/Btrfs em disco
+virtual nem restore server-like. No desktop Fedora do Conrado o virt-manager
+tem a VM `linux2024` — use-a. A unica excecao e trabalhar num host **sem**
+libvirt/virt-manager (outro notebook, SSH, CI): ahi declare que o laboratorio
+nao rodou. WSL2 nao serve para Samba/UFW reais.
 
 ## Resultados da primeira execucao (2026-10-30)
 
@@ -27,11 +33,16 @@ VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
 
 ## Estrategia de testes
 
+A ordem e esta. Pular a VM so vale na excecao acima.
+
 - **Windows/local:** testes unitarios e de contrato, rapidos, com agente mock.
-  Nao exigem host real.
-- **VM Ubuntu 26.04 no Fedora:** testes server-like:
-  suites dos dois apps, `tests/lab`, E2E de identidade/Samba, Mailpit, UFW,
-  Docker e backups em loop/virtual disk.
+  Nao exigem host real. **Insuficiente** sozinho para backup/restore, snapshot
+  de share, Samba ou firewall.
+- **VM Ubuntu 26.04 no virt-manager (Fedora):** testes server-like
+  **obrigatorios neste desktop**. Suites dos dois apps, `tests/lab`
+  (`sudo env HOMELAB_LAB=1 ... pytest tests/lab`), E2E de identidade/Samba,
+  Mailpit, UFW, Docker e backups em loop/virtual disk. VM conhecida:
+  `linux2024` (`qemu:///system`).
 - **moyaserver:** apenas smoke read-only (`scripts/vm/smoke-moyaserver.sh`).
 - **WSL2:** nao usar para Samba/UFW; a porta 445 conflita com o Windows e a
   rede nao representa o host real. As distros WSL de teste foram removidas.
