@@ -473,7 +473,7 @@ O download roda no container `qbittorrent` do overlay do homelab
 (`lscr.io/linuxserver/qbittorrent`), na mesma rede do painel. A WebUI não é
 publicada no host — a porta 8080 deste Pi continua com o Pi-hole. O celular
 usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
-A tabela de andamento ordena ao clicar na coluna. O estado filtra como no qBittorrent: baixando, enviando, concluído, pausado e os demais.
+A tabela de andamento busca por nome e filtra pasta e estado numa linha só, com atalhos para todos, ativos, concluídos e com erro. O clique na coluna ordena.
 A porta de pares `6881` é a única publicada. Sem o container, a página explica
 o motivo e não oferece o formulário.
 

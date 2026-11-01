@@ -65,42 +65,68 @@
   <section class="section">
     <div class="section-head">
       <h2>Andamento</h2>
-      <span class="muted text-12" data-torrent-count>{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
+      <div class="page-actions">
+        <span class="muted text-12" data-torrent-count>{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
+        {% if overview.torrents %}
+          <label class="torrent-order" for="torrent-ordem">Ordenar</label>
+          <select id="torrent-ordem">
+            <option value="">Como chegaram</option>
+            <option value="name">Nome</option>
+            <option value="library">Pasta</option>
+            <option value="state">Estado</option>
+            <option value="progress">Progresso</option>
+            <option value="download">Download</option>
+            <option value="upload">Upload</option>
+            <option value="size">Tamanho</option>
+          </select>
+          <button type="button" class="btn small" id="torrent-sentido" aria-label="Inverter a ordem">↑</button>
+        {% endif %}
+      </div>
     </div>
     {% if overview.torrents %}
-      <div class="form-grid" data-torrent-filters>
-        <div class="form-group">
-          <label for="torrent-filtro-nome">Nome</label>
-          <input id="torrent-filtro-nome" class="form-control" type="search" placeholder="Filtrar pelo nome" autocomplete="off">
+      <div class="torrent-bar" data-torrent-filters>
+        <div class="torrent-search">
+          <input id="torrent-filtro-nome" class="form-control" type="search" placeholder="Buscar por nome..." autocomplete="off">
+          <button type="button" class="torrent-clear" data-clear-nome hidden aria-label="Limpar nome">×</button>
         </div>
-        <div class="form-group">
-          <label for="torrent-filtro-pasta">Pasta</label>
-          <select id="torrent-filtro-pasta" class="form-control">
-            <option value="">Todas</option>
+        <details class="torrent-pick" data-pick="pasta">
+          <summary>
+            <span class="muted">Pasta</span>
+            <strong data-pasta-rotulo>Todas</strong>
+          </summary>
+          <div class="torrent-pick-list">
+            <button type="button" data-pasta="">Todas</button>
             {% for biblioteca in overview.libraries %}
-              <option value="{{ biblioteca.name }}">{{ biblioteca.name }}</option>
+              <button type="button" data-pasta="{{ biblioteca.name }}">{{ biblioteca.name }}</button>
             {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="torrent-filtro-estado">Estado</label>
-          <select id="torrent-filtro-estado" class="form-control">
-            <option value="">Todos</option>
-            <option value="downloading">Baixando</option>
-            <option value="seeding">Enviando</option>
-            <option value="completed">Concluído</option>
-            <option value="resumed">Retomado</option>
-            <option value="paused">Pausado</option>
-            <option value="active">Ativo</option>
-            <option value="inactive">Inativo</option>
-            <option value="stalled">Parado</option>
-            <option value="stalled_uploading">Envio parado</option>
-            <option value="stalled_downloading">Download parado</option>
-            <option value="checking">Verificando</option>
-            <option value="moving">Movendo</option>
-            <option value="errored">Com erro</option>
-          </select>
-        </div>
+          </div>
+        </details>
+        <details class="torrent-pick" data-pick="estado">
+          <summary>
+            <span class="muted">Estado</span>
+            <strong data-estado-rotulo>Todos</strong>
+          </summary>
+          <div class="torrent-pick-list">
+            <button type="button" data-estado="">Todos</button>
+            <button type="button" data-estado="concluido"><span class="status ok">concluído</span></button>
+            <button type="button" data-estado="baixando"><span class="status info">baixando</span></button>
+            <button type="button" data-estado="aguardando"><span class="status warn">aguardando</span></button>
+            <button type="button" data-estado="pausado"><span class="status">pausado</span></button>
+            <button type="button" data-estado="metadados"><span class="status meta">lendo metadados</span></button>
+            <button type="button" data-estado="fila"><span class="status warn">na fila</span></button>
+            <button type="button" data-estado="enviando"><span class="status ok">enviando</span></button>
+            <button type="button" data-estado="erro"><span class="status off">com erro</span></button>
+          </div>
+        </details>
+        <div class="torrent-chips" data-torrent-chips></div>
+        <button type="button" class="btn small" data-torrent-clear hidden>Limpar filtros</button>
+        <span class="muted text-12" data-torrent-active hidden></span>
+      </div>
+      <div class="torrent-stats" data-torrent-stats>
+        <button type="button" data-stat="" class="is-on">Todos <span data-stat-count="all">0</span></button>
+        <button type="button" data-stat="active">Ativos <span data-stat-count="active">0</span></button>
+        <button type="button" data-stat="completed">Concluídos <span data-stat-count="completed">0</span></button>
+        <button type="button" data-stat="errored">Com erro <span data-stat-count="errored">0</span></button>
       </div>
       <div class="table-wrap" data-torrent-table {% if overview.active %}data-torrent-poll="{% url 'torrent_status' %}"{% endif %}>
         <table class="file-table">
@@ -133,7 +159,7 @@
                   <div class="muted text-11">{{ item.size }}</div>
                 </td>
                 <td>{{ item.library }}</td>
-                <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.can_resume %}warn{% else %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
+                <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.state_label == 'lendo metadados' %}meta{% elif item.state_label == 'baixando' %}info{% elif item.state_label == 'aguardando' or item.state_label == 'na fila' or item.can_resume %}warn{% elif item.state_label == 'concluído' or item.state_label == 'enviando' %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
                 <td class="mono"><span data-percent>{{ item.progress_label }}</span> <span class="muted" data-eta>{% if item.eta %}· {{ item.eta }}{% endif %}</span></td>
                 <td class="mono" data-download>{{ item.download_speed }}</td>
                 <td class="mono" data-upload>{{ item.upload_speed }}</td>

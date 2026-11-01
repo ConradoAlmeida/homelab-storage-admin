@@ -404,6 +404,168 @@ tbody tr:hover td {
   background: var(--err);
 }
 
+.status.info::before {
+  background: var(--acc);
+}
+
+.status.meta::before {
+  background: var(--purple);
+}
+
+.torrent-bar,
+.torrent-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.torrent-bar {
+  margin: 0 0 8px;
+}
+
+.torrent-stats {
+  margin: 0 0 12px;
+}
+
+.torrent-search {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 280px;
+}
+
+.torrent-search input {
+  width: 100%;
+  padding-right: 28px;
+  padding-left: 28px;
+}
+
+.torrent-search::before {
+  content: "⌕";
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.torrent-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.torrent-order {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#torrent-ordem {
+  width: auto;
+  min-width: 9rem;
+}
+
+.torrent-pick {
+  position: relative;
+}
+
+.torrent-pick summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--txt);
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+}
+
+.torrent-pick summary::-webkit-details-marker {
+  display: none;
+}
+
+.torrent-pick summary strong {
+  font-weight: 600;
+}
+
+.torrent-pick-list {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.torrent-pick-list button {
+  display: flex;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--txt);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.torrent-pick-list button:hover,
+.torrent-pick-list button[aria-current="true"] {
+  background: rgba(74, 158, 255, 0.12);
+}
+
+.torrent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.torrent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--txt);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.torrent-stats button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.torrent-stats button.is-on {
+  border-color: var(--acc);
+  color: var(--txt);
+}
+
 .health-row strong {
   font-weight: 600;
 }

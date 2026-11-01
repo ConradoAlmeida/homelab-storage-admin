@@ -229,10 +229,10 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "title": "Andamento",
                 "text": (
                     "Mostra progresso, taxa de download, taxa de upload e tempo "
-                    "restante. Clique no cabeçalho da coluna para ordenar; "
-                    "outro clique inverte. O estado usa as mesmas categorias "
-                    "do qBittorrent, como baixando, enviando e concluído. "
-                    "A lista atualiza sozinha enquanto há tráfego."
+                    "restante. A busca, a pasta e o estado ficam numa linha, "
+                    "com atalhos para todos, ativos, concluídos e com erro. "
+                    "Clique no cabeçalho da coluna para ordenar; outro clique "
+                    "inverte. A lista atualiza sozinha enquanto há tráfego."
                 ),
             },
             {
