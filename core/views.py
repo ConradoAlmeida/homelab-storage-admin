@@ -866,3 +866,27 @@ class SnapshotDeleteView(AgentPostView):
             _audit(request, "snapshot.delete", f"{share}/{name}")
             messages.success(request, f"Snapshot removido: {share}/{name}")
         return redirect("snapshots")
+
+
+class SnapshotRestoreView(AgentPostView):
+    def post(self, request):
+        share = request.POST.get("share", "")
+        name = request.POST.get("name", "")
+        confirmacao = (request.POST.get("confirmation") or "").strip()
+        if confirmacao != name:
+            messages.error(
+                request,
+                "Para restaurar, digite o nome do snapshot exatamente como aparece.",
+            )
+            return redirect("snapshots")
+        try:
+            agent.snapshot_restore(share, name, confirmation=confirmacao)
+        except AgentError as exc:
+            _error(request, exc)
+        else:
+            _audit(request, "snapshot.restore", f"{share}/{name}")
+            messages.success(
+                request,
+                f"Share {share} restaurado a partir de {name}.",
+            )
+        return redirect("snapshots")

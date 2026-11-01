@@ -539,6 +539,37 @@ class ViewSmokeTests(TestCase):
         arquivos = self.client.get("/backups/arquivos/")
         self.assertRedirects(arquivos, "/backups/")
 
+    def test_snapshot_restore_exige_confirmacao(self):
+        resposta = self.client.post(
+            "/snapshots/restaurar/",
+            {
+                "share": "docs",
+                "name": "@GMT-2026.01.01-00.00.00",
+                "confirmation": "errado",
+            },
+        )
+        self.assertRedirects(resposta, "/snapshots/")
+        self.fake.snapshot_restore.assert_not_called()
+
+    def test_snapshot_restore_audita(self):
+        self.fake.snapshot_restore.return_value = {
+            "share": "docs",
+            "name": "@GMT-2026.01.01-00.00.00",
+        }
+        resposta = self.client.post(
+            "/snapshots/restaurar/",
+            {
+                "share": "docs",
+                "name": "@GMT-2026.01.01-00.00.00",
+                "confirmation": "@GMT-2026.01.01-00.00.00",
+            },
+        )
+        self.assertRedirects(resposta, "/snapshots/")
+        self.fake.snapshot_restore.assert_called_once()
+        self.assertTrue(
+            AuditLog.objects.filter(action="snapshot.restore", target="docs/@GMT-2026.01.01-00.00.00").exists()
+        )
+
     def test_restic_snapshots_page_renders(self):
         response = self.client.get("/backups/snapshots/")
         self.assertEqual(response.status_code, 200)
@@ -586,6 +617,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "casa")
         self.assertContains(response, "a.txt")
         self.assertContains(response, "Baixar")
+        self.assertContains(response, "Restaurar")
         self.assertContains(response, "2026-10-26T22:15:24-03:00")
         self.assertContains(response, "2026-10-25T22:37:27-03:00")
         self.fake.backup_ls.assert_called_once_with("u1", "aaaaaaaa", "/mnt/nas")
@@ -629,6 +661,29 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "Abrir pasta")
         self.assertContains(response, "Abrir")
         self.fake.backup_search.assert_called_once_with("u1", "aaaaaaaa", "README")
+
+    def test_restic_restore_exige_confirmacao(self):
+        resposta = self.client.post(
+            "/backups/snapshots/aaaaaaaa/restore/",
+            {"disk_uuid": "u1", "confirmation": "errado"},
+        )
+        self.assertRedirects(resposta, "/backups/snapshots/")
+        self.fake.backup_restore.assert_not_called()
+
+    def test_restic_restore_audita(self):
+        self.fake.backup_restore.return_value = {
+            "snapshot_id": "aaaaaaaa",
+            "paths": ["/mnt/nas/casa"],
+        }
+        resposta = self.client.post(
+            "/backups/snapshots/aaaaaaaa/restore/",
+            {"disk_uuid": "u1", "confirmation": "aaaaaaaa"},
+        )
+        self.assertRedirects(resposta, "/backups/snapshots/")
+        self.fake.backup_restore.assert_called_once()
+        self.assertTrue(
+            AuditLog.objects.filter(action="backup_restore", target="aaaaaaaa").exists()
+        )
 
     def test_restic_snapshot_download_serves_file_and_audits(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -834,6 +889,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "Sem política de snapshot")
         self.assertContains(response, "desativada")
         self.assertContains(response, "permanecem no disco")
+        self.assertContains(response, "Restaurar")
+        self.assertContains(response, 'action="/snapshots/restaurar/"')
 
     def test_nova_politica_lista_somente_share_sem_politica(self):
         self.fake.list_shares.return_value = [

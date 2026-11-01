@@ -454,8 +454,10 @@ O unit `homelab-storage-agent.service` e o socket **não são renomeados**. O
   hardlinks; exclusão de `.snapshots` evita recursão.
 - **Tamanho:** Btrfs usa `btrfs filesystem du` (aproximado por extents
   compartilhados). rsync usa live sem `.snapshots` + extra = `du(share) - live`.
-- **Restauração:** copie do snapshot para o share ou use a aba Versões anteriores
-  no Windows. Para rollback completo, pare o Samba e recrie o subvolume.
+- **Restauração:** na página Snapshots, **Restaurar** devolve o snapshot para o
+  share com `rsync --delete`, depois de digitar o nome `@GMT-...`. O histórico
+  continua só leitura (navegar e baixar). A aba Versões anteriores do Windows
+  segue disponível.
 
 No backend Btrfs o agente exige que o share seja um subvolume e que
 `STORAGE_ROOT` esteja montado; se o mount cair, ele aborta em vez de escrever no
@@ -521,7 +523,7 @@ A pasta da biblioteca não é removida.
 - busca no snapshot inteiro por nome/caminho, sem diferenciar maiúsculas;
 - resultados com abrir pasta, baixar e “Versões”;
 - “Versões” por arquivo, comparando live + snapshots;
-- tudo somente leitura; restauração ainda não implementada.
+- tudo somente leitura neste navegador; restore do share fica em Snapshots.
 
 Na tela **Snapshots**, cada snapshot tem o botão **Navegar**, que abre esse
 navegador já no snapshot escolhido. A busca é feita no conteúdo do snapshot
@@ -679,8 +681,11 @@ existe um **disco externo** disponível:
 - **Verificação semanal** (`homelab-restic-check.timer`, domingo 04:30) roda
   `restic check --read-data-subset=2%` e grava
   `/etc/homelab-backup/health/<uuid>.json`; a página de Backups mostra o último
-  check e tem o botão **Verificar repo**.
-- Antes de confiar, rode um restore de teste a partir do snapshot.
+  check e tem o botão **Verificar repo**. Se o check achar um lock deste host
+  cujo PID já não existe, o agente remove o lock velho e tenta de novo.
+- **Restore:** na lista de snapshots restic, **Restaurar** devolve os caminhos
+  originais (ou um arquivo/pasta na navegação). Pede o identificador do
+  snapshot. Não restaura na raiz do sistema nem no disco de backup.
 
 ## 6.10 Backup do Gitea
 
@@ -700,8 +705,11 @@ manualmente para um drive USB. O Gitea continua rodando durante o dump.
   cópia para o USB falhar.
 - **Execução assíncrona**: `homelab-gitea-backup@<host|device>.service`, então
   a página não fica presa durante os ~3,7 GB.
-- **Restauração**: pare o Gitea, extraia o zip e restaure banco, repositórios e
-  configuração; teste em um ambiente separado antes de confiar.
+- **Restauração**: na lista de dumps, **Restaurar** para o container (só existe
+  se o Gitea estiver neste host). O agente para o container, copia o volume
+  para `gitea-pre-restore-...`, aplica `app.ini`, custom, data, sqlite e
+  repositórios, e sobe o Gitea. Pede o nome do zip. Dump SQL de Postgres fica
+  copiado em `gitea-db.sql` no volume para import manual.
 
 > O fluxo **dump + cópia para pendrive** foi validado manualmente. Não é
 > necessário repetir o teste enquanto o código de dump/cópia USB não mudar.

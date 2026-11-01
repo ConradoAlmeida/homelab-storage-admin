@@ -6,7 +6,8 @@
     <h1>Snapshots</h1>
     <p class="lead">
       Configure um share que ainda não tem política, edite a retenção de um que já tem
-      e crie ou remova snapshots. Para navegar, buscar e baixar arquivos, use <strong>Navegar</strong>.
+      e crie, restaure ou remova snapshots. Para navegar, buscar e baixar arquivos, use <strong>Navegar</strong>.
+      Restaurar devolve o snapshot para o share, por cima dos arquivos atuais.
       O tamanho é aproximado porque extents compartilhados contam uma vez.
     </p>
   </div>
@@ -83,6 +84,18 @@
                       <td class="file-actions">
                         <div class="row-actions">
                           <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Navegar</a>
+                          <details class="restore-details">
+                            <summary class="btn small danger">Restaurar</summary>
+                            <form method="post" action="{% url 'snapshot_restore' %}" class="restore-form"
+                                  data-confirm="Restaurar {{ snap.name }} por cima dos arquivos atuais de {{ s.share }}?">
+                              {% csrf_token %}
+                              <input type="hidden" name="share" value="{{ s.share }}">
+                              <input type="hidden" name="name" value="{{ snap.name }}">
+                              <label class="text-12">Digite <span class="mono">{{ snap.name }}</span> para confirmar</label>
+                              <input class="input" type="text" name="confirmation" autocomplete="off" required>
+                              <button class="btn small danger" type="submit">Restaurar agora</button>
+                            </form>
+                          </details>
                           <form method="post" action="{% url 'snapshot_delete' %}" data-confirm="Remover o snapshot {{ snap.name }}?">
                             {% csrf_token %}
                             <input type="hidden" name="share" value="{{ s.share }}">

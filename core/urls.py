@@ -73,4 +73,9 @@ urlpatterns = [
         views.SnapshotDeleteView.as_view(),
         name="snapshot_delete",
     ),
+    path(
+        "snapshots/restaurar/",
+        views.SnapshotRestoreView.as_view(),
+        name="snapshot_restore",
+    ),
 ]

@@ -20,6 +20,11 @@ urlpatterns = [
         name="backup_snapshot_download",
     ),
     path(
+        "snapshots/<str:snapshot_id>/restore/",
+        views.ResticSnapshotRestoreView.as_view(),
+        name="backup_snapshot_restore",
+    ),
+    path(
         "disks/setup/",
         views.DiskWizardView.as_view(),
         name="backup_disk_wizard",
@@ -48,6 +53,11 @@ urlpatterns = [
         "gitea/status/",
         views.GiteaBackupStatusView.as_view(),
         name="gitea_backup_status",
+    ),
+    path(
+        "gitea/<str:archive>/restore/",
+        views.GiteaRestoreView.as_view(),
+        name="gitea_restore",
     ),
     path(
         "arquivos/",

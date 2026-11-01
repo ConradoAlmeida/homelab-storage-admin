@@ -13,8 +13,8 @@
   <div>
     <h1>Backup do Gitea</h1>
     <p class="lead">
-      Dump consistente do Gitea (banco, repositórios, configuração e anexos) e cópia manual para um drive USB.
-      O drive é montado, conferido e desmontado.
+      Dump consistente do Gitea (banco, repositórios, configuração e anexos), cópia manual para um drive USB
+      e restauração no container quando o dump está neste servidor.
     </p>
   </div>
   <div class="page-actions">
@@ -150,16 +150,28 @@
       <span class="muted text-12">{{ overview.dumps|length }} arquivo{{ overview.dumps|length|pluralize }}</span>
     </div>
     <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th></tr></thead>
+      <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th><th aria-label="Ações"></th></tr></thead>
       <tbody id="gitea-dumps-body">
         {% for item in overview.dumps %}
           <tr>
             <td class="mono text-12">{{ item.name }}</td>
             <td class="muted">{{ item.created_label }}</td>
             <td>{{ item.size_label }}</td>
+            <td class="file-actions">
+              <details class="restore-details">
+                <summary class="btn small danger">Restaurar</summary>
+                <form method="post" action="{% url 'gitea_restore' item.name %}" class="restore-form"
+                      data-confirm="Restaurar {{ item.name }} por cima dos dados atuais do Gitea?">
+                  {% csrf_token %}
+                  <label class="text-12">Digite <span class="mono">{{ item.name }}</span> para confirmar</label>
+                  <input class="input" type="text" name="confirmation" autocomplete="off" required>
+                  <button class="btn small danger" type="submit">Restaurar agora</button>
+                </form>
+              </details>
+            </td>
           </tr>
         {% empty %}
-          <tr><td colspan="3"><div class="empty">Nenhum dump no servidor ainda.</div></td></tr>
+          <tr><td colspan="4"><div class="empty">Nenhum dump no servidor ainda.</div></td></tr>
         {% endfor %}
       </tbody>
     </table></div>

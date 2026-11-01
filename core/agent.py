@@ -118,6 +118,15 @@ class AgentClient:
     def snapshot_delete(self, share, name):
         return self.call("snapshot_delete", share=share, name=name)
 
+    def snapshot_restore(self, share, name, confirmation=""):
+        return self.call(
+            "snapshot_restore",
+            timeout=1800,
+            share=share,
+            name=name,
+            confirmation=confirmation,
+        )
+
     def snapshot_policy_save(self, share, enabled=True, keep=7, create_now=False):
         return self.call(
             "snapshot_policy_save",
@@ -179,6 +188,16 @@ class AgentClient:
             path=path,
         )
 
+    def backup_restore(self, disk_uuid, snapshot_id, confirmation="", path=""):
+        return self.call(
+            "backup_restore",
+            timeout=7200,
+            disk_uuid=disk_uuid,
+            snapshot_id=snapshot_id,
+            confirmation=confirmation,
+            path=path,
+        )
+
     def backup_disk_setup(self, device, label, confirmation, allow_existing=False):
         return self.call(
             "backup_disk_setup",
@@ -194,6 +213,14 @@ class AgentClient:
 
     def gitea_start(self, target="host"):
         return self.call("gitea_start", timeout=60, target=target)
+
+    def gitea_restore(self, archive, confirmation=""):
+        return self.call(
+            "gitea_restore",
+            timeout=3600,
+            archive=archive,
+            confirmation=confirmation,
+        )
 
     def backup_check(self, uuid):
         return self.call("backup_check", timeout=7200, uuid=uuid)

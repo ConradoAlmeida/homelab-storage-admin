@@ -93,6 +93,7 @@ class GiteaBackupViewTests(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Backup do Gitea")
         self.assertContains(resposta, "gitea-20261028-113707.zip")
+        self.assertContains(resposta, "Restaurar")
         self.assertContains(resposta, "sdb")
         self.assertContains(resposta, "Backup para USB")
 
@@ -175,6 +176,32 @@ class GiteaBackupViewTests(TestCase):
         self.fake.gitea_overview.return_value = {**OVERVIEW, "usb": []}
         resposta = self.client.get("/backups/gitea/")
         self.assertContains(resposta, "Nenhum drive USB detectado")
+
+    def test_restore_exige_confirmacao(self):
+        resposta = self.client.post(
+            "/backups/gitea/gitea-20261028-113707.zip/restore/",
+            {"confirmation": "outro.zip"},
+            follow=True,
+        )
+        self.fake.gitea_restore.assert_not_called()
+        self.assertContains(resposta, "digite o nome do dump")
+
+    def test_restore_audita(self):
+        self.fake.gitea_restore.return_value = {
+            "archive": "gitea-20261028-113707.zip",
+            "applied": ["app.ini"],
+            "security_copy": "/tmp/pre",
+        }
+        resposta = self.client.post(
+            "/backups/gitea/gitea-20261028-113707.zip/restore/",
+            {"confirmation": "gitea-20261028-113707.zip"},
+            follow=True,
+        )
+        self.assertContains(resposta, "restaurado")
+        self.fake.gitea_restore.assert_called_once_with(
+            "gitea-20261028-113707.zip", confirmation="gitea-20261028-113707.zip"
+        )
+        self.assertTrue(AuditLog.objects.filter(action="gitea_restore").exists())
 
     def test_erro_do_agente_aparece(self):
         self.fake.gitea_start.side_effect = backup_views.AgentError(

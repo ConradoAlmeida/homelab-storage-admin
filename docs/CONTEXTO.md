@@ -46,10 +46,12 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   biblioteca: stat remoto e comparação de tamanho, o mesmo critério dos transfers.
 - Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo.
 - Backups:
-  - jobs restic por disco, com agenda, retenção e verificação semanal;
+  - jobs restic por disco, com agenda, retenção, verificação semanal, unlock
+    de lock órfão neste host e restore aos caminhos originais;
+  - restore de snapshot de share (Btrfs/rsync) para o share, com confirmação;
   - **backup local de arquivos** com jobs independentes (fontes, agenda,
     retenção, restore verificado, cópia para USB);
-  - backup do Gitea (dump + USB, hash conferido), **validado manualmente**;
+  - backup do Gitea (dump + USB + restore no container quando o Gitea existe);
   - cópia fria USB implementada, dependente de repo primário.
 - Jobs em produção:
   - **Credenciais** — banco + `.env`, diário 03:30, 30 dias;
@@ -98,8 +100,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 ## Pendências, em ordem
 
 1. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
-2. **Discos externos**: criar repo restic, jobs, cópia fria, `restic check` e
-   restore de teste. Bloqueado por hardware.
+2. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
+   já existem no painel; restore restic também. Hardware real de disco/USB
+   de cópia fria continua o limite para o teste físico.
 3. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
    O alerta "Firewall inativo" continua real até a ativação.
 4. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos

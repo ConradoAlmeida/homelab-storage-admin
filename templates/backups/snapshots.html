@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1>Snapshots restic</h1>
-    <p class="lead">Pontos de restauração no repositório. Um snapshot vazio ainda não contém arquivos.</p>
+    <p class="lead">Pontos de restauração no repositório. Restaurar devolve os arquivos aos caminhos originais. Um snapshot vazio ainda não contém arquivos.</p>
   </div>
   <div class="page-actions">
     <a class="btn" href="{% url 'backup_index' %}">Voltar aos backups</a>
@@ -33,7 +33,22 @@
             <td class="muted">{{ snap.added_bytes|filesizeformat }}</td>
             <td class="muted text-12">{{ snap.paths|join:", " }}</td>
             <td class="file-actions">
-              <a class="btn small" href="{% url 'backup_snapshot_browse' snap.short_id %}?disk_uuid={{ snap.disk_uuid|urlencode }}&path={{ snap.browse_path|default:'/'|urlencode }}">Navegar</a>
+              <div class="row-actions">
+                <a class="btn small" href="{% url 'backup_snapshot_browse' snap.short_id %}?disk_uuid={{ snap.disk_uuid|urlencode }}&path={{ snap.browse_path|default:'/'|urlencode }}">Navegar</a>
+                {% if not snap.empty %}
+                <details class="restore-details">
+                  <summary class="btn small danger">Restaurar</summary>
+                  <form method="post" action="{% url 'backup_snapshot_restore' snap.short_id %}" class="restore-form"
+                        data-confirm="Restaurar o snapshot {{ snap.short_id }} nos caminhos originais?">
+                    {% csrf_token %}
+                    <input type="hidden" name="disk_uuid" value="{{ snap.disk_uuid }}">
+                    <label class="text-12">Digite <span class="mono">{{ snap.short_id }}</span> para confirmar</label>
+                    <input class="input" type="text" name="confirmation" autocomplete="off" required>
+                    <button class="btn small danger" type="submit">Restaurar agora</button>
+                  </form>
+                </details>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% endfor %}

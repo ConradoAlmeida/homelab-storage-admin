@@ -547,6 +547,13 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": "Abre o snapshot no explorador de arquivos para consulta e download.",
             },
             {
+                "title": "Restaurar",
+                "text": (
+                    "Devolve o snapshot para o share, por cima dos arquivos "
+                    "atuais. Pede o nome do snapshot e uma confirmação."
+                ),
+            },
+            {
                 "title": "Remover",
                 "text": (
                     "Apaga o snapshot escolhido. Os dados atuais do share não "
@@ -850,6 +857,13 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": "Abre o conteúdo do snapshot para consultar e baixar arquivos.",
             },
             {
+                "title": "Restaurar",
+                "text": (
+                    "Devolve o snapshot restic aos caminhos originais. Pede o "
+                    "identificador e uma confirmação."
+                ),
+            },
+            {
                 "title": "Snapshot vazio",
                 "text": "Um snapshot sem arquivos ainda não contém dados para restaurar.",
             },
@@ -866,6 +880,13 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Baixar",
                 "text": "Baixa o arquivo selecionado sem alterar o repositório.",
+            },
+            {
+                "title": "Restaurar",
+                "text": (
+                    "Devolve o arquivo ou a pasta ao caminho original, com o "
+                    "identificador do snapshot como confirmação."
+                ),
             },
             {
                 "title": "Subir",
@@ -937,7 +958,7 @@ AJUDA: dict[str, dict[str, Any]] = {
     },
     "gitea_backup": {
         "title": "Backup do Gitea",
-        "summary": "Dump consistente do Gitea e cópia manual para um drive USB.",
+        "summary": "Dump consistente do Gitea, cópia para USB e restore no container.",
         "chapters": [
             {
                 "title": "Estado",
@@ -967,6 +988,13 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Dumps no servidor",
                 "text": "Lista os arquivos disponíveis com data e tamanho.",
+            },
+            {
+                "title": "Restaurar",
+                "text": (
+                    "Para o container, guarda uma cópia do volume, aplica o dump "
+                    "e sobe o Gitea de novo. Pede o nome do arquivo."
+                ),
             },
             {
                 "title": "Cuidado",
@@ -1316,9 +1344,9 @@ USE_CASES: dict[str, str] = {
         "confira o status."
     ),
     "backup_snapshots": (
-        "Use quando precisar restaurar um arquivo de uma data específica. "
-        "Exemplo: recupere uma configuração de duas semanas atrás sem depender "
-        "do snapshot do share."
+        "Use quando precisar devolver arquivos do disco externo. Exemplo: "
+        "um share foi apagado; restaure o snapshot restic no caminho original "
+        "ou baixe só um arquivo."
     ),
     "backup_snapshot_browse": (
         "Use para localizar e baixar um arquivo específico de um snapshot "
@@ -1336,9 +1364,9 @@ USE_CASES: dict[str, str] = {
         "use com o restic no terminal."
     ),
     "gitea_backup": (
-        "Use antes de atualizações do Gitea ou periodicamente para ter um dump "
-        "fora do servidor. Exemplo: gere o dump e copie para o USB; se o "
-        "container quebrar, você tem o arquivo e o hash."
+        "Use antes de atualizações do Gitea ou para repor o container. Exemplo: "
+        "gere o dump, copie para o USB e, se o Gitea quebrar, restaure o zip "
+        "nesta página."
     ),
     "arquivos_backup_index": (
         "Use para proteger pastas que não estão em um repositório restic. "

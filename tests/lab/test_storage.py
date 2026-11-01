@@ -97,11 +97,15 @@ def test_agent_btrfs_share_and_snapshot(loop_factory, mountpoint, mounted, tmp_p
         result = agent.op_create_share("labdocs", str(share), snapshot=True, snapshot_keep=2)
         assert result["path"] == str(share)
         assert agent._fstype(str(share)) == "btrfs"
+        (share / "file.txt").write_text("conteudo")
         created = agent.op_snapshot_create("labdocs")
         usage = agent.op_snapshot_usage()
         assert usage[0]["backend"] == "btrfs"
         assert usage[0]["count"] == 1
         assert (snaproot / "labdocs" / created["name"]).is_dir()
+        (share / "file.txt").write_text("depois")
+        agent.op_snapshot_restore("labdocs", created["name"], confirmation=created["name"])
+        assert (share / "file.txt").read_text() == "conteudo"
         agent.op_snapshot_delete("labdocs", created["name"])
         assert agent.op_snapshot_usage()[0]["count"] == 0
     finally:

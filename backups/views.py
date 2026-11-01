@@ -321,6 +321,39 @@ class ResticSnapshotDownloadView(AgentView):
         return file_response(target, result.get("filename") or target.name)
 
 
+class ResticSnapshotRestoreView(AgentPostView):
+    def post(self, request, snapshot_id):
+        disk_uuid = (request.POST.get("disk_uuid") or "").strip()
+        path = (request.POST.get("path") or "").strip()
+        confirmacao = (request.POST.get("confirmation") or "").strip()
+        if confirmacao.lower() not in {snapshot_id.lower(), snapshot_id[:8].lower()}:
+            messages.error(
+                request,
+                "Para restaurar, digite o identificador do snapshot exatamente como aparece.",
+            )
+            return redirect("backup_snapshots")
+        try:
+            resultado = agent.backup_restore(
+                disk_uuid, snapshot_id, confirmation=confirmacao, path=path
+            )
+        except AgentError as exc:
+            messages.error(request, f"Restauracao falhou: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="backup_restore",
+                target=snapshot_id,
+                detail=path or ",".join(resultado.get("paths") or []),
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            messages.success(
+                request,
+                "Snapshot restic restaurado em "
+                + ", ".join(resultado.get("paths") or [path or snapshot_id]),
+            )
+        return redirect("backup_snapshots")
+
+
 class BackupCheckView(AgentPostView):
     def post(self, request):
         uuid = (request.POST.get("uuid") or "").strip()
@@ -1247,5 +1280,36 @@ class GiteaBackupStartView(ExigeCapacidadeMixin, AgentPostView):
                 request,
                 f"Backup do Gitea iniciado {destino}. "
                 "O andamento aparece nesta página automaticamente.",
+            )
+        return redirect("gitea_backup")
+
+
+class GiteaRestoreView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "gitea"
+
+    def post(self, request, archive):
+        confirmacao = (request.POST.get("confirmation") or "").strip()
+        if confirmacao != archive:
+            messages.error(
+                request,
+                "Para restaurar, digite o nome do dump exatamente como aparece.",
+            )
+            return redirect("gitea_backup")
+        try:
+            resultado = agent.gitea_restore(archive, confirmation=confirmacao)
+        except AgentError as exc:
+            messages.error(request, f"Restauracao do Gitea falhou: {exc}")
+        else:
+            AuditLog.objects.create(
+                actor=request.user,
+                action="gitea_restore",
+                target=archive,
+                detail=",".join(resultado.get("applied") or []),
+                ip=request.META.get("REMOTE_ADDR"),
+            )
+            copia = resultado.get("security_copy") or "—"
+            messages.success(
+                request,
+                f"Dump {archive} restaurado. Copia anterior em {copia}.",
             )
         return redirect("gitea_backup")

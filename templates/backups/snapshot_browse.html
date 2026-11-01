@@ -5,7 +5,7 @@
   <div>
     <h1>Navegar no snapshot</h1>
     <p class="lead">
-      Leitura somente. O conteúdo vem direto do repositório restic; nada é restaurado no share.
+      O conteúdo vem direto do repositório restic. Baixar não altera o share; Restaurar devolve o item ao caminho original.
     </p>
   </div>
   <div class="page-actions">
@@ -65,9 +65,25 @@
             <td class="muted">{{ entry.mtime|default:"—" }}</td>
             <td class="muted mono text-12">{{ entry.permissions|default:"—" }}</td>
             <td class="file-actions">
+              <div class="row-actions">
               {% if entry.type == "file" %}
                 <a class="btn small" href="{% url 'backup_snapshot_download' snapshot_id %}?disk_uuid={{ disk_uuid|urlencode }}&path={{ entry.path|urlencode }}">Baixar</a>
               {% endif %}
+              {% if entry.type == "file" or entry.type == "dir" %}
+                <details class="restore-details">
+                  <summary class="btn small danger">Restaurar</summary>
+                  <form method="post" action="{% url 'backup_snapshot_restore' snapshot_id %}" class="restore-form"
+                        data-confirm="Restaurar {{ entry.path }} por cima do arquivo atual?">
+                    {% csrf_token %}
+                    <input type="hidden" name="disk_uuid" value="{{ disk_uuid }}">
+                    <input type="hidden" name="path" value="{{ entry.path }}">
+                    <label class="text-12">Digite <span class="mono">{{ snapshot_id }}</span> para confirmar</label>
+                    <input class="input" type="text" name="confirmation" autocomplete="off" required>
+                    <button class="btn small danger" type="submit">Restaurar agora</button>
+                  </form>
+                </details>
+              {% endif %}
+              </div>
             </td>
           </tr>
         {% endfor %}

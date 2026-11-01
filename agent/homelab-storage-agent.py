@@ -18,6 +18,7 @@ import re
 import secrets
 import shlex
 import shutil
+import socket
 import socketserver
 import sqlite3
 import threading
@@ -105,6 +106,10 @@ SHARE_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 GROUP_RE = re.compile(r"^[a-z][a-z0-9._-]{1,31}$")
 SNAP_RE = re.compile(r"^@GMT-\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}$")
 RESTIC_SNAPSHOT_RE = re.compile(r"^[0-9a-fA-F]{8,64}$")
+RESTIC_LOCK_RE = re.compile(
+    r"already locked by PID (\d+) on ([A-Za-z0-9._-]+)", re.I
+)
+GITEA_DUMP_RE = re.compile(r"^gitea-\d{8}-\d{6}\.zip$")
 BACKUP_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 COLD_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,15}$")
 UUID_RE = re.compile(r"^[0-9a-fA-F-]{16,64}$")
@@ -1338,6 +1343,35 @@ def op_snapshot_delete(share: str, name: str, **_):
     return {"share": share, "name": name}
 
 
+def op_snapshot_restore(share: str, name: str, confirmation: str = "", **_):
+    if (confirmation or "").strip() != name:
+        raise AgentError("Para restaurar, confirme o nome do snapshot.")
+    if not SNAP_RE.match(name or ""):
+        raise AgentError("Nome de snapshot invalido")
+    src, snapdir, backend = _snapshot_dir(share)
+    origem = os.path.join(snapdir, name)
+    real = os.path.realpath(origem)
+    if os.path.dirname(real) != os.path.realpath(snapdir):
+        raise AgentError("Caminho de snapshot invalido")
+    if not os.path.isdir(real):
+        raise AgentError(f"Snapshot nao encontrado: {name}")
+    if not shutil.which("rsync"):
+        raise AgentError("rsync nao encontrado; restore de snapshot indisponivel")
+    args = [
+        "rsync",
+        "-aHAX",
+        "--numeric-ids",
+        "--delete",
+        "--exclude=.snapshots",
+        f"{real}/",
+        f"{src}/",
+    ]
+    run(args, timeout=1800)
+    log(f"RESTORE_SNAPSHOT {share}/{name}")
+    _forget_size_cache()
+    return {"share": share, "name": name, "path": src, "backend": backend}
+
+
 def _smb_parts(text: str) -> tuple[list[str], list[tuple[str, list[str]]]]:
     preamble: list[str] = []
     sections: list[tuple[str, list[str]]] = []
@@ -1737,6 +1771,100 @@ def _backup_health_write(uuid: str, dados: dict) -> dict:
     return dados
 
 
+def _nomes_deste_host() -> set[str]:
+    nomes = {socket.gethostname().split(".")[0].lower()}
+    try:
+        nomes.add(socket.getfqdn().split(".")[0].lower())
+    except OSError:
+        pass
+    return {item for item in nomes if item}
+
+
+def _pid_restic(pid: int) -> bool:
+    try:
+        comando = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except OSError:
+        return False
+    return b"restic" in comando
+
+
+def _lock_orfao(texto: str) -> bool:
+    achado = RESTIC_LOCK_RE.search(texto or "")
+    if not achado:
+        return False
+    pid = int(achado.group(1))
+    host = achado.group(2).split(".")[0].lower()
+    if host not in _nomes_deste_host():
+        return False
+    if _pid_restic(pid):
+        return False
+    return True
+
+
+def _restic_base(disk: dict) -> list[str]:
+    return [
+        "restic",
+        "-r",
+        disk["repo"],
+        "--password-file",
+        str(disk["key_file"]),
+    ]
+
+
+def _restic_cache(disk: dict) -> None:
+    try:
+        cache_dir = Path(disk["mountpoint"]) / ".restic-cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["RESTIC_CACHE_DIR"] = str(cache_dir)
+    except OSError:
+        pass
+
+
+def _restic_exec(disk: dict, extra: list[str], timeout: int = 7200):
+    _restic_cache(disk)
+    args = _restic_base(disk) + extra
+    proc = subprocess.run(
+        args, capture_output=True, text=True, check=False, timeout=timeout
+    )
+    detalhe = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+    if proc.returncode != 0 and _lock_orfao(detalhe):
+        log(f"RESTIC_UNLOCK {disk.get('label') or disk.get('uuid')} lock-orfao")
+        subprocess.run(
+            _restic_base(disk) + ["unlock"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        proc = subprocess.run(
+            args, capture_output=True, text=True, check=False, timeout=timeout
+        )
+        detalhe = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+    return proc, detalhe
+
+
+def _destino_restic_ok(path: str) -> str:
+    path = _validate_restic_path(path)
+    if path.rstrip("/") in {"", "/"}:
+        raise AgentError("Restaure um caminho, nao a raiz do sistema.")
+    if not any(
+        path == prefixo.rstrip("/") or path.startswith(prefixo)
+        for prefixo in ALLOWED_PATH_PREFIXES
+    ):
+        raise AgentError(
+            "Caminho nao permitido. Use: " + ", ".join(ALLOWED_PATH_PREFIXES)
+        )
+    backup = os.path.realpath(BACKUP_ROOT)
+    real = path
+    try:
+        real = os.path.realpath(path)
+    except OSError:
+        real = path
+    if real == backup or real.startswith(backup + os.sep):
+        raise AgentError("Nao restauro no disco de backup.")
+    return path
+
+
 def _backup_check_disk(disk: dict, read_data: bool = False) -> dict:
     restic = shutil.which("restic")
     if not restic:
@@ -1748,27 +1876,12 @@ def _backup_check_disk(disk: dict, read_data: bool = False) -> dict:
     key_file = Path(disk.get("key_file") or "")
     if not repo or not key_file.is_file():
         raise AgentError("Repositorio ou senha do restic ausente")
-    try:
-        cache_dir = Path(disk["mountpoint"]) / ".restic-cache"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        os.environ["RESTIC_CACHE_DIR"] = str(cache_dir)
-    except OSError:
-        pass
-    args = [
-        restic,
-        "-r",
-        repo,
-        "--password-file",
-        str(key_file),
-        "check",
-    ]
+    extra = ["check"]
     if read_data:
-        args.append("--read-data-subset=2%")
+        extra.append("--read-data-subset=2%")
     inicio = dt.datetime.now()
-    proc = subprocess.run(
-        args, capture_output=True, text=True, check=False, timeout=7200
-    )
-    detalhe = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()[-2000:]
+    proc, detalhe_bruto = _restic_exec(disk, extra, timeout=7200)
+    detalhe = detalhe_bruto[-2000:]
     healthy = proc.returncode == 0
     dados = {
         "uuid": disk.get("uuid"),
@@ -1784,8 +1897,8 @@ def _backup_check_disk(disk: dict, read_data: bool = False) -> dict:
     return dados
 
 
-def op_backup_check(disk_uuid: str, read_data: bool = False, **_):
-    disk = _backup_disk_by_uuid(disk_uuid)
+def op_backup_check(disk_uuid: str = "", uuid: str = "", read_data: bool = False, **_):
+    disk = _backup_disk_by_uuid(disk_uuid or uuid)
     return _backup_check_disk(disk, read_data=read_data)
 
 
@@ -2103,6 +2216,56 @@ def op_backup_download(disk_uuid: str, snapshot_id: str, path: str, **_):
         "relative": str(relative),
         "filename": filename,
         "size": target.stat().st_size,
+    }
+
+
+def op_backup_restore(
+    disk_uuid: str,
+    snapshot_id: str,
+    confirmation: str = "",
+    path: str = "",
+    **_,
+):
+    if not shutil.which("restic"):
+        raise AgentError("restic nao esta instalado no host")
+    disk = _backup_disk_by_uuid(disk_uuid)
+    snapshot_id = _validate_restic_snapshot(snapshot_id)
+    confirmado = (confirmation or "").strip().lower()
+    if confirmado not in {snapshot_id.lower(), snapshot_id[:8].lower()}:
+        raise AgentError("Para restaurar, confirme o identificador do snapshot.")
+    caminhos = []
+    pedido = (path or "").strip()
+    if pedido:
+        caminhos = [_destino_restic_ok(pedido)]
+    else:
+        proc, detalhe = _restic_exec(
+            disk, ["snapshots", snapshot_id, "--json"], timeout=120
+        )
+        if proc.returncode != 0:
+            raise AgentError(detalhe[-500:] or "nao foi possivel ler o snapshot")
+        try:
+            itens = json.loads(proc.stdout or "[]")
+        except json.JSONDecodeError as exc:
+            raise AgentError("Resposta invalida do restic snapshots") from exc
+        if isinstance(itens, dict):
+            itens = [itens]
+        fontes = []
+        for item in itens:
+            fontes.extend(item.get("paths") or [])
+        if not fontes:
+            raise AgentError("Snapshot sem caminhos para restaurar")
+        caminhos = [_destino_restic_ok(str(item)) for item in fontes]
+    extra = ["restore", snapshot_id, "--target", "/"]
+    for item in caminhos:
+        extra.extend(["--include", item])
+    proc, detalhe = _restic_exec(disk, extra, timeout=7200)
+    if proc.returncode != 0:
+        raise AgentError(detalhe[-800:] or "restic restore falhou")
+    log(f"RESTIC_RESTORE {disk.get('uuid')} {snapshot_id} {','.join(caminhos)}")
+    return {
+        "snapshot_id": snapshot_id,
+        "paths": caminhos,
+        "message": "restore concluido",
     }
 
 
@@ -4291,6 +4454,157 @@ def op_gitea_start(target: str = "host", **_):
     return {"target": alvo, "started": True}
 
 
+def _zip_extrair_seguro(pacote: zipfile.ZipFile, destino: Path) -> None:
+    raiz = destino.resolve()
+    for info in pacote.infolist():
+        nome = info.filename.replace("\\", "/")
+        if nome.startswith("/") or ".." in Path(nome).parts:
+            raise AgentError("Dump com caminho invalido")
+        alvo = (destino / nome).resolve()
+        if alvo != raiz and not str(alvo).startswith(str(raiz) + os.sep):
+            raise AgentError("Dump com caminho invalido")
+    pacote.extractall(destino)
+
+
+def _gitea_volume() -> Path:
+    rc, saida, _ = run_optional(
+        [
+            "docker",
+            "inspect",
+            "-f",
+            "{{range .Mounts}}{{.Destination}}={{.Source}}\n{{end}}",
+            GITEA_CONTAINER,
+        ],
+        timeout=20,
+    )
+    if rc != 0:
+        raise AgentError(f"Container do Gitea nao encontrado: {GITEA_CONTAINER}")
+    volume = ""
+    for linha in (saida or "").splitlines():
+        if "=" not in linha:
+            continue
+        destino, fonte = linha.split("=", 1)
+        if destino.rstrip("/") in {"/data", "/data/gitea"} and fonte:
+            volume = fonte
+            break
+        if not volume and fonte:
+            volume = fonte
+    if not volume:
+        raise AgentError("Volume de dados do Gitea nao encontrado")
+    caminho = Path(volume)
+    if not caminho.is_absolute() or ".." in caminho.parts:
+        raise AgentError("Volume do Gitea invalido")
+    if any(
+        str(caminho) == prefixo or str(caminho).startswith(prefixo + "/")
+        for prefixo in CREDENCIAIS_PROIBIDOS
+    ):
+        raise AgentError("Volume do Gitea em caminho proibido")
+    if not caminho.is_dir():
+        raise AgentError(f"Volume do Gitea nao e diretorio: {caminho}")
+    return caminho
+
+
+def _gitea_aplicar_dump(estagio: Path, volume: Path) -> list[str]:
+    feitos = []
+    appini = estagio / "app.ini"
+    if appini.is_file():
+        dest = volume / "gitea" / "conf" / "app.ini"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(appini, dest)
+        feitos.append("app.ini")
+    for pasta, alvo in (
+        ("custom", volume / "gitea" / "custom"),
+        ("data", volume / "gitea" / "data"),
+    ):
+        origem = estagio / pasta
+        if origem.is_dir():
+            if alvo.exists():
+                shutil.rmtree(alvo)
+            shutil.copytree(origem, alvo)
+            feitos.append(pasta)
+    for nome in ("gitea.db", "gitea.sqlite", "gitea.sqlite3"):
+        origem = estagio / nome
+        if origem.is_file():
+            dest = volume / "gitea" / nome
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(origem, dest)
+            feitos.append(nome)
+            break
+    repos = estagio / "gitea-repo.zip"
+    if not repos.is_file():
+        repos = estagio / "repositories.zip"
+    if repos.is_file():
+        alvo = volume / "git" / "repositories"
+        alvo.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(repos) as pacote:
+            _zip_extrair_seguro(pacote, alvo)
+        feitos.append(repos.name)
+    sql = estagio / "gitea-db.sql"
+    if sql.is_file():
+        dest = volume / "gitea" / "gitea-db.sql"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(sql, dest)
+        feitos.append("gitea-db.sql")
+    if not feitos:
+        raise AgentError(
+            "Dump do Gitea sem app.ini, repositorios ou banco reconhecidos"
+        )
+    return feitos
+
+
+def op_gitea_restore(archive: str, confirmation: str = "", **_):
+    if not _container_exists(GITEA_CONTAINER):
+        raise AgentError("Gitea nao esta instalado neste host")
+    nome = Path(archive or "").name
+    if not GITEA_DUMP_RE.match(nome):
+        raise AgentError("Arquivo de dump invalido")
+    if (confirmation or "").strip() != nome:
+        raise AgentError("Para restaurar, confirme o nome do dump.")
+    origem = Path(GITEA_BACKUP_DIR) / nome
+    if not origem.is_file():
+        raise AgentError("Dump nao encontrado no servidor")
+    volume = _gitea_volume()
+    rodando = False
+    rc, saida, _ = run_optional(
+        ["docker", "inspect", "-f", "{{.State.Running}}", GITEA_CONTAINER],
+        timeout=20,
+    )
+    rodando = rc == 0 and (saida or "").strip() == "true"
+    if rodando:
+        run(["docker", "stop", GITEA_CONTAINER], timeout=120)
+    seguranca = volume.parent / (
+        "gitea-pre-restore-" + dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    )
+    estagio = Path(tempfile.mkdtemp(prefix=".gitea-restore-"))
+    try:
+        if volume.exists():
+            shutil.copytree(volume, seguranca, dirs_exist_ok=False)
+        with zipfile.ZipFile(origem) as pacote:
+            ruim = pacote.testzip()
+            if ruim:
+                raise AgentError(f"Dump corrompido no item: {ruim}")
+            _zip_extrair_seguro(pacote, estagio)
+        aplicados = _gitea_aplicar_dump(estagio, volume)
+    except AgentError:
+        if seguranca.exists():
+            shutil.rmtree(volume, ignore_errors=True)
+            shutil.copytree(seguranca, volume)
+        if rodando:
+            run_optional(["docker", "start", GITEA_CONTAINER], timeout=120)
+        raise
+    finally:
+        shutil.rmtree(estagio, ignore_errors=True)
+    if rodando:
+        run(["docker", "start", GITEA_CONTAINER], timeout=120)
+    log(f"GITEA_RESTORE {nome} {','.join(aplicados)}")
+    return {
+        "archive": nome,
+        "applied": aplicados,
+        "security_copy": str(seguranca) if seguranca.exists() else "",
+        "restarted": rodando,
+    }
+
+
 def _load_cold_config() -> dict:
     path = Path(COLD_CONFIG)
     if not path.exists():
@@ -5685,6 +5999,7 @@ OPS = {
     "snapshot_list": op_snapshot_list,
     "snapshot_create": op_snapshot_create,
     "snapshot_delete": op_snapshot_delete,
+    "snapshot_restore": op_snapshot_restore,
     "snapshot_policy_save": op_snapshot_policy_save,
     "storage_overview": op_storage_overview,
     "live_metrics": op_live_metrics,
@@ -5696,11 +6011,13 @@ OPS = {
     "backup_ls": op_backup_ls,
     "backup_search": op_backup_search,
     "backup_download": op_backup_download,
+    "backup_restore": op_backup_restore,
     "backup_disk_setup": op_backup_disk_setup,
     "backup_secret": op_backup_secret,
     "backup_check": op_backup_check,
     "gitea_overview": op_gitea_overview,
     "gitea_start": op_gitea_start,
+    "gitea_restore": op_gitea_restore,
     "backup_job_save": op_backup_job_save,
     "backup_job_toggle": op_backup_job_toggle,
     "backup_job_delete": op_backup_job_delete,
