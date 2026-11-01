@@ -8,7 +8,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `9ef8534` (API de envio de torrents) |
+| Versão em produção | `c5c6223` (criar token na página e no /admin) |
 | Último deploy | 01/11/2026, Pi |
 | Testes | `264 passed` no Linux, sem a suíte `lab` |
 | Container | `homelab-storage-admin` |
