@@ -12,6 +12,7 @@ import time
 from django.conf import settings
 
 from .agent import AgentError, agent
+from .brand import marca
 from .services import load_services
 
 _CACHE_SECONDS = 30
@@ -33,9 +34,14 @@ def capacidades_do_host() -> dict:
 
 
 def homelab(request):
+    visual = marca()
     return {
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
+        "brand_homelab": visual["homelab"],
+        "brand_logo": visual["logo"],
+        "brand_login_logo": visual["login_logo"],
+        "brand_alt": visual["alt"],
         "capabilities": capacidades_do_host(),
         "credenciais_gerencia_usuarios": settings.CREDENTIALS_MANAGE_USERS,
         "login_pelo_credenciais": bool(

@@ -1,7 +1,11 @@
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
+from django.shortcuts import redirect
+from django.templatetags.static import static
 from django.urls import include, path
+
+from core.brand import marca
 
 admin.site.site_header = settings.SITE_NAME
 admin.site.site_title = settings.SITE_NAME
@@ -14,7 +18,12 @@ if settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN:
 
     login_view = credentials_login
 
+def favicon(request):
+    return redirect(static(marca()["favicon"]))
+
+
 urlpatterns = [
+    path("favicon.ico", favicon, name="favicon"),
     path("admin/", admin.site.urls),
     path("login/", login_view, name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),

@@ -7,7 +7,7 @@
   <title>{% block title %}{{ product_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="stylesheet" href="{% static 'css/ui.css' %}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32.png' %}">
+  {% include "partials/brand_icons.html" %}
 </head>
 <body class="auth-body">
   <main id="main" class="auth-main">

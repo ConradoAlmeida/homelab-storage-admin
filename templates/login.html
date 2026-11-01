@@ -1,7 +1,9 @@
 {% extends "base_auth.html" %}
+{% load static %}
 {% block title %}Entrar - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="card login-box">
+  <img class="brand-logo{% if brand_homelab %} lockup{% endif %}" src="{% static brand_login_logo %}" alt="{{ brand_alt }}">
   <h1>Entrar</h1>
   {% if login_pelo_credenciais %}
   <p class="muted text-12">Use a mesma conta do Credenciais.</p>

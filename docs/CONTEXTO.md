@@ -23,6 +23,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
+- No homelab o login mostra a casa com os servidores e o nome Conrado Homelab.
+  A barra e os ícones do navegador usam só a casa. No moya continua o wordmark Moya.
+  No moya (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent é um container do overlay do homelab, na rede
   interna do Compose; a WebUI não fica no host. A lista mostra as taxas de

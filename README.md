@@ -404,9 +404,11 @@ Gere a chave com `openssl rand -hex 32`.
 
 ### Perfil do host (`host.env`)
 
+No homelab, a tela de entrada usa a casa com os servidores e o nome Conrado Homelab. A barra e os ícones do navegador usam só a casa. No moya, com `CREDENTIALS_MANAGE_USERS=1`, permanece o wordmark Moya.
+
 | Variável | Default do Pi | Função |
 |---|---|---|
-| `SITE_NAME` | `Homelab Storage` | nome na UI/admin |
+| `SITE_NAME` | `Homelab Storage` | nome na UI/admin, abaixo da marca |
 | `STORAGE_ROOT` | `/mnt/nas` | raiz dos shares/volume principal |
 | `JELLYFIN_ROOT` | `/mnt/jellyfin` | mídia Jellyfin read-only (sem snapshot/restic) |
 | `SNAPSHOT_ROOT` | `/mnt/nas/.snapshots` | snapdir Btrfs |

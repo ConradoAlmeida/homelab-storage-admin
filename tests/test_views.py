@@ -167,8 +167,40 @@ class ViewSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "restic não encontrado")
         self.assertNotContains(response, 'href="/torrents/"')
+        self.assertContains(response, "images/conrado/mark.png")
+        self.assertContains(response, 'alt="Conrado Homelab"')
+        self.assertContains(response, "images/conrado/apple-touch-icon.png")
+        self.assertContains(response, "images/conrado/site.webmanifest")
+        self.assertNotContains(response, "moya_wordmark_official.svg")
         self.fake.list_shares.assert_any_call(include_size=False)
         self.fake.snapshot_usage.assert_any_call(include_size=False)
+
+    def test_login_e_favicon_usam_a_marca_do_homelab(self):
+        self.client.logout()
+        login = self.client.get("/login/")
+        self.assertContains(login, "images/conrado/lockup.png")
+        self.assertContains(login, 'alt="Conrado Homelab"')
+        self.assertContains(login, "images/conrado/favicon-32.png")
+        icone = self.client.get("/favicon.ico")
+        self.assertRedirects(
+            icone,
+            "/static/images/conrado/favicon.ico",
+            fetch_redirect_response=False,
+        )
+
+    @override_settings(CREDENTIALS_MANAGE_USERS=True)
+    def test_moya_mantem_o_wordmark_proprio(self):
+        response = self.client.get("/")
+        self.assertContains(response, "moya_wordmark_official.svg")
+        self.assertContains(response, 'alt="Moya"')
+        self.assertNotContains(response, "images/conrado/mark.png")
+        self.assertNotContains(response, "images/conrado/lockup.png")
+        icone = self.client.get("/favicon.ico")
+        self.assertRedirects(
+            icone,
+            "/static/images/favicon.ico",
+            fetch_redirect_response=False,
+        )
 
     def _liga_jellyfin(self):
         capacidades = dict(self.fake.host_capabilities.return_value)
