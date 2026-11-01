@@ -169,6 +169,12 @@
         </div>
       {% endif %}
       {% if pode_ver_token %}
+        {% if not token_existe %}
+          <div class="alert" role="status">
+            <strong>API desligada</strong>
+            <p>Ainda não há token. Crie um para a API passar a aceitar envios.</p>
+          </div>
+        {% endif %}
         <form method="post" action="{% url 'torrents' %}">
           {% csrf_token %}
           <div class="form-group">
@@ -177,17 +183,27 @@
             <p class="help">A senha de quem administra esta página.</p>
           </div>
           <div class="form-group">
-            <label for="torrent-token-novo">Token novo</label>
-            <input id="torrent-token-novo" name="token" type="text" autocomplete="off" spellcheck="false">
-            <p class="help">De 16 a 256 caracteres, sem espaços. Preencha só para trocar.</p>
+            <label for="torrent-token-novo">{% if token_existe %}Token novo{% else %}Token{% endif %}</label>
+            <input id="torrent-token-novo" name="token" type="text" autocomplete="off" spellcheck="false" {% if not token_existe %}required{% endif %}>
+            <p class="help">De 16 a 256 caracteres, sem espaços.{% if token_existe %} Preencha só para trocar.{% endif %}</p>
           </div>
           <div class="form-actions">
-            <button class="btn" type="submit" name="acao" value="consultar">Consultar token</button>
-            <button class="btn primary" type="submit" name="acao" value="trocar">Trocar token</button>
+            {% if token_existe %}
+              <button class="btn" type="submit" name="acao" value="consultar">Consultar token</button>
+              <button class="btn primary" type="submit" name="acao" value="trocar">Trocar token</button>
+            {% else %}
+              <button class="btn primary" type="submit" name="acao" value="criar">Criar token</button>
+            {% endif %}
           </div>
         </form>
       {% else %}
-        <p class="muted text-12">A consulta do valor pede a senha do administrador.</p>
+        <p class="muted text-12">
+          {% if token_existe %}
+            A consulta do valor pede a senha do administrador.
+          {% else %}
+            A criação do token pede a senha do administrador.
+          {% endif %}
+        </p>
       {% endif %}
     </div>
   </section>

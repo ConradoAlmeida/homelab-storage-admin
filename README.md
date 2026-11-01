@@ -479,8 +479,9 @@ o motivo e não oferece o formulário.
 A API de envio usa o mesmo caminho. `POST /api/torrents/` e
 `GET /api/torrents/bibliotecas/` exigem `Authorization: Bearer ...`. O token
 fica legível no banco do painel. `TORRENT_API_TOKEN` no `host.env` só grava
-esse valor na primeira vez, se a linha ainda não existir. A troca é na página
-Torrents, com a senha do administrador, e vale na hora. Rebuild do container
+esse valor na primeira vez, se a linha ainda não existir. Sem token, a página oferece **Criar token**. Com token, a troca é na página
+Torrents, com a senha do administrador, e vale na hora. O mesmo registro
+aparece em `/admin`, como Token da API de torrents. Rebuild do container
 não desfaz a troca. Sessão do painel e token na query não autorizam. O corpo
 é JSON com `magnet` e `library` (id ou nome da biblioteca, por exemplo
 `Filmes`). O corpo JSON vale também quando o curl manda `-d` com o

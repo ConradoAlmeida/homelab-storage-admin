@@ -214,6 +214,7 @@ class ViewSmokeTests(TestCase):
         context_processors._cached_caps = None
         context_processors._cached_at = 0.0
 
+    @override_settings(TORRENT_API_TOKEN="")
     def test_torrents_somem_sem_jellyfin_e_aparecem_com_ele(self):
         self.assertRedirects(self.client.get("/torrents/"), "/")
         self._liga_jellyfin()
@@ -256,7 +257,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "downloads.js")
         painel = self.client.get("/")
         self.assertContains(painel, 'href="/torrents/"')
-        self.assertContains(resposta, "A consulta do valor pede a senha do administrador.")
+        self.assertContains(resposta, "A criação do token pede a senha do administrador.")
+        self.assertNotContains(resposta, "Consultar token")
         self.assertNotContains(resposta, 'name="password"')
 
     @override_settings(TORRENT_API_TOKEN="token-da-api")
@@ -279,6 +281,8 @@ class ViewSmokeTests(TestCase):
         self.client.force_login(self.user)
         pagina = self.client.get("/torrents/")
         self.assertContains(pagina, "Senha do administrador")
+        self.assertContains(pagina, "Consultar token")
+        self.assertNotContains(pagina, 'value="criar"')
         self.assertNotContains(pagina, "token-da-api")
         recusa = self.client.post("/torrents/", {"password": "errada"})
         self.assertContains(recusa, "Senha do administrador incorreta.")
@@ -295,6 +299,74 @@ class ViewSmokeTests(TestCase):
         bloqueado = self.client.post("/torrents/", {"password": "test-password"})
         self.assertContains(bloqueado, "Só o administrador consulta o token.")
         self.assertNotContains(bloqueado, "token-da-api")
+
+    @override_settings(TORRENT_API_TOKEN="")
+    def test_admin_sem_token_ve_criar_e_nao_consultar(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+        }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5", "reason": ""},
+            [],
+            "",
+        )
+        self.user.is_superuser = True
+        self.user.set_password("test-password")
+        self.user.save()
+        self.client.force_login(self.user)
+        vazio = self.client.get("/torrents/")
+        self.assertContains(vazio, "Criar token")
+        self.assertContains(vazio, "Ainda não há token.")
+        self.assertNotContains(vazio, "Consultar token")
+        criado = self.client.post(
+            "/torrents/",
+            {
+                "password": "test-password",
+                "acao": "criar",
+                "token": "token-criado-na-pagina",
+            },
+        )
+        self.assertContains(criado, "Token da API criado.")
+        self.assertContains(criado, "token-criado-na-pagina")
+        self.assertContains(criado, "Consultar token")
+        self.assertNotContains(criado, ">Criar token<")
+
+    @override_settings(TORRENT_API_TOKEN="")
+    def test_token_aparece_no_django_admin(self):
+        from core.models import TorrentApiToken, token_da_api
+
+        self.user.is_superuser = True
+        self.user.is_staff = True
+        self.user.save()
+        self.client.force_login(self.user)
+        indice = self.client.get("/admin/")
+        self.assertContains(indice, "Token da API de torrents")
+        TorrentApiToken.objects.create(pk=1, token="")
+        self.assertEqual(
+            self.client.get("/admin/core/torrentapitoken/add/").status_code, 403
+        )
+        pagina = self.client.get("/admin/core/torrentapitoken/1/change/")
+        self.assertContains(pagina, "Vazio desliga a API.")
+        self.assertNotContains(pagina, "/admin/core/torrentapitoken/1/delete/")
+        curto = self.client.post(
+            "/admin/core/torrentapitoken/1/change/",
+            {"token": "curto"},
+        )
+        self.assertContains(curto, "16 a 256")
+        self.assertEqual(token_da_api(), "")
+        gravado = self.client.post(
+            "/admin/core/torrentapitoken/1/change/",
+            {"token": "token-gravado-no-admin"},
+            follow=True,
+        )
+        self.assertEqual(gravado.status_code, 200)
+        self.assertEqual(token_da_api(), "token-gravado-no-admin")
+        de_novo = self.client.get("/admin/core/torrentapitoken/1/change/")
+        self.assertContains(de_novo, "token-gravado-no-admin")
 
     def test_admin_troca_o_token_e_o_host_env_nao_volta(self):
         self._liga_jellyfin()

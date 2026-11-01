@@ -22,7 +22,11 @@ class AuditLog(models.Model):
 class TorrentApiToken(models.Model):
     """Token legível da API de torrents. Uma linha, criada na primeira consulta."""
 
-    token = models.TextField(blank=True)
+    token = models.TextField("Token", blank=True)
+
+    class Meta:
+        verbose_name = "Token da API de torrents"
+        verbose_name_plural = "Token da API de torrents"
 
     def __str__(self) -> str:
         return "Token da API de torrents"

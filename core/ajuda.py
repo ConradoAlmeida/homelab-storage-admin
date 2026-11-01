@@ -266,7 +266,7 @@ AJUDA: dict[str, dict[str, Any]] = {
                     "503 é agente ou qBittorrent parado.",
                     "Token vazio responde 404.",
                     "GET /api/torrents/bibliotecas/ lista id e nome das pastas.",
-                    "O administrador consulta e troca o token com a senha da própria conta. A troca vale na hora.",
+                    "Sem token, o botão é Criar token. Com token, o administrador consulta e troca com a senha da própria conta. A troca vale na hora. O mesmo registro aparece em /admin.",
                 ],
             },
         ],

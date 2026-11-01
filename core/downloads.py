@@ -97,6 +97,7 @@ class TorrentsView(ExigeJellyfinMixin, AgentTemplateView):
                 "error": None,
                 "form": None,
                 "pode_ver_token": _administrador(self.request.user),
+                "token_existe": False,
                 "token_revelado": "",
                 "token_erro": "",
             }
@@ -116,6 +117,7 @@ class TorrentsView(ExigeJellyfinMixin, AgentTemplateView):
             and libraries
         ):
             context["form"] = TorrentAddForm(libraries=libraries)
+        context["token_existe"] = bool(token_da_api())
         return context
 
     def post(self, request):
@@ -128,28 +130,31 @@ class TorrentsView(ExigeJellyfinMixin, AgentTemplateView):
             context["token_erro"] = "Senha do administrador incorreta."
             return self.render_to_response(context)
         acao = request.POST.get("acao") or "consultar"
-        if acao == "trocar":
+        if acao in {"trocar", "criar"}:
             novo = request.POST.get("token") or ""
             if not _token_aceitavel(novo):
                 context["token_erro"] = (
                     "O token novo precisa ter de 16 a 256 caracteres, sem espaços."
                 )
                 return self.render_to_response(context)
+            ja_tinha = bool(token_da_api())
             definir_token_da_api(novo)
             context["token_revelado"] = novo
+            context["token_existe"] = True
             AuditLog.objects.create(
                 actor=request.user,
                 action="torrent.token.replace",
                 target="TORRENT_API_TOKEN",
                 ip=request.META.get("REMOTE_ADDR") or None,
             )
-            messages.success(request, "Token da API atualizado.")
+            messages.success(
+                request,
+                "Token da API atualizado." if ja_tinha else "Token da API criado.",
+            )
         else:
             valor = token_da_api()
             if not valor:
-                context["token_erro"] = (
-                    "A API está desligada. Grave um token nesta página."
-                )
+                context["token_erro"] = "Ainda não há token. Use Criar token."
                 return self.render_to_response(context)
             context["token_revelado"] = valor
             AuditLog.objects.create(
