@@ -8,7 +8,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `66f778a` (qBittorrent na rede do Pi) |
+| Versão em produção | `7129658` (restore de snapshot/restic/Gitea e lock órfão) |
 | Último deploy | 01/11/2026, Pi |
 | Testes | `264 passed` no Linux, sem a suíte `lab` |
 | Container | `homelab-storage-admin` |
