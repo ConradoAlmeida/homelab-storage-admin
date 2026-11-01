@@ -8,9 +8,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `de29ec1` (gestão de firewall) |
-| Último deploy | 29/10/2026, moyaserver; Pi pendente (host offline) |
-| Testes | `201 passed` + `5 lab` no Linux; `180/26` no Windows |
+| Versão em produção | `9ef8534` (API de envio de torrents) |
+| Último deploy | 01/11/2026, Pi |
+| Testes | `264 passed` no Linux, sem a suíte `lab` |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
