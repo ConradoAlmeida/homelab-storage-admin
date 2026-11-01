@@ -86,31 +86,19 @@
           <label for="torrent-filtro-estado">Estado</label>
           <select id="torrent-filtro-estado" class="form-control">
             <option value="">Todos</option>
-            <option value="baixando">Baixando</option>
-            <option value="fila">Na fila</option>
-            <option value="pausado">Pausado</option>
-            <option value="concluido">Concluído</option>
-            <option value="erro">Erro</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="torrent-ordem">Ordenar por</label>
-          <select id="torrent-ordem" class="form-control">
-            <option value="">Como chegaram</option>
-            <option value="name">Nome</option>
-            <option value="library">Pasta</option>
-            <option value="state">Estado</option>
-            <option value="progress">Progresso</option>
-            <option value="download">Download</option>
-            <option value="upload">Upload</option>
-            <option value="size">Tamanho</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="torrent-sentido">Sentido</label>
-          <select id="torrent-sentido" class="form-control">
-            <option value="asc">Crescente</option>
-            <option value="desc">Decrescente</option>
+            <option value="downloading">Baixando</option>
+            <option value="seeding">Enviando</option>
+            <option value="completed">Concluído</option>
+            <option value="resumed">Retomado</option>
+            <option value="paused">Pausado</option>
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+            <option value="stalled">Parado</option>
+            <option value="stalled_uploading">Envio parado</option>
+            <option value="stalled_downloading">Download parado</option>
+            <option value="checking">Verificando</option>
+            <option value="moving">Movendo</option>
+            <option value="errored">Com erro</option>
           </select>
         </div>
       </div>

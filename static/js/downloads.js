@@ -4,35 +4,12 @@
   var nome = document.getElementById("torrent-filtro-nome");
   var pasta = document.getElementById("torrent-filtro-pasta");
   var estado = document.getElementById("torrent-filtro-estado");
-  var ordem = document.getElementById("torrent-ordem");
-  var sentido = document.getElementById("torrent-sentido");
   var vazio = document.querySelector("[data-torrent-empty]");
   var contagem = document.querySelector("[data-torrent-count]");
   var chave = "torrent-tabela";
   var numericos = { progress: true, download: true, upload: true, size: true };
-  var grupos = {
-    baixando: {
-      downloading: true,
-      forcedDL: true,
-      metaDL: true,
-      stalledDL: true,
-      checkingDL: true,
-      allocating: true,
-      moving: true,
-    },
-    fila: { queuedDL: true },
-    pausado: { pausedDL: true, stoppedDL: true },
-    concluido: {
-      uploading: true,
-      forcedUP: true,
-      stalledUP: true,
-      pausedUP: true,
-      stoppedUP: true,
-      queuedUP: true,
-      checkingUP: true,
-    },
-    erro: { error: true, missingFiles: true },
-  };
+  var ordem = "";
+  var sentido = "asc";
 
   function linhas() {
     if (!tabela) return [];
@@ -45,19 +22,50 @@
     });
   }
 
-  function ler() {
-    return {
-      nome: nome ? nome.value : "",
-      pasta: pasta ? pasta.value : "",
-      estado: estado ? estado.value : "",
-      ordem: ordem ? ordem.value : "",
-      sentido: sentido && sentido.value === "desc" ? "desc" : "asc",
-    };
+  function numero(linha, atributo) {
+    var valor = Number(linha.getAttribute(atributo) || 0);
+    return Number.isFinite(valor) ? valor : 0;
+  }
+
+  function pausado(codigo) {
+    return codigo === "pausedDL" || codigo === "pausedUP" || codigo === "stoppedDL" || codigo === "stoppedUP";
+  }
+
+  function combinaEstado(linha, filtro) {
+    if (!filtro) return true;
+    var codigo = linha.getAttribute("data-state-code") || "";
+    var progresso = numero(linha, "data-progress");
+    var download = numero(linha, "data-download");
+    var upload = numero(linha, "data-upload");
+    if (filtro === "downloading") {
+      return codigo === "downloading" || codigo === "metaDL" || codigo === "forcedDL" || codigo === "stalledDL" || codigo === "queuedDL" || codigo === "checkingDL" || codigo === "allocating";
+    }
+    if (filtro === "seeding") {
+      return codigo === "uploading" || codigo === "forcedUP" || codigo === "stalledUP" || codigo === "queuedUP" || codigo === "checkingUP";
+    }
+    if (filtro === "completed") return progresso >= 100;
+    if (filtro === "paused") return pausado(codigo);
+    if (filtro === "resumed") return !pausado(codigo);
+    if (filtro === "active") return download > 0 || upload > 0;
+    if (filtro === "inactive") return download === 0 && upload === 0;
+    if (filtro === "stalled") return codigo === "stalledDL" || codigo === "stalledUP";
+    if (filtro === "stalled_uploading") return codigo === "stalledUP";
+    if (filtro === "stalled_downloading") return codigo === "stalledDL";
+    if (filtro === "checking") return codigo === "checkingDL" || codigo === "checkingUP" || codigo === "checkingResumeData";
+    if (filtro === "moving") return codigo === "moving";
+    if (filtro === "errored") return codigo === "error" || codigo === "missingFiles";
+    return true;
   }
 
   function gravar() {
     try {
-      window.sessionStorage.setItem(chave, JSON.stringify(ler()));
+      window.sessionStorage.setItem(chave, JSON.stringify({
+        nome: nome ? nome.value : "",
+        pasta: pasta ? pasta.value : "",
+        estado: estado ? estado.value : "",
+        ordem: ordem,
+        sentido: sentido,
+      }));
     } catch (erro) {
       /* a lista segue funcionando sem memória da sessão */
     }
@@ -73,20 +81,19 @@
     if (!salvo || typeof salvo !== "object") return;
     if (nome && typeof salvo.nome === "string") nome.value = salvo.nome;
     if (pasta && typeof salvo.pasta === "string") pasta.value = salvo.pasta;
-    if (estado && typeof salvo.estado === "string") estado.value = salvo.estado;
-    if (ordem && typeof salvo.ordem === "string") ordem.value = salvo.ordem;
-    if (sentido && (salvo.sentido === "asc" || salvo.sentido === "desc")) {
-      sentido.value = salvo.sentido;
+    if (estado && typeof salvo.estado === "string" && estado.querySelector('option[value="' + salvo.estado + '"]')) {
+      estado.value = salvo.estado;
     }
+    if (typeof salvo.ordem === "string") ordem = salvo.ordem;
+    if (salvo.sentido === "asc" || salvo.sentido === "desc") sentido = salvo.sentido;
   }
 
   function cabeçalhos() {
-    var escolha = ler();
     if (!tabela) return;
     tabela.querySelectorAll("button.th-sort").forEach(function (botao) {
       var coluna = botao.getAttribute("data-sort");
-      if (escolha.ordem && coluna === escolha.ordem) {
-        botao.setAttribute("aria-sort", escolha.sentido === "desc" ? "descending" : "ascending");
+      if (ordem && coluna === ordem) {
+        botao.setAttribute("aria-sort", sentido === "desc" ? "descending" : "ascending");
       } else {
         botao.removeAttribute("aria-sort");
       }
@@ -96,38 +103,36 @@
   function aplicar() {
     if (!tabela) return;
     marcarOrdemInicial();
-    var escolha = ler();
-    var busca = (escolha.nome || "").trim().toLocaleLowerCase("pt-BR");
-    var grupo = grupos[escolha.estado] || null;
+    var busca = (nome && nome.value ? nome.value : "").trim().toLocaleLowerCase("pt-BR");
+    var pastaEscolhida = pasta ? pasta.value : "";
+    var estadoEscolhido = estado ? estado.value : "";
     var visiveis = [];
     linhas().forEach(function (linha) {
       var nomeLinha = (linha.getAttribute("data-name") || "").toLocaleLowerCase("pt-BR");
       var pastaLinha = linha.getAttribute("data-library") || "";
-      var codigo = linha.getAttribute("data-state-code") || "";
       var mostra = true;
       if (busca && nomeLinha.indexOf(busca) === -1) mostra = false;
-      if (escolha.pasta && pastaLinha !== escolha.pasta) mostra = false;
-      if (grupo && !grupo[codigo]) mostra = false;
+      if (pastaEscolhida && pastaLinha !== pastaEscolhida) mostra = false;
+      if (!combinaEstado(linha, estadoEscolhido)) mostra = false;
       linha.hidden = !mostra;
       if (mostra) visiveis.push(linha);
     });
     var corpo = tabela.querySelector("tbody");
-    var fator = escolha.sentido === "desc" ? -1 : 1;
+    var fator = sentido === "desc" ? -1 : 1;
     visiveis.sort(function (a, b) {
-      if (!escolha.ordem) {
-        return Number(a.getAttribute("data-seq")) - Number(b.getAttribute("data-seq"));
+      if (!ordem) {
+        return numero(a, "data-seq") - numero(b, "data-seq");
       }
-      if (numericos[escolha.ordem]) {
-        var na = Number(a.getAttribute("data-" + escolha.ordem) || 0);
-        var nb = Number(b.getAttribute("data-" + escolha.ordem) || 0);
+      if (numericos[ordem]) {
+        var na = numero(a, "data-" + ordem);
+        var nb = numero(b, "data-" + ordem);
         if (na !== nb) return (na - nb) * fator;
       } else {
-        var ta = (a.getAttribute("data-" + (escolha.ordem === "state" ? "state-label" : escolha.ordem)) || "");
-        var tb = (b.getAttribute("data-" + (escolha.ordem === "state" ? "state-label" : escolha.ordem)) || "");
-        var cmp = ta.localeCompare(tb, "pt-BR", { sensitivity: "base" });
+        var atributo = ordem === "state" ? "data-state-label" : "data-" + ordem;
+        var cmp = (a.getAttribute(atributo) || "").localeCompare(b.getAttribute(atributo) || "", "pt-BR", { sensitivity: "base" });
         if (cmp !== 0) return cmp * fator;
       }
-      return Number(a.getAttribute("data-seq")) - Number(b.getAttribute("data-seq"));
+      return numero(a, "data-seq") - numero(b, "data-seq");
     });
     visiveis.forEach(function (linha) {
       corpo.appendChild(linha);
@@ -143,42 +148,28 @@
     cabeçalhos();
   }
 
-  function sentidoPadrao(coluna) {
-    return numericos[coluna] ? "desc" : "asc";
-  }
-
-  if (filtros) {
-    restaurar();
-    [nome, pasta, estado, ordem, sentido].forEach(function (campo) {
-      if (!campo) return;
-      campo.addEventListener("input", function () {
-        gravar();
-        aplicar();
-      });
-      campo.addEventListener("change", function () {
-        gravar();
-        aplicar();
-      });
+  if (filtros) restaurar();
+  [nome, pasta, estado].forEach(function (campo) {
+    if (!campo) return;
+    campo.addEventListener("input", function () {
+      gravar();
+      aplicar();
     });
-    if (ordem) {
-      ordem.addEventListener("change", function () {
-        if (sentido && ordem.value) sentido.value = sentidoPadrao(ordem.value);
-        gravar();
-        aplicar();
-      });
-    }
-  }
+    campo.addEventListener("change", function () {
+      gravar();
+      aplicar();
+    });
+  });
 
   if (tabela) {
     tabela.querySelectorAll("button.th-sort").forEach(function (botao) {
       botao.addEventListener("click", function () {
         var coluna = botao.getAttribute("data-sort") || "";
-        if (!ordem || !sentido) return;
-        if (ordem.value === coluna) {
-          sentido.value = sentido.value === "desc" ? "asc" : "desc";
+        if (ordem === coluna) {
+          sentido = sentido === "asc" ? "desc" : "asc";
         } else {
-          ordem.value = coluna;
-          sentido.value = sentidoPadrao(coluna);
+          ordem = coluna;
+          sentido = "asc";
         }
         gravar();
         aplicar();
@@ -222,6 +213,7 @@
             return;
           }
           linha.setAttribute("data-name", item.name || "");
+          linha.setAttribute("data-state-label", item.state_label || "");
           linha.setAttribute("data-progress", String(item.progress || 0));
           linha.setAttribute("data-download", String(item.download_bps || 0));
           linha.setAttribute("data-upload", String(item.upload_bps || 0));
