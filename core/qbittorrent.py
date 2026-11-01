@@ -1,7 +1,8 @@
 """Cliente da API do qBittorrent que roda como container no homelab.
 
-O painel fala com o serviço `qbittorrent` na rede do Compose. A WebUI não é
-publicada no host: o celular usa esta página, e o download segue no Pi.
+No Pi o container usa a rede do host. O painel fala com o nome `qbittorrent`,
+que o overlay aponta para o gateway do Docker, na porta da WebUI (8090).
+A 8080 permanece com o serviço que já escuta no Pi. O celular usa esta página.
 """
 
 from __future__ import annotations

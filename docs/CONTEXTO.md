@@ -28,8 +28,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   um ícone. Os ícones do navegador usam só a casa. No moya
   (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
-  biblioteca dele. O qBittorrent é um container do overlay do homelab, na rede
-  interna do Compose; a WebUI não fica no host. A lista mostra as taxas de
+  biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o
+  handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do
+  host não muda. Com o UFW ativo, 6881/tcp e 6881/udp ficam liberadas e a
+  8090 só aceita a rede Docker. O UPnP fica ligado. A lista mostra as taxas de
   download e de upload. A busca, a pasta e o estado ficam numa linha,
   com atalhos para todos, ativos, concluídos e com erro. O cabeçalho da
   coluna ordena a lista. Pausar só aparece enquanto

@@ -470,12 +470,15 @@ e traduz o caminho do container para o diretório do host. O destino não é liv
 só uma dessas pastas.
 
 O download roda no container `qbittorrent` do overlay do homelab
-(`lscr.io/linuxserver/qbittorrent`), na mesma rede do painel. A WebUI não é
-publicada no host — a porta 8080 deste Pi continua com o Pi-hole. O celular
+(`lscr.io/linuxserver/qbittorrent`), na rede do Pi (`network_mode: host`).
+Assim o handshake dos peers sai pela interface do host, sem o NAT da bridge.
+A WebUI escuta na `8090` e o painel chega nela pelo nome `qbittorrent`. A
+`8080` do Pi não é usada por esse container. O UFW, quando está ativo, libera
+`6881/tcp` e `6881/udp` para os pares e a `8090/tcp` só a partir de
+`172.16.0.0/12`. O UPnP fica ligado para o roteador abrir o retorno. O celular
 usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
 A tabela de andamento busca por nome e filtra pasta e estado numa linha só, com atalhos para todos, ativos, concluídos e com erro. O clique na coluna ordena.
-A porta de pares `6881` é a única publicada. Sem o container, a página explica
-o motivo e não oferece o formulário.
+Sem o container, a página explica o motivo e não oferece o formulário.
 
 A API de envio usa o mesmo caminho. `POST /api/torrents/` e
 `GET /api/torrents/bibliotecas/` exigem `Authorization: Bearer ...`. O token

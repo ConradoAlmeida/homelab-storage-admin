@@ -24,8 +24,12 @@ def test_homelab_overlay_keeps_current_paths():
     assert "${JELLYFIN_ROOT:-/mnt/jellyfin}:${JELLYFIN_ROOT:-/mnt/jellyfin}:ro" in text
     assert "/run/homelab-storage-admin:/run/homelab-storage-admin:ro" in text
     assert "container_name: qbittorrent" in text
-    assert "QBITTORRENT_URL: http://qbittorrent:8080" in text
-    assert "6881:6881" in text
+    assert "network_mode: host" in text
+    assert 'WEBUI_PORT: "8090"' in text
+    assert 'TORRENTING_PORT: "6881"' in text
+    assert "QBITTORRENT_URL: http://qbittorrent:8090" in text
+    assert "qbittorrent:host-gateway" in text
+    assert "6881:6881" not in text
     assert "8080:8080" not in text
 
 
@@ -100,6 +104,11 @@ def test_deploy_loads_host_env_and_selected_overlay():
     assert "COMPOSE_OVERLAY" in text
     assert "docker-compose.homelab.yml" not in text
     assert 'docker compose "${COMPOSE_FILES[@]}" up -d --build' in text
+    assert "6881/tcp" in text
+    assert "6881/udp" in text
+    assert "8090/tcp" in text
+    assert "172.16.0.0/12" in text
+    assert '"upnp": True' in text
 
 
 def test_install_agent_selects_profile():
