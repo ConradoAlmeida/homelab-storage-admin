@@ -133,11 +133,9 @@ from core import qbittorrent as qbit
 ultimo = ""
 for _ in range(40):
     try:
-        if not qbit._login():
-            ultimo = "login recusado"
-            time.sleep(1)
-            continue
-        codigo, corpo = qbit._abrir(
+        if qbit.QBIT_PASSWORD:
+            qbit._login()
+        codigo, _corpo = qbit._abrir(
             "POST",
             "/api/v2/app/setPreferences",
             {"json": json.dumps({"upnp": True, "listen_port": 6881})},
