@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-01**.
+Documento de retomada. Última atualização: **2026-11-02**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -165,6 +165,11 @@ docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
   num clone novo, recrie o symlink antes de rodar `manage.py` no host.
 - **`CREDENTIALS_MANAGE_USERS=1`** só bloqueia identidade; não confunda com
   remoção de features.
+- **Senha Samba ≠ senha Linux.** No Pi, a conta criada pela UI não tem senha
+  Unix e usa shell `nologin`; a tela define só a credencial Samba. No moya, a
+  igualdade com o Credenciais vem de automação externa (push), e troca
+  posterior/desativação precisam do mesmo push ou desincronizam.
+  Detalhes em [ARQUITETURA.md](ARQUITETURA.md#propagação-da-senha-para-o-samba-moyaserver).
 - **O overlay do Compose** vem do `host.env`; sem ele o app fica fora da rede.
 - **Sessões do Credenciais** precisam estar válidas: o app revalida a cada request.
 - **UI**: qualquer página nova sem `page-head`/`section-head`/`card` quebra o

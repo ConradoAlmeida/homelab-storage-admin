@@ -226,3 +226,23 @@ entra na rede `moya` e recebe `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN`.
   esses blocos não aparecem. No moyaserver, com o container e com
   `CREDENCIAIS_DB`/`CREDENCIAIS_ENV`, o atalho do Gitea, os jobs de arquivos e
   a gestão de usuários pelo Credenciais continuam.
+
+### Propagação da senha para o Samba (moyaserver)
+
+No moyaserver, a conta Samba é criada e atualizada por automação do Credenciais,
+fora deste repositório. A senha do app e a do Samba são iguais porque o mesmo
+texto é empurrado no evento, não porque exista um armazenamento compartilhado:
+o Credenciais fica com o hash dele e o Samba com o hash NT em `passdb.tdb`.
+
+- O evento de criação (ativar conta e definir a senha) cria a conta Samba.
+- Troca de senha posterior precisa do mesmo push; sem ele, a senha nova vale
+  nos apps e a antiga continua no SMB.
+- Desativar e excluir precisam de `smbpasswd -d`/`-x`; credencial Samba órfã
+  continua dando acesso ao share.
+- O push é idempotente: `smbpasswd -a` em usuário existente só troca a senha,
+  então reexecutar depois de falha é seguro.
+- O painel não participa desse caminho e, com `CREDENTIALS_MANAGE_USERS=1`,
+  também não disputa a fonte da verdade.
+
+No Pi não há Credenciais nem automação: a senha definida na interface vale só
+para o Samba. A conta Linux nasce sem senha e com shell `nologin`.

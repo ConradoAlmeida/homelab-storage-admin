@@ -18,6 +18,10 @@
 - O README antigo do projeto `moya-storage-admin` continha uma senha real. Ela
   **não** foi trazida para este repositório; rotacione a senha no servidor antigo
   se ele ainda existir.
+- Senha Samba não fica em texto em lugar nenhum. O Samba guarda só o hash NT,
+  sem salt, em `/var/lib/samba/private/passdb.tdb` (diretório `0700 root`). Quem
+  tem root no host extrai o hash e quebra offline; unificar a senha com o
+  Credenciais não muda isso. O app não copia esse arquivo em backup.
 
 ---
 

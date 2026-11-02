@@ -1172,6 +1172,11 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Nível")
         self.assertNotContains(resposta, "health-list")
 
+    def test_senha_do_usuario_e_so_do_samba(self):
+        resposta = self.client.get("/usuarios/senha/?username=ana")
+        self.assertContains(resposta, "vale apenas para o Samba")
+        self.assertNotContains(resposta, "login no servidor")
+
     def test_usuarios_lista_grupos_em_tabela(self):
         self.fake.list_users.return_value = [
             {

@@ -359,15 +359,27 @@ AJUDA: dict[str, dict[str, Any]] = {
     },
     "user_password": {
         "title": "Definir senha",
-        "summary": "Troca a senha de uma conta Linux/Samba.",
+        "summary": "Troca a senha Samba de uma conta.",
         "chapters": [
             {
                 "title": "Onde a senha vale",
-                "text": "A nova senha vale para o login no servidor e para o Samba.",
+                "text": (
+                    "A nova senha vale apenas para o Samba. A conta Linux não "
+                    "tem senha e usa shell nologin; o acesso SSH exige uma "
+                    "senha Unix definida à parte no servidor."
+                ),
             },
             {
                 "title": "Regra",
                 "text": "A senha precisa ter no mínimo 8 caracteres.",
+            },
+            {
+                "title": "Recuperar senha",
+                "text": (
+                    "Não há como ver a senha atual: o painel não guarda o "
+                    "texto e o Samba só guarda o hash. Se esquecer, defina "
+                    "outra."
+                ),
             },
             {
                 "title": "Escopo",

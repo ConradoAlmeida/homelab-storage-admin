@@ -148,4 +148,10 @@ permissões `2775`. O dono padrão é `conrado` (ajustável em
 opcional (1000–60000). O agente bloqueia grupos reservados, grupos existentes e
 GIDs em uso; não há renomear/excluir pela UI.
 
+Senhas do Linux e do Samba são independentes. O painel cria a conta Linux sem
+senha e com shell `/usr/sbin/nologin` e define só a credencial Samba
+(`smbpasswd`, por stdin); não há `unix password sync`. Rodar `passwd usuario` no
+servidor cria uma senha Unix que não acompanha a do Samba, e vice-versa. O
+painel não guarda a senha em texto: esquecida, o caminho é definir outra.
+
 Para gerenciar senhas Samba fora do app: `sudo smbpasswd -a usuario`.

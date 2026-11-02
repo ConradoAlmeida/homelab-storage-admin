@@ -12,7 +12,7 @@ class UserCreateForm(forms.Form):
         label="Senha",
         widget=forms.PasswordInput,
         min_length=8,
-        help_text="Minimo 8 caracteres. O usuario podera trocar depois.",
+        help_text="Minimo 8 caracteres. Senha do Samba: a conta Linux nao recebe senha.",
     )
     groups = forms.MultipleChoiceField(
         label="Grupos",
