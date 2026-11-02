@@ -180,7 +180,8 @@ docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
 
 ## Documentos irmãos
 
-- `README.md` — operação e comportamento.
+- `README.md` — índice; `docs/` — manuais por área (instalação, arquitetura,
+  armazenamento, backups, rede, segurança, troubleshooting).
 - `AGENTS.md` — regras para agentes/automação.
 - Credenciais: `C:\Users\Conrado\Documents\moya_credencials_app`
   (`docs/CONTEXTO.md`), fonte de identidade do moya.

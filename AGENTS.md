@@ -8,11 +8,12 @@ Painel Django que administra o NAS do homelab (Raspberry Pi 5) e também roda no
 `moyaserver`. O mesmo código atende os dois hosts; o que muda é o perfil em
 `/etc/homelab-storage-admin/host.env` e o overlay do Compose.
 
-Leia `README.md` para o comportamento completo e `docs/CONTEXTO.md` para o
-estado atual, decisões e pendências.
+O `README.md` é um índice. Leia o documento da área em `docs/` (instalação,
+arquitetura, armazenamento, backups, rede, segurança) e `docs/CONTEXTO.md`
+para o estado atual, decisões e pendências. Não carregue o README inteiro.
 
-Para o histórico da sessão que consolidou o ecossistema, leia
-`docs/SESSAO-2026-10-29.md`. O transcript bruto contém segredos e fica fora do
+Só se precisar do histórico da sessão que consolidou o ecossistema, leia
+`docs/SESSAO-2026-10-29.md` — não carregue por padrão. O transcript bruto contém segredos e fica fora do
 Git.
 
 ## Comandos
@@ -99,7 +100,8 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
 - Views baseadas em classe para páginas; `View` explícita nos fluxos críticos.
 - Validação e confirmação ficam no fluxo, não escondidas em base class.
 - Commits em Conventional Commits, assunto no imperativo.
-- Ao mudar comportamento, atualize `README.md` e `docs/CONTEXTO.md` no mesmo commit.
+- Ao mudar comportamento, atualize o doc da área em `docs/` (e o `README.md`
+  se for visão geral) e `docs/CONTEXTO.md` no mesmo commit.
 
 ## Testes mínimos
 
