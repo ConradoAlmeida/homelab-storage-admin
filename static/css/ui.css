@@ -534,6 +534,7 @@ tbody tr:hover td {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin: 0 0 12px;
 }
 
 .torrent-chip {
@@ -548,6 +549,20 @@ tbody tr:hover td {
   color: var(--txt);
   cursor: pointer;
   font-size: 12px;
+}
+
+.torrent-chip.is-on {
+  border-color: var(--acc);
+  background: rgba(74, 158, 255, 0.12);
+}
+
+.torrent-chip [data-estado-count] {
+  color: var(--muted);
+}
+
+#torrent-filtro-pasta {
+  width: auto;
+  min-width: 9rem;
 }
 
 .torrent-stats button {

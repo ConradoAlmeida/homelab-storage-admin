@@ -139,6 +139,7 @@ def test_static_assets_exist():
     texto = kit.read_text(encoding="utf-8")
     assert ".person-id{" in texto
     assert ".group-strip{" in texto
+    assert ".torrent-page" in texto
     assert "tailwindcss/preflight" not in texto
     for name in (
         "confirm-actions.js",

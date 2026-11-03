@@ -228,11 +228,12 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Andamento",
                 "text": (
-                    "Mostra progresso, taxa de download, taxa de upload e tempo "
-                    "restante. A busca, a pasta e o estado ficam numa linha, "
-                    "com atalhos para todos, ativos, concluídos e com erro. "
-                    "Clique no cabeçalho da coluna para ordenar; outro clique "
-                    "inverte. A lista atualiza sozinha enquanto há tráfego."
+                    "A lista é o centro da página: progresso, taxa de download "
+                    "e tempo restante. Os chips filtram por estado (todos, "
+                    "baixando, aguardando, concluídos, com erro); a busca e a "
+                    "pasta ficam abaixo. Clique no cabeçalho da coluna para "
+                    "ordenar; outro clique inverte. A lista atualiza sozinha "
+                    "enquanto há tráfego."
                 ),
             },
             {
@@ -256,7 +257,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "API de envio",
                 "text": (
-                    "A seção API de envio, no fim da página, mostra o curl. "
+                    "O botão Configurar API abre o painel com o curl. "
                     "O header é Authorization: Bearer com o token guardado "
                     "neste painel. O host.env só grava o primeiro valor. O "
                     "corpo JSON leva magnet e library (id ou nome, como "

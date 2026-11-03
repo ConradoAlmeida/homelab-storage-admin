@@ -135,8 +135,8 @@ snapshotado pelo Btrfs. Recrie-o como subvolume com a opção de snapshot marcad
 A consistência visual é requisito, não preferência. Todas as páginas usam os
 mesmos componentes de `static/css/ui.css` (carregado depois de `app.css`).
 O kit Tailwind (`frontend/src.css` → `static/css/kit.css`) entra por último e,
-neste piloto, só acrescenta layout da lista de usuários (`person-id`,
-`group-strip`, `table-fit`). Sem npm: `uv add django-tailwind-cli` e
+neste piloto, acrescenta layout da lista de usuários (`person-id`,
+`group-strip`, `table-fit`) e da página Torrents (`torrent-page`). Sem npm: `uv add django-tailwind-cli` e
 `uv run manage.py tailwind build`. A folha compilada vai no Git para o
 `collectstatic` do Pi/moya não baixar o CLI.
 
