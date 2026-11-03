@@ -17,9 +17,9 @@ a:hover { color:#82bcff; }
 .sidebar .brand.brand-homelab .brand-word { width:100%; }
 .sidebar .brand span { color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
 .side-nav { display:flex; flex-direction:column; gap:2px; }
-.side-nav a { display:block; padding:8px 12px; border-radius:4px; color:var(--muted); font-size:13px; text-decoration:none; border:0; }
+.side-nav a { display:block; padding:8px 12px; border-radius:8px; color:var(--muted); font-size:13px; text-decoration:none; border:0; }
 .side-nav a:hover { color:var(--txt); background:rgba(255,255,255,.04); }
-.side-nav a.active { color:var(--txt); background:rgba(74,158,255,.12); box-shadow:inset 3px 0 0 var(--acc); }
+.side-nav a.active { color:var(--txt); background:rgba(74,158,255,.2); font-weight:600; }
 .sidebar-foot { margin-top:auto; display:flex; flex-direction:column; gap:8px; padding:12px 8px 8px; border-top:1px solid var(--line); }
 .user-chip { color:var(--muted); font-size:12px; padding:4px 2px; border-radius:0; background:transparent; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .workspace { min-width:0; background:var(--bg); }

@@ -133,7 +133,12 @@ snapshotado pelo Btrfs. Recrie-o como subvolume com a opção de snapshot marcad
 ### Sistema de UI
 
 A consistência visual é requisito, não preferência. Todas as páginas usam os
-mesmos componentes de `static/css/ui.css` (carregado depois de `app.css`):
+mesmos componentes de `static/css/ui.css` (carregado depois de `app.css`).
+O kit Tailwind (`frontend/src.css` → `static/css/kit.css`) entra por último e,
+neste piloto, acrescenta layout da lista de usuários (`person-id`,
+`group-strip`, `table-fit`) e da página Torrents (`torrent-page`). Sem npm: `uv add django-tailwind-cli` e
+`uv run manage.py tailwind build`. A folha compilada vai no Git para o
+`collectstatic` do Pi/moya não baixar o CLI.
 
 | Componente | Uso |
 |---|---|
@@ -152,7 +157,7 @@ mesmos componentes de `static/css/ui.css` (carregado depois de `app.css`):
 - Textos longos (rotas, chaves, caminhos) usam `pre`/`mono` com quebra;
   não podem estourar o card.
 - Evite classes novas para o mesmo papel; se precisar, promova o componente
-  para `ui.css` em vez de estilizar a página.
+  para `frontend/src.css` (kit) ou `ui.css` em vez de estilizar a página.
 - Não há `<style>` nem handlers inline nos templates.
 
 ### Views e frontend
@@ -185,8 +190,9 @@ homelab-storage-admin/
 ├── history/           # navegador read-only de snapshots/versoes
 ├── storage/           # temperatura/estado/SMART sob demanda (standby-safe)
 ├── backups/           # wizard, jobs, snapshots restic e navegador read-only
+├── frontend/          # fonte Tailwind (src.css); compile com tailwind build
 ├── templates/         # UI escura, partials e sem dependências externas
-├── static/            # CSS e JavaScript próprios, fora do HTML
+├── static/            # CSS (ui.css + kit.css) e JavaScript, fora do HTML
 ├── deploy/pi/
 │   ├── homelab-compose.service
 │   ├── homelab-cloudflared.service

@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-02**.
+Documento de retomada. Última atualização: **2026-11-03**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -10,7 +10,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 |---|---|
 | Versão em produção | `7129658` (restore de snapshot/restic/Gitea e lock órfão) |
 | Último deploy | 01/11/2026, Pi |
-| Testes | `264 passed` no Linux, sem a suíte `lab` |
+| Testes | `278 passed` no Linux; lab na VM `5 passed` (2026-11-03) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
@@ -31,9 +31,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o
   handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do
   host não muda. Com o UFW ativo, 6881/tcp e 6881/udp ficam liberadas e a
-  8090 só aceita a rede Docker. O UPnP fica ligado. A lista mostra as taxas de
-  download e de upload. A busca, a pasta e o estado ficam numa linha,
-  com atalhos para todos, ativos, concluídos e com erro. O cabeçalho da
+  8090 só aceita a rede Docker. O UPnP fica ligado. A página enfatiza o
+  andamento: chips de estado, busca por nome e filtro de pasta. Adicionar
+  torrent e a API de envio abrem em painéis na própria página. A lista mostra
+  a taxa de download (sem coluna de upload). O cabeçalho da
   coluna ordena a lista. Pausar só aparece enquanto
   baixa; no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
   não aparece. `POST /api/torrents/` repete esse envio com Bearer.
@@ -69,6 +70,12 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   mesmo nos dois ambientes.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
   tabelas, chips, métricas, ações e formulários padronizados.
+- **Kit Tailwind (branch `ui/tailwind-kit`, piloto):** `django-tailwind-cli`
+  via uv, sem npm. Fonte em `frontend/src.css`, folha em `static/css/kit.css`.
+  A lista de usuários junta identidade+status e mostra grupos de share em
+  faixa; a lógica (`set_groups`, Senha, confirmação) não muda. Sem matriz de
+  ACL neste passo. Torrents enfatiza o andamento; envio e API abrem em
+  painéis na página.
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
   página** no topo abre um painel com um caso de uso (**No dia a dia**) e
   capítulos por funcionalidade da própria página, usando `<details>` nativo e

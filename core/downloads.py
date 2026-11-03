@@ -190,12 +190,17 @@ class TorrentAddView(ExigeJellyfinMixin, AgentView):
             messages.error(request, str(exc))
             return redirect("torrents")
         form = TorrentAddForm(request.POST, libraries=overview.get("libraries"))
+        pagina = {
+            "overview": overview,
+            "error": None,
+            "form": form,
+            "pode_ver_token": _administrador(request.user),
+            "token_existe": bool(token_da_api()),
+            "token_revelado": "",
+            "token_erro": "",
+        }
         if not form.is_valid():
-            return render(
-                request,
-                "torrents.html",
-                {"overview": overview, "error": None, "form": form},
-            )
+            return render(request, "torrents.html", pagina)
         data = form.cleaned_data
         try:
             resultado = qbittorrent.adicionar(
@@ -203,11 +208,7 @@ class TorrentAddView(ExigeJellyfinMixin, AgentView):
             )
         except AgentError as exc:
             form.add_error(None, str(exc))
-            return render(
-                request,
-                "torrents.html",
-                {"overview": overview, "error": None, "form": form},
-            )
+            return render(request, "torrents.html", pagina)
         _auditar(request, "torrent.add", resultado.get("library") or data["library"])
         messages.success(
             request,

@@ -23,6 +23,8 @@ uv sync --dev
 uv run manage.py check
 uv run pytest
 uv run manage.py runserver 0.0.0.0:8000
+# depois de editar frontend/src.css:
+uv run manage.py tailwind build
 ```
 
 Bancada de testes (obrigatória neste desktop Fedora, com virt-manager):
@@ -71,7 +73,9 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
    propósito; jobs restic ficam `skipped` sem disco externo.
 8. **UI é requisito.** Toda página usa os componentes de `static/css/ui.css`
    (`page-head`, `section-head`, `card`, `alert`, `btn`, `table-wrap`, `tag`,
-   `form-grid`). Não crie estilo local para o mesmo papel.
+   `form-grid`). Componentes novos do kit Tailwind ficam em `frontend/src.css`
+   e compilam para `static/css/kit.css` (versionado). Não coloque utilitário
+   Tailwind no HTML; não crie estilo local para o mesmo papel.
 9. **Nunca comite `.env`, `data/`, `services.ini` real ou segredos.**
 10. **Pi-safe**: recursos que dependem do Credenciais/Gitea não devem gerar
     alerta falso quando o app não existe no host.
@@ -91,7 +95,8 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
   backup local de arquivos.
 - `storage/` — discos, SMART e RAID/Btrfs.
 - `history/` — navegador read-only de arquivos e versões.
-- `templates/` + `static/css/ui.css` — UI.
+- `templates/` + `static/css/ui.css` — UI atual.
+- `frontend/src.css` → `static/css/kit.css` — kit Tailwind (piloto).
 - `deploy/pi/` — units e exemplos do Pi.
 
 ## Convenções

@@ -2,18 +2,24 @@
 {% load static %}
 {% block title %}Torrents - {{ product_name }}{% endblock %}
 {% block content %}
+<div class="torrent-page">
+  <input id="torrent-panel-none" class="torrent-panel-radio" type="radio" name="torrent-panel" value="none" {% if form.errors or token_erro or token_revelado %}{% else %}checked{% endif %}>
+  <input id="torrent-panel-add" class="torrent-panel-radio" type="radio" name="torrent-panel" value="add" {% if form.errors %}checked{% endif %}>
+  <input id="torrent-panel-api" class="torrent-panel-radio" type="radio" name="torrent-panel" value="api" {% if not form.errors %}{% if token_erro or token_revelado %}checked{% endif %}{% endif %}>
+
 <div class="page-head">
   <div>
     <h1>Torrents</h1>
     <p class="lead">
-      Envie um link magnético para uma pasta de mídia do Jellyfin e acompanhe o download.
-      O qBittorrent roda neste servidor: o celular envia o link e o arquivo continua
-      chegando com o computador desligado.
+      Downloads do qBittorrent nas pastas do Jellyfin. O arquivo continua chegando com o computador desligado.
     </p>
   </div>
   <div class="page-actions">
     {% if overview.client.version %}<span class="status ok">qBittorrent {{ overview.client.version }}</span>{% endif %}
-    <a class="btn" href="{% url 'torrents' %}">Atualizar</a>
+    {% if form %}
+    <label class="btn" for="torrent-panel-add">Adicionar torrent</label>
+    {% endif %}
+    <label class="btn" for="torrent-panel-api">Configurar API</label>
   </div>
 </div>
 
@@ -43,8 +49,11 @@
   {% endif %}
 
   {% if form %}
-    <section class="section">
-      <div class="section-head"><h2>Novo download</h2></div>
+    <section class="torrent-panel torrent-panel-add" aria-label="Adicionar torrent">
+      <div class="torrent-panel-head">
+        <h2>Adicionar torrent</h2>
+        <label class="btn" for="torrent-panel-none">Fechar</label>
+      </div>
       <div class="panel-form">
         <form method="post" action="{% url 'torrent_add' %}">
           {% csrf_token %}
@@ -62,151 +71,11 @@
     </section>
   {% endif %}
 
-  <section class="section">
-    <div class="section-head">
-      <h2>Andamento</h2>
-      <div class="page-actions">
-        <span class="muted text-12" data-torrent-count>{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
-        {% if overview.torrents %}
-          <label class="torrent-order" for="torrent-ordem">Ordenar</label>
-          <select id="torrent-ordem">
-            <option value="">Como chegaram</option>
-            <option value="name">Nome</option>
-            <option value="library">Pasta</option>
-            <option value="state">Estado</option>
-            <option value="progress">Progresso</option>
-            <option value="download">Download</option>
-            <option value="upload">Upload</option>
-            <option value="size">Tamanho</option>
-          </select>
-          <button type="button" class="btn small" id="torrent-sentido" aria-label="Inverter a ordem">↑</button>
-        {% endif %}
-      </div>
+  <section class="torrent-panel torrent-panel-api" aria-label="API de envio">
+    <div class="torrent-panel-head">
+      <h2>API de envio</h2>
+      <label class="btn" for="torrent-panel-none">Fechar</label>
     </div>
-    {% if overview.torrents %}
-      <div class="torrent-bar" data-torrent-filters>
-        <div class="torrent-search">
-          <input id="torrent-filtro-nome" class="form-control" type="search" placeholder="Buscar por nome..." autocomplete="off">
-          <button type="button" class="torrent-clear" data-clear-nome hidden aria-label="Limpar nome">×</button>
-        </div>
-        <details class="torrent-pick" data-pick="pasta">
-          <summary>
-            <span class="muted">Pasta</span>
-            <strong data-pasta-rotulo>Todas</strong>
-          </summary>
-          <div class="torrent-pick-list">
-            <button type="button" data-pasta="">Todas</button>
-            {% for biblioteca in overview.libraries %}
-              <button type="button" data-pasta="{{ biblioteca.name }}">{{ biblioteca.name }}</button>
-            {% endfor %}
-          </div>
-        </details>
-        <details class="torrent-pick" data-pick="estado">
-          <summary>
-            <span class="muted">Estado</span>
-            <strong data-estado-rotulo>Todos</strong>
-          </summary>
-          <div class="torrent-pick-list">
-            <button type="button" data-estado="">Todos</button>
-            <button type="button" data-estado="concluido"><span class="status ok">concluído</span></button>
-            <button type="button" data-estado="baixando"><span class="status info">baixando</span></button>
-            <button type="button" data-estado="aguardando"><span class="status warn">aguardando</span></button>
-            <button type="button" data-estado="pausado"><span class="status">pausado</span></button>
-            <button type="button" data-estado="metadados"><span class="status meta">lendo metadados</span></button>
-            <button type="button" data-estado="fila"><span class="status warn">na fila</span></button>
-            <button type="button" data-estado="enviando"><span class="status ok">enviando</span></button>
-            <button type="button" data-estado="erro"><span class="status off">com erro</span></button>
-          </div>
-        </details>
-        <div class="torrent-chips" data-torrent-chips></div>
-        <button type="button" class="btn small" data-torrent-clear hidden>Limpar filtros</button>
-        <span class="muted text-12" data-torrent-active hidden></span>
-      </div>
-      <div class="torrent-stats" data-torrent-stats>
-        <button type="button" data-stat="" class="is-on">Todos <span data-stat-count="all">0</span></button>
-        <button type="button" data-stat="active">Ativos <span data-stat-count="active">0</span></button>
-        <button type="button" data-stat="completed">Concluídos <span data-stat-count="completed">0</span></button>
-        <button type="button" data-stat="errored">Com erro <span data-stat-count="errored">0</span></button>
-      </div>
-      <div class="table-wrap" data-torrent-table {% if overview.active %}data-torrent-poll="{% url 'torrent_status' %}"{% endif %}>
-        <table class="file-table">
-          <thead>
-            <tr>
-              <th><button type="button" class="th-sort" data-sort="name">Nome</button></th>
-              <th><button type="button" class="th-sort" data-sort="library">Pasta</button></th>
-              <th><button type="button" class="th-sort" data-sort="state">Estado</button></th>
-              <th><button type="button" class="th-sort" data-sort="progress">Progresso</button></th>
-              <th><button type="button" class="th-sort" data-sort="download">Download</button></th>
-              <th><button type="button" class="th-sort" data-sort="upload">Upload</button></th>
-              <th aria-label="Ações"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in overview.torrents %}
-              <tr
-                data-hash="{{ item.hash }}"
-                data-state-code="{{ item.state }}"
-                data-name="{{ item.name }}"
-                data-library="{{ item.library }}"
-                data-state-label="{{ item.state_label }}"
-                data-progress="{{ item.progress|default:0 }}"
-                data-download="{{ item.download_bps|default:0 }}"
-                data-upload="{{ item.upload_bps|default:0 }}"
-                data-size="{{ item.size_bytes|default:0 }}"
-              >
-                <td>
-                  <strong data-name>{{ item.name }}</strong>
-                  <div class="muted text-11">{{ item.size }}</div>
-                </td>
-                <td>{{ item.library }}</td>
-                <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.state_label == 'lendo metadados' %}meta{% elif item.state_label == 'baixando' %}info{% elif item.state_label == 'aguardando' or item.state_label == 'na fila' or item.can_resume %}warn{% elif item.state_label == 'concluído' or item.state_label == 'enviando' %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
-                <td class="mono"><span data-percent>{{ item.progress_label }}</span> <span class="muted" data-eta>{% if item.eta %}· {{ item.eta }}{% endif %}</span></td>
-                <td class="mono" data-download>{{ item.download_speed }}</td>
-                <td class="mono" data-upload>{{ item.upload_speed }}</td>
-                <td class="file-actions">
-                  <div class="row-actions">
-                    {% if item.can_pause %}
-                      <form method="post" action="{% url 'torrent_action' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="hash" value="{{ item.hash }}">
-                        <input type="hidden" name="action" value="pause">
-                        <button class="btn small" type="submit">Pausar</button>
-                      </form>
-                    {% elif item.can_resume %}
-                      <form method="post" action="{% url 'torrent_action' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="hash" value="{{ item.hash }}">
-                        <input type="hidden" name="action" value="resume">
-                        <button class="btn small" type="submit">Retomar</button>
-                      </form>
-                    {% endif %}
-                    <form method="post" action="{% url 'torrent_action' %}" data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
-                      {% csrf_token %}
-                      <input type="hidden" name="hash" value="{{ item.hash }}">
-                      <input type="hidden" name="action" value="delete">
-                      <button class="btn small" type="submit">Remover</button>
-                    </form>
-                    <form method="post" action="{% url 'torrent_action' %}" data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
-                      {% csrf_token %}
-                      <input type="hidden" name="hash" value="{{ item.hash }}">
-                      <input type="hidden" name="action" value="delete_files">
-                      <button class="btn small danger" type="submit">Apagar arquivos</button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <p class="empty" data-torrent-empty hidden>Nenhum torrent com esse filtro.</p>
-    {% else %}
-      <div class="empty">Nenhum torrent nas pastas do Jellyfin.</div>
-    {% endif %}
-  </section>
-
-  <section class="section">
-    <div class="section-head"><h2>API de envio</h2></div>
     <div class="card">
       <p>
         Um cliente envia o magnet com o token guardado neste painel. O
@@ -278,6 +147,116 @@
       {% endif %}
     </div>
   </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Andamento</h2>
+      <div class="page-actions">
+        <span class="muted text-12" data-torrent-count>{{ overview.torrents|length }} torrent{{ overview.torrents|length|pluralize }}</span>
+      </div>
+    </div>
+    {% if overview.torrents %}
+      <div class="torrent-chips" data-torrent-filters role="group" aria-label="Estado">
+        <button type="button" class="torrent-chip" data-estado="">Todos <span data-estado-count="all">0</span></button>
+        <button type="button" class="torrent-chip" data-estado="baixando">Baixando <span data-estado-count="baixando">0</span></button>
+        <button type="button" class="torrent-chip" data-estado="aguardando">Aguardando <span data-estado-count="aguardando">0</span></button>
+        <button type="button" class="torrent-chip" data-estado="concluido">Concluídos <span data-estado-count="concluido">0</span></button>
+        <button type="button" class="torrent-chip" data-estado="erro">Com erro <span data-estado-count="erro">0</span></button>
+      </div>
+      <div class="torrent-toolbar">
+        <div class="torrent-search">
+          <input id="torrent-filtro-nome" class="form-control" type="search" placeholder="Filtrar pelo nome" autocomplete="off" aria-label="Filtrar pelo nome">
+          <button type="button" class="torrent-clear" data-clear-nome hidden aria-label="Limpar nome">×</button>
+        </div>
+        {% if overview.libraries %}
+        <label class="torrent-order" for="torrent-filtro-pasta">Pasta</label>
+        <select id="torrent-filtro-pasta" class="form-control" aria-label="Pasta">
+          <option value="">Todas</option>
+          {% for biblioteca in overview.libraries %}
+            <option value="{{ biblioteca.name }}">{{ biblioteca.name }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+        <button type="button" class="btn small" data-torrent-clear hidden>Limpar filtros</button>
+      </div>
+      <div class="table-wrap table-fit" data-torrent-table {% if overview.active %}data-torrent-poll="{% url 'torrent_status' %}"{% endif %}>
+        <table class="file-table">
+          <thead>
+            <tr>
+              <th><button type="button" class="th-sort" data-sort="name">Nome</button></th>
+              <th><button type="button" class="th-sort" data-sort="library">Pasta</button></th>
+              <th><button type="button" class="th-sort" data-sort="state">Estado</button></th>
+              <th><button type="button" class="th-sort" data-sort="progress">Progresso</button></th>
+              <th><button type="button" class="th-sort" data-sort="download">Download</button></th>
+              <th aria-label="Ações"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in overview.torrents %}
+              <tr
+                data-hash="{{ item.hash }}"
+                data-state-code="{{ item.state }}"
+                data-name="{{ item.name }}"
+                data-library="{{ item.library }}"
+                data-state-label="{{ item.state_label }}"
+                data-progress="{{ item.progress|default:0 }}"
+                data-download="{{ item.download_bps|default:0 }}"
+                data-upload="{{ item.upload_bps|default:0 }}"
+                data-size="{{ item.size_bytes|default:0 }}"
+              >
+                <td>
+                  <strong class="torrent-nm" data-name>{{ item.name }}</strong>
+                  <div class="muted text-11">{{ item.size }}</div>
+                </td>
+                <td>{{ item.library }}</td>
+                <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.state_label == 'lendo metadados' %}meta{% elif item.state_label == 'baixando' %}info{% elif item.state_label == 'aguardando' or item.state_label == 'na fila' or item.can_resume %}warn{% elif item.state_label == 'concluído' or item.state_label == 'enviando' %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
+                <td>
+                  <span class="mono"><span data-percent>{{ item.progress_label }}</span> <span class="muted" data-eta>{% if item.eta %}· {{ item.eta }}{% endif %}</span></span>
+                  <progress class="torrent-meter" value="{{ item.progress|default:0 }}" max="100" {% if not item.progress or item.progress >= 100 %}hidden{% endif %}>{{ item.progress_label }}</progress>
+                </td>
+                <td class="mono" data-download>{{ item.download_speed }}</td>
+                <td class="file-actions">
+                  <div class="row-actions">
+                    {% if item.can_pause %}
+                      <form method="post" action="{% url 'torrent_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="hash" value="{{ item.hash }}">
+                        <input type="hidden" name="action" value="pause">
+                        <button class="btn small" type="submit">Pausar</button>
+                      </form>
+                    {% elif item.can_resume %}
+                      <form method="post" action="{% url 'torrent_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="hash" value="{{ item.hash }}">
+                        <input type="hidden" name="action" value="resume">
+                        <button class="btn small" type="submit">Retomar</button>
+                      </form>
+                    {% endif %}
+                    <form method="post" action="{% url 'torrent_action' %}" data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
+                      {% csrf_token %}
+                      <input type="hidden" name="hash" value="{{ item.hash }}">
+                      <input type="hidden" name="action" value="delete">
+                      <button class="btn small" type="submit">Remover</button>
+                    </form>
+                    <form method="post" action="{% url 'torrent_action' %}" data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
+                      {% csrf_token %}
+                      <input type="hidden" name="hash" value="{{ item.hash }}">
+                      <input type="hidden" name="action" value="delete_files">
+                      <button class="btn small danger" type="submit">Apagar arquivos</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="empty" data-torrent-empty hidden>Nenhum torrent com esse filtro.</p>
+    {% else %}
+      <div class="empty">Nenhum torrent nas pastas do Jellyfin.</div>
+    {% endif %}
+  </section>
 {% endif %}
+</div>
 <script src="{% static 'js/downloads.js' %}" defer></script>
 {% endblock %}

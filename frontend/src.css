@@ -1,0 +1,146 @@
+@import "tailwindcss/theme" layer(theme);
+
+@source "../templates/**/*.html";
+
+@theme {
+  --color-canvas: #1a1d29;
+  --color-deep: #141722;
+  --color-panel: #252936;
+  --color-line: #363a4a;
+  --color-ink: #ffffff;
+  --color-quiet: #a8adb8;
+  --color-accent: #4a9eff;
+  --color-ok: #5cd6a8;
+  --color-warn: #f0a030;
+  --color-danger: #ff6b6b;
+  --font-sans: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@layer components {
+  .person-id {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .person-id-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .group-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .group-strip li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 32px;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+  }
+
+  .group-strip form {
+    margin: 0;
+  }
+
+  .table-wrap.table-fit table {
+    min-width: 0;
+  }
+
+  .torrent-page > .torrent-panel-radio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .torrent-panel {
+    display: none;
+    margin: 0 0 18px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+  }
+
+  .torrent-page:has(#torrent-panel-add:checked) .torrent-panel-add,
+  .torrent-page:has(#torrent-panel-api:checked) .torrent-panel-api {
+    display: block;
+  }
+
+  .torrent-page:has(#torrent-panel-add:checked) label[for="torrent-panel-add"] {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: #061321;
+    font-weight: 600;
+  }
+
+  .torrent-page:has(#torrent-panel-api:checked) label[for="torrent-panel-api"] {
+    border-color: var(--acc);
+  }
+
+  .torrent-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 12px;
+  }
+
+  .torrent-panel-head h2 {
+    margin: 0;
+  }
+
+  .torrent-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+  }
+
+  .torrent-nm {
+    display: block;
+    max-width: 36ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  progress.torrent-meter {
+    display: block;
+    width: 100%;
+    max-width: 12rem;
+    height: 3px;
+    margin-top: 5px;
+    border: 0;
+    background: var(--line);
+    accent-color: var(--acc);
+  }
+
+  progress.torrent-meter::-webkit-progress-bar {
+    background: var(--line);
+  }
+
+  progress.torrent-meter::-webkit-progress-value {
+    background: var(--acc);
+  }
+
+  progress.torrent-meter::-moz-progress-bar {
+    background: var(--acc);
+  }
+}

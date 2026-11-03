@@ -49,7 +49,7 @@ A WebUI escuta na `8090` e o painel chega nela pelo nome `qbittorrent`. A
 `6881/tcp` e `6881/udp` para os pares e a `8090/tcp` só a partir de
 `172.16.0.0/12`. O UPnP fica ligado para o roteador abrir o retorno. O celular
 usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
-A tabela de andamento busca por nome e filtra pasta e estado numa linha só, com atalhos para todos, ativos, concluídos e com erro. O clique na coluna ordena.
+A tabela de andamento fica no centro da página. Chips filtram o estado; a busca e a pasta ficam numa linha abaixo. Adicionar torrent e a API de envio abrem por botões na própria página. O clique na coluna ordena.
 Sem o container, a página explica o motivo e não oferece o formulário.
 
 A API de envio usa o mesmo caminho. `POST /api/torrents/` e
@@ -77,7 +77,7 @@ curl -X POST http://storage.homelab.lan/api/torrents/ \
   -d '{"magnet":"magnet:?xt=urn:btih:...","library":"Filmes"}'
 ```
 
-A lista mostra a taxa de download e a de upload, e atualiza sozinha enquanto
+A lista mostra a taxa de download e atualiza sozinha enquanto
 há tráfego. Pausar e retomar valem enquanto o arquivo baixa. No torrent concluído esses
 botões somem; **Remover** tira o item da fila e o arquivo permanece. **Apagar arquivos** pede
 confirmação e só vale para um torrent cuja pasta está dentro de uma biblioteca.

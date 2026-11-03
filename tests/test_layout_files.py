@@ -133,6 +133,14 @@ def test_templates_have_no_inline_css_or_js():
 
 def test_static_assets_exist():
     assert (ROOT / "static" / "css" / "app.css").is_file()
+    assert (ROOT / "frontend" / "src.css").is_file()
+    kit = ROOT / "static" / "css" / "kit.css"
+    assert kit.is_file()
+    texto = kit.read_text(encoding="utf-8")
+    assert ".person-id{" in texto
+    assert ".group-strip{" in texto
+    assert ".torrent-page" in texto
+    assert "tailwindcss/preflight" not in texto
     for name in (
         "confirm-actions.js",
         "copy-secret.js",
