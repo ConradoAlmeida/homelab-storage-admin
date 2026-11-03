@@ -8,8 +8,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `7129658` (restore de snapshot/restic/Gitea e lock órfão) |
-| Último deploy | 01/11/2026, Pi |
+| Versão em produção | `3eafc2e` (kit Tailwind, Torrents, highlight do menu) |
+| Último deploy | 03/11/2026, Pi |
 | Testes | `278 passed` no Linux; lab na VM `5 passed` (2026-11-03) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -20,6 +20,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## O que está pronto
 
+- Nomes: apps e SSH em `*.homelab.lan`. Nautilus vê o Samba via Avahi
+  (`.local`); Windows via `wsdd`. Ver [REDE](REDE.md#nomes-na-lan).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.

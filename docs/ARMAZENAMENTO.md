@@ -155,3 +155,5 @@ servidor cria uma senha Unix que não acompanha a do Samba, e vice-versa. O
 painel não guarda a senha em texto: esquecida, o caminho é definir outra.
 
 Para gerenciar senhas Samba fora do app: `sudo smbpasswd -a usuario`.
+
+Descoberta na LAN (Nautilus vs Windows): [Nomes na LAN](REDE.md#nomes-na-lan).
