@@ -43,6 +43,18 @@ Travas de segurança:
 Docker publica portas via iptables e pode furar o UFW; o modelo recomendado é
 publicar em `127.0.0.1` e deixar o Caddy expor.
 
+### Nomes na LAN
+
+Dois mecanismos, nos dois hosts (Pi e moyaserver):
+
+- **Digitar:** `*.homelab.lan` (Pi-hole + Caddy). SSH `conrado@homelab.lan`, apps
+  `storage.homelab.lan`. Sem descoberta: `smb://homelab.lan/` ou o IP.
+- **Nautilus / Rede no Linux:** Avahi, domínio `.local` (RFC 6762; mDNS não vai
+  em `.lan`). Samba com `multicast dns register`.
+- **Explorador / Rede no Windows:** `wsdd` (WS-Discovery). Hostname `HOMELAB` no
+  Pi, `MOYASERVER` no moya. Portas `3702/udp` e `5357/tcp` (fora de
+  `FIREWALL_SAFE_PORTS` até o UFW ser ligado).
+
 ---
 
 ## Containers (mini Portainer)
