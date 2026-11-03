@@ -159,6 +159,10 @@ uv run pytest
 uv run manage.py runserver 0.0.0.0:8000
 ```
 
+CSS do kit Tailwind: edite `frontend/src.css` e compile com
+`uv run manage.py tailwind build`. O resultado `static/css/kit.css` entra no
+commit; o container não baixa o CLI no `docker build`.
+
 Para pré-visualizar a UI sem agente nem host (dados fictícios):
 
 ```bash

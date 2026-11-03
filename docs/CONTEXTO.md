@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-02**.
+Documento de retomada. Última atualização: **2026-11-03**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -69,6 +69,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   mesmo nos dois ambientes.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
   tabelas, chips, métricas, ações e formulários padronizados.
+- **Kit Tailwind (branch `ui/tailwind-kit`, piloto):** `django-tailwind-cli`
+  via uv, sem npm. Fonte em `frontend/src.css`, folha em `static/css/kit.css`.
+  A lista de usuários junta identidade+status e mostra grupos de share em
+  faixa; a lógica (`set_groups`, Senha, confirmação) não muda. Sem matriz de
+  ACL neste passo.
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
   página** no topo abre um painel com um caso de uso (**No dia a dia**) e
   capítulos por funcionalidade da própria página, usando `<details>` nativo e

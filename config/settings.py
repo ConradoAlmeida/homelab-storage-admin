@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_tailwind_cli",
     "core",
     "history",
     "storage",
@@ -116,6 +117,13 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Tailwind via CLI standalone (sem npm). Fonte fora de STATICFILES_DIRS.
+# A folha compilada vai para static/css/kit.css e entra no Git para o
+# collectstatic do Pi/moya não depender de baixar o binário.
+TAILWIND_CLI_VERSION = "4.1.16"
+TAILWIND_CLI_SRC_CSS = "frontend/src.css"
+TAILWIND_CLI_DIST_CSS = "css/kit.css"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

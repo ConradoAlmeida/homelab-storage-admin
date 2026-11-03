@@ -1,0 +1,2 @@
+/*! tailwindcss v4.1.16 | MIT License | https://tailwindcss.com */
+@layer components{.person-id{flex-direction:column;gap:2px;min-width:0;display:flex}.person-id-head{flex-wrap:wrap;align-items:center;gap:8px;display:flex}.group-strip{flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;display:flex}.group-strip li{border:1px solid var(--line);background:var(--panel);border-radius:6px;justify-content:space-between;align-items:center;gap:12px;min-height:32px;padding:4px 10px;display:flex}.group-strip form{margin:0}.table-wrap.table-fit table{min-width:0}}

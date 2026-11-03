@@ -1191,6 +1191,17 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Grupos de share")
         self.assertContains(resposta, "Novo grupo")
         self.assertContains(resposta, "midia")
+        self.assertContains(resposta, "person-id")
+        self.assertContains(resposta, "status ok")
+        self.assertContains(resposta, "Ana")
+        self.assertContains(resposta, "Senha")
+        self.assertContains(resposta, "group-strip")
+        self.assertContains(
+            resposta,
+            'data-confirm="Excluir o grupo midia? Quem estava nele perde esse acesso."',
+        )
+        self.assertNotContains(resposta, "<th>Nome</th>")
+        self.assertNotContains(resposta, "<th>Status</th>")
         self.assertNotContains(resposta, 'class="chip"')
 
     def test_discos_omite_uso_e_dump_do_dashboard(self):

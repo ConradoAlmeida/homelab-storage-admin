@@ -27,26 +27,30 @@
       </div>
     </div>
     {% if users %}
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap table-fit"><table class="file-table">
       <thead>
         <tr>
-          <th>Pessoa</th><th>Nome</th><th>Grupos</th><th>Status</th>
+          <th>Pessoa</th><th>Grupos</th>
           {% if not credenciais_gerencia_usuarios %}<th aria-label="Ações"></th>{% endif %}
         </tr>
       </thead>
       <tbody>
         {% for u in users %}
           <tr>
-            <td><strong>{{ u.username }}</strong></td>
-            <td class="muted">{{ u.fullname|default:"—" }}</td>
+            <td>
+              <div class="person-id">
+                <div class="person-id-head">
+                  <strong>{{ u.username }}</strong>
+                  {% if u.enabled %}<span class="status ok">ativo</span>
+                  {% else %}<span class="status off">desativado</span>{% endif %}
+                </div>
+                <div class="muted">{{ u.fullname|default:"—" }}</div>
+              </div>
+            </td>
             <td>
               <div class="chip-list">
                 {% for g in u.groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted">—</span>{% endfor %}
               </div>
-            </td>
-            <td>
-              {% if u.enabled %}<span class="tag ok">ativo</span>
-              {% else %}<span class="tag off">desativado</span>{% endif %}
             </td>
             {% if not credenciais_gerencia_usuarios %}
             <td class="file-actions">
@@ -86,23 +90,18 @@
     </div>
     <p class="muted text-12 section-note">O grupo privado de cada pessoa sai junto com a conta. Estes são os grupos usados pelas pastas compartilhadas.</p>
     {% if groups %}
-      <div class="table-wrap"><table class="file-table">
-        <thead><tr><th>Grupo</th><th aria-label="Ações"></th></tr></thead>
-        <tbody>
-          {% for nome in groups %}
-            <tr>
-              <td><strong>{{ nome }}</strong></td>
-              <td class="file-actions">
-                <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
-                  {% csrf_token %}
-                  <input type="hidden" name="name" value="{{ nome }}">
-                  <button class="btn danger" type="submit">Excluir</button>
-                </form>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table></div>
+      <ul class="group-strip">
+        {% for nome in groups %}
+          <li>
+            <strong>{{ nome }}</strong>
+            <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
+              {% csrf_token %}
+              <input type="hidden" name="name" value="{{ nome }}">
+              <button class="btn danger" type="submit">Excluir</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
     {% else %}
       <div class="empty">Nenhum grupo de share ainda.</div>
     {% endif %}
