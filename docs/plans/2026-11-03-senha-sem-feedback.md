@@ -85,7 +85,7 @@ Não alterar senha do `caio`. Não `deploy.sh` no Pi sem pedido.
 - [x] `tests/lab/test_users.py` — `op_set_password` real.
 - [x] `docs/CONTEXTO.md` + `docs/TROUBLESHOOTING.md`.
 - [x] VM `linux2024`: pytest + lab + fluxo da UI (perfil Pi).
-- [ ] Commit Conventional Commits em pt-BR **depois** da VM verde.
+- [x] Commit Conventional Commits em pt-BR **depois** da VM verde.
 
 ## Verificação
 
@@ -100,7 +100,7 @@ Na VM `linux2024` (`192.168.122.26`, `docs/VM_TESTES.md` seção 10). Não pular
 
 ## Estado
 
-Verificação verde. Commit pendente.
+Concluído. Commit `777e253` em `fix/senha-feedback`. Deploy no Pi não rodado.
 
 - Clone Fedora: `manage.py check` ok; `282 passed, 6 skipped`.
 - VM `linux2024`: pytest `282 passed, 6 skipped`; lab `6 passed` (inclui
