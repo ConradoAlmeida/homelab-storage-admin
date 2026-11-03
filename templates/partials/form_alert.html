@@ -1,8 +1,13 @@
-{% if form.non_field_errors %}
+{% if form.errors %}
 <div class="alert danger" role="alert">
   <strong>Não foi possível concluir</strong>
   {% for error in form.non_field_errors %}
   <p>{{ error }}</p>
+  {% endfor %}
+  {% for field in form %}
+    {% for error in field.errors %}
+    <p>{% if field.label %}{{ field.label }}: {% endif %}{{ error }}</p>
+    {% endfor %}
   {% endfor %}
 </div>
 {% endif %}

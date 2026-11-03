@@ -1,5 +1,8 @@
 {% if messages %}
-  <ul class="messages">
-    {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
-  </ul>
+  {% for message in messages %}
+  <div class="alert {% if 'success' in message.tags %}ok{% elif 'error' in message.tags %}danger{% else %}warn{% endif %}" role="status">
+    <strong>{% if 'success' in message.tags %}Concluído{% elif 'error' in message.tags %}Não foi possível concluir{% else %}Atenção{% endif %}</strong>
+    <p>{{ message }}</p>
+  </div>
+  {% endfor %}
 {% endif %}

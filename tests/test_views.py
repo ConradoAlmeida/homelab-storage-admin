@@ -1184,6 +1184,59 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/usuarios/senha/?username=ana")
         self.assertContains(resposta, "vale apenas para o Samba")
         self.assertNotContains(resposta, "login no servidor")
+        self.assertContains(resposta, 'name="username"')
+        self.assertContains(resposta, 'value="ana"')
+        self.assertContains(resposta, "readonly")
+        self.assertContains(resposta, "Mínimo 8 caracteres")
+
+    def test_senha_post_sucesso_redireciona_e_audita(self):
+        resposta = self.client.post(
+            "/usuarios/senha/?username=ana",
+            {"username": "ana", "password": "senhanova1"},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.fake.set_password.assert_called_once_with("ana", "senhanova1")
+        self.assertContains(resposta, "Senha de ana atualizada.")
+        self.assertContains(resposta, "Concluído")
+        self.assertContains(resposta, 'class="alert ok"')
+        self.assertNotContains(resposta, "Não foi possível concluir")
+        self.assertTrue(
+            AuditLog.objects.filter(action="user.password", target="ana").exists()
+        )
+
+    def test_senha_post_agente_mostra_o_motivo(self):
+        self.fake.set_password.side_effect = AgentError("Usuario nao existe: ana")
+        resposta = self.client.post(
+            "/usuarios/senha/?username=ana",
+            {"username": "ana", "password": "senhanova1"},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Não foi possível concluir")
+        self.assertContains(resposta, "Usuario nao existe: ana")
+        self.assertFalse(
+            AuditLog.objects.filter(action="user.password", target="ana").exists()
+        )
+
+    def test_senha_post_sem_usuario_mostra_alerta(self):
+        resposta = self.client.post(
+            "/usuarios/senha/",
+            {"password": "senhanova1"},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.fake.set_password.assert_not_called()
+        self.assertContains(resposta, "Não foi possível concluir")
+        self.assertContains(resposta, "Este campo é obrigatório.")
+
+    def test_senha_post_curta_mostra_alerta(self):
+        resposta = self.client.post(
+            "/usuarios/senha/?username=ana",
+            {"username": "ana", "password": "curta"},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.fake.set_password.assert_not_called()
+        self.assertContains(resposta, "Não foi possível concluir")
+        self.assertContains(resposta, "no mínimo 8 caracteres")
 
     def test_usuarios_lista_grupos_em_tabela(self):
         self.fake.list_users.return_value = [
