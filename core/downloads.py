@@ -217,6 +217,54 @@ class TorrentAddView(ExigeJellyfinMixin, AgentView):
         return redirect("torrents")
 
 
+def _pagina_torrents(request, overview, *, organizacao=None, form=None):
+    libraries = overview.get("libraries") if isinstance(overview, dict) else []
+    client = overview.get("client") if isinstance(overview, dict) else {}
+    if form is None and (
+        isinstance(client, dict)
+        and client.get("available")
+        and isinstance(libraries, list)
+        and libraries
+    ):
+        form = TorrentAddForm(libraries=libraries)
+    return {
+        "overview": overview,
+        "error": None,
+        "form": form,
+        "organizacao": organizacao,
+        "pode_ver_token": _administrador(request.user),
+        "token_existe": bool(token_da_api()),
+        "token_revelado": "",
+        "token_erro": "",
+    }
+
+
+class TorrentOrganizeView(ExigeJellyfinMixin, AgentPostView):
+    def post(self, request):
+        organizacao = None
+        try:
+            overview = _visao()
+            organizacao = qbittorrent.organizar(_bibliotecas(overview))
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            try:
+                overview = _visao()
+            except AgentError as exc_visao:
+                messages.error(request, str(exc_visao))
+                return redirect("torrents")
+        else:
+            feitos = len(organizacao.get("feitos") or [])
+            padrao = len(organizacao.get("ja_no_padrao") or [])
+            falhas = len(organizacao.get("nao_feitos") or [])
+            _auditar(
+                request,
+                "torrent.organize",
+                f"{feitos} feitos, {padrao} já no padrão, {falhas} não feitos",
+            )
+        pagina = _pagina_torrents(request, overview, organizacao=organizacao)
+        return render(request, "torrents.html", pagina)
+
+
 class TorrentActionView(ExigeJellyfinMixin, AgentPostView):
     def post(self, request):
         torrent_hash = request.POST.get("hash", "")

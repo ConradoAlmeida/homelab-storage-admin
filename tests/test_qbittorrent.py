@@ -233,3 +233,195 @@ def test_pausar_usa_a_api_nova_e_a_antiga(monkeypatch, tmp_path):
     qbit.acao("f" * 40, "pause", bibliotecas(filmes))
     assert "/api/v2/torrents/stop" in chamadas
     assert "/api/v2/torrents/pause" in chamadas
+
+
+@pytest.mark.parametrize(
+    ("bruto", "esperado"),
+    [
+        ("Colony S01 1080p WEB-DL", "Colony (2016)"),
+        ("www.exemplo.org Station Eleven S01", "Station Eleven (2021)"),
+        ("Eternauta 1080p NF", "O Eternauta (2025)"),
+        ("Filme Legal (2019) 720p BluRay", "Filme Legal (2019)"),
+        ("Só o título sem ano", "Só o título sem ano"),
+    ],
+)
+def test_alvo_da_pasta_limpa_titulo(bruto, esperado):
+    assert qbit.alvo_da_pasta(bruto) == esperado
+
+
+def test_alvo_da_pasta_sem_titulo():
+    assert qbit.alvo_da_pasta("1080p WEB-DL") is None
+
+
+def test_organizar_demo(monkeypatch):
+    monkeypatch.setenv("STORAGE_ADMIN_DEMO", "1")
+    relatorio = qbit.organizar([])
+    assert relatorio["feitos"]
+    assert relatorio["nao_feitos"]
+
+
+def test_organizar_renomeia_concluido(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    pasta = series / "Colony S01"
+    pasta.mkdir(parents=True)
+    (pasta / "ep.mkv").write_bytes(b"x")
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    hash_ok = "a" * 40
+    info = [
+        {
+            "hash": hash_ok,
+            "name": "Colony S01 1080p",
+            "category": "jellyfin",
+            "progress": 1,
+            "state": "stalledUP",
+            "save_path": str(series),
+            "content_path": str(pasta / "ep.mkv"),
+        }
+    ]
+    renames = []
+
+    def abrir(method, path, data=None, timeout=20):
+        if path == "/api/v2/app/version":
+            return 200, "v5.0.1"
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        if path == "/api/v2/torrents/renameFolder":
+            renames.append(data)
+            return 200, "Ok."
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    relatorio = qbit.organizar(libs)
+    assert relatorio["feitos"] == [{"de": "Colony S01", "para": "Colony (2016)"}]
+    assert renames == [
+        {"hash": hash_ok, "oldPath": "Colony S01", "newPath": "Colony (2016)"}
+    ]
+
+
+def test_organizar_ja_no_padrao(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    filmes = raiz / "filmes"
+    destino = filmes / "Colony (2016)"
+    destino.mkdir(parents=True)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    info = [
+        {
+            "hash": "b" * 40,
+            "name": "Colony S01 1080p",
+            "category": "jellyfin",
+            "progress": 1,
+            "state": "stoppedUP",
+            "save_path": str(filmes),
+            "content_path": str(destino),
+        }
+    ]
+    chamadas = []
+
+    def abrir(method, path, data=None, timeout=20):
+        chamadas.append(path)
+        if path == "/api/v2/app/version":
+            return 200, "v5.0.1"
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    relatorio = qbit.organizar(
+        [{"id": "filmes", "name": "Filmes", "path": str(filmes)}]
+    )
+    assert relatorio["ja_no_padrao"] == ["Colony (2016)"]
+    assert all("renameFolder" not in p for p in chamadas)
+
+
+def test_organizar_nao_lista_fora_do_jellyfin(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    monkeypatch.setenv("JELLYFIN_ROOT", str(tmp_path / "jellyfin"))
+    info = [
+        {
+            "hash": "c" * 40,
+            "name": "Colony S01",
+            "category": "jellyfin",
+            "progress": 1,
+            "state": "stalledUP",
+            "save_path": str(filmes),
+            "content_path": str(filmes / "Colony S01"),
+        }
+    ]
+    listou = {"n": 0}
+    real_listdir = os.listdir
+
+    def listdir(path):
+        listou["n"] += 1
+        return real_listdir(path)
+
+    monkeypatch.setattr(qbit.os, "listdir", listdir)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path == "/api/v2/app/version":
+            return 200, "v5.0.1"
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    relatorio = qbit.organizar(
+        [{"id": "filmes", "name": "Filmes", "path": str(filmes)}]
+    )
+    assert listou["n"] == 0
+    assert relatorio["nao_feitos"][0]["motivo"] == "Pasta fora do Jellyfin ou caminho inválido"
+
+
+def test_organizar_pula_incompleto_e_categoria(monkeypatch, tmp_path):
+    filmes = tmp_path / "jellyfin" / "filmes"
+    filmes.mkdir(parents=True)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(tmp_path / "jellyfin"))
+    info = [
+        {
+            "hash": "d" * 40,
+            "name": "",
+            "category": "jellyfin",
+            "progress": 1,
+            "state": "stalledUP",
+            "save_path": str(filmes),
+            "content_path": str(filmes / "x"),
+        },
+        {
+            "hash": "e" * 40,
+            "name": "Outro",
+            "category": "outro",
+            "progress": 1,
+            "state": "stalledUP",
+            "save_path": str(filmes),
+            "content_path": str(filmes / "y"),
+        },
+        {
+            "hash": "f" * 40,
+            "name": "Baixando",
+            "category": "jellyfin",
+            "progress": 0.5,
+            "state": "downloading",
+            "save_path": str(filmes),
+            "content_path": str(filmes / "z"),
+        },
+    ]
+
+    def abrir(method, path, data=None, timeout=20):
+        if path == "/api/v2/app/version":
+            return 200, "v5.0.1"
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    relatorio = qbit.organizar(
+        [{"id": "filmes", "name": "Filmes", "path": str(filmes)}]
+    )
+    assert relatorio["nao_feitos"][0]["motivo"] == "Sem título"
+    assert len(relatorio["feitos"]) == 0

@@ -49,7 +49,7 @@ A WebUI escuta na `8090` e o painel chega nela pelo nome `qbittorrent`. A
 `6881/tcp` e `6881/udp` para os pares e a `8090/tcp` só a partir de
 `172.16.0.0/12`. O UPnP fica ligado para o roteador abrir o retorno. O celular
 usa a página Torrents; o arquivo segue para a pasta com o computador desligado.
-A tabela de andamento fica no centro da página. Chips filtram o estado; a busca e a pasta ficam numa linha abaixo. Adicionar torrent e a API de envio abrem por botões na própria página. O clique na coluna ordena.
+A tabela de andamento fica no centro da página. Chips filtram o estado; a busca e a pasta ficam numa linha abaixo. **Atualizar** busca só o andamento; **Automático** liga ou desliga a atualização a cada cinco segundos (preferência nesta aba). Adicionar torrent e a API de envio abrem por botões na própria página. O clique na coluna ordena.
 Sem o container, a página explica o motivo e não oferece o formulário.
 
 A API de envio usa o mesmo caminho. `POST /api/torrents/` e
@@ -66,8 +66,9 @@ inválido ou pasta fora do Jellyfin é `400`. Hash que o qBittorrent já tem na
 lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado é
 `503`. Token vazio ou host sem Jellyfin é `404`.
 
-A categoria gravada no qBittorrent é sempre `jellyfin`. A organização do lote
-é a pasta da biblioteca. Na LAN o Caddy
+A categoria gravada no qBittorrent é sempre `jellyfin`. O botão **Organizar séries**
+renomeia pastas de torrents concluídos para `Título (Ano)` e mostra um relatório
+na página (feito, já no padrão, não feito). Na LAN o Caddy
 publica `https://homelab.conradhub.com` e o token
 segue no header. TLS interno no Caddy fecharia esse trecho.
 
@@ -77,8 +78,7 @@ curl -X POST https://homelab.conradhub.com/api/torrents/ \
   -d '{"magnet":"magnet:?xt=urn:btih:...","library":"Filmes"}'
 ```
 
-A lista mostra a taxa de download e atualiza sozinha enquanto
-há tráfego. Pausar e retomar valem enquanto o arquivo baixa. No torrent concluído esses
+A lista mostra a taxa de download. **Atualizar** mexe só no andamento; **Automático** controla a busca periódica nesta aba. Pausar e retomar valem enquanto o arquivo baixa. No torrent concluído esses
 botões somem; **Remover** tira o item da fila e o arquivo permanece. **Apagar arquivos** pede
 confirmação e só vale para um torrent cuja pasta está dentro de uma biblioteca.
 A pasta da biblioteca não é removida.

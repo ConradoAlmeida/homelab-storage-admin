@@ -232,8 +232,10 @@ AJUDA: dict[str, dict[str, Any]] = {
                     "e tempo restante. Os chips filtram por estado (todos, "
                     "baixando, aguardando, concluídos, com erro); a busca e a "
                     "pasta ficam abaixo. Clique no cabeçalho da coluna para "
-                    "ordenar; outro clique inverte. A lista atualiza sozinha "
-                    "enquanto há tráfego."
+                    "ordenar; outro clique inverte. Atualizar busca só o "
+                    "andamento, sem recarregar a página. Automático liga "
+                    "ou desliga a busca a cada cinco segundos; a preferência "
+                    "vale nesta aba."
                 ),
             },
             {
@@ -252,6 +254,16 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": (
                     "Remove o torrent e apaga o conteúdo baixado. A pasta da "
                     "biblioteca em si permanece."
+                ),
+            },
+            {
+                "title": "Organizar séries",
+                "text": (
+                    "Renomeia as pastas dos torrents concluídos da categoria "
+                    "jellyfin para Título (Ano), como no acervo do Jellyfin. "
+                    "Só entram downloads 100% prontos, fora de .incomplete. "
+                    "A página mostra o que foi renomeado, o que já estava "
+                    "certo e o que não deu para fazer."
                 ),
             },
             {

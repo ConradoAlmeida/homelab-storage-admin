@@ -70,6 +70,34 @@ _CONCLUIDOS = {
     "queuedUP",
     "checkingUP",
 }
+_ORGANIZAR_ESTADOS = {
+    "stalledUP",
+    "uploading",
+    "queuedUP",
+    "pausedUP",
+    "stoppedUP",
+}
+_DOMINIO_INDEXADOR = re.compile(
+    r"^(?:www\.)?(?:https?://)?[\w.-]+\."
+    r"(?:org|com|net|mx|ag|am|re|to|io|info|xyz|cc|tv|st|ws|biz|ru|su|la)"
+    r"[\s._-]*",
+    re.I,
+)
+_CORTE_TITULO = re.compile(
+    r"(?:\s+|^)(?:S\d{2}|Season\s*\d+|Complete|1080p?|720p?|2160p?|WEB-DL|BluRay|WEBRip|"
+    r"NF|AMZN|ATVP|ITA|SPA|MULTI|DDP|h264|h265|x264|x265)\b",
+    re.I,
+)
+_ANO_PAREN = re.compile(r"\((19|20)\d{2}\)")
+_ANO_SOLTO = re.compile(r"\b((19|20)\d{2})\b")
+_OVERRIDES_TITULO = {
+    "Colony": "Colony (2016)",
+    "L Eternauta": "O Eternauta (2025)",
+    "Eternauta": "O Eternauta (2025)",
+    "Station Eleven": "Station Eleven (2021)",
+    "The Walking Dead Daryl Dixon": "The Walking Dead Daryl Dixon (2023)",
+    "The Walking Dead The Ones Who Live": "The Walking Dead The Ones Who Live (2024)",
+}
 
 
 def _demo() -> bool:
@@ -421,3 +449,163 @@ def acao(torrent_hash: str, action: str, libraries: list[dict]) -> dict:
     if code != 200:
         raise AgentError(f"qBittorrent recusou a ação (HTTP {code})")
     return {"hash": torrent_hash, "action": action}
+
+
+def _limpar_titulo(bruto: str) -> tuple[str, int | None]:
+    texto = (bruto or "").strip()
+    texto = _DOMINIO_INDEXADOR.sub("", texto)
+    texto = re.sub(r"[._-]+", " ", texto)
+    texto = re.sub(r"\s+", " ", texto).strip()
+    corte = _CORTE_TITULO.search(texto)
+    if corte:
+        texto = texto[: corte.start()].strip()
+    ano = None
+    match = _ANO_PAREN.search(texto)
+    if match:
+        ano = int(match.group(0)[1:-1])
+        texto = (texto[: match.start()] + texto[match.end() :]).strip()
+    else:
+        match = _ANO_SOLTO.search(texto)
+        if match:
+            ano = int(match.group(1))
+            texto = texto[: match.start()].strip()
+    texto = re.sub(r"\s+", " ", texto).strip()
+    return texto, ano
+
+
+def alvo_da_pasta(nome_torrent: str) -> str | None:
+    """Nome de pasta Jellyfin a partir do nome do torrent; None se não der para inferir."""
+    titulo, ano = _limpar_titulo(nome_torrent)
+    if not titulo:
+        return None
+    if titulo in _OVERRIDES_TITULO:
+        return _OVERRIDES_TITULO[titulo]
+    if ano is not None:
+        return f"{titulo} ({ano})"
+    return titulo
+
+
+def _save_path_no_jellyfin(save_path: str) -> bool:
+    if not save_path:
+        return False
+    real = os.path.realpath(save_path)
+    base = os.path.realpath(os.environ.get("JELLYFIN_ROOT", "/mnt/jellyfin"))
+    return real == base or real.startswith(base + os.sep)
+
+
+def _caminho_antigo(save_path: str, content_path: str) -> str | None:
+    if not _save_path_no_jellyfin(save_path):
+        return None
+    try:
+        entradas = os.listdir(save_path)
+    except OSError:
+        return None
+    alvo = (content_path or "").rstrip(os.sep)
+    if not alvo:
+        return None
+    nome = os.path.basename(alvo)
+    if nome in entradas:
+        return nome
+    try:
+        relativo = os.path.relpath(alvo, save_path)
+    except ValueError:
+        return None
+    if relativo.startswith(".."):
+        return None
+    partes = relativo.split(os.sep)
+    if len(partes) >= 2:
+        return partes[0]
+    pai = os.path.dirname(relativo)
+    return pai if pai and pai != "." else None
+
+
+def _listar_bruto() -> list[dict]:
+    code, body = _abrir("GET", "/api/v2/torrents/info")
+    if code != 200:
+        raise AgentError(f"Não foi possível listar os torrents (HTTP {code})")
+    try:
+        itens = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise AgentError("Resposta inválida do qBittorrent") from exc
+    if not isinstance(itens, list):
+        raise AgentError("Resposta inválida do qBittorrent")
+    return [item for item in itens if isinstance(item, dict)]
+
+
+def _elegivel_organizar(item: dict) -> bool:
+    if (item.get("category") or "").lower() != "jellyfin":
+        return False
+    try:
+        progresso = float(item.get("progress") or 0)
+    except (TypeError, ValueError):
+        return False
+    if progresso < 1:
+        return False
+    caminho = item.get("content_path") or ""
+    if "/.incomplete/" in caminho.replace("\\", "/"):
+        return False
+    estado = item.get("state") or ""
+    return estado in _ORGANIZAR_ESTADOS
+
+
+def _renomear_pasta(hash_torrent: str, old_path: str, new_path: str) -> tuple[int, str]:
+    return _abrir(
+        "POST",
+        "/api/v2/torrents/renameFolder",
+        {"hash": hash_torrent, "oldPath": old_path, "newPath": new_path},
+        timeout=60,
+    )
+
+
+def organizar(libraries: list[dict]) -> dict:
+    """Renomeia pastas de torrents concluídos da categoria jellyfin para Título (Ano)."""
+    vazio = {"feitos": [], "ja_no_padrao": [], "nao_feitos": []}
+    if _demo():
+        return {
+            "feitos": [{"de": "Colony S01", "para": "Colony (2016)"}],
+            "ja_no_padrao": [],
+            "nao_feitos": [{"nome": "Sem nome", "motivo": "Sem título"}],
+        }
+    client = disponivel()
+    if not client.get("available"):
+        raise AgentError(client.get("reason") or "qBittorrent indisponível")
+    relatorio = {"feitos": [], "ja_no_padrao": [], "nao_feitos": []}
+    for item in _listar_bruto():
+        save_path = item.get("save_path") or ""
+        if _biblioteca_do_caminho(save_path, libraries) is None:
+            continue
+        if not _elegivel_organizar(item):
+            continue
+        nome = item.get("name") or ""
+        hash_torrent = (item.get("hash") or "").lower()
+        if not _HASH_RE.match(hash_torrent):
+            continue
+        alvo = alvo_da_pasta(nome)
+        if alvo is None:
+            relatorio["nao_feitos"].append(
+                {"nome": nome or "sem nome", "motivo": "Sem título"}
+            )
+            continue
+        antigo = _caminho_antigo(save_path, item.get("content_path") or "")
+        if antigo is None:
+            relatorio["nao_feitos"].append(
+                {
+                    "nome": nome or antigo or "sem nome",
+                    "motivo": "Pasta fora do Jellyfin ou caminho inválido",
+                }
+            )
+            continue
+        if antigo == alvo:
+            relatorio["ja_no_padrao"].append(antigo)
+            continue
+        code, _body = _renomear_pasta(hash_torrent, antigo, alvo)
+        if code != 200:
+            relatorio["nao_feitos"].append(
+                {
+                    "nome": nome,
+                    "motivo": f"qBittorrent recusou o rename (HTTP {code})",
+                }
+            )
+            continue
+        relatorio["feitos"].append({"de": antigo, "para": alvo})
+    return relatorio

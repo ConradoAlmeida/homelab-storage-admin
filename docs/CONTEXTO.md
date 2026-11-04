@@ -37,14 +37,16 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do
   host não muda. Com o UFW ativo, 6881/tcp e 6881/udp ficam liberadas e a
   8090 só aceita a rede Docker. O UPnP fica ligado. A página enfatiza o
-  andamento: chips de estado, busca por nome e filtro de pasta. Adicionar
+  andamento: chips de estado, busca por nome e filtro de pasta. **Atualizar** e
+  **Automático** ficam no bloco Andamento (sem recarregar a página). Adicionar
   torrent e a API de envio abrem em painéis na própria página. A lista mostra
   a taxa de download (sem coluna de upload). O cabeçalho da
-  coluna ordena a lista. Pausar só aparece enquanto
-  baixa; no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
+  coluna ordena a lista. Pausar e retomar alternam na mesma linha;
+  no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
   não aparece. `POST /api/torrents/` repete esse envio com Bearer.
   Token vazio no banco desliga a rota. A categoria no qBittorrent é
-  sempre `jellyfin`. Hash já presente na lista responde `409`. O token fica
+  sempre `jellyfin`. Hash já presente na lista responde `409`. **Organizar séries**
+  renomeia pastas concluídas para `Título (Ano)` com relatório na página. O token fica
   legível no banco do painel. O `host.env` só grava o primeiro valor. O
   administrador cria, consulta e troca na página Torrents com a senha da
   própria conta. Sem token, o botão é Criar token. O mesmo registro aparece

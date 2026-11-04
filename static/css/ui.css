@@ -556,6 +556,11 @@ tbody tr:hover td {
   background: rgba(74, 158, 255, 0.12);
 }
 
+[data-torrent-auto].is-on {
+  border-color: var(--acc);
+  background: rgba(74, 158, 255, 0.12);
+}
+
 .torrent-chip [data-estado-count] {
   color: var(--muted);
 }

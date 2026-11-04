@@ -278,6 +278,15 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, 'data-sort="progress"')
         self.assertContains(resposta, 'id="torrent-filtro-pasta"')
         self.assertContains(resposta, 'class="torrent-meter"')
+        self.assertContains(resposta, 'data-torrent-status="/torrents/estado/"')
+        self.assertContains(resposta, "data-torrent-refresh")
+        self.assertContains(resposta, "data-torrent-auto")
+        self.assertContains(resposta, 'id="torrent-linha"')
+        self.assertContains(resposta, "data-torrent-pause")
+        self.assertContains(resposta, "data-torrent-resume")
+        self.assertContains(resposta, 'name="action" value="pause"')
+        self.assertContains(resposta, 'name="action" value="resume"')
+        self.assertNotContains(resposta, "data-torrent-poll")
         self.assertNotContains(resposta, 'id="torrent-ordem"')
         painel = self.client.get("/")
         self.assertContains(painel, 'href="/torrents/"')
@@ -345,6 +354,12 @@ class ViewSmokeTests(TestCase):
         vazio = self.client.get("/torrents/")
         self.assertContains(vazio, "Criar token")
         self.assertContains(vazio, "Ainda não há token.")
+        self.assertContains(vazio, "Nenhum torrent nas pastas do Jellyfin.")
+        self.assertContains(vazio, 'data-torrent-status="/torrents/estado/"')
+        self.assertContains(vazio, "data-torrent-refresh")
+        self.assertContains(vazio, "data-torrent-auto")
+        self.assertContains(vazio, 'id="torrent-linha"')
+        self.assertContains(vazio, "data-torrent-table")
         self.assertNotContains(vazio, "Consultar token")
         criado = self.client.post(
             "/torrents/",
@@ -499,6 +514,60 @@ class ViewSmokeTests(TestCase):
                 action="torrent.delete_files", target="a" * 40
             ).exists()
         )
+
+    def test_organizar_series_reexibe_relatorio(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "series", "name": "Séries", "path": "/mnt/jellyfin/series"}
+            ],
+            "libraries_error": "",
+        }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5.0.1", "reason": ""},
+            [],
+            "",
+        )
+        self.qbit.organizar.return_value = {
+            "feitos": [{"de": "Colony S01", "para": "Colony (2016)"}],
+            "ja_no_padrao": ["Station Eleven (2021)"],
+            "nao_feitos": [{"nome": "vazio", "motivo": "Sem título"}],
+        }
+        resposta = self.client.post("/torrents/organizar/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Organização")
+        self.assertContains(resposta, "Colony S01")
+        self.assertContains(resposta, "Colony (2016)")
+        self.assertContains(resposta, "Station Eleven (2021)")
+        self.assertContains(resposta, "Sem título")
+        self.assertContains(resposta, "Andamento")
+        self.qbit.organizar.assert_called_once()
+        log = AuditLog.objects.get(action="torrent.organize")
+        self.assertIn("1 feitos", log.target)
+
+    def test_organizar_series_botao_só_com_cliente(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+        }
+        self.qbit.estado.return_value = (
+            {"available": False, "version": "", "reason": "parado"},
+            [],
+            "",
+        )
+        sem = self.client.get("/torrents/")
+        self.assertNotContains(sem, 'action="/torrents/organizar/"')
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5.0.1", "reason": ""},
+            [],
+            "",
+        )
+        com = self.client.get("/torrents/")
+        self.assertContains(com, "Organizar as séries concluídas?")
+        self.assertContains(com, "Organizar séries")
 
     def test_dashboard_lista_jobs_de_arquivos(self):
         capacidades = dict(self.fake.host_capabilities.return_value)

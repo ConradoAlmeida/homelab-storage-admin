@@ -1,0 +1,51 @@
+<tr
+  data-hash="{{ item.hash }}"
+  data-state-code="{{ item.state }}"
+  data-name="{{ item.name }}"
+  data-library="{{ item.library }}"
+  data-state-label="{{ item.state_label }}"
+  data-progress="{{ item.progress|default:0 }}"
+  data-download="{{ item.download_bps|default:0 }}"
+  data-upload="{{ item.upload_bps|default:0 }}"
+  data-size="{{ item.size_bytes|default:0 }}"
+>
+  <td>
+    <strong class="torrent-nm" data-name>{{ item.name }}</strong>
+    <div class="muted text-11" data-size-label>{{ item.size }}</div>
+  </td>
+  <td data-library-label>{{ item.library }}</td>
+  <td><span class="status {% if item.state == 'error' or item.state == 'missingFiles' %}off{% elif item.state_label == 'lendo metadados' %}meta{% elif item.state_label == 'baixando' %}info{% elif item.state_label == 'aguardando' or item.state_label == 'na fila' or item.can_resume %}warn{% elif item.state_label == 'concluído' or item.state_label == 'enviando' %}ok{% endif %}" data-state>{{ item.state_label }}</span></td>
+  <td>
+    <span class="mono"><span data-percent>{{ item.progress_label }}</span> <span class="muted" data-eta>{% if item.eta %}· {{ item.eta }}{% endif %}</span></span>
+    <progress class="torrent-meter" value="{{ item.progress|default:0 }}" max="100" {% if not item.progress or item.progress >= 100 %}hidden{% endif %}>{{ item.progress_label }}</progress>
+  </td>
+  <td class="mono" data-download>{{ item.download_speed }}</td>
+  <td class="file-actions">
+    <div class="row-actions">
+      <form method="post" action="{% url 'torrent_action' %}" data-torrent-pause {% if not item.can_pause %}hidden{% endif %}>
+        {% csrf_token %}
+        <input type="hidden" name="hash" value="{{ item.hash }}">
+        <input type="hidden" name="action" value="pause">
+        <button class="btn small" type="submit">Pausar</button>
+      </form>
+      <form method="post" action="{% url 'torrent_action' %}" data-torrent-resume {% if not item.can_resume %}hidden{% endif %}>
+        {% csrf_token %}
+        <input type="hidden" name="hash" value="{{ item.hash }}">
+        <input type="hidden" name="action" value="resume">
+        <button class="btn small" type="submit">Retomar</button>
+      </form>
+      <form method="post" action="{% url 'torrent_action' %}" data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
+        {% csrf_token %}
+        <input type="hidden" name="hash" value="{{ item.hash }}">
+        <input type="hidden" name="action" value="delete">
+        <button class="btn small" type="submit">Remover</button>
+      </form>
+      <form method="post" action="{% url 'torrent_action' %}" data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
+        {% csrf_token %}
+        <input type="hidden" name="hash" value="{{ item.hash }}">
+        <input type="hidden" name="action" value="delete_files">
+        <button class="btn small danger" type="submit">Apagar arquivos</button>
+      </form>
+    </div>
+  </td>
+</tr>

@@ -46,6 +46,7 @@ urlpatterns = [
     path("torrents/estado/", downloads.TorrentStatusView.as_view(), name="torrent_status"),
     path("torrents/adicionar/", downloads.TorrentAddView.as_view(), name="torrent_add"),
     path("torrents/acao/", downloads.TorrentActionView.as_view(), name="torrent_action"),
+    path("torrents/organizar/", downloads.TorrentOrganizeView.as_view(), name="torrent_organize"),
     path("api/torrents/", downloads.TorrentEnvioApiView.as_view(), name="torrent_api_add"),
     path(
         "api/torrents/bibliotecas/",
