@@ -392,6 +392,15 @@ class AgentClient:
     def torrent_overview(self):
         return self.call("torrent_overview", timeout=30)
 
+    def library_merge_dir(self, library_id, source, dest):
+        return self.call(
+            "library_merge_dir",
+            timeout=120,
+            library_id=library_id,
+            source=source,
+            dest=dest,
+        )
+
 
 if settings.DEBUG and os.environ.get("STORAGE_ADMIN_DEMO") == "1":
     from .demo_agent import DemoAgent

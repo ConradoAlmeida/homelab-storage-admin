@@ -515,7 +515,7 @@ class ViewSmokeTests(TestCase):
             ).exists()
         )
 
-    def test_organizar_series_reexibe_relatorio(self):
+    def test_organizar_reexibe_relatorio(self):
         self._liga_jellyfin()
         self.fake.torrent_overview.return_value = {
             "libraries": [
@@ -528,24 +528,55 @@ class ViewSmokeTests(TestCase):
             [],
             "",
         )
-        self.qbit.organizar.return_value = {
+        self.qbit.organizar_linhas.return_value = {
             "feitos": [{"de": "Colony S01", "para": "Colony (2016)"}],
-            "ja_no_padrao": ["Station Eleven (2021)"],
-            "nao_feitos": [{"nome": "vazio", "motivo": "Sem título"}],
+            "nao_feitos": [{"nome": "Outra", "motivo": "Arquivo diferente: x.mkv"}],
         }
-        resposta = self.client.post("/torrents/organizar/")
+        resposta = self.client.post(
+            "/torrents/organizar/",
+            {"library": "series", "marcar": ["Colony S01"]},
+        )
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Organização")
         self.assertContains(resposta, "Colony S01")
         self.assertContains(resposta, "Colony (2016)")
-        self.assertContains(resposta, "Station Eleven (2021)")
-        self.assertContains(resposta, "Sem título")
+        self.assertContains(resposta, "Arquivo diferente")
         self.assertContains(resposta, "Andamento")
-        self.qbit.organizar.assert_called_once()
+        self.qbit.organizar_linhas.assert_called_once()
         log = AuditLog.objects.get(action="torrent.organize")
         self.assertIn("1 feitos", log.target)
 
-    def test_organizar_series_botao_só_com_cliente(self):
+    def test_organizar_lista_pastas(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "series", "name": "Séries", "path": "/mnt/jellyfin/series"}
+            ],
+            "libraries_error": "",
+        }
+        self.qbit.estado.return_value = (
+            {"available": True, "version": "v5.0.1", "reason": ""},
+            [],
+            "",
+        )
+        self.qbit.listar_pastas_fora_padrao.return_value = [
+            {
+                "atual": "Silo (2023) Season 1",
+                "alvo": "Silo (2023)",
+                "tem_torrent": False,
+                "hash": "",
+            }
+        ]
+        resposta = self.client.post(
+            "/torrents/organizar/listar/",
+            {"library": "series"},
+        )
+        self.assertContains(resposta, "Organizar biblioteca")
+        self.assertContains(resposta, "Silo (2023) Season 1")
+        self.assertContains(resposta, "Organizar marcadas")
+        self.qbit.listar_pastas_fora_padrao.assert_called_once()
+
+    def test_organizar_só_com_cliente_disponivel(self):
         self._liga_jellyfin()
         self.fake.torrent_overview.return_value = {
             "libraries": [
@@ -559,15 +590,15 @@ class ViewSmokeTests(TestCase):
             "",
         )
         sem = self.client.get("/torrents/")
-        self.assertNotContains(sem, 'action="/torrents/organizar/"')
+        self.assertNotContains(sem, "Listar pastas")
         self.qbit.estado.return_value = (
             {"available": True, "version": "v5.0.1", "reason": ""},
             [],
             "",
         )
         com = self.client.get("/torrents/")
-        self.assertContains(com, "Organizar as séries concluídas?")
-        self.assertContains(com, "Organizar séries")
+        self.assertContains(com, "Organizar biblioteca")
+        self.assertContains(com, "Listar pastas")
 
     def test_dashboard_lista_jobs_de_arquivos(self):
         capacidades = dict(self.fake.host_capabilities.return_value)

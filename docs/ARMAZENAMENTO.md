@@ -66,9 +66,10 @@ inválido ou pasta fora do Jellyfin é `400`. Hash que o qBittorrent já tem na
 lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado é
 `503`. Token vazio ou host sem Jellyfin é `404`.
 
-A categoria gravada no qBittorrent é sempre `jellyfin`. O botão **Organizar séries**
-renomeia pastas de torrents concluídos para `Título (Ano)` e mostra um relatório
-na página (feito, já no padrão, não feito). Na LAN o Caddy
+A categoria gravada no qBittorrent é sempre `jellyfin`. **Organizar biblioteca**
+lista pastas fora do padrão Título (Ano), organiza só as marcadas e mostra feito
+e não feito. Pasta com torrent ativo renomeia via qBittorrent; pasta solta mescla
+no host pelo agente. Na LAN o Caddy
 publica `https://homelab.conradhub.com` e o token
 segue no header. TLS interno no Caddy fecharia esse trecho.
 

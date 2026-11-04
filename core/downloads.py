@@ -96,6 +96,9 @@ class TorrentsView(ExigeJellyfinMixin, AgentTemplateView):
                 "overview": None,
                 "error": None,
                 "form": None,
+                "organizacao": None,
+                "pastas_fora": None,
+                "biblioteca_organizar": None,
                 "pode_ver_token": _administrador(self.request.user),
                 "token_existe": False,
                 "token_revelado": "",
@@ -217,7 +220,15 @@ class TorrentAddView(ExigeJellyfinMixin, AgentView):
         return redirect("torrents")
 
 
-def _pagina_torrents(request, overview, *, organizacao=None, form=None):
+def _pagina_torrents(
+    request,
+    overview,
+    *,
+    organizacao=None,
+    form=None,
+    pastas_fora=None,
+    biblioteca_organizar=None,
+):
     libraries = overview.get("libraries") if isinstance(overview, dict) else []
     client = overview.get("client") if isinstance(overview, dict) else {}
     if form is None and (
@@ -232,6 +243,8 @@ def _pagina_torrents(request, overview, *, organizacao=None, form=None):
         "error": None,
         "form": form,
         "organizacao": organizacao,
+        "pastas_fora": pastas_fora,
+        "biblioteca_organizar": biblioteca_organizar,
         "pode_ver_token": _administrador(request.user),
         "token_existe": bool(token_da_api()),
         "token_revelado": "",
@@ -239,30 +252,86 @@ def _pagina_torrents(request, overview, *, organizacao=None, form=None):
     }
 
 
-class TorrentOrganizeView(ExigeJellyfinMixin, AgentPostView):
+class TorrentOrganizeListView(ExigeJellyfinMixin, AgentPostView):
+    def post(self, request):
+        try:
+            overview = _visao()
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            return redirect("torrents")
+        libraries = _bibliotecas_validas(overview)
+        biblioteca = _escolher_biblioteca(request.POST.get("library", ""), libraries)
+        if biblioteca is None:
+            messages.error(request, "Escolha uma biblioteca válida.")
+            return redirect("torrents")
+        client = overview.get("client") if isinstance(overview, dict) else {}
+        if not isinstance(client, dict) or not client.get("available"):
+            messages.error(
+                request,
+                (client or {}).get("reason") or "Cliente de torrent indisponível",
+            )
+            return redirect("torrents")
+        pastas = qbittorrent.listar_pastas_fora_padrao(biblioteca, libraries)
+        pagina = _pagina_torrents(
+            request,
+            overview,
+            pastas_fora=pastas,
+            biblioteca_organizar=biblioteca,
+        )
+        return render(request, "torrents.html", pagina)
+
+
+class TorrentOrganizeApplyView(ExigeJellyfinMixin, AgentPostView):
     def post(self, request):
         organizacao = None
         try:
             overview = _visao()
-            organizacao = qbittorrent.organizar(_bibliotecas(overview))
         except AgentError as exc:
             messages.error(request, str(exc))
-            try:
-                overview = _visao()
-            except AgentError as exc_visao:
-                messages.error(request, str(exc_visao))
-                return redirect("torrents")
-        else:
-            feitos = len(organizacao.get("feitos") or [])
-            padrao = len(organizacao.get("ja_no_padrao") or [])
-            falhas = len(organizacao.get("nao_feitos") or [])
-            _auditar(
+            return redirect("torrents")
+        libraries = _bibliotecas_validas(overview)
+        biblioteca = _escolher_biblioteca(request.POST.get("library", ""), libraries)
+        if biblioteca is None:
+            messages.error(request, "Escolha uma biblioteca válida.")
+            return redirect("torrents")
+        client = overview.get("client") if isinstance(overview, dict) else {}
+        if not isinstance(client, dict) or not client.get("available"):
+            messages.error(
                 request,
-                "torrent.organize",
-                f"{feitos} feitos, {padrao} já no padrão, {falhas} não feitos",
+                (client or {}).get("reason") or "Cliente de torrent indisponível",
             )
+            return redirect("torrents")
+        marcadas = request.POST.getlist("marcar")
+        if not marcadas:
+            messages.error(request, "Marque ao menos uma pasta para organizar.")
+            pagina = _pagina_torrents(request, overview, biblioteca_organizar=biblioteca)
+            return render(request, "torrents.html", pagina)
+        try:
+            organizacao = qbittorrent.organizar_linhas(
+                biblioteca,
+                marcadas,
+                libraries,
+                lambda lib_id, origem, destino: agent.library_merge_dir(
+                    lib_id, origem, destino
+                ),
+            )
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            pagina = _pagina_torrents(request, overview, biblioteca_organizar=biblioteca)
+            return render(request, "torrents.html", pagina)
+        feitos = len(organizacao.get("feitos") or [])
+        falhas = len(organizacao.get("nao_feitos") or [])
+        _auditar(
+            request,
+            "torrent.organize",
+            f"{feitos} feitos, {falhas} não feitos",
+        )
         pagina = _pagina_torrents(request, overview, organizacao=organizacao)
         return render(request, "torrents.html", pagina)
+
+
+class TorrentOrganizeView(TorrentOrganizeApplyView):
+    """Compatibilidade de import; a aplicação usa TorrentOrganizeApplyView."""
 
 
 class TorrentActionView(ExigeJellyfinMixin, AgentPostView):

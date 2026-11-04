@@ -70,13 +70,6 @@ _CONCLUIDOS = {
     "queuedUP",
     "checkingUP",
 }
-_ORGANIZAR_ESTADOS = {
-    "stalledUP",
-    "uploading",
-    "queuedUP",
-    "pausedUP",
-    "stoppedUP",
-}
 _DOMINIO_INDEXADOR = re.compile(
     r"^(?:www\.)?(?:https?://)?[\w.-]+\."
     r"(?:org|com|net|mx|ag|am|re|to|io|info|xyz|cc|tv|st|ws|biz|ru|su|la)"
@@ -532,20 +525,77 @@ def _listar_bruto() -> list[dict]:
     return [item for item in itens if isinstance(item, dict)]
 
 
-def _elegivel_organizar(item: dict) -> bool:
-    if (item.get("category") or "").lower() != "jellyfin":
-        return False
+def _mapa_torrents_por_pasta(libraries: list[dict]) -> dict[tuple[str, str], dict]:
+    if _demo():
+        return {}
+    mapa: dict[tuple[str, str], dict] = {}
+    for item in _listar_bruto():
+        save_path = item.get("save_path") or ""
+        biblioteca = _biblioteca_do_caminho(save_path, libraries)
+        if biblioteca is None:
+            continue
+        pasta = _caminho_antigo(save_path, item.get("content_path") or "")
+        if pasta is None:
+            continue
+        base = os.path.realpath(biblioteca.get("path") or "")
+        if not base:
+            continue
+        mapa[(base, pasta)] = item
+    return mapa
+
+
+def listar_pastas_fora_padrao(biblioteca: dict, libraries: list[dict]) -> list[dict]:
+    """Pastas imediatas da biblioteca cujo nome difere do alvo Título (Ano)."""
+    if _demo():
+        nome = (biblioteca.get("name") or "").lower()
+        if "série" in nome or "serie" in nome:
+            return [
+                {
+                    "atual": "From (2022) Season 1 S01 WEB-DL",
+                    "alvo": "From (2022)",
+                    "tem_torrent": False,
+                    "hash": "",
+                },
+                {
+                    "atual": "Silo (2023) Season 1 S01 1080p",
+                    "alvo": "Silo (2023)",
+                    "tem_torrent": False,
+                    "hash": "",
+                },
+            ]
+        return []
+    caminho = biblioteca.get("path") or ""
+    if not caminho or not os.path.isdir(caminho):
+        return []
+    base = os.path.realpath(caminho)
+    torrents = _mapa_torrents_por_pasta(libraries)
+    linhas: list[dict] = []
     try:
-        progresso = float(item.get("progress") or 0)
-    except (TypeError, ValueError):
-        return False
-    if progresso < 1:
-        return False
-    caminho = item.get("content_path") or ""
-    if "/.incomplete/" in caminho.replace("\\", "/"):
-        return False
-    estado = item.get("state") or ""
-    return estado in _ORGANIZAR_ESTADOS
+        entradas = os.listdir(caminho)
+    except OSError:
+        return []
+    for nome in sorted(entradas):
+        pasta = os.path.join(caminho, nome)
+        if not os.path.isdir(pasta):
+            continue
+        alvo = alvo_da_pasta(nome)
+        if alvo is None or nome == alvo:
+            continue
+        item = torrents.get((base, nome))
+        hash_torrent = ""
+        if item:
+            hash_torrent = (item.get("hash") or "").lower()
+            if not _HASH_RE.match(hash_torrent):
+                hash_torrent = ""
+        linhas.append(
+            {
+                "atual": nome,
+                "alvo": alvo,
+                "tem_torrent": bool(hash_torrent),
+                "hash": hash_torrent,
+            }
+        )
+    return linhas
 
 
 def _renomear_pasta(hash_torrent: str, old_path: str, new_path: str) -> tuple[int, str]:
@@ -557,55 +607,81 @@ def _renomear_pasta(hash_torrent: str, old_path: str, new_path: str) -> tuple[in
     )
 
 
-def organizar(libraries: list[dict]) -> dict:
-    """Renomeia pastas de torrents concluídos da categoria jellyfin para Título (Ano)."""
-    vazio = {"feitos": [], "ja_no_padrao": [], "nao_feitos": []}
+def organizar_linhas(
+    biblioteca: dict,
+    nomes_marcados: list[str],
+    libraries: list[dict],
+    mesclar_pasta,
+) -> dict:
+    """Organiza só as pastas indicadas; torrent ativo usa renameFolder do qBittorrent."""
+    relatorio: dict = {"feitos": [], "nao_feitos": []}
     if _demo():
-        return {
-            "feitos": [{"de": "Colony S01", "para": "Colony (2016)"}],
-            "ja_no_padrao": [],
-            "nao_feitos": [{"nome": "Sem nome", "motivo": "Sem título"}],
-        }
-    client = disponivel()
-    if not client.get("available"):
-        raise AgentError(client.get("reason") or "qBittorrent indisponível")
-    relatorio = {"feitos": [], "ja_no_padrao": [], "nao_feitos": []}
-    for item in _listar_bruto():
-        save_path = item.get("save_path") or ""
-        if _biblioteca_do_caminho(save_path, libraries) is None:
+        marcados = [nome for nome in nomes_marcados if nome]
+        if marcados:
+            relatorio["feitos"].append(
+                {"de": marcados[0], "para": alvo_da_pasta(marcados[0]) or marcados[0]}
+            )
+        if len(marcados) > 1:
+            relatorio["nao_feitos"].append(
+                {"nome": marcados[1], "motivo": "Demonstração: segunda linha não feita."}
+            )
+        return relatorio
+    caminho = biblioteca.get("path") or ""
+    if not caminho:
+        raise AgentError("Biblioteca sem caminho")
+    base = os.path.realpath(caminho)
+    torrents = _mapa_torrents_por_pasta(libraries)
+    vistos: set[str] = set()
+    for bruto in nomes_marcados:
+        atual = (bruto or "").strip()
+        if not atual or atual in vistos:
             continue
-        if not _elegivel_organizar(item):
+        vistos.add(atual)
+        pasta = os.path.join(caminho, atual)
+        if not os.path.isdir(pasta):
+            relatorio["nao_feitos"].append(
+                {"nome": atual, "motivo": "Pasta não encontrada"}
+            )
             continue
-        nome = item.get("name") or ""
-        hash_torrent = (item.get("hash") or "").lower()
-        if not _HASH_RE.match(hash_torrent):
-            continue
-        alvo = alvo_da_pasta(nome)
+        alvo = alvo_da_pasta(atual)
         if alvo is None:
+            relatorio["nao_feitos"].append({"nome": atual, "motivo": "Sem título"})
+            continue
+        if atual == alvo:
+            relatorio["nao_feitos"].append({"nome": atual, "motivo": "Já no padrão"})
+            continue
+        item = torrents.get((base, atual))
+        if item:
+            hash_torrent = (item.get("hash") or "").lower()
+            if not _HASH_RE.match(hash_torrent):
+                relatorio["nao_feitos"].append(
+                    {"nome": atual, "motivo": "Torrent inválido"}
+                )
+                continue
+            code, _body = _renomear_pasta(hash_torrent, atual, alvo)
+            if code != 200:
+                relatorio["nao_feitos"].append(
+                    {
+                        "nome": atual,
+                        "motivo": f"qBittorrent recusou o rename (HTTP {code})",
+                    }
+                )
+                continue
+            relatorio["feitos"].append({"de": atual, "para": alvo})
+            continue
+        try:
+            resultado = mesclar_pasta(biblioteca.get("id") or "", atual, alvo)
+        except AgentError as exc:
+            relatorio["nao_feitos"].append({"nome": atual, "motivo": str(exc)})
+            continue
+        if not isinstance(resultado, dict):
             relatorio["nao_feitos"].append(
-                {"nome": nome or "sem nome", "motivo": "Sem título"}
+                {"nome": atual, "motivo": "Resposta inválida do agente"}
             )
             continue
-        antigo = _caminho_antigo(save_path, item.get("content_path") or "")
-        if antigo is None:
-            relatorio["nao_feitos"].append(
-                {
-                    "nome": nome or antigo or "sem nome",
-                    "motivo": "Pasta fora do Jellyfin ou caminho inválido",
-                }
-            )
-            continue
-        if antigo == alvo:
-            relatorio["ja_no_padrao"].append(antigo)
-            continue
-        code, _body = _renomear_pasta(hash_torrent, antigo, alvo)
-        if code != 200:
-            relatorio["nao_feitos"].append(
-                {
-                    "nome": nome,
-                    "motivo": f"qBittorrent recusou o rename (HTTP {code})",
-                }
-            )
-            continue
-        relatorio["feitos"].append({"de": antigo, "para": alvo})
+        if resultado.get("ok"):
+            relatorio["feitos"].append({"de": atual, "para": alvo})
+        else:
+            motivo = (resultado.get("motivo") or "").strip() or "Não foi possível organizar"
+            relatorio["nao_feitos"].append({"nome": atual, "motivo": motivo})
     return relatorio

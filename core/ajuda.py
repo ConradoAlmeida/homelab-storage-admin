@@ -257,13 +257,13 @@ AJUDA: dict[str, dict[str, Any]] = {
                 ),
             },
             {
-                "title": "Organizar séries",
+                "title": "Organizar biblioteca",
                 "text": (
-                    "Renomeia as pastas dos torrents concluídos da categoria "
-                    "jellyfin para Título (Ano), como no acervo do Jellyfin. "
-                    "Só entram downloads 100% prontos, fora de .incomplete. "
-                    "A página mostra o que foi renomeado, o que já estava "
-                    "certo e o que não deu para fazer."
+                    "Escolha Séries ou Filmes e liste as pastas imediatas fora do "
+                    "padrão Título (Ano). Marque só as que quer mover; a aplicação "
+                    "não varre de novo. Linha com torrent ativo usa renameFolder no "
+                    "qBittorrent; pasta solta é renomeada ou mesclada pelo agente. "
+                    "A página mostra o que foi feito e o que não foi."
                 ),
             },
             {

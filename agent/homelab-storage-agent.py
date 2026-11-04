@@ -6059,6 +6059,109 @@ def op_torrent_overview(**_):
     }
 
 
+def _nome_pasta_biblioteca(nome: str) -> str:
+    nome = (nome or "").strip()
+    if not nome or nome in {".", ".."}:
+        raise AgentError("Nome de pasta invalido")
+    if "/" in nome or "\\" in nome or ".." in nome:
+        raise AgentError("Nome de pasta invalido")
+    return nome
+
+
+def _caminho_na_biblioteca(base: str, segmento: str) -> str:
+    base_real = os.path.realpath(_validate_share_path(base.rstrip("/")))
+    alvo = os.path.realpath(os.path.join(base_real, segmento))
+    if alvo != base_real and not alvo.startswith(base_real + os.sep):
+        raise AgentError("Caminho fora da biblioteca")
+    return alvo
+
+
+def _biblioteca_jellyfin_por_id(library_id: str) -> dict:
+    pedido = (library_id or "").strip()
+    if not pedido:
+        raise AgentError("Biblioteca invalida")
+    for item in _bibliotecas_jellyfin():
+        if item.get("id") == pedido:
+            return item
+    raise AgentError("Biblioteca invalida")
+
+
+def _tenta_rmdir_vazia(caminho: str) -> None:
+    try:
+        if os.path.isdir(caminho) and not os.listdir(caminho):
+            os.rmdir(caminho)
+    except OSError:
+        return
+
+
+def op_library_merge_dir(library_id=None, source=None, dest=None, **_):
+    """Renomeia ou mescla uma pasta imediata dentro de uma biblioteca do Jellyfin."""
+    biblioteca = _biblioteca_jellyfin_por_id(library_id)
+    origem_nome = _nome_pasta_biblioteca(source)
+    destino_nome = _nome_pasta_biblioteca(dest)
+    base = biblioteca.get("path") or ""
+    origem = _caminho_na_biblioteca(base, origem_nome)
+    destino = _caminho_na_biblioteca(base, destino_nome)
+    if not os.path.isdir(origem):
+        raise AgentError("Pasta de origem nao encontrada")
+    if origem_nome == destino_nome:
+        raise AgentError("Origem e destino iguais")
+    if not os.path.exists(destino):
+        os.rename(origem, destino)
+        return {
+            "ok": True,
+            "de": origem_nome,
+            "para": destino_nome,
+            "motivo": "",
+        }
+    if not os.path.isdir(destino):
+        raise AgentError("Destino existe e nao e pasta")
+    conflitos: list[str] = []
+    for dirpath, _dirnames, filenames in os.walk(origem, topdown=False):
+        rel_dir = os.path.relpath(dirpath, origem)
+        for fname in filenames:
+            src_file = os.path.join(dirpath, fname)
+            rel_file = fname if rel_dir == "." else os.path.join(rel_dir, fname)
+            dst_file = os.path.join(destino, rel_file)
+            dst_parent = os.path.dirname(dst_file)
+            if dst_parent:
+                os.makedirs(dst_parent, exist_ok=True)
+            if not os.path.exists(dst_file):
+                shutil.move(src_file, dst_file)
+                continue
+            if not os.path.isfile(dst_file):
+                conflitos.append(rel_file)
+                continue
+            try:
+                src_size = os.path.getsize(src_file)
+                dst_size = os.path.getsize(dst_file)
+            except OSError:
+                conflitos.append(rel_file)
+                continue
+            if src_size == dst_size:
+                os.remove(src_file)
+            else:
+                conflitos.append(rel_file)
+        if dirpath != origem:
+            _tenta_rmdir_vazia(dirpath)
+    _tenta_rmdir_vazia(origem)
+    if conflitos:
+        amostra = conflitos[0]
+        extra = f" (+{len(conflitos) - 1})" if len(conflitos) > 1 else ""
+        return {
+            "ok": False,
+            "de": origem_nome,
+            "para": destino_nome,
+            "motivo": f"Arquivo diferente: {amostra}{extra}",
+        }
+    return {
+        "ok": True,
+        "de": origem_nome,
+        "para": destino_nome,
+        "motivo": "",
+    }
+
+
 OPS = {
     "ping": op_ping,
     "host_capabilities": op_host_capabilities,
@@ -6116,6 +6219,7 @@ OPS = {
     "container_action": op_container_action,
     "container_logs": op_container_logs,
     "torrent_overview": op_torrent_overview,
+    "library_merge_dir": op_library_merge_dir,
     "health_overview": op_health_overview,
     "network_overview": op_network_overview,
     "firewall_overview": op_firewall_overview,

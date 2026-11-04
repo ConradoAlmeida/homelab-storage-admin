@@ -501,6 +501,13 @@ def _dados(op: str, payload: dict):
         }
     if op == "torrent_action":
         return {"hash": payload.get("torrent_hash", ""), "action": payload.get("action", "")}
+    if op == "library_merge_dir":
+        return {
+            "ok": True,
+            "de": payload.get("source", ""),
+            "para": payload.get("dest", ""),
+            "motivo": "",
+        }
     if op == "snapshot_policy_save":
         return {
             "share": payload.get("share", ""),

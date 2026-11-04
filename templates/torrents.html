@@ -18,10 +18,6 @@
     {% if overview.client.version %}<span class="status ok">qBittorrent {{ overview.client.version }}</span>{% endif %}
     {% if form %}
     <label class="btn" for="torrent-panel-add">Adicionar torrent</label>
-    <form method="post" action="{% url 'torrent_organize' %}" data-confirm="Organizar as séries concluídas? As pastas passam a Título (Ano).">
-      {% csrf_token %}
-      <button class="btn" type="submit">Organizar séries</button>
-    </form>
     {% endif %}
     <label class="btn" for="torrent-panel-api">Configurar API</label>
   </div>
@@ -56,8 +52,7 @@
     <div class="card">
       <h2>Organização</h2>
       <p>
-        {{ organizacao.feitos|length }} renomeado{{ organizacao.feitos|length|pluralize:"s" }},
-        {{ organizacao.ja_no_padrao|length }} já no padrão,
+        {{ organizacao.feitos|length }} feito{{ organizacao.feitos|length|pluralize:"s" }},
         {{ organizacao.nao_feitos|length }} não feito{{ organizacao.nao_feitos|length|pluralize:"s" }}.
       </p>
       {% if organizacao.feitos %}
@@ -65,14 +60,6 @@
         <ul>
           {% for item in organizacao.feitos %}
             <li>{{ item.de }} → {{ item.para }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-      {% if organizacao.ja_no_padrao %}
-        <h3>Já no padrão</h3>
-        <ul>
-          {% for nome in organizacao.ja_no_padrao %}
-            <li>{{ nome }}</li>
           {% endfor %}
         </ul>
       {% endif %}
@@ -85,6 +72,74 @@
         </ul>
       {% endif %}
     </div>
+  {% endif %}
+
+  {% if overview.client.available and overview.libraries %}
+    <section class="section">
+      <div class="section-head">
+        <h2>Organizar biblioteca</h2>
+      </div>
+      <p class="muted text-12">
+        Escolha Séries ou Filmes, veja as pastas fora do padrão Título (Ano) e organize só as marcadas.
+        Linha com torrent ativo é renomeada pelo qBittorrent; pasta solta é mesclada pelo agente no host.
+      </p>
+      <div class="card">
+        <form method="post" action="{% url 'torrent_organize_list' %}">
+          {% csrf_token %}
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="torrent-organizar-biblioteca">Biblioteca</label>
+              <select id="torrent-organizar-biblioteca" class="form-control" name="library" required>
+                <option value="">Escolha…</option>
+                {% for biblioteca in overview.libraries %}
+                  <option value="{{ biblioteca.id }}" {% if biblioteca_organizar and biblioteca_organizar.id == biblioteca.id %}selected{% endif %}>{{ biblioteca.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" type="submit">Listar pastas</button>
+          </div>
+        </form>
+      </div>
+      {% if pastas_fora is not None %}
+        {% if pastas_fora %}
+          <form method="post" action="{% url 'torrent_organize' %}" data-confirm="Organizar as pastas marcadas? Pastas com torrent ativo serão renomeadas no qBittorrent.">
+            {% csrf_token %}
+            <input type="hidden" name="library" value="{{ biblioteca_organizar.id }}">
+            <div class="table-wrap">
+              <table class="file-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Organizar</th>
+                    <th scope="col">Nome atual</th>
+                    <th scope="col">Nome proposto</th>
+                    <th scope="col">Torrent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for linha in pastas_fora %}
+                    <tr>
+                      <td>
+                        <input type="checkbox" name="marcar" value="{{ linha.atual }}" checked>
+                      </td>
+                      <td>{{ linha.atual }}</td>
+                      <td>{{ linha.alvo }}</td>
+                      <td>{% if linha.tem_torrent %}Sim{% else %}Não{% endif %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" type="submit">Organizar marcadas</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="empty">Nenhuma pasta fora do padrão nesta biblioteca.</p>
+        {% endif %}
+      {% endif %}
+    </section>
   {% endif %}
 
   {% if form %}
