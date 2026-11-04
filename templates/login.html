@@ -3,14 +3,7 @@
 {% block title %}Entrar - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="card login-box">
-  {% if brand_homelab %}
-  <div class="brand-lockup">
-    <img class="brand-house" src="{% static 'images/conrado/login-house.png' %}" alt="">
-    <img class="brand-word" src="{% static 'images/conrado/wordmark.png' %}" alt="{{ brand_alt }}">
-  </div>
-  {% else %}
-  <img class="brand-logo" src="{% static brand_login_logo %}" alt="{{ brand_alt }}">
-  {% endif %}
+  <img class="brand-logo{% if brand_homelab %} brand-wordmark{% endif %}" src="{% static brand_login_logo %}" alt="{{ brand_alt }}">
   <h1>Entrar</h1>
   {% if login_pelo_credenciais %}
   <p class="muted text-12">Use a mesma conta do Credenciais.</p>

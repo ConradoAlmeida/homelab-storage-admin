@@ -26,9 +26,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
-- No homelab o login centraliza a casa, menor, e o nome Conrado Homelab, um pouco
-  maior, os dois em roxo. A barra repete essa marca, com a casa no tamanho de
-  um ícone. Os ícones do navegador usam só a casa. No moya
+- No homelab a marca é Conradhub Homelab: símbolo mais CONRADHUB, com HOMELAB
+  na linha de baixo, na faixa em degradê da barra. O login usa o wordmark
+  vertical. O menu separa Visão geral, Dados e Sistema. No moya
   (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o

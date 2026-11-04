@@ -232,7 +232,7 @@ Gere a chave com `openssl rand -hex 32`.
 
 ### Perfil do host (`host.env`)
 
-No homelab, a tela de entrada centraliza a casa, menor, e o nome Conrado Homelab, um pouco maior, os dois em roxo. A barra repete essa marca: a casa como ícone e o mesmo nome. Os ícones do navegador usam só a casa. No moya, com `CREDENTIALS_MANAGE_USERS=1`, permanece o wordmark Moya.
+No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A barra usa o símbolo com CONRADHUB e a linha HOMELAB. Os ícones do navegador vêm desse pacote. No moya, com `CREDENTIALS_MANAGE_USERS=1`, permanece o wordmark Moya.
 
 | Variável | Default do Pi | Função |
 |---|---|---|

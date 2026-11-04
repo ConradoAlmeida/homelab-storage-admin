@@ -1,8 +1,9 @@
 """Marca visual por host.
 
-O homelab usa a casa com servidores. O moya, onde o Credenciais gerencia as
-pessoas, mantém o wordmark Moya. A escolha segue CREDENTIALS_MANAGE_USERS,
-a mesma flag que já separa os dois ambientes.
+O homelab usa Conradhub Homelab: CONRADHUB é a marca e HOMELAB a linha
+secundária. O moya, onde o Credenciais gerencia as pessoas, mantém o
+wordmark Moya. A escolha segue CREDENTIALS_MANAGE_USERS, a mesma flag que
+já separa os dois ambientes.
 """
 
 from __future__ import annotations
@@ -21,8 +22,8 @@ def marca() -> dict:
         }
     return {
         "homelab": True,
-        "logo": "images/conrado/mark.png",
-        "login_logo": "images/conrado/wordmark.png",
-        "alt": "Conrado Homelab",
-        "favicon": "images/conrado/favicon.ico",
+        "logo": "images/conradhub/mark.png",
+        "login_logo": "images/conradhub/wordmark.png",
+        "alt": "Conradhub Homelab",
+        "favicon": "images/conradhub/favicon.ico",
     }

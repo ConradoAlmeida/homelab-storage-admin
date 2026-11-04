@@ -167,12 +167,20 @@ class ViewSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "restic não encontrado")
         self.assertNotContains(response, 'href="/torrents/"')
-        self.assertContains(response, "images/conrado/login-house.png")
-        self.assertContains(response, "images/conrado/wordmark.png")
-        self.assertContains(response, 'alt="Conrado Homelab"')
-        self.assertNotContains(response, "images/conrado/mark.png")
-        self.assertContains(response, "images/conrado/apple-touch-icon.png")
-        self.assertContains(response, "images/conrado/site.webmanifest")
+        self.assertContains(response, "images/conradhub/mark.png")
+        self.assertContains(response, "images/conradhub/conradhub-wordmark.png")
+        self.assertContains(response, "images/conradhub/homelab-wordmark.png")
+        self.assertContains(response, 'alt="Conradhub Homelab"')
+        self.assertContains(response, "Visão geral")
+        self.assertContains(response, "Dados")
+        self.assertContains(response, "Sistema")
+        self.assertContains(response, 'class="ico"')
+        self.assertNotContains(response, 'href="/containers/"')
+        self.assertNotContains(response, 'href="/backups/"')
+        self.assertNotContains(response, 'class="count"')
+        self.assertContains(response, "images/conradhub/apple-touch-icon.png")
+        self.assertContains(response, "images/conradhub/site.webmanifest")
+        self.assertNotContains(response, "images/conrado/")
         self.assertNotContains(response, "moya_wordmark_official.svg")
         self.fake.list_shares.assert_any_call(include_size=False)
         self.fake.snapshot_usage.assert_any_call(include_size=False)
@@ -180,15 +188,15 @@ class ViewSmokeTests(TestCase):
     def test_login_e_favicon_usam_a_marca_do_homelab(self):
         self.client.logout()
         login = self.client.get("/login/")
-        self.assertContains(login, "images/conrado/login-house.png")
-        self.assertContains(login, "images/conrado/wordmark.png")
-        self.assertContains(login, 'alt="Conrado Homelab"')
-        self.assertNotContains(login, "images/conrado/lockup.png")
-        self.assertContains(login, "images/conrado/favicon-32.png")
+        self.assertContains(login, "images/conradhub/wordmark.png")
+        self.assertContains(login, 'alt="Conradhub Homelab"')
+        self.assertNotContains(login, "images/conrado/")
+        self.assertNotContains(login, "login-house.png")
+        self.assertContains(login, "images/conradhub/favicon-32.png")
         icone = self.client.get("/favicon.ico")
         self.assertRedirects(
             icone,
-            "/static/images/conrado/favicon.ico",
+            "/static/images/conradhub/favicon.ico",
             fetch_redirect_response=False,
         )
 
@@ -197,9 +205,8 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/")
         self.assertContains(response, "moya_wordmark_official.svg")
         self.assertContains(response, 'alt="Moya"')
-        self.assertNotContains(response, "images/conrado/mark.png")
-        self.assertNotContains(response, "images/conrado/wordmark.png")
-        self.assertNotContains(response, "images/conrado/login-house.png")
+        self.assertNotContains(response, "images/conradhub/")
+        self.assertNotContains(response, "images/conrado/")
         icone = self.client.get("/favicon.ico")
         self.assertRedirects(
             icone,
@@ -1355,8 +1362,14 @@ class ViewSmokeTests(TestCase):
                 },
             ],
         }
+        capacidades = dict(self.fake.host_capabilities.return_value)
+        capacidades["containers"] = True
+        self.fake.host_capabilities.return_value = capacidades
+        context_processors._cached_caps = None
+        context_processors._cached_at = 0.0
         resposta = self.client.get("/containers/")
         self.assertContains(resposta, "gitea")
+        self.assertContains(resposta, 'class="count">2<')
         self.assertContains(resposta, "127.0.0.1:3000")
         self.assertContains(resposta, "Parar")
         self.assertContains(resposta, "Reiniciar")
