@@ -43,7 +43,7 @@ Criar usuário Samba, share, snapshot, regra de firewall e operar container cont
 ## Passos
 
 - [x] Gatilhos: POST imediato, status no agente, página consulta até terminar, timeout do Gunicorn ajustado, testes verdes.
-- [ ] Deploy desse app no Pi e conferência manual do disparo.
+- [x] Deploy desse app no Pi e conferência manual do disparo.
 - [ ] Docs e exemplos do nome único (`cloudflared`, `SEGURANCA`, `REDE`, `TROUBLESHOOTING`, `.env.example`, `services.ini.example`, `CONTEXTO`).
 - [ ] Pi-hole: `homelab`, `cockpit`, `dockge`, `pihole` e `jellyfin.conradhub.com` → `192.168.0.150`.
 - [ ] Caddy: TLS DNS-01, redireciona `*.conradhub.lan` para o `.com`, Jellyfin sem stream fora da LAN.
@@ -63,4 +63,4 @@ Criar usuário Samba, share, snapshot, regra de firewall e operar container cont
 
 ## Estado
 
-Gatilhos feitos em 2026-11-04. `manage.py check` sem pendências. Na VM `linux2024`: `pytest` 288 passed, 6 skipped; `tests/lab` 6 passed. No demo, Verificar repo voltou na hora para `?tarefa=` e a página passou de em andamento a concluído. Gunicorn em 660 s. Rede (DNS, Caddy, cloudflared, Access, Tailscale, deploy no Pi) segue parada.
+Gatilhos feitos em 2026-11-04. `manage.py check` sem pendências. Na VM `linux2024`: `pytest` 288 passed, 6 skipped; `tests/lab` 6 passed. No demo, Verificar repo voltou na hora para `?tarefa=` e a página passou de em andamento a concluído. Gunicorn em 660 s. Deploy no Pi em `966185c`: container no ar, agente ativo, login em `192.168.0.150:8060` responde 200. DNS, Caddy, cloudflared, Access e Tailscale seguem parados.
