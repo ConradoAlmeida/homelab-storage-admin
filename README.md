@@ -9,9 +9,9 @@ Ubuntu+Samba via perfil de host.
 > é definida no `.env` do servidor (modo `600`) e trocada com
 > `docker compose exec web python manage.py changepassword admin`.
 
-> **Acesso:** o painel escuta só na LAN. Para fora de casa, use Cloudflare
-> Tunnel + Access (painel) e Tailscale (SMB/DNS). Detalhes em
-> [Segurança](docs/SEGURANCA.md).
+> **Acesso:** em casa e com Tailscale, `https://homelab.conradhub.com`; fora,
+> túnel Cloudflare + Access nos apps web e Tailscale para SMB/DNS. Ver
+> [Segurança](docs/SEGURANCA.md) e [Rede](docs/REDE.md).
 
 ## Comece por aqui
 

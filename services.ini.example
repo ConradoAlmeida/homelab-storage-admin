@@ -4,11 +4,12 @@
 # Campos: name, description, url, icon, color, order.
 # Icones conhecidos: jellyfin, cockpit, dockge, pihole; outros usam o icone
 # generico. Nao ha descoberta nem health check.
+# Nomes do dia a dia: https://*.conradhub.com (pihole só LAN/Tailscale).
 
 [jellyfin]
 name = Jellyfin
 description = Midia · filmes e series
-url = http://jellyfin.conradhub.lan
+url = https://jellyfin.conradhub.com
 icon = jellyfin
 color = #a78bfa
 order = 10
@@ -16,7 +17,7 @@ order = 10
 [cockpit]
 name = Cockpit
 description = Host · sistema e logs
-url = https://cockpit.conradhub.lan
+url = https://cockpit.conradhub.com
 icon = cockpit
 color = #2dd4bf
 order = 20
@@ -24,7 +25,7 @@ order = 20
 [dockge]
 name = Dockge
 description = Containers · stacks
-url = http://dockge.conradhub.lan
+url = https://dockge.conradhub.com
 icon = dockge
 color = #fbbf24
 order = 30
@@ -32,7 +33,7 @@ order = 30
 [pihole]
 name = Pi-hole
 description = DNS · anuncios
-url = http://pihole.conradhub.lan/admin/
+url = https://pihole.conradhub.com/admin/
 icon = pihole
 color = #fb7185
 order = 40

@@ -43,14 +43,49 @@ Travas de segurança:
 Docker publica portas via iptables e pode furar o UFW; o modelo recomendado é
 publicar em `127.0.0.1` e deixar o Caddy expor.
 
-### Nomes na LAN
+### Nomes públicos e LAN
 
-Dois mecanismos, nos dois hosts (Pi e moyaserver):
+Um nome em casa e fora (`*.conradhub.com`). O Pi-hole (em casa e com Tailscale)
+responde `homelab`, `cockpit`, `dockge`, `jellyfin` e `pihole.conradhub.com`
+com `192.168.0.150`. Sem Tailscale, fora de casa, o DNS público cai no túnel
+Cloudflare e no Access (PIN por e-mail). O Pi-hole encaminha o resto da zona
+(apex, MX). `https://pihole.conradhub.com` não tem registro público.
 
-- **Digitar:** `*.conradhub.lan` (Pi-hole + Caddy). SSH `conrado@conradhub.lan`,
-  apps `storage.conradhub.lan`. Aliases `*.homelab.lan` ainda resolvem. Sem
-  descoberta: `smb://conradhub.lan/` (ou o alias `smb://homelab.lan/`) ou o IP.
-  O hostname Linux, Samba e Avahi continuam `homelab`.
+| Uso | Endereço |
+|---|---|
+| Painel Storage Admin | `https://homelab.conradhub.com` |
+| Cockpit, Dockge, Jellyfin | `https://cockpit…`, `https://dockge…`, `https://jellyfin…` |
+| Arquivos | `smb://homelab.conradhub.com/` |
+| Pi-hole (só LAN / Tailscale) | `https://pihole.conradhub.com` |
+
+Os `*.conradhub.lan` correspondentes (por exemplo `storage.conradhub.lan`) só
+redirecionam para o `.com`. Aliases `*.homelab.lan` ainda resolvem onde existirem.
+SSH continua `conrado@conradhub.lan` no Pi. Hostname Linux, Samba e Avahi
+permanecem `homelab`.
+
+HTTPS termina no Caddy do Pi (Let's Encrypt, DNS-01). O `cloudflared` roda só no
+Pi: ingress dos quatro hostnames públicos para `https://192.168.0.150`; o resto
+404. O aparelho cliente não instala `cloudflared`.
+
+**Tailscale (só no Pi, no lugar do ZeroTier):** subnet router `192.168.0.0/24`,
+split DNS de `conradhub.com` para o IP `100.x` do Pi (ali o Pi-hole escuta), sem override global de DNS, sem
+Tailscale SSH, chave do nó sem expiração. O moya e o ZeroTier dele não mudam.
+Detalhes em [Segurança e acesso remoto](SEGURANCA.md#acesso-remoto).
+
+**Casos rápidos** (conferência manual após o deploy de rede):
+
+| Caso | Onde | Tailscale | Web | SMB | Jellyfin play |
+|---|---|---|---|---|---|
+| A | Fora da LAN | sim | `https://` sem Access | sim (`100.x` se Wi-Fi colidir com `192.168.0.0/24`) | 403 |
+| B | LAN | opcional | igual ao A | sim | ok |
+| C | Fora | não | quatro `https://` com Access | não | 403 |
+| D | Fora | sim (ex. celular) | igual ao A | sim (iOS: mesmo SMB, sem letra de unidade) | 403 |
+
+Samba, shares, snapshots, firewall e containers continuam sendo pedidos HTTP
+ao Django; o agente no Pi executa. Confirmações destrutivas permanecem.
+
+**Descoberta na LAN** (Pi e moya):
+
 - **Nautilus / Rede no Linux:** Avahi, domínio `.local` (RFC 6762; mDNS não vai
   em `.lan`). Samba com `multicast dns register`.
 - **Explorador / Rede no Windows:** `wsdd` (WS-Discovery). Hostname `HOMELAB` no

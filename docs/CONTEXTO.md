@@ -20,9 +20,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## O que está pronto
 
-- Nomes: apps e SSH em `*.conradhub.lan`. Os aliases `*.homelab.lan` ainda
-  resolvem. Nautilus vê o Samba via Avahi (`.local`); Windows via `wsdd`.
-  Hostname Linux, Samba e Avahi continuam `homelab`. Ver [REDE](REDE.md#nomes-na-lan).
+- Nomes (doc alinhada ao plano de túnel/Tailscale; infra ainda não aplicada no Pi):
+  dia a dia em `https://*.conradhub.com`, SMB `smb://homelab.conradhub.com/`,
+  `*.conradhub.lan` só redireciona. Ver [REDE](REDE.md#nomes-publicos-e-lan).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
@@ -86,8 +86,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Troca de senha Samba (`/usuarios/senha/`): sucesso e fracasso usam o
   `alert` do kit. O usuário fica visível (readonly). Erro de validação ou do
   agente não some mais num campo hidden. O aviso do Chrome sobre password
-  field em `http://storage.conradhub.lan` é o navegador, não o resultado do
-  POST; HTTPS na LAN continua pendente ([SEGURANCA.md](SEGURANCA.md#cookies-e-https-na-lan)).
+  field em HTTP direto (`:8060` ou `.lan`) é o navegador, não o resultado do
+  POST; HTTPS unificado em `homelab.conradhub.com` continua pendente no Pi
+  ([SEGURANCA.md](SEGURANCA.md#cookies-e-https)).
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
   página** no topo abre um painel com um caso de uso (**No dia a dia**) e
   capítulos por funcionalidade da própria página, usando `<details>` nativo e
@@ -118,18 +119,23 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## Pendências, em ordem
 
-1. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
-2. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
+1. **Rede no Pi** (desbloqueada após gatilhos/marca): Pi-hole local já responde os cinco nomes. Falta Caddy (DNS-01),
+   túnel `homelab`, Access nos quatro hostnames, `.env` com
+   `homelab.conradhub.com`, Tailscale no Pi. Roteiro:
+   [plano](plans/2026-11-04-tunnel-tailscale.md), [REDE](REDE.md),
+   [SEGURANCA](SEGURANCA.md).
+2. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
+3. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
    já existem no painel; restore restic também. Hardware real de disco/USB
    de cópia fria continua o limite para o teste físico.
-3. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
+4. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
    O alerta "Firewall inativo" continua real até a ativação.
-4. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
+5. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
    USB antigos inválidos.
-5. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
+6. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
-6. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
-7. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+7. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
+8. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
 
 ## Testes em VM
 

@@ -8,9 +8,9 @@
 
 ## Princípios de segurança
 
-- Container escuta em `192.168.0.150:8060`, não em `0.0.0.0`.
-- Acesso só na LAN. Para fora de casa, siga a [Acesso remoto](#acesso-remoto): Cloudflare Tunnel com
-  Access para o painel e Tailscale para SMB/DNS. Nunca publique a porta 8060.
+- Container escuta em `192.168.0.150:8060` (não em `0.0.0.0`), atrás do Caddy;
+  não publique `8060` no roteador. Fora de casa: [Acesso remoto](#acesso-remoto)
+  (túnel + Access nos quatro nomes públicos; Tailscale para SMB e DNS).
 - O agente roda como root, mas só expõe operações da allowlist em
   `agent/homelab-storage-agent.py`.
 - O socket é `0660 root:root`; o container roda como root para acessá-lo. Se
@@ -27,27 +27,28 @@
 
 ## Acesso remoto
 
-Fora de casa são duas necessidades diferentes, com duas ferramentas diferentes.
-Não tente resolver as duas com o mesmo túnel.
+Fora de casa entram duas ferramentas: **Cloudflare Tunnel + Access** nos quatro
+hostnames públicos (`homelab`, `cockpit`, `dockge`, `jellyfin.conradhub.com`) e
+**Tailscale** no Pi para SMB e para resolver `conradhub.com` como em casa.
+`pihole.conradhub.com` não tem DNS público.
 
-| Necessidade | Ferramenta | Por quê |
-|---|---|---|
-| Painel e apps web (`:8060`, Jellyfin, Cockpit, Dockge) | Cloudflare Tunnel + Access | URL pública com HTTPS e MFA, sem abrir porta e sem cliente VPN |
-| Arquivos (SMB) e nomes `.lan` | Tailscale (subnet router + split DNS) | SMB não trafega por HTTP; o Pi-hole precisa de rota até a LAN |
+O `BIND_ADDR` do container continua `192.168.0.150:8060`. O Caddy na frente
+termina TLS (Let's Encrypt, DNS-01; token só no Pi, fora do Git). O
+`cloudflared` roda **só no Pi** e encaminha cada hostname público para
+`https://192.168.0.150` com o mesmo nome; demais hostnames → 404. Nenhum
+`cloudflared` no notebook ou celular. Credencial do túnel e token DNS-01 ficam
+no Pi, nunca no Git.
 
-O `BIND_ADDR` continua `192.168.0.150`: o `cloudflared` roda no próprio Pi e
-conecta em `http://192.168.0.150:8060` por dentro. Nenhum bind novo e nenhuma
-porta publicada no roteador.
+**No moyaserver** o bind é `127.0.0.1:8060` e o Caddy local publica; este
+roteiro é do Pi. ZeroTier e perfil do moya não mudam.
 
-**No moyaserver** o perfil é outro: o bind é `127.0.0.1:8060` e quem publica é o
-Caddy local. Se você montar túnel lá também, o `ingress` aponta para
-`http://127.0.0.1:8060` (ou para o Caddy), nunca para o IP da LAN do Pi. Nada
-neste documento muda o deploy do moya.
+Gestão (Samba, shares, snapshots, firewall, start/stop/restart/logs) continua
+sendo HTTP para o Django; o agente local executa. Confirmações destrutivas
+permanecem.
 
-### Cloudflare Tunnel (painel e apps)
+### Cloudflare Tunnel e Access
 
-Pré-requisito: a zona do domínio precisa estar na Cloudflare (nameservers
-apontados para ela). *Public hostname* não existe em domínio fora da zona.
+Pré-requisito: zona `conradhub.com` na Cloudflare.
 
 1. Instale o `cloudflared` (`.deb` oficial) e **desabilite a unit do pacote**
    para não rodar dois conectores no mesmo túnel:
@@ -56,27 +57,30 @@ apontados para ela). *Public hostname* não existe em domínio fora da zona.
 sudo systemctl disable --now cloudflared
 ```
 
-2. Crie o túnel e a rota DNS:
+2. Crie o túnel e as rotas DNS dos quatro hostnames (sem `pihole`):
 
 ```
 cloudflared tunnel login
 cloudflared tunnel create homelab
-cloudflared tunnel route dns homelab storage.seudominio.com
+cloudflared tunnel route dns homelab homelab.conradhub.com
+cloudflared tunnel route dns homelab cockpit.conradhub.com
+cloudflared tunnel route dns homelab dockge.conradhub.com
+cloudflared tunnel route dns homelab jellyfin.conradhub.com
 ```
 
-3. Crie o usuário, a config e o credentials:
+3. Usuário, credentials e config (UUID e JSON só no host):
 
 ```
 sudo useradd --system --home-dir /var/lib/cloudflared --create-home \
   --shell /usr/sbin/nologin cloudflared
 sudo install -d -o root -g cloudflared -m 0750 /etc/cloudflared
-sudo install -o root -g cloudflared -m 0640 ~/.cloudflared/<UUID>.json /etc/cloudflared/
+sudo install -o root -g cloudflared -m 0640 ~/.cloudflared/TROQUE-PELO-UUID.json /etc/cloudflared/
 sudo install -o root -g cloudflared -m 0640 \
   deploy/pi/cloudflared-config.yml.example /etc/cloudflared/config.yml
-sudoedit /etc/cloudflared/config.yml   # UUID, credentials-file e hostname
+sudoedit /etc/cloudflared/config.yml
 ```
 
-4. Suba a unit:
+4. Unit `homelab-cloudflared`:
 
 ```
 sudo install -m 0644 deploy/pi/homelab-cloudflared.service /etc/systemd/system/
@@ -84,51 +88,34 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now homelab-cloudflared
 ```
 
-5. **Access é obrigatório.** No Zero Trust → Access → Applications → Add
-   self-hosted, aponte para `storage.seudominio.com` com policy `Allow` para o
-   seu e-mail (One-time PIN) ou IdP. Sem isso o login do Django é a única
-   barreira, e o app controla um agente root.
+5. **Access** nos quatro hostnames: policy `Allow` com One-time PIN no e-mail
+   do dono (placeholder no doc; use o real só no console Cloudflare).
 
-6. Acrescente o hostname ao `.env` e redeploy:
+6. No `.env` do Pi, junto com o deploy de rede, acrescente o hostname público
+   do painel e ligue cookies seguros **só quando casa e túnel usarem o mesmo
+   `https://homelab.conradhub.com`** (ver `.env.example`).
 
-```
-DJANGO_ALLOWED_HOSTS=...,storage.seudominio.com
-DJANGO_CSRF_TRUSTED_ORIGINS=...,https://storage.seudominio.com
-DJANGO_SECURE_COOKIES=1
-```
+O `SECURE_PROXY_SSL_HEADER` em `config/settings.py` faz o Django enxergar HTTPS
+vindo do Caddy/Cloudflare.
 
-O `SECURE_PROXY_SSL_HEADER` já está em `config/settings.py`, então o Django
-reconhece o HTTPS terminado na Cloudflare. `BIND_ADDR` e overlay não mudam.
+#### Cookies e HTTPS
 
-#### Cookies e HTTPS na LAN
+`DJANGO_SECURE_COOKIES=1` exige que o login em casa também seja HTTPS no mesmo
+nome (`https://homelab.conradhub.com`), não `http://192.168.0.150:8060`. Até o
+Caddy e o `.env` do Pi estarem alinhados, deixe `0` no clone (`.env.example`).
 
-`DJANGO_SECURE_COOKIES=1` marca o cookie como `Secure`: o navegador **para de
-enviá-lo em `http://192.168.0.150:8060`** e o login pela LAN falha. Escolha uma:
+#### Jellyfin e limites da Cloudflare
 
-| Opção | Efeito |
-|---|---|
-| Caddy do Pi na frente, com TLS interno (`https://storage.conradhub.lan`) | LAN e WAN em HTTPS; instale o CA raiz do Caddy nos clientes |
-| `DJANGO_SECURE_COOKIES=0` | LAN em HTTP volta a funcionar; o cookie só é cifrado na Cloudflare, não na LAN |
-| Manter `1` e usar a LAN por IP só como emergência | simples, mas quebra o hábito de usar a LAN |
+- A **UI** do Jellyfin abre pelo Tailscale e pelo túnel (com Access fora de casa).
+- **Play, stream e download** fora da LAN `192.168.0.0/24` respondem **403**
+  (bloqueio de origem `100.64.0.0/10` e de pedidos com `CF-Connecting-IP` no
+  Caddy). Não publique a porta do container Jellyfin em `0.0.0.0`.
+- Plano free: **ToS 2.8** — não use a borda para vídeo; stream real só na LAN.
+- **100 s / 524** e **100 MB** por request: igual ao painel ([TROUBLESHOOTING](TROUBLESHOOTING.md)).
 
-#### Limites da Cloudflare que afetam este app
+### Tailscale (SMB e DNS)
 
-- **Timeout de 100 s na borda** (free/Pro): formatar disco, restore, verificação,
-  cópia fria e snapshot respondem na hora; a página acompanha o status até
-  concluir ou falhar. Download ou busca acima de 100 s ainda pode estourar com
-  **524**. O Gunicorn fica em 660 s para essas leituras.
-- **ToS 2.8:** o plano free não serve vídeo/arquivos grandes de forma
-  desproporcional a HTML. **Jellyfin não deve ir por aqui.** Painel, `/history/`
-  leve e downloads ocasionais, tudo bem.
-- **100 MB por request** (free/Pro): upload por formulário acima disso falha.
-- **Cloudflare fora do ar** deixa o painel inacessível. Mantenha o acesso por IP
-  na LAN como fallback documentado.
-
-### Tailscale (arquivos e DNS)
-
-SMB continua sem passar por HTTP. Instale o Tailscale no Pi e use-o como **subnet
-router**: os dispositivos passam a enxergar a `192.168.0.0/24` inteira, então
-`BIND_ADDR`, `smb.conf` e `ALLOWED_HOSTS` não mudam.
+Substitui o ZeroTier **só no Pi**. Subnet router `192.168.0.0/24`:
 
 ```
 echo 'net.ipv4.ip_forward = 1'          | sudo tee -a /etc/sysctl.d/99-tailscale.conf
@@ -137,58 +124,31 @@ sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
 sudo tailscale up --advertise-routes=192.168.0.0/24
 ```
 
-Aprove a rota no admin console (**Machines → homelab → Edit route settings**).
+Aprove a rota no admin console. **Sem** Tailscale SSH. Desative expiração da
+chave do nó do Pi.
 
-DNS: **não** use o Pi-hole como resolver global ("Override local DNS") — se o Pi
-cair, o celular fica sem internet. Use **split DNS**:
+Split DNS (**sem** override global): domínio `conradhub.com` → IP Tailscale do
+Pi (Pi-hole). UFW: liberar `53` em `tailscale0` para `100.64.0.0/10`. Pi-hole
+aceita query de fora das subnets locais.
 
-- Admin console → DNS → Nameservers → Add → Custom → `100.x.y.z` (IP Tailscale do Pi)
-- **Restrict to domain** → `conradhub.lan` (e o alias `homelab.lan`, se ainda
-  usar os nomes antigos)
+Wi-Fi de terceiro em `192.168.0.0/24` colide com a rota anunciada; use
+`smb://homelab.conradhub.com/` resolvendo pelo Pi-hole ou o IP `100.x` do Pi.
 
-Assim só `*.conradhub.lan` (e o alias `*.homelab.lan`) vai para o Pi-hole; o
-resto continua no DNS da rede onde você estiver. O Pi-hole precisa aceitar query
-de fora das subnets locais:
-
-- Pi-hole v6: **Settings → DNS**, responder em todas as origens.
-- `ufw`: liberar `53` **na interface `tailscale0`**:
-
-```
-sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto udp
-sudo ufw allow in on tailscale0 from 100.64.0.0/10 to any port 53 proto tcp
-```
-
-Atenção ao conflito de faixa: `192.168.0.0/24` é o default de quase todo roteador
-doméstico. Num Wi-Fi de terceiro que use a mesma faixa, a rota colide e o acesso
-"desaparece". Nesse caso use o IP Tailscale do Pi (`100.x.y.z`) diretamente —
-funciona sempre.
-
-Desative a expiração de chave do nó do Pi no console; senão ele sai do tailnet
-em ~180 dias e você perde o acesso remoto.
+Com Tailscale, os mesmos `https://` de casa **sem** PIN do Access. Casos A–D:
+[REDE](REDE.md#nomes-publicos-e-lan).
 
 ### Checklist de verificação
 
 ```
-# tunnel no ar e rota criada
 sudo systemctl status homelab-cloudflared
 cloudflared tunnel info homelab
-
-# app respondendo local (deve dar 302/200)
-curl -fsS -o /dev/null -w '%{http_code}\n' http://192.168.0.150:8060/login/
-
-# de fora: deve redirecionar para o login do Access, não direto para o Django
-curl -sI https://storage.seudominio.com/login/ | head -5
-
-# VPN e DNS
+curl -fsS -o /dev/null -w '%{http_code}\n' https://192.168.0.150/login/ -H 'Host: homelab.conradhub.com' --insecure
+curl -sI https://homelab.conradhub.com/login/ | head -5    # fora: Access antes do Django
+dig +short homelab.conradhub.com @127.0.0.1                  # em casa: 192.168.0.150
+dig +short pihole.conradhub.com @1.1.1.1                     # fora: NXDOMAIN ou sem registro público
 tailscale status
-tailscale ping <celular>              # precisa dizer "direct", não "via DERP"
-dig +short storage.conradhub.lan @100.x.y.z
-testparm -s | grep -iE 'interfaces|hosts allow'   # vazio = liberado para todos
+testparm -s | grep -iE 'interfaces|hosts allow'
 ```
 
-No Windows 11, depois do Tailscale: `\\192.168.0.150\documentos`. No celular, iOS
-em **Arquivos → Conectar ao servidor → `smb://192.168.0.150`**; Android com
-qualquer cliente SMB.
-
-Nunca: publicar `8060` no roteador, expor `445` na internet, usar *trycloudflare*
-como endereço permanente ou apontar o Jellyfin para o túnel gratuito.
+Nunca: publicar `8060` ou Jellyfin em `0.0.0.0`, expor `445` na internet,
+*trycloudflare* permanente, ou confiar na borda free para stream de vídeo.
