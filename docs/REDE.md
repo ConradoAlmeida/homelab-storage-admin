@@ -58,10 +58,9 @@ Cloudflare e no Access (PIN por e-mail). O Pi-hole encaminha o resto da zona
 | Arquivos | `smb://homelab.conradhub.com/` |
 | Pi-hole (só LAN / Tailscale) | `https://pihole.conradhub.com` |
 
-Os `*.conradhub.lan` correspondentes (por exemplo `storage.conradhub.lan`) só
-redirecionam para o `.com`. Aliases `*.homelab.lan` ainda resolvem onde existirem.
-SSH continua `conrado@conradhub.lan` no Pi. Hostname Linux, Samba e Avahi
-permanecem `homelab`.
+Os nomes `.lan` saíram do Pi-hole e do Caddy. Em casa, SSH é
+`conrado@192.168.0.150` ou `conrado@homelab.conradhub.com`. Hostname Linux,
+Samba e Avahi permanecem `homelab`.
 
 HTTPS termina no Caddy do Pi (Let's Encrypt, DNS-01). O `cloudflared` roda só no
 Pi: ingress dos quatro hostnames públicos para `https://192.168.0.150`; o resto

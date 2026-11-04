@@ -22,7 +22,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 - Nomes (doc alinhada ao plano de túnel/Tailscale; infra ainda não aplicada no Pi):
   dia a dia em `https://*.conradhub.com`, SMB `smb://homelab.conradhub.com/`,
-  `*.conradhub.lan` só redireciona. Ver [REDE](REDE.md#nomes-publicos-e-lan).
+  os nomes `.lan` saíram. Ver [REDE](REDE.md#nomes-publicos-e-lan).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.

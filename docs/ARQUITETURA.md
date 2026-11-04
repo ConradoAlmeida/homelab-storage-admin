@@ -96,7 +96,7 @@ Use `services.ini.example` como base:
 [jellyfin]
 name = Jellyfin
 description = Midia · filmes e series
-url = http://jellyfin.conradhub.lan
+url = https://jellyfin.conradhub.com
 icon = jellyfin
 color = #a78bfa
 order = 10

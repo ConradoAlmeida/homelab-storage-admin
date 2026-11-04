@@ -265,7 +265,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, 'id="torrent-panel-add"')
         self.assertContains(resposta, 'name="torrent-panel"')
         self.assertContains(resposta, "API de envio")
-        self.assertContains(resposta, "http://storage.conradhub.lan/api/torrents/")
+        self.assertContains(resposta, "https://homelab.conradhub.com/api/torrents/")
         self.assertContains(resposta, "torrent já existe na lista")
         self.assertContains(resposta, "GET /api/torrents/bibliotecas/")
         self.assertContains(resposta, "downloads.js")
