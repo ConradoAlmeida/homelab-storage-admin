@@ -826,29 +826,23 @@ class ViewSmokeTests(TestCase):
         self.fake.live_metrics.assert_called_once_with()
 
     def test_share_sizes_endpoint_returns_lazy_payload(self):
-        self.fake.list_shares.return_value = [
-            {
-                "name": "docs",
-                "size": 100,
-                "size_snapshots": 20,
-                "size_total": 120,
-            }
-        ]
+        self.fake.share_sizes.return_value = {
+            "pending": False,
+            "error": "",
+            "shares": [
+                {
+                    "name": "docs",
+                    "size": 100,
+                    "size_snapshots": 20,
+                    "size_total": 120,
+                }
+            ],
+        }
         response = self.client.get("/metrics/shares/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {
-                "shares": [
-                    {
-                        "name": "docs",
-                        "size": 100,
-                        "size_snapshots": 20,
-                        "size_total": 120,
-                    }
-                ]
-            },
-        )
+        self.assertEqual(response.json()["pending"], False)
+        self.assertEqual(response.json()["shares"][0]["name"], "docs")
+        self.fake.share_sizes.assert_called_once_with()
 
     def test_shares_renderiza_antes_de_medir_o_disco(self):
         self.fake.list_shares.return_value = [
@@ -909,6 +903,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "permanecem no disco")
         self.assertContains(response, "Restaurar")
         self.assertContains(response, 'action="/snapshots/restaurar/"')
+        self.assertContains(response, "share-sizes.js")
+        self.fake.snapshot_usage.assert_called_with(include_size=False)
 
     def test_nova_politica_lista_somente_share_sem_politica(self):
         self.fake.list_shares.return_value = [

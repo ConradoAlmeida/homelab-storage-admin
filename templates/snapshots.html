@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Snapshots - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -26,7 +27,7 @@
   <div class="metric-grid">
     <div class="metric"><span>Políticas ativas</span><strong>{{ summary.enabled }}/{{ summary.total }}</strong></div>
     <div class="metric"><span>Snapshots</span><strong>{{ summary.count }}</strong></div>
-    <div class="metric"><span>Tamanho aprox.</span><strong>{{ summary.size|filesizeformat }}</strong></div>
+    <div class="metric"><span>Tamanho aprox.</span><strong data-snap-total><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></strong></div>
   </div>
 
   {% for s in shares %}
@@ -43,7 +44,7 @@
               {% elif s.enabled %}<span class="tag ok">keep {{ s.keep }}</span>
               {% else %}<span class="tag off">desativada</span>{% endif %}
               {% if s.enabled %}
-                <span class="muted text-12">· {{ s.count }} snapshot{{ s.count|pluralize }} · ~{{ s.size|filesizeformat }}</span>
+                <span class="muted text-12" data-share="{{ s.share }}">· {{ s.count }} snapshot{{ s.count|pluralize }} · ~<span data-snap-size><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></span></span>
               {% elif s.configured %}
                 <span class="muted text-12">· keep {{ s.keep }}</span>
               {% endif %}
@@ -123,4 +124,6 @@
 {% else %}
   <div class="empty">Nenhum share encontrado.</div>
 {% endif %}
+<div data-share-sizes-endpoint="{% url 'share_sizes' %}" hidden></div>
+<script src="{% static 'js/share-sizes.js' %}" defer></script>
 {% endblock %}

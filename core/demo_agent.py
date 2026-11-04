@@ -197,8 +197,8 @@ def _dados(op: str, payload: dict):
         ]
     if op == "list_groups":
         return ["conrado", "ana", "visita", "midia", "engenharia", "backup"]
-    if op == "list_shares":
-        return [
+    if op in {"list_shares", "share_sizes"}:
+        shares = [
             {
                 "name": "midia",
                 "path": "/mnt/nas/midia",
@@ -223,6 +223,9 @@ def _dados(op: str, payload: dict):
                 "size_total": 13 * 1024**3,
             },
         ]
+        if op == "share_sizes":
+            return {"pending": False, "error": "", "shares": shares}
+        return shares
     if op == "snapshot_usage":
         return [
             {

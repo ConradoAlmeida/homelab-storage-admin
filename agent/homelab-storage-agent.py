@@ -895,6 +895,11 @@ def _parse_smb_conf() -> configparser.ConfigParser:
 _SIZE_CACHE_SECONDS = 180
 _size_cache_lock = threading.Lock()
 _size_cache: dict[tuple, tuple[float, int]] = {}
+_share_sizes_lock = threading.Lock()
+_share_sizes_running = False
+_share_sizes_ready: list | None = None
+_share_sizes_at = 0.0
+_share_sizes_error = ""
 
 
 def _recall_size(key: tuple) -> int | None:
@@ -968,6 +973,52 @@ def _snapshot_extra_bytes(path: str, snapdir: str) -> int:
     total = _dir_size_bytes(path)
     live = _dir_size_bytes(path, exclude=".snapshots")
     return max(0, total - live)
+
+
+def _share_sizes_worker() -> None:
+    global _share_sizes_running, _share_sizes_ready, _share_sizes_at, _share_sizes_error
+    try:
+        data = op_list_shares(include_size=True)
+        error = ""
+    except Exception as exc:  # noqa: BLE001
+        data = None
+        error = str(exc)
+    with _share_sizes_lock:
+        if data is not None:
+            _share_sizes_ready = data
+            _share_sizes_at = time.monotonic()
+            _share_sizes_error = ""
+        else:
+            _share_sizes_error = error
+        _share_sizes_running = False
+
+
+def op_share_sizes(**_):
+    """Devolve o cache ou dispara a medição sem segurar o pedido HTTP."""
+    global _share_sizes_running
+    with _share_sizes_lock:
+        fresh = (
+            _share_sizes_ready is not None
+            and time.monotonic() - _share_sizes_at < _SIZE_CACHE_SECONDS
+        )
+        if fresh:
+            return {"pending": False, "shares": _share_sizes_ready, "error": ""}
+        if _share_sizes_error and not _share_sizes_running:
+            error = _share_sizes_error
+            _share_sizes_error = ""
+            return {"pending": False, "shares": [], "error": error}
+        if not _share_sizes_running:
+            _share_sizes_running = True
+            threading.Thread(
+                target=_share_sizes_worker,
+                daemon=True,
+                name="share-sizes",
+            ).start()
+        return {
+            "pending": True,
+            "shares": _share_sizes_ready or [],
+            "error": "",
+        }
 
 
 def op_list_shares(include_size=False, **_):
@@ -6022,6 +6073,7 @@ OPS = {
     "delete_user": op_delete_user,
     "delete_group": op_delete_group,
     "list_shares": op_list_shares,
+    "share_sizes": op_share_sizes,
     "create_share": op_create_share,
     "snapshot_usage": op_snapshot_usage,
     "snapshot_list": op_snapshot_list,

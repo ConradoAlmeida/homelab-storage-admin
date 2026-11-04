@@ -330,11 +330,16 @@ class ShareSizesView(AgentView):
     def get(self, request):
         """Tamanhos dos shares carregados depois do render do dashboard."""
         try:
-            shares = agent.list_shares(include_size=True)
+            data = agent.share_sizes()
         except AgentError as exc:
             return agent_json_error(exc)
+        if not isinstance(data, dict):
+            data = {}
+        shares = data.get("shares") or []
         return JsonResponse(
             {
+                "pending": bool(data.get("pending")),
+                "error": data.get("error") or "",
                 "shares": [
                     {
                         "name": item.get("name"),
@@ -343,7 +348,7 @@ class ShareSizesView(AgentView):
                         "size_total": item.get("size_total"),
                     }
                     for item in shares
-                ]
+                ],
             }
         )
 
@@ -663,7 +668,8 @@ class SnapshotsView(AgentTemplateView):
         context.update({"agent_error": None, "shares": []})
         try:
             policies = {
-                item.get("share"): item for item in agent.snapshot_usage()
+                item.get("share"): item
+                for item in agent.snapshot_usage(include_size=False)
             }
             shares = agent.list_shares(include_size=False)
             result = []
