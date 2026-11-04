@@ -54,9 +54,12 @@ No perfil do Pi, o exemplo também inclui `5001/tcp` (Dockge) e `8080/tcp`
 O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
 filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não
 existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
-Caddy, DNS, a configuração do Jellyfin ou o data-root do Docker. O Jellyfin é um
-vizinho: atalho no dashboard, share Samba `jellyfin` (sem snapshot/restic) e,
-se o container existir, downloads por magnet para as pastas das bibliotecas.
+Caddy, DNS, a configuração do Jellyfin ou o data-root do Docker. No Pi o
+navegador usa `https://homelab.conradhub.com`; o Caddy (`homelab-caddy:2`,
+`/opt/stacks/caddy`) termina o TLS. Fora de casa só o Tailscale. Detalhe em
+[Nomes](REDE.md#nomes). O Jellyfin é um vizinho: atalho no dashboard, share
+Samba `jellyfin` (sem snapshot/restic) e, se o container existir, downloads
+por magnet para as pastas das bibliotecas.
 
 No moyaserver, primeira instalação:
 
@@ -195,14 +198,15 @@ homelab-storage-admin/
 ├── static/            # CSS (ui.css + kit.css) e JavaScript, fora do HTML
 ├── deploy/pi/
 │   ├── homelab-compose.service
-│   ├── homelab-cloudflared.service
-│   ├── cloudflared-config.yml.example
 │   └── motd
 ├── docker-compose.yml
 ├── install-agent.sh
 ├── deploy.sh
 └── .env.example
 ```
+
+`deploy/pi/homelab-cloudflared.service` e `cloudflared-config.yml.example`
+continuam no disco e não fazem parte do acesso.
 
 ## Login pelo Credenciais (moyaserver)
 

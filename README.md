@@ -9,9 +9,9 @@ Ubuntu+Samba via perfil de host.
 > é definida no `.env` do servidor (modo `600`) e trocada com
 > `docker compose exec web python manage.py changepassword admin`.
 
-> **Acesso:** em casa e com Tailscale, `https://homelab.conradhub.com`; fora,
-> túnel Cloudflare + Access nos apps web e Tailscale para SMB/DNS. Ver
-> [Segurança](docs/SEGURANCA.md) e [Rede](docs/REDE.md).
+> **Acesso:** `https://homelab.conradhub.com` em casa e no Tailscale. Fora de
+> casa só o Tailscale. Sem túnel e sem Access. Ver [Rede](docs/REDE.md) e
+> [Segurança](docs/SEGURANCA.md).
 
 ## Comece por aqui
 
@@ -120,8 +120,8 @@ Detalhes: [Arquitetura](docs/ARQUITETURA.md#perfis-de-host).
 | [Arquitetura e código](docs/ARQUITETURA.md) | Container/agente, perfis de host, Btrfs, estrutura, UI e Credenciais |
 | [Snapshots, discos e Samba](docs/ARMAZENAMENTO.md) | Snapshots, Jellyfin, histórico, SMART e shares |
 | [Backups](docs/BACKUPS.md) | Disco de backup, jobs restic, backup local, cópia fria e Gitea |
-| [Rede, saúde e containers](docs/REDE.md) | Saúde do host, firewall UFW e containers |
-| [Segurança e acesso remoto](docs/SEGURANCA.md) | Cloudflare Tunnel, Tailscale e checklist |
+| [Rede, saúde e containers](docs/REDE.md) | Saúde, nomes, firewall UFW e containers |
+| [Segurança e acesso remoto](docs/SEGURANCA.md) | Tailscale, cookies HTTPS e checklist |
 | [Testes na VM](docs/VM_TESTES.md) | Roteiro server-like no virt-manager |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Sintomas, causas e correções |
 | [Contexto](docs/CONTEXTO.md) | Estado atual, decisões e pendências |

@@ -2,15 +2,15 @@
 
 [← Voltar ao README](../README.md) · [Contexto](CONTEXTO.md) · [Instalação](INSTALACAO.md) · [Rede](REDE.md)
 
-> Postura de segurança, Cloudflare Tunnel para o painel, Tailscale para SMB/DNS e checklist de verificação.
+> Postura de segurança, Tailscale fora de casa, cookies HTTPS e checklist.
 
 ---
 
 ## Princípios de segurança
 
-- Container escuta em `192.168.0.150:8060` (não em `0.0.0.0`), atrás do Caddy;
-  não publique `8060` no roteador. Fora de casa: [Acesso remoto](#acesso-remoto)
-  (túnel + Access nos quatro nomes públicos; Tailscale para SMB e DNS).
+- Container escuta em `192.168.0.150:8060` (não em `0.0.0.0`), atrás do Caddy.
+  Não publique `8060` no roteador. Fora de casa só o Tailscale
+  ([Acesso remoto](#acesso-remoto)).
 - O agente roda como root, mas só expõe operações da allowlist em
   `agent/homelab-storage-agent.py`.
 - O socket é `0660 root:root`; o container roda como root para acessá-lo. Se
@@ -27,95 +27,53 @@
 
 ## Acesso remoto
 
-Fora de casa entram duas ferramentas: **Cloudflare Tunnel + Access** nos quatro
-hostnames públicos (`homelab`, `cockpit`, `dockge`, `jellyfin.conradhub.com`) e
-**Tailscale** no Pi para SMB e para resolver `conradhub.com` como em casa.
-`pihole.conradhub.com` não tem DNS público.
+Fora de casa só o Tailscale. Não há `cloudflared`, túnel nem aplicação Access
+na frente dos apps. A conta tem Zero Trust Free e One-time PIN; isso não entra
+no caminho. Nomes, rota, split DNS e portas do UFW:
+[REDE](REDE.md#nomes).
 
-O `BIND_ADDR` do container continua `192.168.0.150:8060`. O Caddy na frente
-termina TLS (Let's Encrypt, DNS-01; token só no Pi, fora do Git). O
-`cloudflared` roda **só no Pi** e encaminha cada hostname público para
-`https://192.168.0.150` com o mesmo nome; demais hostnames → 404. Nenhum
-`cloudflared` no notebook ou celular. Credencial do túnel e token DNS-01 ficam
-no Pi, nunca no Git.
+A zona `conradhub.com` na Cloudflare serve o nome e o certificado Let's
+Encrypt (DNS-01). Os cinco nomes não têm A nem CNAME público. O token de API
+(Zone DNS Edit, só a zona) fica em `/opt/stacks/caddy/cloudflare.token`, modo
+600, root, fora do Git. Ele só cria o TXT do desafio.
 
-**No moyaserver** o bind é `127.0.0.1:8060` e o Caddy local publica; este
-roteiro é do Pi. ZeroTier e perfil do moya não mudam.
+O `BIND_ADDR` do container continua `192.168.0.150:8060`. O Caddy do Pi
+(`homelab-caddy:2`, stack `/opt/stacks/caddy`, network host) termina o TLS.
+**No moyaserver** o bind é `127.0.0.1:8060` e o Caddy local publica. ZeroTier
+e o perfil do moya não mudam.
 
 Gestão (Samba, shares, snapshots, firewall, start/stop/restart/logs) continua
 sendo HTTP para o Django; o agente local executa. Confirmações destrutivas
 permanecem.
 
-### Cloudflare Tunnel e Access
+### Cookies e HTTPS
 
-Pré-requisito: zona `conradhub.com` na Cloudflare.
+`DJANGO_SECURE_COOKIES=1` quando o mesmo `https://homelab.conradhub.com` vale
+em casa e no Tailscale. No Pi isso já vale: a flag está no `.env` e no
+container desde o `./deploy.sh` de 2026-11-04. O login nesse nome grava cookie
+`Secure`. `http://192.168.0.150:8060` abre a página e não mantém sessão.
 
-1. Instale o `cloudflared` (`.deb` oficial) e **desabilite a unit do pacote**
-   para não rodar dois conectores no mesmo túnel:
+O exemplo do repositório continua `0`, para instalação nova. O
+`SECURE_PROXY_SSL_HEADER` em `config/settings.py` faz o Django enxergar HTTPS
+vindo do Caddy.
 
-```
-sudo systemctl disable --now cloudflared
-```
+### Jellyfin
 
-2. Crie o túnel e as rotas DNS dos quatro hostnames (sem `pihole`):
+- A UI abre pelo Tailscale e na LAN.
+- Play, stream e download com origem `100.64.0.0/10` ou cabeçalho
+  `CF-Connecting-IP` recebem 403 ("Playback fora da LAN"). Na LAN o vídeo toca.
+  Prova de 2026-11-04: no 5G o playback falhou; na LAN reproduziu.
+- Não publique a porta do Jellyfin no roteador. Não mande vídeo nem SMB pela
+  Cloudflare.
 
-```
-cloudflared tunnel login
-cloudflared tunnel create homelab
-cloudflared tunnel route dns homelab homelab.conradhub.com
-cloudflared tunnel route dns homelab cockpit.conradhub.com
-cloudflared tunnel route dns homelab dockge.conradhub.com
-cloudflared tunnel route dns homelab jellyfin.conradhub.com
-```
+### Tailscale
 
-3. Usuário, credentials e config (UUID e JSON só no host):
+Substitui o ZeroTier só no Pi. Estado no ar: nó `homelab`, `100.84.34.25`,
+MagicDNS `homelab.tail1a4ccb.ts.net`, SSH desligado, chave sem expiração, rota
+`192.168.0.0/24` aprovada. Split DNS de `conradhub.com` → `100.84.34.25`,
+restrito a esse sufixo, sem override global.
 
-```
-sudo useradd --system --home-dir /var/lib/cloudflared --create-home \
-  --shell /usr/sbin/nologin cloudflared
-sudo install -d -o root -g cloudflared -m 0750 /etc/cloudflared
-sudo install -o root -g cloudflared -m 0640 ~/.cloudflared/TROQUE-PELO-UUID.json /etc/cloudflared/
-sudo install -o root -g cloudflared -m 0640 \
-  deploy/pi/cloudflared-config.yml.example /etc/cloudflared/config.yml
-sudoedit /etc/cloudflared/config.yml
-```
-
-4. Unit `homelab-cloudflared`:
-
-```
-sudo install -m 0644 deploy/pi/homelab-cloudflared.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now homelab-cloudflared
-```
-
-5. **Access** nos quatro hostnames: policy `Allow` com One-time PIN no e-mail
-   do dono (placeholder no doc; use o real só no console Cloudflare).
-
-6. No `.env` do Pi, junto com o deploy de rede, acrescente o hostname público
-   do painel e ligue cookies seguros **só quando casa e túnel usarem o mesmo
-   `https://homelab.conradhub.com`** (ver `.env.example`).
-
-O `SECURE_PROXY_SSL_HEADER` em `config/settings.py` faz o Django enxergar HTTPS
-vindo do Caddy/Cloudflare.
-
-#### Cookies e HTTPS
-
-`DJANGO_SECURE_COOKIES=1` exige que o login em casa também seja HTTPS no mesmo
-nome (`https://homelab.conradhub.com`), não `http://192.168.0.150:8060`. Até o
-Caddy e o `.env` do Pi estarem alinhados, deixe `0` no clone (`.env.example`).
-
-#### Jellyfin e limites da Cloudflare
-
-- A **UI** do Jellyfin abre pelo Tailscale e pelo túnel (com Access fora de casa).
-- **Play, stream e download** fora da LAN `192.168.0.0/24` respondem **403**
-  (bloqueio de origem `100.64.0.0/10` e de pedidos com `CF-Connecting-IP` no
-  Caddy). Não publique a porta do container Jellyfin em `0.0.0.0`.
-- Plano free: **ToS 2.8** — não use a borda para vídeo; stream real só na LAN.
-- **100 s / 524** e **100 MB** por request: igual ao painel ([TROUBLESHOOTING](TROUBLESHOOTING.md)).
-
-### Tailscale (SMB e DNS)
-
-Substitui o ZeroTier **só no Pi**. Subnet router `192.168.0.0/24`:
+Referência de como o nó foi anunciado:
 
 ```
 echo 'net.ipv4.ip_forward = 1'          | sudo tee -a /etc/sysctl.d/99-tailscale.conf
@@ -124,31 +82,23 @@ sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
 sudo tailscale up --advertise-routes=192.168.0.0/24
 ```
 
-Aprove a rota no admin console. **Sem** Tailscale SSH. Desative expiração da
-chave do nó do Pi.
+A rota se aprova no admin console. O UFW no Pi aceita `100.64.0.0/10` em DNS,
+80, 443, 8060, 9090, 5001, 8096 e nas portas Samba 445/139/137/138. O Samba
+escuta em `0.0.0.0:445`.
 
-Split DNS (**sem** override global): domínio `conradhub.com` → IP Tailscale do
-Pi (Pi-hole). UFW: liberar `53` em `tailscale0` para `100.64.0.0/10`. Pi-hole
-aceita query de fora das subnets locais.
-
-Wi-Fi de terceiro em `192.168.0.0/24` colide com a rota anunciada; use
-`smb://homelab.conradhub.com/` resolvendo pelo Pi-hole ou o IP `100.x` do Pi.
-
-Com Tailscale, os mesmos `https://` de casa **sem** PIN do Access. Casos A–D:
-[REDE](REDE.md#nomes-publicos-e-lan).
+Wi-Fi de terceiro em `192.168.0.0/24` colide com a rota. Use
+`smb://homelab.conradhub.com/` ou o IP `100.x` do Pi.
 
 ### Checklist de verificação
 
 ```
-sudo systemctl status homelab-cloudflared
-cloudflared tunnel info homelab
-curl -fsS -o /dev/null -w '%{http_code}\n' https://192.168.0.150/login/ -H 'Host: homelab.conradhub.com' --insecure
-curl -sI https://homelab.conradhub.com/login/ | head -5    # fora: Access antes do Django
-dig +short homelab.conradhub.com @127.0.0.1                  # em casa: 192.168.0.150
-dig +short pihole.conradhub.com @1.1.1.1                     # fora: NXDOMAIN ou sem registro público
+curl -fsS -o /dev/null -w '%{http_code}\n' https://homelab.conradhub.com/login/
+dig +short homelab.conradhub.com @192.168.0.150    # em casa: 192.168.0.150
+dig +short homelab.conradhub.com @1.1.1.1          # vazio
+dig +short pihole.conradhub.com @1.1.1.1           # vazio
 tailscale status
 testparm -s | grep -iE 'interfaces|hosts allow'
 ```
 
-Nunca: publicar `8060` ou Jellyfin em `0.0.0.0`, expor `445` na internet,
-*trycloudflare* permanente, ou confiar na borda free para stream de vídeo.
+Nunca: publicar porta no roteador, expor `445` na internet, ou mandar vídeo
+ou SMB pela Cloudflare.

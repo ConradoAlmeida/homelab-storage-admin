@@ -4,7 +4,8 @@
 # Campos: name, description, url, icon, color, order.
 # Icones conhecidos: jellyfin, cockpit, dockge, pihole; outros usam o icone
 # generico. Nao ha descoberta nem health check.
-# Nomes do dia a dia: https://*.conradhub.com (pihole só LAN/Tailscale).
+# URLs https://*.conradhub.com. Sem DNS público: em casa o Pi-hole,
+# fora só com Tailscale. pihole.conradhub.com só nesses dois casos.
 
 [jellyfin]
 name = Jellyfin

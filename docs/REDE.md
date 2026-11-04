@@ -43,50 +43,72 @@ Travas de segurança:
 Docker publica portas via iptables e pode furar o UFW; o modelo recomendado é
 publicar em `127.0.0.1` e deixar o Caddy expor.
 
-### Nomes públicos e LAN
+### Nomes
 
-Um nome em casa e fora (`*.conradhub.com`). O Pi-hole (em casa e com Tailscale)
-responde `homelab`, `cockpit`, `dockge`, `jellyfin` e `pihole.conradhub.com`
-com `192.168.0.150`. Sem Tailscale, fora de casa, o DNS público cai no túnel
-Cloudflare e no Access (PIN por e-mail). O Pi-hole encaminha o resto da zona
-(apex, MX). `https://pihole.conradhub.com` não tem registro público.
+O domínio `conradhub.com` (zona na Cloudflare, NS cameron/hera) existe para o
+nome e para o certificado Let's Encrypt (DNS-01). `homelab`, `cockpit`,
+`dockge`, `jellyfin` e `pihole` não têm A nem CNAME público. `dig @1.1.1.1`
+volta vazio. A Cloudflare não resolve a navegação.
+
+Em casa o Pi-hole escuta em todas as interfaces e responde esses cinco nomes
+com `192.168.0.150`. Fora de casa só o Tailscale. No 5G o app manda só
+`conradhub.com` para `100.84.34.25`; o Pi-hole responde; o tráfego a
+`192.168.0.150` volta pela rota. Sem Tailscale e fora da LAN, o nome não
+resolve.
 
 | Uso | Endereço |
 |---|---|
-| Painel Storage Admin | `https://homelab.conradhub.com` |
-| Cockpit, Dockge, Jellyfin | `https://cockpit…`, `https://dockge…`, `https://jellyfin…` |
+| Painel | `https://homelab.conradhub.com` |
+| Cockpit | `https://cockpit.conradhub.com` |
+| Dockge | `https://dockge.conradhub.com` |
+| Jellyfin | `https://jellyfin.conradhub.com` |
+| Pi-hole (só em casa ou com Tailscale) | `https://pihole.conradhub.com` |
 | Arquivos | `smb://homelab.conradhub.com/` |
-| Pi-hole (só LAN / Tailscale) | `https://pihole.conradhub.com` |
 
-Os nomes `.lan` saíram do Pi-hole e do Caddy. Em casa, SSH é
-`conrado@192.168.0.150` ou `conrado@homelab.conradhub.com`. Hostname Linux,
-Samba e Avahi permanecem `homelab`.
+SSH em casa: `conrado@homelab.local`. O hostname Linux segue `homelab`. Os
+nomes `.lan` saíram do Pi-hole, do Caddy e do Django. Pedido HTTP antigo
+recebe 410.
 
-HTTPS termina no Caddy do Pi (Let's Encrypt, DNS-01). O `cloudflared` roda só no
-Pi: ingress dos quatro hostnames públicos para `https://192.168.0.150`; o resto
-404. O aparelho cliente não instala `cloudflared`.
+HTTPS termina no Caddy do Pi, imagem `homelab-caddy:2` (caddy +
+`caddy-dns/cloudflare`), stack `/opt/stacks/caddy`, network host. O token de
+API (Zone DNS Edit, só a zona) fica em `/opt/stacks/caddy/cloudflare.token`,
+modo 600, root, fora do Git. O token só cria o TXT do desafio.
 
-**Tailscale (só no Pi, no lugar do ZeroTier):** subnet router `192.168.0.0/24`,
-split DNS de `conradhub.com` para o IP `100.x` do Pi (ali o Pi-hole escuta), sem override global de DNS, sem
-Tailscale SSH, chave do nó sem expiração. O moya e o ZeroTier dele não mudam.
-Detalhes em [Segurança e acesso remoto](SEGURANCA.md#acesso-remoto).
+**Tailscale, só no Pi.** Nó `homelab`, `100.84.34.25`, MagicDNS
+`homelab.tail1a4ccb.ts.net`. SSH do Tailscale desligado. Chave sem expiração.
+Rota `192.168.0.0/24` aprovada. Split DNS: `conradhub.com` → `100.84.34.25`,
+restrito a esse sufixo, sem override global de DNS. O UFW aceita
+`100.64.0.0/10` em DNS, 80, 443, 8060, 9090, 5001, 8096 e nas portas Samba
+445/139/137/138. O Samba escuta em `0.0.0.0:445`. O moya e o ZeroTier não
+mudam. Não publique porta no roteador.
 
-**Casos rápidos** (conferência manual após o deploy de rede):
+A UI do Jellyfin abre pelo Tailscale. Stream e download com origem
+`100.64.0.0/10` ou cabeçalho `CF-Connecting-IP` recebem 403 ("Playback fora
+da LAN"). Na LAN o vídeo toca. Em 2026-11-04 o 5G deu erro de playback; na
+LAN reproduziu.
+
+Wi-Fi de terceiro em `192.168.0.0/24` colide com a rota. Nesse caso o Samba
+usa o IP `100.x` do Pi.
+
+**Casos** (celular em 5G, 2026-11-04):
 
 | Caso | Onde | Tailscale | Web | SMB | Jellyfin play |
 |---|---|---|---|---|---|
-| A | Fora da LAN | sim | `https://` sem Access | sim (`100.x` se Wi-Fi colidir com `192.168.0.0/24`) | 403 |
+| A | Fora da LAN | sim | os cinco `https://` | sim | 403 |
 | B | LAN | opcional | igual ao A | sim | ok |
-| C | Fora | não | quatro `https://` com Access | não | 403 |
-| D | Fora | sim (ex. celular) | igual ao A | sim (iOS: mesmo SMB, sem letra de unidade) | 403 |
+| C | Fora | não | o nome não resolve | não | — |
+| D | Fora (celular) | sim | igual ao A | `smb://homelab.conradhub.com/` | 403 |
+
+O celular abriu o Samba pela opção LAN do gerenciador de arquivos. Cookies e
+o bloqueio de playback: [Segurança](SEGURANCA.md#acesso-remoto).
 
 Samba, shares, snapshots, firewall e containers continuam sendo pedidos HTTP
 ao Django; o agente no Pi executa. Confirmações destrutivas permanecem.
 
 **Descoberta na LAN** (Pi e moya):
 
-- **Nautilus / Rede no Linux:** Avahi, domínio `.local` (RFC 6762; mDNS não vai
-  em `.lan`). Samba com `multicast dns register`.
+- **Nautilus / Rede no Linux:** Avahi, domínio `.local` (RFC 6762). Samba com
+  `multicast dns register`.
 - **Explorador / Rede no Windows:** `wsdd` (WS-Discovery). Hostname `HOMELAB` no
   Pi, `MOYASERVER` no moya. Portas `3702/udp` e `5357/tcp` (fora de
   `FIREWALL_SAFE_PORTS` até o UFW ser ligado).

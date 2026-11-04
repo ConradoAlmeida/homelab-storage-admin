@@ -224,11 +224,12 @@ docker compose exec -it web python manage.py createsuperuser --username outro
 | `DJANGO_ALLOWED_HOSTS` | `192.168.0.150,homelab,homelab.conradhub.com` | Host headers aceitos |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://homelab.conradhub.com,...` | origens confiáveis |
 | `DJANGO_SUPERUSER_*` | admin / senha / e-mail | criado só se não existir |
-| `DJANGO_SECURE_COOKIES` | `0` | `1` atrás de HTTPS |
+| `DJANGO_SECURE_COOKIES` | `0` no exemplo | `1` quando o mesmo `https://homelab.conradhub.com` vale em casa e no Tailscale. No Pi já está `1` desde o `./deploy.sh` de 2026-11-04. `http://192.168.0.150:8060` abre e não mantém sessão |
 | `DJANGO_SQLITE_PATH` | (vazio) | opcional; no host do Pi aponte para `/mnt/nas/apps/homelab-storage-admin/data/db.sqlite3` |
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket do agente |
 
-Gere a chave com `openssl rand -hex 32`.
+Gere a chave com `openssl rand -hex 32`. Fora de casa o acesso é o Tailscale;
+os nomes não têm DNS público. Ver [Nomes](REDE.md#nomes).
 
 ### Perfil do host (`host.env`)
 

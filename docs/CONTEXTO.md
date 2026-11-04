@@ -9,7 +9,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 | Item | Valor |
 |---|---|
 | Versão em produção | `3eafc2e` (kit Tailwind, Torrents, highlight do menu) |
-| Último deploy | 03/11/2026, Pi |
+| Último deploy | 04/11/2026, Pi (`./deploy.sh`; cookies seguros) |
 | Testes | `278 passed` no Linux; lab na VM `5 passed` (2026-11-03) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -20,9 +20,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## O que está pronto
 
-- Nomes (doc alinhada ao plano de túnel/Tailscale; infra ainda não aplicada no Pi):
-  dia a dia em `https://*.conradhub.com`, SMB `smb://homelab.conradhub.com/`,
-  os nomes `.lan` saíram. Ver [REDE](REDE.md#nomes-publicos-e-lan).
+- Nomes no Pi: `https://*.conradhub.com` com Let's Encrypt no Caddy. Sem DNS
+  público nesses nomes. Fora de casa só o Tailscale (`100.84.34.25`). Os
+  `.lan` saíram. SSH em casa é `conrado@homelab.local`. Sem túnel e sem
+  Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
+  Ver [REDE](REDE.md#nomes).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
@@ -86,8 +88,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Troca de senha Samba (`/usuarios/senha/`): sucesso e fracasso usam o
   `alert` do kit. O usuário fica visível (readonly). Erro de validação ou do
   agente não some mais num campo hidden. O aviso do Chrome sobre password
-  field em HTTP direto (`:8060` ou `.lan`) é o navegador, não o resultado do
-  POST; HTTPS unificado em `homelab.conradhub.com` continua pendente no Pi
+  field em HTTP direto (`http://192.168.0.150:8060`) é o navegador, não o
+  resultado do POST. Com `DJANGO_SECURE_COOKIES=1` essa URL abre e não mantém
+  sessão; o login que grava sessão é `https://homelab.conradhub.com`
   ([SEGURANCA.md](SEGURANCA.md#cookies-e-https)).
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
   página** no topo abre um painel com um caso de uso (**No dia a dia**) e
@@ -119,9 +122,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## Pendências, em ordem
 
-1. **Rede no Pi** (desbloqueada após gatilhos/marca): Pi-hole local já responde os cinco nomes. Falta Caddy (DNS-01),
-   túnel `homelab`, Access nos quatro hostnames, `.env` com
-   `homelab.conradhub.com`, Tailscale no Pi. Roteiro:
+1. **Rede no Pi:** concluída em 2026-11-04. Caddy, Pi-hole, rota, split DNS e firewall do Tailscale prontos. Sem túnel. Zero Trust Free existe na conta e não é usado. Celular em 5G com Tailscale abre o painel, os apps e o Samba; o play do Jellyfin só na LAN. Sem Tailscale e fora de casa, o nome não resolve.
+   Roteiro:
    [plano](plans/2026-11-04-tunnel-tailscale.md), [REDE](REDE.md),
    [SEGURANCA](SEGURANCA.md).
 2. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
