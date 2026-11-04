@@ -1,0 +1,15 @@
+{% if tarefa %}
+<section class="section" data-task-poll data-endpoint="{% url 'task_status' tarefa %}" data-status="running">
+  <div class="section-head">
+    <h2>Andamento</h2>
+    <span class="spinner spinner-inline" data-task-spinner></span>
+    <span class="tag ok" data-task-badge>em andamento</span>
+  </div>
+  <div class="card">
+    <p data-task-message>Trabalho em andamento…</p>
+    <div class="alert ok" data-task-ok hidden></div>
+    <div class="alert danger" data-task-fail hidden></div>
+    <div data-task-result></div>
+  </div>
+</section>
+{% endif %}

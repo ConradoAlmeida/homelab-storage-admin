@@ -72,6 +72,7 @@ install -m 0644 "$HERE/agent/homelab-restic-check.service" /etc/systemd/system/h
 install -m 0644 "$HERE/agent/homelab-restic-check.timer" /etc/systemd/system/homelab-restic-check.timer
 install -m 0644 "$HERE/agent/homelab-gitea-backup@.service" /etc/systemd/system/homelab-gitea-backup@.service
 install -m 0644 "$HERE/agent/homelab-arquivos-backup@.service" /etc/systemd/system/homelab-arquivos-backup@.service
+install -m 0644 "$HERE/agent/homelab-task@.service" /etc/systemd/system/homelab-task@.service
 
 echo "==> Configuracao"
 mkdir -p /etc/homelab-storage-agent /etc/homelab-backup/status /etc/homelab-backup/secrets /etc/homelab-backup/health /var/log/homelab-restic

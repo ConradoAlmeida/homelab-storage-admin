@@ -1,0 +1,11 @@
+[Unit]
+Description=Homelab long task %i
+After=homelab-storage-agent.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/homelab-storage-admin/host.env
+ExecStart=/usr/local/sbin/homelab-storage-agent --task %i
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=12h

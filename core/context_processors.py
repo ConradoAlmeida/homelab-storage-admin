@@ -7,6 +7,7 @@ opcionais; as views continuam tratando o erro.
 """
 from __future__ import annotations
 
+import re
 import time
 
 from django.conf import settings
@@ -15,6 +16,7 @@ from .agent import AgentError, agent
 from .brand import marca
 from .services import load_services
 
+_TAREFA_RE = re.compile(r"^[a-z0-9]+-[a-f0-9]{8}$")
 _CACHE_SECONDS = 30
 _cached_at = 0.0
 _cached_caps: dict | None = None
@@ -35,7 +37,13 @@ def capacidades_do_host() -> dict:
 
 def homelab(request):
     visual = marca()
+    bruto = ""
+    if request is not None and hasattr(request, "GET"):
+        bruto = (request.GET.get("tarefa") or "").strip()
+    if not _TAREFA_RE.match(bruto):
+        bruto = ""
     return {
+        "tarefa": bruto,
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
         "brand_homelab": visual["homelab"],

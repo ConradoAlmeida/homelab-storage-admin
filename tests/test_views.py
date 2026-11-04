@@ -1030,14 +1030,24 @@ class ViewSmokeTests(TestCase):
 
     def test_backup_check_chama_o_agente(self):
         self.fake.backup_check.return_value = {
-            "ok": True,
-            "finished_at": "2026-10-28T04:30:00",
+            "started": True,
+            "task": "backupcheck-abcd1234",
+            "status": "running",
         }
         resposta = self.client.post(
             "/backups/disks/check/", data={"uuid": "abc"}, follow=True
         )
-        self.assertContains(resposta, "Repositorio integro")
+        self.assertContains(resposta, "Trabalho iniciado")
+        self.assertContains(resposta, "data-task-poll")
+        self.assertContains(resposta, "/tarefas/backupcheck-abcd1234/")
         self.fake.backup_check.assert_called_once_with("abc")
+
+    def test_status_da_tarefa_ausente_nao_vira_500(self):
+        self.fake.task_status.side_effect = AgentError("Tarefa nao encontrada")
+        resposta = self.client.get("/tarefas/backupcheck-abcd1234/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["status"], "failed")
+        self.assertIn("nao encontrada", resposta.json()["message"])
 
     def test_dashboard_mostra_saude(self):
         resposta = self.client.get("/")

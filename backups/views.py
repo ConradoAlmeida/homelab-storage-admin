@@ -13,6 +13,7 @@ from django.urls import reverse
 from core.agent import AgentError, agent
 from core.http import file_response
 from core.models import AuditLog
+from core.tarefas import com_tarefa, disparo
 from core.view_base import AgentPostView, AgentTemplateView, AgentView
 
 from .defaults import DEFAULT_EXCLUDES_TEXT
@@ -338,20 +339,15 @@ class ResticSnapshotRestoreView(AgentPostView):
             )
         except AgentError as exc:
             messages.error(request, f"Restauracao falhou: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="backup_restore",
-                target=snapshot_id,
-                detail=path or ",".join(resultado.get("paths") or []),
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            messages.success(
-                request,
-                "Snapshot restic restaurado em "
-                + ", ".join(resultado.get("paths") or [path or snapshot_id]),
-            )
-        return redirect("backup_snapshots")
+            return redirect("backup_snapshots")
+        task = disparo(
+            request,
+            resultado,
+            action="backup_restore",
+            target=snapshot_id,
+            detail=path,
+        )
+        return redirect(com_tarefa(reverse("backup_snapshots"), task))
 
 
 class BackupCheckView(AgentPostView):
@@ -361,27 +357,9 @@ class BackupCheckView(AgentPostView):
             resultado = agent.backup_check(uuid)
         except AgentError as exc:
             messages.error(request, f"Verificacao do repositorio falhou: {exc}")
-        else:
-            if resultado.get("ok"):
-                messages.success(
-                    request,
-                    "Repositorio integro. "
-                    f"Verificado em {resultado.get('finished_at')}.",
-                )
-            else:
-                messages.error(
-                    request,
-                    "O restic encontrou problemas: "
-                    f"{resultado.get('message', '')[:400]}",
-                )
-            AuditLog.objects.create(
-                actor=request.user,
-                action="backup_check",
-                target=uuid,
-                detail=f"ok={resultado.get('ok')}",
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-        return redirect("backup_index")
+            return redirect("backup_index")
+        task = disparo(request, resultado, action="backup_check", target=uuid)
+        return redirect(com_tarefa(reverse("backup_index"), task))
 
 
 class DiskWizardView(AgentView):
@@ -489,11 +467,14 @@ class DiskWizardView(AgentView):
             except AgentError as exc:
                 error = str(exc)
             else:
-                return render(
+                task = disparo(
                     request,
-                    "backups/disk_result.html",
-                    {"result": result, "disk": selected},
+                    result,
+                    action="backup_disk_setup",
+                    target=device,
+                    detail=f"label={label}",
                 )
+                return redirect(com_tarefa(reverse("backup_index"), task))
         return render(
             request,
             self.template_name,
@@ -861,18 +842,14 @@ class ColdPrepareView(AgentView):
             except AgentError as exc:
                 error = str(exc)
             else:
-                AuditLog.objects.create(
-                    actor=request.user,
+                task = disparo(
+                    request,
+                    result,
                     action="cold_prepare",
                     target=device,
                     detail=f"label={label}",
-                    ip=request.META.get("REMOTE_ADDR"),
                 )
-                return render(
-                    request,
-                    "backups/cold_result.html",
-                    {"result": result, "disk": selected, "action": "prepared"},
-                )
+                return redirect(com_tarefa(reverse("cold_index"), task))
         return render(
             request,
             self.template_name,
@@ -892,16 +869,13 @@ class ColdCopyView(AgentPostView):
         except AgentError as exc:
             messages.error(request, str(exc))
         else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="cold_copy",
-                target=result.get("device", ""),
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            messages.success(
+            task = disparo(
                 request,
-                "Cópia fria iniciada em segundo plano. Atualize a página para acompanhar o status.",
+                result,
+                action="cold_copy",
+                target=result.get("device", "") if isinstance(result, dict) else "",
             )
+            return redirect(com_tarefa(reverse("cold_index"), task))
         return redirect("cold_index")
 
 
@@ -1099,20 +1073,14 @@ class ArquivosJobUsbView(ExigeCapacidadeMixin, AgentPostView):
             resultado = agent.arquivos_job_usb_backup(job, device)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel copiar para o USB: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="arquivos_job_usb",
-                target=f"{job}:{device}",
-                detail=resultado.get("archive", ""),
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            messages.success(
-                request,
-                f"Backup {resultado.get('archive')} copiado para {device} "
-                f"({resultado.get('size_label')}) e verificado. Pode desconectar.",
-            )
-        return redirect("arquivos_job", job=job)
+            return redirect("arquivos_job", job=job)
+        task = disparo(
+            request,
+            resultado,
+            action="arquivos_job_usb",
+            target=f"{job}:{device}",
+        )
+        return redirect(com_tarefa(reverse("arquivos_job", kwargs={"job": job}), task))
 
 
 class ArquivosJobDeleteView(ExigeCapacidadeMixin, AgentPostView):
@@ -1142,28 +1110,14 @@ class ArquivosJobVerifyView(ExigeCapacidadeMixin, AgentPostView):
             resultado = agent.arquivos_job_verify(job, archive)
         except AgentError as exc:
             messages.error(request, f"Nao foi possivel verificar {archive}: {exc}")
-        else:
-            integro = str(resultado.get("integrity", "")).lower() == "ok"
-            if integro and resultado.get("hashes_ok"):
-                messages.success(
-                    request,
-                    f"{archive}: banco íntegro e arquivos conferem com o manifesto.",
-                )
-            else:
-                messages.error(
-                    request,
-                    f"{archive}: verificacao falhou "
-                    f"(integridade={resultado.get('integrity')}, "
-                    f"hashes={'ok' if resultado.get('hashes_ok') else 'divergentes'}).",
-                )
-            AuditLog.objects.create(
-                actor=request.user,
-                action="arquivos_job_verify",
-                target=f"{job}:{archive}",
-                detail=f"integrity={resultado.get('integrity')}",
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-        return redirect("arquivos_job", job=job)
+            return redirect("arquivos_job", job=job)
+        task = disparo(
+            request,
+            resultado,
+            action="arquivos_job_verify",
+            target=f"{job}:{archive}",
+        )
+        return redirect(com_tarefa(reverse("arquivos_job", kwargs={"job": job}), task))
 
 
 class ArquivosJobRestoreView(ExigeCapacidadeMixin, AgentPostView):
@@ -1181,25 +1135,15 @@ class ArquivosJobRestoreView(ExigeCapacidadeMixin, AgentPostView):
             resultado = agent.arquivos_job_restore(job, archive, restart=reiniciar)
         except AgentError as exc:
             messages.error(request, f"Restauracao falhou: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="arquivos_job_restore",
-                target=f"{job}:{archive}",
-                detail=f"restart={resultado.get('restarted')}",
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            aviso = (
-                " O container sera reiniciado em instantes."
-                if resultado.get("restarted")
-                else " Reinicie o container manualmente para aplicar."
-            )
-            messages.success(
-                request,
-                f"Backup {archive} restaurado. Copia do estado anterior em "
-                f"{resultado.get('security_copy')}.{aviso}",
-            )
-        return redirect("arquivos_job", job=job)
+            return redirect("arquivos_job", job=job)
+        task = disparo(
+            request,
+            resultado,
+            action="arquivos_job_restore",
+            target=f"{job}:{archive}",
+            detail=f"restart={reiniciar}",
+        )
+        return redirect(com_tarefa(reverse("arquivos_job", kwargs={"job": job}), task))
 
 
 class ArquivosJobDownloadView(ExigeCapacidadeMixin, AgentView):
@@ -1299,17 +1243,8 @@ class GiteaRestoreView(ExigeCapacidadeMixin, AgentPostView):
             resultado = agent.gitea_restore(archive, confirmation=confirmacao)
         except AgentError as exc:
             messages.error(request, f"Restauracao do Gitea falhou: {exc}")
-        else:
-            AuditLog.objects.create(
-                actor=request.user,
-                action="gitea_restore",
-                target=archive,
-                detail=",".join(resultado.get("applied") or []),
-                ip=request.META.get("REMOTE_ADDR"),
-            )
-            copia = resultado.get("security_copy") or "—"
-            messages.success(
-                request,
-                f"Dump {archive} restaurado. Copia anterior em {copia}.",
-            )
-        return redirect("gitea_backup")
+            return redirect("gitea_backup")
+        task = disparo(
+            request, resultado, action="gitea_restore", target=archive
+        )
+        return redirect(com_tarefa(reverse("gitea_backup"), task))

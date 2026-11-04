@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-03**.
+Documento de retomada. Última atualização: **2026-11-04**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -50,6 +50,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   biblioteca: stat remoto e comparação de tamanho, o mesmo critério dos transfers.
 - Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo.
 - Backups:
+  - ações longas (disco, cópia fria, restore, verificação, Gitea, backup local
+    e snapshot) só disparam: o agente grava o status e a página consulta até
+    concluir ou falhar. Download, busca e cálculo de tamanho continuam na
+    própria resposta. O Gunicorn espera 660 s;
   - jobs restic por disco, com agenda, retenção, verificação semanal, unlock
     de lock órfão neste host e restore aos caminhos originais;
   - restore de snapshot de share (Btrfs/rsync) para o share, com confirmação;

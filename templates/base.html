@@ -58,6 +58,7 @@
       </header>
       <main id="main">
         {% include "partials/messages.html" %}
+        {% include "partials/task_poll.html" %}
         {% block content %}{% endblock %}
       </main>
     </div>
@@ -66,5 +67,6 @@
   <script src="{% static 'js/confirm-actions.js' %}"></script>
   <script src="{% static 'js/copy-secret.js' %}"></script>
   <script src="{% static 'js/auto-refresh.js' %}"></script>
+  <script src="{% static 'js/task-poll.js' %}"></script>
 </body>
 </html>

@@ -112,8 +112,7 @@ class AgentClient:
         return self.call("snapshot_list", share=share)
 
     def snapshot_create(self, share):
-        # btrfs snapshot pode demorar; usa timeout proprio sem enviar ao agente
-        return self.call("snapshot_create", timeout=1800, share=share)
+        return self.call("snapshot_create", timeout=60, share=share)
 
     def snapshot_delete(self, share, name):
         return self.call("snapshot_delete", share=share, name=name)
@@ -121,7 +120,7 @@ class AgentClient:
     def snapshot_restore(self, share, name, confirmation=""):
         return self.call(
             "snapshot_restore",
-            timeout=1800,
+            timeout=60,
             share=share,
             name=name,
             confirmation=confirmation,
@@ -130,7 +129,7 @@ class AgentClient:
     def snapshot_policy_save(self, share, enabled=True, keep=7, create_now=False):
         return self.call(
             "snapshot_policy_save",
-            timeout=1800,
+            timeout=60,
             share=share,
             enabled=enabled,
             keep=keep,
@@ -191,7 +190,7 @@ class AgentClient:
     def backup_restore(self, disk_uuid, snapshot_id, confirmation="", path=""):
         return self.call(
             "backup_restore",
-            timeout=7200,
+            timeout=60,
             disk_uuid=disk_uuid,
             snapshot_id=snapshot_id,
             confirmation=confirmation,
@@ -201,7 +200,7 @@ class AgentClient:
     def backup_disk_setup(self, device, label, confirmation, allow_existing=False):
         return self.call(
             "backup_disk_setup",
-            timeout=900,
+            timeout=60,
             device=device,
             label=label,
             confirmation=confirmation,
@@ -217,13 +216,16 @@ class AgentClient:
     def gitea_restore(self, archive, confirmation=""):
         return self.call(
             "gitea_restore",
-            timeout=3600,
+            timeout=60,
             archive=archive,
             confirmation=confirmation,
         )
 
     def backup_check(self, uuid):
-        return self.call("backup_check", timeout=7200, uuid=uuid)
+        return self.call("backup_check", timeout=60, uuid=uuid)
+
+    def task_status(self, task):
+        return self.call("task_status", timeout=20, task=task)
 
     def backup_secret(self, uuid):
         return self.call("backup_secret", timeout=30, uuid=uuid)
@@ -257,13 +259,13 @@ class AgentClient:
 
     def arquivos_job_verify(self, name, archive):
         return self.call(
-            "arquivos_job_verify", timeout=300, name=name, archive=archive
+            "arquivos_job_verify", timeout=60, name=name, archive=archive
         )
 
     def arquivos_job_restore(self, name, archive, restart=True):
         return self.call(
             "arquivos_job_restore",
-            timeout=600,
+            timeout=60,
             name=name,
             archive=archive,
             restart=restart,
@@ -272,7 +274,7 @@ class AgentClient:
     def arquivos_job_usb_backup(self, name, device):
         return self.call(
             "arquivos_job_usb_backup",
-            timeout=1200,
+            timeout=60,
             name=name,
             device=device,
         )
@@ -289,7 +291,7 @@ class AgentClient:
         return self.call("credenciais_backup_overview", timeout=60)
 
     def arquivos_backup_run(self):
-        return self.call("credenciais_backup_run", timeout=600)
+        return self.call("credenciais_backup_run", timeout=60)
 
     def arquivos_backup_settings(
         self, time="", frequency="daily", weekday=0, retention_days=0
@@ -310,12 +312,12 @@ class AgentClient:
         return self.call("credenciais_backup_remove_file", timeout=30, path=path)
 
     def arquivos_backup_verify(self, archive):
-        return self.call("credenciais_backup_verify", timeout=300, archive=archive)
+        return self.call("credenciais_backup_verify", timeout=60, archive=archive)
 
     def arquivos_backup_restore(self, archive, restart=True):
         return self.call(
             "credenciais_backup_restore",
-            timeout=600,
+            timeout=60,
             archive=archive,
             restart=restart,
         )
@@ -331,7 +333,7 @@ class AgentClient:
     def cold_prepare(self, device, label, confirmation, allow_existing=False):
         return self.call(
             "cold_prepare",
-            timeout=900,
+            timeout=60,
             device=device,
             label=label,
             confirmation=confirmation,
@@ -339,7 +341,7 @@ class AgentClient:
         )
 
     def cold_copy(self):
-        return self.call("cold_copy", timeout=3900)
+        return self.call("cold_copy", timeout=30)
 
     def cold_eject(self):
         return self.call("cold_eject", timeout=60)

@@ -7,6 +7,7 @@ Samba, usuarios e snapshots. O app Django nunca executa shell direto.
 from __future__ import annotations
 
 import configparser
+import contextvars
 import datetime as dt
 import grp
 import hashlib
@@ -1295,6 +1296,8 @@ def op_snapshot_create(share: str, **_):
     dest = os.path.join(snapdir, stamp)
     if os.path.exists(dest):
         raise AgentError(f"Snapshot ja existe: {stamp}")
+    _checkpoint()
+    _tarefa_andamento("Gravando o snapshot…")
 
     try:
         if backend == "btrfs":
@@ -1357,6 +1360,8 @@ def op_snapshot_restore(share: str, name: str, confirmation: str = "", **_):
         raise AgentError(f"Snapshot nao encontrado: {name}")
     if not shutil.which("rsync"):
         raise AgentError("rsync nao encontrado; restore de snapshot indisponivel")
+    _checkpoint()
+    _tarefa_andamento("Copiando o snapshot de volta para o share…")
     args = [
         "rsync",
         "-aHAX",
@@ -1519,6 +1524,8 @@ def op_snapshot_policy_save(share: str, enabled=True, keep=7, create_now=False, 
     ativa = _as_bool(enabled)
     criar = _as_bool(create_now) and ativa
     path = _validate_share_path(_share_path_from_conf(share))
+    _checkpoint()
+    _tarefa_andamento("Salvando a política de snapshot…")
     policy = load_policies()
     atual = policy.get(share) or {}
     backend = atual.get("backend") or ""
@@ -1580,6 +1587,7 @@ def op_snapshot_policy_save(share: str, enabled=True, keep=7, create_now=False, 
     _forget_size_cache()
     criado = None
     if criar:
+        _tarefa_andamento("Criando o primeiro snapshot…")
         try:
             criado = op_snapshot_create(share)["name"]
         except AgentError as exc:
@@ -1876,6 +1884,8 @@ def _backup_check_disk(disk: dict, read_data: bool = False) -> dict:
     key_file = Path(disk.get("key_file") or "")
     if not repo or not key_file.is_file():
         raise AgentError("Repositorio ou senha do restic ausente")
+    _checkpoint()
+    _tarefa_andamento("Verificando o repositório…")
     extra = ["check"]
     if read_data:
         extra.append("--read-data-subset=2%")
@@ -2233,6 +2243,8 @@ def op_backup_restore(
     confirmado = (confirmation or "").strip().lower()
     if confirmado not in {snapshot_id.lower(), snapshot_id[:8].lower()}:
         raise AgentError("Para restaurar, confirme o identificador do snapshot.")
+    _checkpoint()
+    _tarefa_andamento("Restaurando os arquivos do snapshot…")
     caminhos = []
     pedido = (path or "").strip()
     if pedido:
@@ -2312,6 +2324,8 @@ def op_backup_disk_setup(
     holders = Path(f"/sys/block/{disk['name']}/holders")
     if holders.is_dir() and any(holders.iterdir()):
         raise AgentError("Disco possui holders ativos; nao vou formatar")
+    _checkpoint()
+    _tarefa_andamento("Apagando a tabela do disco…")
 
     mountpoint = f"{BACKUP_ROOT}/{label}"
     repo = f"{mountpoint}/restic"
@@ -3720,6 +3734,8 @@ def op_arquivos_job_usb_backup(name: str, device: str, **_):
         raise AgentError(f"Disco USB nao encontrado: {device}")
     if not disco.get("has_filesystem"):
         raise AgentError("Disco USB sem filesystem reconhecido")
+    _checkpoint()
+    _tarefa_andamento("Gerando o backup e copiando para o USB…")
     _job_executar(name)
     arquivo = _job_archive_latest(name, _jobs_config())
     if arquivo is None:
@@ -3782,6 +3798,8 @@ def op_arquivos_job_usb_backup(name: str, device: str, **_):
 
 def op_arquivos_job_verify(name: str, archive: str, **_):
     arquivo = _job_archive_path(name, archive)
+    _checkpoint()
+    _tarefa_andamento("Conferindo o arquivo de backup…")
     estagio = Path(tempfile.mkdtemp(prefix=".verify-", dir=arquivo.parent))
     try:
         _credenciais_extrair(arquivo, estagio)
@@ -3798,6 +3816,8 @@ def op_arquivos_job_verify(name: str, archive: str, **_):
 
 def op_arquivos_job_restore(name: str, archive: str, restart: bool = True, **_):
     arquivo = _job_archive_path(name, archive)
+    _checkpoint()
+    _tarefa_andamento("Restaurando os arquivos…")
     config = _jobs_config()
     destino = Path(config["dir"])
     estagio = Path(tempfile.mkdtemp(prefix=".restore-", dir=destino))
@@ -3916,6 +3936,9 @@ def op_credenciais_backup_overview(**_):
 
 
 def op_credenciais_backup_run(**_):
+    _job_por_nome(_jobs_config(), "credenciais")
+    _checkpoint()
+    _tarefa_andamento("Gerando o backup…")
     return _job_executar("credenciais")
 
 
@@ -4564,6 +4587,8 @@ def op_gitea_restore(archive: str, confirmation: str = "", **_):
     if not origem.is_file():
         raise AgentError("Dump nao encontrado no servidor")
     volume = _gitea_volume()
+    _checkpoint()
+    _tarefa_andamento("Parando o Gitea e aplicando o dump…")
     rodando = False
     rc, saida, _ = run_optional(
         ["docker", "inspect", "-f", "{{.State.Running}}", GITEA_CONTAINER],
@@ -4804,6 +4829,8 @@ def op_cold_prepare(
         )
     if os.path.ismount(COLD_MOUNT):
         raise AgentError(f"{COLD_MOUNT} ja esta montado; ejetar antes")
+    _checkpoint()
+    _tarefa_andamento("Apagando a tabela do drive…")
     Path(COLD_MOUNT).mkdir(parents=True, exist_ok=True)
     run(["wipefs", "-a", device], timeout=60)
     run(
@@ -4834,6 +4861,7 @@ def op_cold_prepare(
     repo = f"{COLD_MOUNT}/restic"
     Path(repo).mkdir(parents=True, exist_ok=True)
     os.chmod(repo, 0o700)
+    _tarefa_andamento("Inicializando o repositório frio…")
     run(
         ["restic", "-r", repo, "--password-file", str(key_file), "init"],
         timeout=300,
@@ -6059,6 +6087,360 @@ OPS = {
 }
 
 
+# Trabalho longo: o socket valida e devolve; systemd (ou uma thread, se a
+# unit ainda nao estiver instalada) executa e grava o status.
+TASK_DIR = os.environ.get("HOMELAB_TASK_DIR", "/run/homelab-storage-admin/tasks")
+TASK_ID_RE = re.compile(r"^[a-z0-9]+-[a-f0-9]{8}$")
+_SO_VALIDAR = contextvars.ContextVar("homelab_so_validar", default=False)
+_TAREFA_ATUAL = contextvars.ContextVar("homelab_tarefa", default="")
+
+
+class _SoValidar(Exception):
+    """Corta o precheck antes do comando demorado."""
+
+
+def _checkpoint() -> None:
+    if _SO_VALIDAR.get():
+        raise _SoValidar()
+
+
+GATILHOS = {
+    "backup_disk_setup",
+    "cold_prepare",
+    "backup_restore",
+    "backup_check",
+    "gitea_restore",
+    "arquivos_job_restore",
+    "arquivos_job_verify",
+    "arquivos_job_usb_backup",
+    "credenciais_backup_run",
+    "credenciais_backup_verify",
+    "credenciais_backup_restore",
+    "snapshot_create",
+    "snapshot_restore",
+    "snapshot_policy_save",
+}
+GATILHO_MSG = {
+    "backup_disk_setup": "Formatando o disco e criando o repositório…",
+    "cold_prepare": "Preparando o drive de cópia fria…",
+    "cold_copy": "Copiando os snapshots para o drive frio…",
+    "backup_restore": "Restaurando o snapshot…",
+    "backup_check": "Verificando o repositório…",
+    "gitea_restore": "Restaurando o dump do Gitea…",
+    "arquivos_job_restore": "Restaurando o backup de arquivos…",
+    "arquivos_job_verify": "Verificando o backup de arquivos…",
+    "arquivos_job_usb_backup": "Copiando o backup para o USB…",
+    "credenciais_backup_run": "Gerando o backup do Credenciais…",
+    "credenciais_backup_verify": "Verificando o backup do Credenciais…",
+    "credenciais_backup_restore": "Restaurando o backup do Credenciais…",
+    "snapshot_create": "Criando o snapshot…",
+    "snapshot_restore": "Restaurando o snapshot no share…",
+    "snapshot_policy_save": "Salvando a política de snapshot…",
+}
+
+
+def _tarefa_chave(op: str, payload: dict) -> str:
+    campos = {
+        "backup_disk_setup": payload.get("device"),
+        "cold_prepare": payload.get("device"),
+        "cold_copy": "cold",
+        "backup_restore": payload.get("snapshot_id"),
+        "backup_check": payload.get("disk_uuid") or payload.get("uuid"),
+        "gitea_restore": payload.get("archive"),
+        "arquivos_job_restore": f"{payload.get('name')}:{payload.get('archive')}",
+        "arquivos_job_verify": f"{payload.get('name')}:{payload.get('archive')}",
+        "arquivos_job_usb_backup": payload.get("name"),
+        "credenciais_backup_run": "credenciais",
+        "credenciais_backup_verify": payload.get("archive"),
+        "credenciais_backup_restore": payload.get("archive"),
+        "snapshot_create": payload.get("share"),
+        "snapshot_restore": f"{payload.get('share')}:{payload.get('name')}",
+        "snapshot_policy_save": payload.get("share"),
+    }
+    return str(campos.get(op) or op)
+
+
+def _tarefa_path(task_id: str) -> Path:
+    if not TASK_ID_RE.match(task_id or ""):
+        raise AgentError("Tarefa invalida")
+    return Path(TASK_DIR) / f"{task_id}.json"
+
+
+def _tarefa_ler(task_id: str) -> dict:
+    caminho = _tarefa_path(task_id)
+    if not caminho.is_file():
+        raise AgentError("Tarefa nao encontrada")
+    try:
+        dados = json.loads(caminho.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AgentError("Status da tarefa ilegivel") from exc
+    if not isinstance(dados, dict):
+        raise AgentError("Status da tarefa ilegivel")
+    return dados
+
+
+def _tarefa_gravar(dados: dict) -> dict:
+    caminho = _tarefa_path(str(dados.get("id") or ""))
+    caminho.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        os.chmod(caminho.parent, 0o700)
+    except OSError:
+        pass
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False) + "\n")
+    try:
+        os.chmod(temporario, 0o600)
+    except OSError:
+        pass
+    os.replace(temporario, caminho)
+    return dados
+
+
+def _tarefa_andamento(mensagem: str) -> None:
+    task_id = _TAREFA_ATUAL.get()
+    if not task_id:
+        return
+    try:
+        atual = _tarefa_ler(task_id)
+    except AgentError:
+        return
+    if atual.get("status") != "running":
+        return
+    atual["message"] = mensagem
+    _tarefa_gravar(atual)
+
+
+def _tarefa_rodando(op: str, chave: str) -> str:
+    pasta = Path(TASK_DIR)
+    if not pasta.is_dir():
+        return ""
+    for caminho in pasta.glob("*.json"):
+        try:
+            dados = json.loads(caminho.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            isinstance(dados, dict)
+            and dados.get("op") == op
+            and dados.get("key") == chave
+            and dados.get("status") == "running"
+            and TASK_ID_RE.match(str(dados.get("id") or ""))
+        ):
+            return str(dados["id"])
+    return ""
+
+
+def _tarefa_criar(op: str, payload: dict, *, chave: str, mensagem: str) -> dict:
+    task_id = f"{re.sub(r'[^a-z0-9]', '', op)[:20] or 'tarefa'}-{secrets.token_hex(4)}"
+    return _tarefa_gravar(
+        {
+            "id": task_id,
+            "op": op,
+            "key": chave,
+            "status": "running",
+            "message": mensagem,
+            "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+            "payload": payload,
+            "result": {},
+        }
+    )
+
+
+def _gatilho_precheck(op: str, payload: dict) -> None:
+    token = _SO_VALIDAR.set(True)
+    try:
+        OPS[op](**payload)
+    except _SoValidar:
+        return
+    finally:
+        _SO_VALIDAR.reset(token)
+    raise AgentError("Gatilho sem ponto de parada; operacao nao iniciada")
+
+
+def _tarefa_finalizar(task_id: str, op: str, resultado: dict) -> None:
+    status = "ok"
+    mensagem = "Concluído."
+    if op == "backup_check" and not resultado.get("ok"):
+        status = "failed"
+        mensagem = str(resultado.get("message") or "O restic encontrou problemas.")
+    elif op in {"arquivos_job_verify", "credenciais_backup_verify"} and not (
+        str(resultado.get("integrity", "")).lower() == "ok" and resultado.get("hashes_ok")
+    ):
+        status = "failed"
+        mensagem = "A verificação encontrou divergências."
+    elif op == "backup_disk_setup":
+        mensagem = "Disco preparado. Guarde a senha de recuperação."
+    elif op == "cold_prepare":
+        mensagem = "Drive frio preparado."
+    elif op == "snapshot_create":
+        mensagem = f"Snapshot criado: {resultado.get('name', '')}."
+    elif op == "snapshot_restore":
+        mensagem = f"Share restaurado a partir de {resultado.get('name', '')}."
+    elif op == "snapshot_policy_save" and resultado.get("created"):
+        mensagem = f"Política salva e snapshot {resultado['created']} criado."
+    elif op == "snapshot_policy_save":
+        mensagem = "Política de snapshot salva."
+    elif op == "backup_restore":
+        mensagem = "Snapshot restic restaurado."
+    elif op == "gitea_restore":
+        mensagem = "Dump do Gitea restaurado."
+    elif op == "arquivos_job_restore" or op == "credenciais_backup_restore":
+        mensagem = "Backup restaurado."
+    elif op == "arquivos_job_usb_backup":
+        mensagem = "Cópia no USB verificada."
+    elif op in {"arquivos_job_verify", "credenciais_backup_verify", "backup_check"}:
+        mensagem = "Verificação concluída."
+    elif op == "credenciais_backup_run":
+        mensagem = "Backup do Credenciais gerado."
+    atual = _tarefa_ler(task_id)
+    atual.update(
+        {
+            "status": status,
+            "message": mensagem,
+            "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+            "result": resultado,
+        }
+    )
+    atual.pop("payload", None)
+    _tarefa_gravar(atual)
+
+
+def _tarefa_falhar(task_id: str, mensagem: str) -> None:
+    try:
+        atual = _tarefa_ler(task_id)
+    except AgentError:
+        return
+    atual.update(
+        {
+            "status": "failed",
+            "message": mensagem,
+            "finished_at": dt.datetime.now().isoformat(timespec="seconds"),
+        }
+    )
+    atual.pop("payload", None)
+    _tarefa_gravar(atual)
+
+
+def _tarefa_executar(task_id: str) -> None:
+    dados = _tarefa_ler(task_id)
+    op = str(dados.get("op") or "")
+    if op not in GATILHOS:
+        _tarefa_falhar(task_id, "Operacao nao permitida")
+        return
+    token = _TAREFA_ATUAL.set(task_id)
+    try:
+        resultado = OPS[op](**(dados.get("payload") or {}))
+    except AgentError as exc:
+        _tarefa_falhar(task_id, str(exc))
+        return
+    except Exception as exc:  # noqa: BLE001
+        log("TASK_ERROR " + traceback.format_exc().replace("\n", " | "))
+        _tarefa_falhar(task_id, f"Erro interno: {exc}")
+        return
+    finally:
+        _TAREFA_ATUAL.reset(token)
+    if not isinstance(resultado, dict):
+        resultado = {}
+    _tarefa_finalizar(task_id, op, resultado)
+
+
+def _tarefa_disparar(op: str, payload: dict) -> dict:
+    chave = _tarefa_chave(op, payload)
+    existente = _tarefa_rodando(op, chave)
+    if existente:
+        return {"started": True, "task": existente, "status": "running", "already": True}
+    tarefa = _tarefa_criar(
+        op, payload, chave=chave, mensagem=GATILHO_MSG.get(op, "Em andamento…")
+    )
+    try:
+        run(
+            [
+                "systemctl",
+                "start",
+                "--no-block",
+                f"homelab-task@{tarefa['id']}.service",
+            ],
+            timeout=30,
+        )
+    except AgentError:
+        threading.Thread(
+            target=_tarefa_executar,
+            args=(tarefa["id"],),
+            daemon=True,
+            name=f"task-{tarefa['id']}",
+        ).start()
+    log(f"TASK_START {op} {tarefa['id']}")
+    return {"started": True, "task": tarefa["id"], "status": "running"}
+
+
+def _tarefa_espelhar_frio(dados: dict) -> dict:
+    if dados.get("op") != "cold_copy" or dados.get("status") != "running":
+        return dados
+    frio = _read_cold_status()
+    marco = str(dados.get("started_at") or "")
+    estado = frio.get("status")
+    if estado == "running" and str(frio.get("started_at") or "") >= marco:
+        if frio.get("message"):
+            dados["message"] = frio["message"]
+            _tarefa_gravar(dados)
+        return dados
+    instante = str(frio.get("finished_at") or frio.get("started_at") or "")
+    if estado in {"success", "failed"} and instante >= marco:
+        dados["status"] = "ok" if estado == "success" else "failed"
+        dados["message"] = str(
+            frio.get("message")
+            or ("Cópia fria concluída." if estado == "success" else "Cópia fria falhou.")
+        )
+        dados["finished_at"] = frio.get("finished_at")
+        dados["result"] = {"snapshots": frio.get("snapshots")}
+        dados.pop("payload", None)
+        _tarefa_gravar(dados)
+    return dados
+
+
+def op_task_status(task: str = "", **_) -> dict:
+    dados = _tarefa_espelhar_frio(_tarefa_ler(task))
+    return {
+        "id": dados.get("id"),
+        "op": dados.get("op"),
+        "status": dados.get("status") or "failed",
+        "message": dados.get("message") or "",
+        "started_at": dados.get("started_at"),
+        "finished_at": dados.get("finished_at"),
+        "result": dados.get("result") or {},
+    }
+
+
+def _despachar(op: str, request: dict):
+    if op not in OPS:
+        raise AgentError(f"Operacao desconhecida: {op}")
+    if op == "cold_copy":
+        dados = op_cold_copy(**request)
+        if not isinstance(dados, dict):
+            dados = {}
+        if not dados.get("task"):
+            tarefa = _tarefa_criar(
+                "cold_copy",
+                {},
+                chave="cold",
+                mensagem=GATILHO_MSG["cold_copy"],
+            )
+            dados = {
+                **dados,
+                "started": True,
+                "task": tarefa["id"],
+                "status": "running",
+            }
+        return dados
+    if op in GATILHOS:
+        _gatilho_precheck(op, request)
+        return _tarefa_disparar(op, request)
+    return OPS[op](**request)
+
+
+OPS["task_status"] = op_task_status
+
+
 class Handler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
         raw = self.rfile.readline(1024 * 1024).strip()
@@ -6067,9 +6449,7 @@ class Handler(socketserver.StreamRequestHandler):
         try:
             request = json.loads(raw)
             op = request.pop("op", None)
-            if op not in OPS:
-                raise AgentError(f"Operacao desconhecida: {op}")
-            data = OPS[op](**request)
+            data = _despachar(op, request)
             response = {"ok": True, "data": data}
         except AgentError as exc:
             response = {"ok": False, "error": str(exc)}
@@ -6087,6 +6467,13 @@ def main() -> int:
     if os.geteuid() != 0:
         print("O agente precisa rodar como root.", file=sys.stderr)
         return 1
+    if len(sys.argv) > 2 and sys.argv[1] == "--task":
+        try:
+            _tarefa_executar(sys.argv[2])
+        except AgentError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        return 0
     if len(sys.argv) > 1 and sys.argv[1] == "--apply-timer":
         for job in _jobs_config()["jobs"]:
             _job_apply_timer(job)

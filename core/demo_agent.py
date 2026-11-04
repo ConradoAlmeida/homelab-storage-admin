@@ -87,7 +87,72 @@ class DemoAgent(AgentClient):
         return dados
 
 
+_GATILHOS = {
+    "backup_disk_setup",
+    "cold_prepare",
+    "cold_copy",
+    "backup_restore",
+    "backup_check",
+    "gitea_restore",
+    "arquivos_job_restore",
+    "arquivos_job_verify",
+    "arquivos_job_usb_backup",
+    "credenciais_backup_run",
+    "credenciais_backup_verify",
+    "credenciais_backup_restore",
+    "snapshot_create",
+    "snapshot_restore",
+    "snapshot_policy_save",
+}
+_DEMO_TAREFAS: dict[str, dict] = {}
+_DEMO_SEQ = 0
+
+
+def _demo_disparar(op: str) -> dict:
+    global _DEMO_SEQ
+    _DEMO_SEQ += 1
+    task = f"demo{_DEMO_SEQ:02d}-abcd1234"
+    _DEMO_TAREFAS[task] = {"op": op, "ticks": 0}
+    return {"started": True, "task": task, "status": "running"}
+
+
+def _demo_status(task: str) -> dict:
+    item = _DEMO_TAREFAS.get(task)
+    if item is None:
+        return {
+            "status": "failed",
+            "message": "Tarefa nao encontrada.",
+            "op": "",
+            "result": {},
+        }
+    item["ticks"] += 1
+    if item["ticks"] < 2:
+        return {
+            "status": "running",
+            "message": "Em andamento…",
+            "op": item["op"],
+            "result": {},
+        }
+    return {
+        "status": "ok",
+        "message": "Concluído.",
+        "op": item["op"],
+        "result": {
+            "recovery_password": "demo-senha-restic",
+            "device": "/dev/sdc",
+            "mountpoint": "/mnt/backup/demo",
+            "repo": "/mnt/backup/demo/restic",
+            "share": "docs",
+            "name": "@GMT-2026.11.04-12.00.00",
+        },
+    }
+
+
 def _dados(op: str, payload: dict):
+    if op in _GATILHOS:
+        return _demo_disparar(op)
+    if op == "task_status":
+        return _demo_status(str(payload.get("task") or ""))
     if op == "host_capabilities":
         return CAPS
     if op == "df":

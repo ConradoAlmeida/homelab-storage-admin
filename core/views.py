@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
+
 from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 
 from .agent import AgentError, agent
 from .forms import (
@@ -18,6 +20,7 @@ from .forms import (
 from .hostinfo import disk_role, volume_for
 from .http import agent_json_error
 from .models import AuditLog
+from .tarefas import com_tarefa, disparo
 from .view_base import AgentFormView, AgentPostView, AgentTemplateView, AgentView
 
 
@@ -627,6 +630,31 @@ class ShareCreateView(AgentFormView):
         return super().form_valid(form)
 
 
+class TaskStatusView(AgentView):
+    def get(self, request, task_id):
+        if not re.fullmatch(r"[a-z0-9]+-[a-f0-9]{8}", task_id or ""):
+            return JsonResponse(
+                {"status": "failed", "message": "Tarefa invalida.", "result": {}}
+            )
+        try:
+            dados = agent.task_status(task_id)
+        except AgentError as exc:
+            return JsonResponse(
+                {"status": "failed", "message": str(exc), "result": {}}
+            )
+        if not isinstance(dados, dict):
+            dados = {}
+        resultado = dados.get("result")
+        return JsonResponse(
+            {
+                "status": dados.get("status") or "failed",
+                "message": dados.get("message") or "",
+                "op": dados.get("op") or "",
+                "result": resultado if isinstance(resultado, dict) else {},
+            }
+        )
+
+
 class SnapshotsView(AgentTemplateView):
     template_name = "snapshots.html"
 
@@ -718,7 +746,6 @@ class SnapshotPolicyView(AgentView):
                 politicas=politicas,
                 form=form,
             )
-        ja_existia = alvo in politicas
         try:
             resultado = agent.snapshot_policy_save(
                 share=alvo,
@@ -735,23 +762,8 @@ class SnapshotPolicyView(AgentView):
                 politicas=politicas,
                 form=form,
             )
-        _audit(
-            request,
-            "snapshot.policy",
-            alvo,
-            f"enabled={resultado.get('enabled')} keep={resultado.get('keep')} "
-            f"created={resultado.get('created') or ''}",
-        )
-        if resultado.get("created"):
-            messages.success(
-                request,
-                f"Política de {alvo} salva e snapshot {resultado['created']} criado.",
-            )
-        elif ja_existia:
-            messages.success(request, f"Política de snapshot de {alvo} atualizada.")
-        else:
-            messages.success(request, f"Política de snapshot de {alvo} configurada.")
-        return redirect("snapshots")
+        task = disparo(request, resultado, action="snapshot.policy", target=alvo)
+        return redirect(com_tarefa(reverse("snapshots"), task))
 
     def _dados(self):
         shares = agent.list_shares(include_size=False)
@@ -841,17 +853,9 @@ class SnapshotCreateView(AgentPostView):
             result = agent.snapshot_create(share)
         except AgentError as exc:
             _error(request, exc)
-        else:
-            _audit(
-                request,
-                "snapshot.create",
-                f"{share}/{result.get('name', '')}",
-            )
-            messages.success(
-                request,
-                f"Snapshot criado para {share}: {result.get('name', '')}",
-            )
-        return redirect("snapshots")
+            return redirect("snapshots")
+        task = disparo(request, result, action="snapshot.create", target=share)
+        return redirect(com_tarefa(reverse("snapshots"), task))
 
 
 class SnapshotDeleteView(AgentPostView):
@@ -880,13 +884,11 @@ class SnapshotRestoreView(AgentPostView):
             )
             return redirect("snapshots")
         try:
-            agent.snapshot_restore(share, name, confirmation=confirmacao)
+            resultado = agent.snapshot_restore(share, name, confirmation=confirmacao)
         except AgentError as exc:
             _error(request, exc)
-        else:
-            _audit(request, "snapshot.restore", f"{share}/{name}")
-            messages.success(
-                request,
-                f"Share {share} restaurado a partir de {name}.",
-            )
-        return redirect("snapshots")
+            return redirect("snapshots")
+        task = disparo(
+            request, resultado, action="snapshot.restore", target=f"{share}/{name}"
+        )
+        return redirect(com_tarefa(reverse("snapshots"), task))

@@ -22,8 +22,10 @@ O wizard formata ext4, cria entrada no fstab por UUID, monta em
 `/mnt/backup/<label>`, inicializa o restic e mostra a senha de recuperação.
 A senha fica em arquivo root-only em `/etc/homelab-backup/secrets/` e também
 pode ser consultada em **Backups → Senha do repositório**, mediante a senha do app
-(com registro no audit log). O submit mostra um loading em tela cheia enquanto
-formata/monta/inicializa; a requisição usa timeout de 900 s no Gunicorn.
+(com registro no audit log). O submit só dispara: o agente valida a frase,
+grava o status e o systemd formata/monta/inicializa. A página consulta esse
+status até concluir ou falhar e então mostra a senha. O Gunicorn espera no
+máximo 660 s, o bastante para download e busca.
 
 O disco preparado fica registrado em `/etc/homelab-backup/config.json`; o
 cadastro de jobs usa esse registro na [Jobs de backup](#jobs-de-backup).

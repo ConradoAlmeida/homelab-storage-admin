@@ -17,6 +17,9 @@
 {% if error %}
   <div class="alert danger"><strong>Erro</strong><p>{{ error }}</p></div>
 {% elif overview %}
+  {% if overview.status.status == 'running' and not tarefa %}
+  <div data-auto-refresh data-status="running" hidden></div>
+  {% endif %}
   <div class="metric-grid">
     <div class="metric">
       <span>Origem</span>
@@ -97,7 +100,7 @@
           e grava o status. A cópia roda em segundo plano.
         </p>
         {% if overview.status.status == 'running' %}
-          <div class="alert warn"><strong>Cópia em execução.</strong> Atualize a página para acompanhar; não ejete o drive.</div>
+          <div class="alert warn"><strong>Cópia em execução.</strong> A página acompanha até terminar; não ejete o drive.</div>
         {% elif overview.status.status == 'failed' %}
           <div class="alert danger"><strong>Última cópia falhou.</strong><p>{{ overview.status.message }}</p></div>
         {% elif overview.status.status == 'success' %}

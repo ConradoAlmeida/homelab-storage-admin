@@ -188,16 +188,17 @@ class GiteaBackupViewTests(TestCase):
 
     def test_restore_audita(self):
         self.fake.gitea_restore.return_value = {
-            "archive": "gitea-20261028-113707.zip",
-            "applied": ["app.ini"],
-            "security_copy": "/tmp/pre",
+            "started": True,
+            "task": "gitearestore-abcd1234",
+            "status": "running",
         }
         resposta = self.client.post(
             "/backups/gitea/gitea-20261028-113707.zip/restore/",
             {"confirmation": "gitea-20261028-113707.zip"},
             follow=True,
         )
-        self.assertContains(resposta, "restaurado")
+        self.assertContains(resposta, "Trabalho iniciado")
+        self.assertContains(resposta, "data-task-poll")
         self.fake.gitea_restore.assert_called_once_with(
             "gitea-20261028-113707.zip", confirmation="gitea-20261028-113707.zip"
         )

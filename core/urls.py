@@ -52,6 +52,7 @@ urlpatterns = [
         downloads.TorrentBibliotecasApiView.as_view(),
         name="torrent_api_libraries",
     ),
+    path("tarefas/<str:task_id>/", views.TaskStatusView.as_view(), name="task_status"),
     path("snapshots/", views.SnapshotsView.as_view(), name="snapshots"),
     path(
         "snapshots/politica/nova/",

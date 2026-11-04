@@ -149,24 +149,20 @@ class ArquivosJobViewTests(TestCase):
             "sources": ["/mnt/data/datasheets", "/home/conrado/caddy"]
         }
         fake.arquivos_job_usb_backup.return_value = {
-            "job": "apps",
-            "archive": "apps-20261028-130000.tar.gz",
-            "size_label": "104 MB",
-            "device": "sdb",
-            "verified": True,
+            "started": True,
+            "task": "arquivosusb-abcd1234",
+            "status": "running",
         }
         fake.arquivos_job_delete.return_value = {"name": "credenciais", "deleted": True}
         fake.arquivos_job_verify.return_value = {
-            "archive": ARQUIVO,
-            "integrity": "ok",
-            "hashes_ok": True,
-            "files": [".env", "db.sqlite3"],
+            "started": True,
+            "task": "arquivosverify-abcd1234",
+            "status": "running",
         }
         fake.arquivos_job_restore.return_value = {
-            "archive": ARQUIVO,
-            "integrity": "ok",
-            "security_copy": "/var/backups/moya-credenciais/pre-restore-20261028-040000",
-            "restarted": True,
+            "started": True,
+            "task": "arquivosrestore-abcd1234",
+            "status": "running",
         }
         self.fake = fake
         patcher = patch.object(backup_views, "agent", fake)
@@ -224,8 +220,8 @@ class ArquivosJobViewTests(TestCase):
             data={"device": "sdb"},
             follow=True,
         )
-        self.assertContains(resposta, "copiado para sdb")
-        self.assertContains(resposta, "verificado")
+        self.assertContains(resposta, "Trabalho iniciado")
+        self.assertContains(resposta, "data-task-poll")
         self.fake.arquivos_job_usb_backup.assert_called_once_with("apps", "sdb")
 
     def test_formulario_edicao_traz_as_fontes(self):
@@ -296,7 +292,8 @@ class ArquivosJobViewTests(TestCase):
         resposta = self.client.post(
             f"/backups/arquivos/credenciais/{ARQUIVO}/verify/", follow=True
         )
-        self.assertContains(resposta, "banco íntegro")
+        self.assertContains(resposta, "Trabalho iniciado")
+        self.assertContains(resposta, "data-task-poll")
         self.fake.arquivos_job_verify.assert_called_once_with("credenciais", ARQUIVO)
 
     def test_restaurar_exige_confirmacao_exata(self):
@@ -314,7 +311,8 @@ class ArquivosJobViewTests(TestCase):
             data={"confirmation": ARQUIVO, "restart": "1"},
             follow=True,
         )
-        self.assertContains(resposta, "restaurado")
+        self.assertContains(resposta, "Trabalho iniciado")
+        self.assertContains(resposta, "data-task-poll")
         self.fake.arquivos_job_restore.assert_called_once_with(
             "credenciais", ARQUIVO, restart=True
         )

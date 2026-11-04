@@ -113,9 +113,10 @@ enviá-lo em `http://192.168.0.150:8060`** e o login pela LAN falha. Escolha uma
 
 #### Limites da Cloudflare que afetam este app
 
-- **Timeout de 100 s na borda** (free/Pro): o wizard **Backups → disco**
-  (`timeout 900 s` no Gunicorn) estoura com **524** quando disparado pelo túnel.
-  Rode esse passo pela LAN ou pelo Tailscale.
+- **Timeout de 100 s na borda** (free/Pro): formatar disco, restore, verificação,
+  cópia fria e snapshot respondem na hora; a página acompanha o status até
+  concluir ou falhar. Download ou busca acima de 100 s ainda pode estourar com
+  **524**. O Gunicorn fica em 660 s para essas leituras.
 - **ToS 2.8:** o plano free não serve vídeo/arquivos grandes de forma
   desproporcional a HTML. **Jellyfin não deve ir por aqui.** Painel, `/history/`
   leve e downloads ocasionais, tudo bem.
