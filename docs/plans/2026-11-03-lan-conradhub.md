@@ -97,9 +97,15 @@ inventar laboratório de Pi-hole na VM.
 
 ## Estado
 
-Executado em 2026-11-03. Branch `chore/lan-conradhub` a partir de
-`fix/senha-feedback` (`f8ca255`). VM `linux2024` **não** rodou (passo é
-DNS/Caddy do Pi).
+Concluído. Merge em `main` `57ffbe6`. Deploy no Pi feito.
+
+Bancada 2026-11-03:
+- Clone Fedora: `282 passed, 6 skipped`.
+- VM `linux2024` (ligada para o teste): pytest `282 passed, 6 skipped`
+  nos perfis homelab e moya; lab `6 passed` (`run-lab-tests.sh`).
+- Sem PR no GitHub (`gh` sem login); merge local `--no-ff` + push `main`.
+- Pi: `git checkout main` + `./deploy.sh` → HEAD `57ffbe6`.
+  `http://storage.conradhub.lan/login/` e o alias `*.homelab.lan` → 200.
 
 **Pytest local:** `87 passed, 16 subtests passed` em
 `tests/test_views.py tests/test_layout_files.py tests/test_compartilhado.py`.
