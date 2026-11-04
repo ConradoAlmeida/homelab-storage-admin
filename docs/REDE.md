@@ -47,8 +47,10 @@ publicar em `127.0.0.1` e deixar o Caddy expor.
 
 Dois mecanismos, nos dois hosts (Pi e moyaserver):
 
-- **Digitar:** `*.homelab.lan` (Pi-hole + Caddy). SSH `conrado@homelab.lan`, apps
-  `storage.homelab.lan`. Sem descoberta: `smb://homelab.lan/` ou o IP.
+- **Digitar:** `*.conradhub.lan` (Pi-hole + Caddy). SSH `conrado@conradhub.lan`,
+  apps `storage.conradhub.lan`. Aliases `*.homelab.lan` ainda resolvem. Sem
+  descoberta: `smb://conradhub.lan/` (ou o alias `smb://homelab.lan/`) ou o IP.
+  O hostname Linux, Samba e Avahi continuam `homelab`.
 - **Nautilus / Rede no Linux:** Avahi, domínio `.local` (RFC 6762; mDNS não vai
   em `.lan`). Samba com `multicast dns register`.
 - **Explorador / Rede no Windows:** `wsdd` (WS-Discovery). Hostname `HOMELAB` no
