@@ -37,7 +37,7 @@ Em `/mnt/jellyfin/series`, às 20:21:
 - [x] Organizar somente as marcadas, com o agente para pasta sem torrent.
 - [x] Ajuda e docs. `uv run pytest`. Sem VM.
 - [x] Auditoria contra as decisões deste plano, antes do commit. Falhou uma decisão, corrigir e repetir o teste.
-- [ ] Commit, push e deploy no Pi. Sem organizar a biblioteca real. `install-agent.sh` só entra se o `sudo` não pedir senha. Sem isso, o deploy do painel segue e o relatório diz que a operação nova do agente ainda não está no host.
+- [x] Commit, push e deploy no Pi. Sem organizar a biblioteca real. `install-agent.sh` só entra se o `sudo` não pedir senha. Sem isso, o deploy do painel segue e o relatório diz que a operação nova do agente ainda não está no host.
 
 ## Verificação
 
@@ -58,4 +58,4 @@ Auditoria (diff, 2026-11-04):
 5. Tamanho diferente não apaga nem sobrescreve — ramo `conflitos` em `op_library_merge_dir`; teste `test_library_merge_nao_sobrescreve_tamanho_diferente`.
 6. Sem senha, `.env` nem shell livre no diff — ok (campo de senha do admin na página de token é pré-existente).
 
-Pytest: 307 passed, 6 skipped (2026-11-04). Próximo: commit, push, deploy Pi, smoke.
+Pytest: 307 passed, 6 skipped (2026-11-04). Commit `b14abbd` no `main`. Push ok. Backup `/home/conrado/homelab-pre-deploy-20261104-2034.tgz`. Pi `./deploy.sh` ok; HEAD `b14abbd`. `sudo -n ./install-agent.sh` pediu senha — operação `library_merge_dir` ainda não está no agente do host. Smoke: agente `active`, login HTTP 200 (após subir o container).
