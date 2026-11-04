@@ -16,11 +16,7 @@
     <aside class="sidebar" id="sidebar">
       <a class="brand{% if brand_homelab %} brand-homelab{% endif %}" href="{% url 'dashboard' %}">
         {% if brand_homelab %}
-        <img class="brand-mark" src="{% static 'images/conradhub/mark.png' %}" alt="">
-        <span class="brand-words">
-          <img class="brand-word" src="{% static 'images/conradhub/conradhub-wordmark.png' %}" alt="{{ brand_alt }}">
-          <img class="brand-sub" src="{% static 'images/conradhub/homelab-wordmark.png' %}" alt="">
-        </span>
+        <img class="brand-word" src="{% static 'images/conradhub/sidebar-wordmark.png' %}" width="178" height="54" alt="Conrado Homelab">
         {% else %}
         <img src="{% static brand_logo %}" alt="{{ brand_alt }}">
         <span>{{ product_name }}</span>
