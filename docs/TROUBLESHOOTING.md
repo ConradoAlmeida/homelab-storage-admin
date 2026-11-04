@@ -18,6 +18,7 @@
 | `400 Bad Request` no domínio público | hostname fora de `DJANGO_ALLOWED_HOSTS` | acrescentar e rodar `./deploy.sh` |
 | `CSRF verification failed` atrás do túnel | origem `https://` fora de `DJANGO_CSRF_TRUSTED_ORIGINS` | acrescentar `https://storage.seudominio.com` |
 | Login ok fora de casa, falha na LAN | `DJANGO_SECURE_COOKIES=1` com acesso HTTP | ver [Acesso remoto](SEGURANCA.md#acesso-remoto), "Cookies e HTTPS na LAN" |
+| Troca de senha sem alerta de sucesso/fracasso | POST inválido (campo hidden) ou só o aviso do Chrome em HTTP | a tela mostra `alert`; o log do agente tem `SET_PASSWORD` se gravou. O aviso “Password fields present on an insecure (http://) page” é o Chrome, não o app — [HTTPS na LAN](SEGURANCA.md#cookies-e-https-na-lan) |
 | `502` no `cloudflared` | `config.yml` aponta para `127.0.0.1` ou porta errada | `curl -I http://192.168.0.150:8060/login/` no Pi |
 | `524` ao preparar disco de backup | wizard passa dos 100 s da borda da Cloudflare | rodar pela LAN ou pelo Tailscale ([Acesso remoto](SEGURANCA.md#acesso-remoto)) |
 | `.lan` não resolve fora de casa | sem split DNS/Tailscale | ver [Acesso remoto](SEGURANCA.md#acesso-remoto) |

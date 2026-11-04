@@ -41,8 +41,16 @@ class GroupCreateForm(forms.Form):
 
 
 class PasswordForm(forms.Form):
-    username = forms.CharField(widget=forms.HiddenInput)
-    password = forms.CharField(label="Nova senha", widget=forms.PasswordInput, min_length=8)
+    username = forms.CharField(
+        label="Usuário",
+        widget=forms.TextInput(attrs={"readonly": True}),
+    )
+    password = forms.CharField(
+        label="Nova senha",
+        widget=forms.PasswordInput,
+        min_length=8,
+        help_text="Mínimo 8 caracteres. Vale só para o Samba.",
+    )
 
 
 class GroupsForm(forms.Form):

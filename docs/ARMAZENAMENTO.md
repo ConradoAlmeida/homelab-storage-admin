@@ -68,11 +68,11 @@ lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado �
 
 A categoria gravada no qBittorrent é sempre `jellyfin`. A organização do lote
 é a pasta da biblioteca. Na LAN o Caddy
-publica `http://storage.homelab.lan` e o token segue no header. TLS interno no
-Caddy fecharia esse trecho.
+publica `http://storage.conradhub.lan` (alias `storage.homelab.lan`) e o token
+segue no header. TLS interno no Caddy fecharia esse trecho.
 
 ```bash
-curl -X POST http://storage.homelab.lan/api/torrents/ \
+curl -X POST http://storage.conradhub.lan/api/torrents/ \
   -H "Authorization: Bearer $TORRENT_API_TOKEN" \
   -d '{"magnet":"magnet:?xt=urn:btih:...","library":"Filmes"}'
 ```

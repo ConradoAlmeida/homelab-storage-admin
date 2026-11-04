@@ -107,7 +107,7 @@ enviá-lo em `http://192.168.0.150:8060`** e o login pela LAN falha. Escolha uma
 
 | Opção | Efeito |
 |---|---|
-| Caddy do Pi na frente, com TLS interno (`https://storage.homelab.lan`) | LAN e WAN em HTTPS; instale o CA raiz do Caddy nos clientes |
+| Caddy do Pi na frente, com TLS interno (`https://storage.conradhub.lan`) | LAN e WAN em HTTPS; instale o CA raiz do Caddy nos clientes |
 | `DJANGO_SECURE_COOKIES=0` | LAN em HTTP volta a funcionar; o cookie só é cifrado na Cloudflare, não na LAN |
 | Manter `1` e usar a LAN por IP só como emergência | simples, mas quebra o hábito de usar a LAN |
 
@@ -142,10 +142,12 @@ DNS: **não** use o Pi-hole como resolver global ("Override local DNS") — se o
 cair, o celular fica sem internet. Use **split DNS**:
 
 - Admin console → DNS → Nameservers → Add → Custom → `100.x.y.z` (IP Tailscale do Pi)
-- **Restrict to domain** → `homelab.lan`
+- **Restrict to domain** → `conradhub.lan` (e o alias `homelab.lan`, se ainda
+  usar os nomes antigos)
 
-Assim só `*.homelab.lan` vai para o Pi-hole; o resto continua no DNS da rede onde
-você estiver. O Pi-hole precisa aceitar query de fora das subnets locais:
+Assim só `*.conradhub.lan` (e o alias `*.homelab.lan`) vai para o Pi-hole; o
+resto continua no DNS da rede onde você estiver. O Pi-hole precisa aceitar query
+de fora das subnets locais:
 
 - Pi-hole v6: **Settings → DNS**, responder em todas as origens.
 - `ufw`: liberar `53` **na interface `tailscale0`**:
@@ -179,7 +181,7 @@ curl -sI https://storage.seudominio.com/login/ | head -5
 # VPN e DNS
 tailscale status
 tailscale ping <celular>              # precisa dizer "direct", não "via DERP"
-dig +short storage.homelab.lan @100.x.y.z
+dig +short storage.conradhub.lan @100.x.y.z
 testparm -s | grep -iE 'interfaces|hosts allow'   # vazio = liberado para todos
 ```
 

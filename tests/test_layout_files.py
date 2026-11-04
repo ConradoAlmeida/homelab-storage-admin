@@ -95,7 +95,7 @@ def test_jellyfin_boot_unit_waits_for_media_mount():
 def test_pi_motd_points_to_storage_admin():
     text = read("deploy/pi/motd")
     assert "Storage admin:" in text
-    assert "http://homelab.lan:8060/" in text
+    assert "http://conradhub.lan:8060/" in text
 
 
 def test_deploy_loads_host_env_and_selected_overlay():

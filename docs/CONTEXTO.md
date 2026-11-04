@@ -20,8 +20,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## O que está pronto
 
-- Nomes: apps e SSH em `*.homelab.lan`. Nautilus vê o Samba via Avahi
-  (`.local`); Windows via `wsdd`. Ver [REDE](REDE.md#nomes-na-lan).
+- Nomes: apps e SSH em `*.conradhub.lan`. Os aliases `*.homelab.lan` ainda
+  resolvem. Nautilus vê o Samba via Avahi (`.local`); Windows via `wsdd`.
+  Hostname Linux, Samba e Avahi continuam `homelab`. Ver [REDE](REDE.md#nomes-na-lan).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados.
@@ -78,6 +79,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   faixa; a lógica (`set_groups`, Senha, confirmação) não muda. Sem matriz de
   ACL neste passo. Torrents enfatiza o andamento; envio e API abrem em
   painéis na página.
+- Troca de senha Samba (`/usuarios/senha/`): sucesso e fracasso usam o
+  `alert` do kit. O usuário fica visível (readonly). Erro de validação ou do
+  agente não some mais num campo hidden. O aviso do Chrome sobre password
+  field em `http://storage.conradhub.lan` é o navegador, não o resultado do
+  POST; HTTPS na LAN continua pendente ([SEGURANCA.md](SEGURANCA.md#cookies-e-https-na-lan)).
 - **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
   página** no topo abre um painel com um caso de uso (**No dia a dia**) e
   capítulos por funcionalidade da própria página, usando `<details>` nativo e

@@ -83,7 +83,7 @@
         primeiro valor. O destino é o id ou o nome da biblioteca, como Filmes.
         A categoria no qBittorrent fica <span class="mono">jellyfin</span>.
       </p>
-      <pre class="pre mono">curl -X POST http://storage.homelab.lan/api/torrents/ \
+      <pre class="pre mono">curl -X POST http://storage.conradhub.lan/api/torrents/ \
   -H "Authorization: Bearer $TORRENT_API_TOKEN" \
   -d '{"magnet":"magnet:?xt=urn:btih:...","library":"Filmes"}'</pre>
       <p class="muted text-12">
