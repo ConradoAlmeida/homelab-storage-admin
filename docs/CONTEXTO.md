@@ -42,11 +42,14 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   torrent e a API de envio abrem em painéis na própria página. A lista mostra
   a taxa de download (sem coluna de upload). O cabeçalho da
   coluna ordena a lista. Pausar e retomar alternam na mesma linha;
-  no concluído ficam Remover e Apagar arquivos. Sem o Jellyfin, a página
+  no concluído ficam Remover e Apagar arquivos, exceto em movimentação ou
+  verificação (a linha pede aguardar). Sem o Jellyfin, a página
   não aparece. `POST /api/torrents/` repete esse envio com Bearer.
   Token vazio no banco desliga a rota. A categoria no qBittorrent é
   sempre `jellyfin`. Hash já presente na lista responde `409`. **Organizar biblioteca**
   lista pastas fora de Título (Ano), aplica só as marcadas e mostra feito e não feito.
+  Pastas sem ano (sem override) não são criadas; resíduo grande sem torrent é avisado;
+  torrent instável não renomeia na organização.
   O token fica
   legível no banco do painel. O `host.env` só grava o primeiro valor. O
   administrador cria, consulta e troca na página Torrents com a senha da

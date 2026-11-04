@@ -34,18 +34,19 @@
         <input type="hidden" name="action" value="resume">
         <button class="btn small" type="submit">Retomar</button>
       </form>
-      <form method="post" action="{% url 'torrent_action' %}" data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
+      <form method="post" action="{% url 'torrent_action' %}" data-torrent-delete {% if not item.can_delete %}hidden{% endif %} data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
         {% csrf_token %}
         <input type="hidden" name="hash" value="{{ item.hash }}">
         <input type="hidden" name="action" value="delete">
         <button class="btn small" type="submit">Remover</button>
       </form>
-      <form method="post" action="{% url 'torrent_action' %}" data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
+      <form method="post" action="{% url 'torrent_action' %}" data-torrent-delete {% if not item.can_delete %}hidden{% endif %} data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
         {% csrf_token %}
         <input type="hidden" name="hash" value="{{ item.hash }}">
         <input type="hidden" name="action" value="delete_files">
         <button class="btn small danger" type="submit">Apagar arquivos</button>
       </form>
+      <p class="muted text-11" data-torrent-delete-msg {% if item.can_delete %}hidden{% endif %}>{{ item.delete_blocked_message }}</p>
     </div>
   </td>
 </tr>

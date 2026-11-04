@@ -148,6 +148,16 @@
     var retoma = linha.querySelector("[data-torrent-resume]");
     if (pausa) pausa.hidden = !item.can_pause;
     if (retoma) retoma.hidden = !item.can_resume;
+    var apagar = item.can_delete !== false;
+    linha.querySelectorAll("[data-torrent-delete]").forEach(function (form) {
+      form.hidden = !apagar;
+    });
+    var aviso = linha.querySelector("[data-torrent-delete-msg]");
+    if (aviso) {
+      var texto = apagar ? "" : item.delete_blocked_message || "";
+      aviso.textContent = texto;
+      aviso.hidden = !texto;
+    }
   }
 
   function preencherLinha(linha, item) {

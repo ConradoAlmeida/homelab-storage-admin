@@ -515,6 +515,36 @@ class ViewSmokeTests(TestCase):
             ).exists()
         )
 
+    def test_acao_delete_instavel_mostra_frase(self):
+        self._liga_jellyfin()
+        self.fake.torrent_overview.return_value = {
+            "libraries": [
+                {"id": "filmes", "name": "Filmes", "path": "/mnt/jellyfin/filmes"}
+            ],
+            "libraries_error": "",
+            "client": {"available": True, "version": "v5", "reason": ""},
+            "torrents": [],
+            "error": "",
+            "active": True,
+        }
+        self.qbit.acao.side_effect = AgentError(
+            "Torrent em movimentação/verificação; aguarde o estado estabilizar antes de remover."
+        )
+        resposta = self.client.post(
+            "/torrents/acao/",
+            {"hash": "b" * 40, "action": "delete_files"},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(
+            resposta,
+            "Torrent em movimentação/verificação; aguarde o estado estabilizar antes de remover.",
+        )
+        self.qbit.acao.assert_called_once()
+        self.assertFalse(
+            AuditLog.objects.filter(action="torrent.delete_files").exists()
+        )
+
     def test_organizar_reexibe_relatorio(self):
         self._liga_jellyfin()
         self.fake.torrent_overview.return_value = {

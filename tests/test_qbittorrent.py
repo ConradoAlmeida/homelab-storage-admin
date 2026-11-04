@@ -349,3 +349,120 @@ def test_organizar_linhas_demo(monkeypatch):
     monkeypatch.setenv("STORAGE_ADMIN_DEMO", "1")
     relatorio = qbit.organizar_linhas({"id": "s"}, ["Colony S01"], [], lambda *_: None)
     assert relatorio["feitos"]
+
+
+_MSG_INSTAVEL = (
+    "Torrent em movimentação/verificação; aguarde o estado estabilizar antes de remover."
+)
+
+
+@pytest.mark.parametrize("action", ["delete", "delete_files"])
+@pytest.mark.parametrize("state", ["moving", "checkingDL", "metaDL"])
+def test_acao_recusa_exclusao_em_estado_instavel(
+    monkeypatch, tmp_path, action, state
+):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    chamadas = cliente(
+        monkeypatch,
+        info=[{"hash": "e" * 40, "save_path": str(filmes), "state": state}],
+    )
+    with pytest.raises(AgentError, match="movimentação"):
+        qbit.acao("e" * 40, action, bibliotecas(filmes))
+    assert all(item[1] != "/api/v2/torrents/delete" for item in chamadas)
+
+
+def test_acao_delete_pausedup(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    chamadas = cliente(
+        monkeypatch,
+        info=[{"hash": "e" * 40, "save_path": str(filmes), "state": "pausedUP"}],
+    )
+    qbit.acao("e" * 40, "delete", bibliotecas(filmes))
+    assert any(item[1] == "/api/v2/torrents/delete" for item in chamadas)
+
+
+def test_acao_pausa_em_moving(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    chamadas = cliente(
+        monkeypatch,
+        info=[{"hash": "f" * 40, "save_path": str(filmes), "state": "moving"}],
+    )
+    qbit.acao("f" * 40, "pause", bibliotecas(filmes))
+    assert any(
+        item[1] in {"/api/v2/torrents/stop", "/api/v2/torrents/pause"} for item in chamadas
+    )
+
+
+def test_organizar_linhas_recusa_sem_ano(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    pasta = series / "Serie Nova S01 1080p"
+    pasta.mkdir(parents=True)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+
+    def mesclar(*_args, **_kwargs):
+        raise AssertionError("não deveria mesclar pasta sem ano")
+
+    relatorio = qbit.organizar_linhas(libs[0], ["Serie Nova S01 1080p"], libs, mesclar)
+    assert relatorio["feitos"] == []
+    assert relatorio["nao_feitos"][0]["motivo"] == "Sem ano no título e sem override"
+
+
+def test_listar_pastas_sem_ano_e_residuo(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    sem_ano = series / "Serie Nova S01"
+    sem_ano.mkdir(parents=True)
+    grande = series / "Orfa S01 1080p"
+    grande.mkdir(parents=True)
+    monkeypatch.setattr(qbit, "_RESIDUO_MIN_BYTES", 100)
+    (grande / "arquivo.bin").write_bytes(b"x" * 200)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    linhas = {item["atual"]: item for item in qbit.listar_pastas_fora_padrao(libs[0], libs)}
+    assert linhas["Serie Nova S01"]["sem_ano"] is True
+    assert linhas["Orfa S01 1080p"]["aviso"] == "Resíduo grande, sem torrent"
+
+
+def test_estado_instavel_esconde_exclusao(monkeypatch, tmp_path):
+    filmes = tmp_path / "filmes"
+    filmes.mkdir()
+    cliente(
+        monkeypatch,
+        info=[
+            {
+                "hash": "b" * 40,
+                "name": "Filme",
+                "save_path": os.path.realpath(filmes),
+                "progress": 0.9,
+                "state": "moving",
+                "dlspeed": 0,
+                "eta": 0,
+                "size": 1024,
+            }
+        ],
+    )
+    _client, torrents, erro = qbit.estado(bibliotecas(filmes))
+    assert erro == ""
+    assert torrents[0]["can_delete"] is False
+    assert torrents[0]["delete_blocked_message"] == _MSG_INSTAVEL

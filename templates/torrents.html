@@ -59,7 +59,7 @@
         <h3>Feito</h3>
         <ul>
           {% for item in organizacao.feitos %}
-            <li>{{ item.de }} → {{ item.para }}</li>
+            <li>{{ item.de }} → {{ item.para }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
           {% endfor %}
         </ul>
       {% endif %}
@@ -67,7 +67,7 @@
         <h3>Não feito</h3>
         <ul>
           {% for item in organizacao.nao_feitos %}
-            <li>{% if item.nome %}{{ item.nome }} — {% endif %}{{ item.motivo }}</li>
+            <li>{% if item.nome %}{{ item.nome }} — {% endif %}{{ item.motivo }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
           {% endfor %}
         </ul>
       {% endif %}
@@ -123,7 +123,11 @@
                       <td>
                         <input type="checkbox" name="marcar" value="{{ linha.atual }}" checked>
                       </td>
-                      <td>{{ linha.atual }}</td>
+                      <td>
+                        {{ linha.atual }}
+                        {% if linha.sem_ano %}<span class="tag">sem ano</span>{% endif %}
+                        {% if linha.aviso %}<span class="muted text-11">{{ linha.aviso }}</span>{% endif %}
+                      </td>
                       <td>{{ linha.alvo }}</td>
                       <td>{% if linha.tem_torrent %}Sim{% else %}Não{% endif %}</td>
                     </tr>
@@ -339,18 +343,19 @@
                 <input type="hidden" name="action" value="resume">
                 <button class="btn small" type="submit">Retomar</button>
               </form>
-              <form method="post" action="{% url 'torrent_action' %}" data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
+              <form method="post" action="{% url 'torrent_action' %}" data-torrent-delete data-confirm="Remover este torrent da fila? Os arquivos já baixados permanecem na pasta.">
                 {% csrf_token %}
                 <input type="hidden" name="hash" value="">
                 <input type="hidden" name="action" value="delete">
                 <button class="btn small" type="submit">Remover</button>
               </form>
-              <form method="post" action="{% url 'torrent_action' %}" data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
+              <form method="post" action="{% url 'torrent_action' %}" data-torrent-delete data-confirm="Apagar os arquivos deste torrent? O conteúdo some da pasta do Jellyfin.">
                 {% csrf_token %}
                 <input type="hidden" name="hash" value="">
                 <input type="hidden" name="action" value="delete_files">
                 <button class="btn small danger" type="submit">Apagar arquivos</button>
               </form>
+              <p class="muted text-11" data-torrent-delete-msg hidden></p>
             </div>
           </td>
         </tr>

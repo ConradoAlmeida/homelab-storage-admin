@@ -68,7 +68,10 @@ lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado �
 
 A categoria gravada no qBittorrent é sempre `jellyfin`. **Organizar biblioteca**
 lista pastas fora do padrão Título (Ano), organiza só as marcadas e mostra feito
-e não feito. Pasta com torrent ativo renomeia via qBittorrent; pasta solta mescla
+e não feito. Pasta sem ano no título (sem override manual) recebe a tag **sem ano**
+e não é movida. Pasta grande sem torrent aparece como **Resíduo grande, sem torrent**.
+Torrent em movimentação ou verificação não aceita Remover, Apagar arquivos nem
+rename na organização. Pasta com torrent ativo renomeia via qBittorrent; pasta solta mescla
 no host pelo agente. Na LAN o Caddy
 publica `https://homelab.conradhub.com` e o token
 segue no header. TLS interno no Caddy fecharia esse trecho.
@@ -82,6 +85,8 @@ curl -X POST https://homelab.conradhub.com/api/torrents/ \
 A lista mostra a taxa de download. **Atualizar** mexe só no andamento; **Automático** controla a busca periódica nesta aba. Pausar e retomar valem enquanto o arquivo baixa. No torrent concluído esses
 botões somem; **Remover** tira o item da fila e o arquivo permanece. **Apagar arquivos** pede
 confirmação e só vale para um torrent cuja pasta está dentro de uma biblioteca.
+Enquanto o qBittorrent está em movimentação ou verificação, Remover e Apagar arquivos
+somem e a linha exibe o aviso para aguardar o estado estabilizar.
 A pasta da biblioteca não é removida.
 
 ---

@@ -57,6 +57,9 @@ _ESTADOS = {
     "stoppedUP": "concluído",
     "queuedUP": "concluído",
     "checkingUP": "verificando",
+    "checkingResumeData": "verificando",
+    "checkingRI": "verificando",
+    "checkingRD": "verificando",
     "error": "erro",
     "missingFiles": "arquivos ausentes",
 }
@@ -91,6 +94,23 @@ _OVERRIDES_TITULO = {
     "The Walking Dead Daryl Dixon": "The Walking Dead Daryl Dixon (2023)",
     "The Walking Dead The Ones Who Live": "The Walking Dead The Ones Who Live (2024)",
 }
+_ESTADOS_INSTAVEIS = frozenset(
+    {
+        "moving",
+        "checkingResumeData",
+        "checkingDL",
+        "checkingUP",
+        "checkingRI",
+        "checkingRD",
+        "metaDL",
+    }
+)
+_MSG_ESTADO_INSTAVEL = (
+    "Torrent em movimentação/verificação; aguarde o estado estabilizar antes de remover."
+)
+_SEM_ANO_MOTIVO = "Sem ano no título e sem override"
+_AVISO_RESIDUO = "Resíduo grande, sem torrent"
+_RESIDUO_MIN_BYTES = 1024**3
 
 
 def _demo() -> bool:
@@ -269,6 +289,10 @@ def _publico(item: dict, libraries: list[dict]) -> dict | None:
         or enviando > 0,
         "can_pause": estado_bruto in _ATIVOS,
         "can_resume": estado_bruto in _BAIXANDO_PAUSADO,
+        "can_delete": estado_bruto not in _ESTADOS_INSTAVEIS,
+        "delete_blocked_message": (
+            _MSG_ESTADO_INSTAVEL if estado_bruto in _ESTADOS_INSTAVEIS else ""
+        ),
     }
 
 
@@ -308,6 +332,8 @@ def _demo_torrent() -> dict:
         "active": True,
         "can_pause": True,
         "can_resume": False,
+        "can_delete": True,
+        "delete_blocked_message": "",
     }
 
 
@@ -431,6 +457,9 @@ def acao(torrent_hash: str, action: str, libraries: list[dict]) -> dict:
     item = _bruto(torrent_hash)
     if _biblioteca_do_caminho(item.get("save_path") or "", libraries) is None:
         raise AgentError("Esse torrent não está numa pasta do Jellyfin")
+    estado = item.get("state") or ""
+    if action in {"delete", "delete_files"} and estado in _ESTADOS_INSTAVEIS:
+        raise AgentError(_MSG_ESTADO_INSTAVEL)
     dados = {"hashes": torrent_hash}
     if action == "pause":
         code, _body = _post(["/api/v2/torrents/stop", "/api/v2/torrents/pause"], dados)
@@ -464,6 +493,40 @@ def _limpar_titulo(bruto: str) -> tuple[str, int | None]:
             texto = texto[: match.start()].strip()
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto, ano
+
+
+def _sem_ano_pasta(nome_pasta: str) -> bool:
+    titulo, ano = _limpar_titulo(nome_pasta)
+    if not titulo:
+        return False
+    if titulo in _OVERRIDES_TITULO:
+        return False
+    return ano is None
+
+
+def _tamanho_arquivos_diretorio(caminho: str) -> int:
+    total = 0
+    try:
+        for raiz, _dirs, arquivos in os.walk(caminho, followlinks=False):
+            for nome in arquivos:
+                caminho_arquivo = os.path.join(raiz, nome)
+                if os.path.islink(caminho_arquivo):
+                    continue
+                try:
+                    total += os.path.getsize(caminho_arquivo)
+                except OSError:
+                    continue
+    except OSError:
+        return 0
+    return total
+
+
+def _aviso_residuo_pasta(pasta: str, tem_torrent: bool) -> str:
+    if tem_torrent:
+        return ""
+    if _tamanho_arquivos_diretorio(pasta) >= _RESIDUO_MIN_BYTES:
+        return _AVISO_RESIDUO
+    return ""
 
 
 def alvo_da_pasta(nome_torrent: str) -> str | None:
@@ -587,12 +650,15 @@ def listar_pastas_fora_padrao(biblioteca: dict, libraries: list[dict]) -> list[d
             hash_torrent = (item.get("hash") or "").lower()
             if not _HASH_RE.match(hash_torrent):
                 hash_torrent = ""
+        tem_torrent = bool(hash_torrent)
         linhas.append(
             {
                 "atual": nome,
                 "alvo": alvo,
-                "tem_torrent": bool(hash_torrent),
+                "tem_torrent": tem_torrent,
                 "hash": hash_torrent,
+                "sem_ano": _sem_ano_pasta(nome),
+                "aviso": _aviso_residuo_pasta(pasta, tem_torrent),
             }
         )
     return linhas
@@ -651,12 +717,27 @@ def organizar_linhas(
             relatorio["nao_feitos"].append({"nome": atual, "motivo": "Já no padrão"})
             continue
         item = torrents.get((base, atual))
+        tem_torrent = bool(item)
+        aviso = _aviso_residuo_pasta(pasta, tem_torrent)
+        if _sem_ano_pasta(atual):
+            entrada = {"nome": atual, "motivo": _SEM_ANO_MOTIVO}
+            if aviso:
+                entrada["aviso"] = aviso
+            relatorio["nao_feitos"].append(entrada)
+            continue
         if item:
             hash_torrent = (item.get("hash") or "").lower()
             if not _HASH_RE.match(hash_torrent):
                 relatorio["nao_feitos"].append(
                     {"nome": atual, "motivo": "Torrent inválido"}
                 )
+                continue
+            estado = item.get("state") or ""
+            if estado in _ESTADOS_INSTAVEIS:
+                entrada = {"nome": atual, "motivo": _MSG_ESTADO_INSTAVEL}
+                if aviso:
+                    entrada["aviso"] = aviso
+                relatorio["nao_feitos"].append(entrada)
                 continue
             code, _body = _renomear_pasta(hash_torrent, atual, alvo)
             if code != 200:
@@ -667,12 +748,18 @@ def organizar_linhas(
                     }
                 )
                 continue
-            relatorio["feitos"].append({"de": atual, "para": alvo})
+            feito = {"de": atual, "para": alvo}
+            if aviso:
+                feito["aviso"] = aviso
+            relatorio["feitos"].append(feito)
             continue
         try:
             resultado = mesclar_pasta(biblioteca.get("id") or "", atual, alvo)
         except AgentError as exc:
-            relatorio["nao_feitos"].append({"nome": atual, "motivo": str(exc)})
+            entrada = {"nome": atual, "motivo": str(exc)}
+            if aviso:
+                entrada["aviso"] = aviso
+            relatorio["nao_feitos"].append(entrada)
             continue
         if not isinstance(resultado, dict):
             relatorio["nao_feitos"].append(
@@ -680,8 +767,14 @@ def organizar_linhas(
             )
             continue
         if resultado.get("ok"):
-            relatorio["feitos"].append({"de": atual, "para": alvo})
+            feito = {"de": atual, "para": alvo}
+            if aviso:
+                feito["aviso"] = aviso
+            relatorio["feitos"].append(feito)
         else:
             motivo = (resultado.get("motivo") or "").strip() or "Não foi possível organizar"
-            relatorio["nao_feitos"].append({"nome": atual, "motivo": motivo})
+            entrada = {"nome": atual, "motivo": motivo}
+            if aviso:
+                entrada["aviso"] = aviso
+            relatorio["nao_feitos"].append(entrada)
     return relatorio

@@ -247,13 +247,18 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Remover",
-                "text": "Tira o torrent da fila e mantém os arquivos na pasta.",
+                "text": (
+                    "Tira o torrent da fila e mantém os arquivos na pasta. Enquanto "
+                    "o qBittorrent está movendo ou verificando, Remover e Apagar "
+                    "arquivos somem e a linha pede para aguardar o estado estabilizar."
+                ),
             },
             {
                 "title": "Apagar arquivos",
                 "text": (
                     "Remove o torrent e apaga o conteúdo baixado. A pasta da "
-                    "biblioteca em si permanece."
+                    "biblioteca em si permanece. No estado de movimentação ou "
+                    "verificação a ação fica indisponível, como em Remover."
                 ),
             },
             {
@@ -263,6 +268,9 @@ AJUDA: dict[str, dict[str, Any]] = {
                     "padrão Título (Ano). Marque só as que quer mover; a aplicação "
                     "não varre de novo. Linha com torrent ativo usa renameFolder no "
                     "qBittorrent; pasta solta é renomeada ou mesclada pelo agente. "
+                    "Sem ano no título e sem override manual a pasta não é criada "
+                    "(tag sem ano). Pasta grande sem torrent aparece como resíduo. "
+                    "Torrent em movimentação ou verificação não é renomeado. "
                     "A página mostra o que foi feito e o que não foi."
                 ),
             },
