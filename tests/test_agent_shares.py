@@ -144,6 +144,28 @@ def test_dir_size_reaproveita_medicao_por_tres_minutos(agent_module, monkeypatch
     assert calls["n"] == 2
 
 
+def test_share_sizes_responde_enquanto_mede(agent_module):
+    agent = agent_module
+    previous = (
+        agent._share_sizes_running,
+        agent._share_sizes_ready,
+        agent._share_sizes_error,
+    )
+    agent._share_sizes_running = True
+    agent._share_sizes_ready = None
+    agent._share_sizes_error = ""
+    try:
+        data = agent.op_share_sizes()
+    finally:
+        (
+            agent._share_sizes_running,
+            agent._share_sizes_ready,
+            agent._share_sizes_error,
+        ) = previous
+    assert data["pending"] is True
+    assert data["shares"] == []
+
+
 def test_dir_size_nao_grava_falha_no_cache(agent_module, monkeypatch, tmp_path):
     agent = agent_module
 

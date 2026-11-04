@@ -18,7 +18,7 @@
   }
 
   function stopSpinners() {
-    document.querySelectorAll("[data-size], [data-snap-size], [data-total] strong").forEach((cell) => {
+    document.querySelectorAll("[data-size], [data-snap-size], [data-snap-total], [data-total] strong").forEach((cell) => {
       if (cell.querySelector(".spinner")) cell.textContent = "—";
     });
   }

@@ -995,7 +995,7 @@ def _share_sizes_worker() -> None:
 
 def op_share_sizes(**_):
     """Devolve o cache ou dispara a medição sem segurar o pedido HTTP."""
-    global _share_sizes_running
+    global _share_sizes_running, _share_sizes_error
     with _share_sizes_lock:
         fresh = (
             _share_sizes_ready is not None
