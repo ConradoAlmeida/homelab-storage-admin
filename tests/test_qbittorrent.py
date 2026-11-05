@@ -273,7 +273,7 @@ def test_listar_pastas_ignora_padrao(monkeypatch, tmp_path):
     assert linhas[0]["alvo"] == "Silo (2023)"
 
 
-def test_organizar_linhas_rename_com_torrent(monkeypatch, tmp_path):
+def test_organizar_linhas_ignora_torrent_concluido(monkeypatch, tmp_path):
     raiz = tmp_path / "jellyfin"
     series = raiz / "series"
     pasta = series / "Colony S01"
@@ -312,10 +312,113 @@ def test_organizar_linhas_rename_com_torrent(monkeypatch, tmp_path):
         raise AssertionError("não deveria chamar o agente")
 
     relatorio = qbit.organizar_linhas(libs[0], ["Colony S01"], libs, mesclar)
-    assert relatorio["feitos"] == [{"de": "Colony S01", "para": "Colony (2016)"}]
-    assert renames == [
-        {"hash": hash_ok, "oldPath": "Colony S01", "newPath": "Colony (2016)"}
+    assert relatorio["feitos"] == []
+    assert relatorio["ignorados"] == [
+        {
+            "nome": "Colony S01",
+            "motivo": qbit._MSG_TORRENT_REMOVER_LISTA,
+        }
     ]
+    assert renames == []
+
+
+def test_organizar_linhas_ignora_torrent_baixando(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    pasta = series / "Colony S01"
+    pasta.mkdir(parents=True)
+    (pasta / "ep.mkv").write_bytes(b"x")
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    hash_ok = "a" * 40
+    info = [
+        {
+            "hash": hash_ok,
+            "name": "Colony S01 1080p",
+            "progress": 0.5,
+            "state": "downloading",
+            "save_path": str(series),
+            "content_path": str(pasta / "ep.mkv"),
+        }
+    ]
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+
+    relatorio = qbit.organizar_linhas(
+        libs[0], ["Colony S01"], libs, lambda *_a, **_k: None
+    )
+    assert relatorio["ignorados"][0]["motivo"] == qbit._MSG_TORRENT_AGUARDE_DOWNLOAD
+
+
+def test_listar_pastas_feedback_torrent(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    pasta = series / "Colony S01"
+    pasta.mkdir(parents=True)
+    (pasta / "ep.mkv").write_bytes(b"x")
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    hash_ok = "a" * 40
+    info = [
+        {
+            "hash": hash_ok,
+            "name": "Colony S01",
+            "progress": 1,
+            "state": "pausedUP",
+            "save_path": str(series),
+            "content_path": str(pasta / "ep.mkv"),
+        }
+    ]
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    linhas = qbit.listar_pastas_fora_padrao(libs[0], libs)
+    assert linhas[0]["torrent_organizavel"] is True
+    assert linhas[0]["feedback"] == qbit._MSG_TORRENT_REMOVER_LISTA
+
+
+def test_listar_pastas_feedback_torrent_instavel_nao_e_organizavel(
+    monkeypatch, tmp_path
+):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    pasta = series / "Colony S01"
+    pasta.mkdir(parents=True)
+    (pasta / "ep.mkv").write_bytes(b"x")
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    info = [
+        {
+            "hash": "a" * 40,
+            "name": "Colony S01",
+            "progress": 1,
+            "state": "moving",
+            "save_path": str(series),
+            "content_path": str(pasta / "ep.mkv"),
+        }
+    ]
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    linha = qbit.listar_pastas_fora_padrao(libs[0], libs)[0]
+    assert linha["torrent_organizavel"] is False
+    assert linha["feedback"] == qbit._MSG_TORRENT_AGUARDE_DOWNLOAD
 
 
 def test_organizar_linhas_só_marcadas(monkeypatch, tmp_path):
@@ -442,6 +545,56 @@ def test_listar_pastas_sem_ano_e_residuo(monkeypatch, tmp_path):
     linhas = {item["atual"]: item for item in qbit.listar_pastas_fora_padrao(libs[0], libs)}
     assert linhas["Serie Nova S01"]["sem_ano"] is True
     assert linhas["Orfa S01 1080p"]["aviso"] == "Resíduo grande, sem torrent"
+
+
+def test_listar_pastas_residuo_arquivo_esparso(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    grande = series / "Orfa S01 1080p"
+    grande.mkdir(parents=True)
+    monkeypatch.setattr(qbit, "_RESIDUO_MIN_BYTES", 1024**3)
+    esparso = grande / "grande.bin"
+    fd = os.open(esparso, os.O_CREAT | os.O_WRONLY)
+    os.truncate(fd, 2 * 1024**3)
+    os.close(fd)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    linhas = qbit.listar_pastas_fora_padrao(libs[0], libs)
+    assert linhas[0]["aviso"] == qbit._AVISO_RESIDUO
+
+
+def test_organizar_linhas_recusa_residuo_grande(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    grande = series / "Show (2020) Season 1 S01"
+    grande.mkdir(parents=True)
+    monkeypatch.setattr(qbit, "_RESIDUO_MIN_BYTES", 100)
+    (grande / "arquivo.bin").write_bytes(b"x" * 200)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+
+    def mesclar(*_args, **_kwargs):
+        raise AssertionError("não deveria mesclar resíduo grande")
+
+    relatorio = qbit.organizar_linhas(libs[0], ["Show (2020) Season 1 S01"], libs, mesclar)
+    assert relatorio["feitos"] == []
+    assert relatorio["nao_feitos"][0]["motivo"] == qbit._AVISO_RESIDUO
 
 
 def test_estado_instavel_esconde_exclusao(monkeypatch, tmp_path):

@@ -67,12 +67,12 @@ lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado �
 `503`. Token vazio ou host sem Jellyfin é `404`.
 
 A categoria gravada no qBittorrent é sempre `jellyfin`. **Organizar biblioteca**
-lista pastas fora do padrão Título (Ano), organiza só as marcadas e mostra feito
-e não feito. Pasta sem ano no título (sem override manual) recebe a tag **sem ano**
+lista pastas fora do padrão Título (Ano), organiza só as marcadas e mostra feito,
+não feito e ignorados. Pasta sem ano no título (sem override manual) recebe a tag **sem ano**
 e não é movida. Pasta grande sem torrent aparece como **Resíduo grande, sem torrent**.
-Torrent em movimentação ou verificação não aceita Remover, Apagar arquivos nem
-rename na organização. Pasta com torrent ativo renomeia via qBittorrent; pasta solta mescla
-no host pelo agente. Na LAN o Caddy
+Torrent em movimentação ou verificação não aceita Remover nem Apagar arquivos.
+Pasta com torrent ativo fica ignorada até sair da lista do qBittorrent (manter arquivos);
+pasta solta mescla no host pelo agente. Na LAN o Caddy
 publica `https://homelab.conradhub.com` e o token
 segue no header. TLS interno no Caddy fecharia esse trecho.
 

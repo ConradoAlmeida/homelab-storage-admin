@@ -321,10 +321,11 @@ class TorrentOrganizeApplyView(ExigeJellyfinMixin, AgentPostView):
             return render(request, "torrents.html", pagina)
         feitos = len(organizacao.get("feitos") or [])
         falhas = len(organizacao.get("nao_feitos") or [])
+        ignorados = len(organizacao.get("ignorados") or [])
         _auditar(
             request,
             "torrent.organize",
-            f"{feitos} feitos, {falhas} não feitos",
+            f"{feitos} feitos, {falhas} não feitos, {ignorados} ignorados",
         )
         pagina = _pagina_torrents(request, overview, organizacao=organizacao)
         return render(request, "torrents.html", pagina)

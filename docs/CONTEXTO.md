@@ -47,9 +47,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   não aparece. `POST /api/torrents/` repete esse envio com Bearer.
   Token vazio no banco desliga a rota. A categoria no qBittorrent é
   sempre `jellyfin`. Hash já presente na lista responde `409`. **Organizar biblioteca**
-  lista pastas fora de Título (Ano), aplica só as marcadas e mostra feito e não feito.
+  lista pastas fora de Título (Ano), aplica só as marcadas e mostra feito, não feito e ignorados.
   Pastas sem ano (sem override) não são criadas; resíduo grande sem torrent é avisado;
-  torrent instável não renomeia na organização.
+  pasta com torrent ativo fica ignorada até remover o torrent da lista (manter arquivos).
   O token fica
   legível no banco do painel. O `host.env` só grava o primeiro valor. O
   administrador cria, consulta e troca na página Torrents com a senha da

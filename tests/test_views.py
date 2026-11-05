@@ -567,6 +567,7 @@ class ViewSmokeTests(TestCase):
         self.qbit.organizar_linhas.return_value = {
             "feitos": [{"de": "Colony S01", "para": "Colony (2016)"}],
             "nao_feitos": [{"nome": "Outra", "motivo": "Arquivo diferente: x.mkv"}],
+            "ignorados": [],
         }
         resposta = self.client.post(
             "/torrents/organizar/",

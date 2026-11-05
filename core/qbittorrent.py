@@ -111,6 +111,13 @@ _MSG_ESTADO_INSTAVEL = (
 _SEM_ANO_MOTIVO = "Sem ano no título e sem override"
 _AVISO_RESIDUO = "Resíduo grande, sem torrent"
 _RESIDUO_MIN_BYTES = 1024**3
+_ESTADOS_TORRENT_CONCLUIDO = frozenset(
+    {"uploading", "stalledUP", "pausedUP", "stoppedUP"}
+)
+_MSG_TORRENT_REMOVER_LISTA = (
+    "Torrent concluído — remova-o da lista (manter arquivos) e rode o organizador de novo."
+)
+_MSG_TORRENT_AGUARDE_DOWNLOAD = "Torrent em download — aguarde concluir."
 
 
 def _demo() -> bool:
@@ -529,6 +536,17 @@ def _aviso_residuo_pasta(pasta: str, tem_torrent: bool) -> str:
     return ""
 
 
+def _torrent_organizavel_e_feedback(item: dict) -> tuple[bool, str]:
+    try:
+        progresso_ok = float(item.get("progress") or 0) >= 1
+    except (TypeError, ValueError):
+        progresso_ok = False
+    estado = item.get("state") or ""
+    if progresso_ok and estado in _ESTADOS_TORRENT_CONCLUIDO:
+        return True, _MSG_TORRENT_REMOVER_LISTA
+    return False, _MSG_TORRENT_AGUARDE_DOWNLOAD
+
+
 def alvo_da_pasta(nome_torrent: str) -> str | None:
     """Nome de pasta Jellyfin a partir do nome do torrent; None se não der para inferir."""
     titulo, ano = _limpar_titulo(nome_torrent)
@@ -651,16 +669,19 @@ def listar_pastas_fora_padrao(biblioteca: dict, libraries: list[dict]) -> list[d
             if not _HASH_RE.match(hash_torrent):
                 hash_torrent = ""
         tem_torrent = bool(hash_torrent)
-        linhas.append(
-            {
-                "atual": nome,
-                "alvo": alvo,
-                "tem_torrent": tem_torrent,
-                "hash": hash_torrent,
-                "sem_ano": _sem_ano_pasta(nome),
-                "aviso": _aviso_residuo_pasta(pasta, tem_torrent),
-            }
-        )
+        linha = {
+            "atual": nome,
+            "alvo": alvo,
+            "tem_torrent": tem_torrent,
+            "hash": hash_torrent,
+            "sem_ano": _sem_ano_pasta(nome),
+            "aviso": _aviso_residuo_pasta(pasta, tem_torrent),
+        }
+        if tem_torrent and item:
+            organizavel, feedback = _torrent_organizavel_e_feedback(item)
+            linha["torrent_organizavel"] = organizavel
+            linha["feedback"] = feedback
+        linhas.append(linha)
     return linhas
 
 
@@ -679,8 +700,8 @@ def organizar_linhas(
     libraries: list[dict],
     mesclar_pasta,
 ) -> dict:
-    """Organiza só as pastas indicadas; torrent ativo usa renameFolder do qBittorrent."""
-    relatorio: dict = {"feitos": [], "nao_feitos": []}
+    """Organiza só as pastas indicadas; pasta com torrent ativo fica em ignorados."""
+    relatorio: dict = {"feitos": [], "nao_feitos": [], "ignorados": []}
     if _demo():
         marcados = [nome for nome in nomes_marcados if nome]
         if marcados:
@@ -725,6 +746,9 @@ def organizar_linhas(
                 entrada["aviso"] = aviso
             relatorio["nao_feitos"].append(entrada)
             continue
+        if aviso:
+            relatorio["nao_feitos"].append({"nome": atual, "motivo": aviso})
+            continue
         if item:
             hash_torrent = (item.get("hash") or "").lower()
             if not _HASH_RE.match(hash_torrent):
@@ -732,26 +756,11 @@ def organizar_linhas(
                     {"nome": atual, "motivo": "Torrent inválido"}
                 )
                 continue
-            estado = item.get("state") or ""
-            if estado in _ESTADOS_INSTAVEIS:
-                entrada = {"nome": atual, "motivo": _MSG_ESTADO_INSTAVEL}
-                if aviso:
-                    entrada["aviso"] = aviso
-                relatorio["nao_feitos"].append(entrada)
-                continue
-            code, _body = _renomear_pasta(hash_torrent, atual, alvo)
-            if code != 200:
-                relatorio["nao_feitos"].append(
-                    {
-                        "nome": atual,
-                        "motivo": f"qBittorrent recusou o rename (HTTP {code})",
-                    }
-                )
-                continue
-            feito = {"de": atual, "para": alvo}
+            _organizavel, feedback = _torrent_organizavel_e_feedback(item)
+            entrada = {"nome": atual, "motivo": feedback}
             if aviso:
-                feito["aviso"] = aviso
-            relatorio["feitos"].append(feito)
+                entrada["aviso"] = aviso
+            relatorio["ignorados"].append(entrada)
             continue
         try:
             resultado = mesclar_pasta(biblioteca.get("id") or "", atual, alvo)

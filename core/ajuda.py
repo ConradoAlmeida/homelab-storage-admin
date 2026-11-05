@@ -266,12 +266,12 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": (
                     "Escolha Séries ou Filmes e liste as pastas imediatas fora do "
                     "padrão Título (Ano). Marque só as que quer mover; a aplicação "
-                    "não varre de novo. Linha com torrent ativo usa renameFolder no "
-                    "qBittorrent; pasta solta é renomeada ou mesclada pelo agente. "
-                    "Sem ano no título e sem override manual a pasta não é criada "
-                    "(tag sem ano). Pasta grande sem torrent aparece como resíduo. "
-                    "Torrent em movimentação ou verificação não é renomeado. "
-                    "A página mostra o que foi feito e o que não foi."
+                    "não varre de novo. Linha com torrent ativo fica ignorada até "
+                    "remover o torrent da lista mantendo os arquivos; pasta solta é "
+                    "mesclada pelo agente. Sem ano no título e sem override manual "
+                    "a pasta não é criada (tag sem ano). Pasta grande sem torrent "
+                    "aparece como resíduo. A página mostra feitos, não feitos e "
+                    "ignorados."
                 ),
             },
             {

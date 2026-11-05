@@ -160,7 +160,7 @@
     </div>
     <p class="muted text-12">
       Escolha Séries ou Filmes, veja as pastas fora do padrão Título (Ano) e organize só as marcadas.
-      Linha com torrent ativo é renomeada pelo qBittorrent; pasta solta é mesclada pelo agente no host.
+      Pasta com torrent ativo fica ignorada até você remover o torrent da lista (manter arquivos); pasta solta é mesclada pelo agente no host.
     </p>
     <div class="card">
       <form method="post" action="{% url 'torrent_organize_list' %}">
@@ -183,7 +183,7 @@
     </div>
     {% if pastas_fora is not None %}
       {% if pastas_fora %}
-        <form method="post" action="{% url 'torrent_organize' %}" data-confirm="Organizar as pastas marcadas? Pastas com torrent ativo serão renomeadas no qBittorrent.">
+        <form method="post" action="{% url 'torrent_organize' %}" data-confirm="Organizar as pastas marcadas? Pastas com torrent ativo não serão movidas.">
           {% csrf_token %}
           <input type="hidden" name="library" value="{{ biblioteca_organizar.id }}">
           <div class="table-wrap">
@@ -200,11 +200,13 @@
                 {% for linha in pastas_fora %}
                   <tr>
                     <td>
-                      <input type="checkbox" name="marcar" value="{{ linha.atual }}" checked>
+                      <input type="checkbox" name="marcar" value="{{ linha.atual }}" {% if not linha.tem_torrent %}checked{% endif %}{% if linha.tem_torrent %} disabled{% endif %}>
                     </td>
                     <td>
                       {{ linha.atual }}
                       {% if linha.sem_ano %}<span class="tag">sem ano</span>{% endif %}
+                      {% if linha.tem_torrent %}<span class="tag">torrent ativo — ignorada</span>{% endif %}
+                      {% if linha.feedback %}<span class="muted text-11">{{ linha.feedback }}</span>{% endif %}
                       {% if linha.aviso %}<span class="muted text-11">{{ linha.aviso }}</span>{% endif %}
                     </td>
                     <td>{{ linha.alvo }}</td>
@@ -227,7 +229,8 @@
         <h2>Organização</h2>
         <p>
           {{ organizacao.feitos|length }} feito{{ organizacao.feitos|length|pluralize:"s" }},
-          {{ organizacao.nao_feitos|length }} não feito{{ organizacao.nao_feitos|length|pluralize:"s" }}.
+          {{ organizacao.nao_feitos|length }} não feito{{ organizacao.nao_feitos|length|pluralize:"s" }}{% if organizacao.ignorados %},
+          {{ organizacao.ignorados|length }} ignorado{{ organizacao.ignorados|length|pluralize:"s" }}{% endif %}.
         </p>
         {% if organizacao.feitos %}
           <h3>Feito</h3>
@@ -241,6 +244,14 @@
           <h3>Não feito</h3>
           <ul>
             {% for item in organizacao.nao_feitos %}
+              <li>{% if item.nome %}{{ item.nome }} — {% endif %}{{ item.motivo }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if organizacao.ignorados %}
+          <h3>Ignorados</h3>
+          <ul>
+            {% for item in organizacao.ignorados %}
               <li>{% if item.nome %}{{ item.nome }} — {% endif %}{{ item.motivo }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
             {% endfor %}
           </ul>
