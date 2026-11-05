@@ -153,6 +153,23 @@ def test_library_merge_recusa_caminho_invalido(agent_module, monkeypatch, tmp_pa
         )
 
 
+def test_library_merge_aceita_biblioteca_fora_do_nas(agent_module, monkeypatch, tmp_path):
+    agent = agent_module
+    filmes, _series = preparar(agent, monkeypatch, tmp_path)
+    monkeypatch.setattr(agent, "ALLOWED_PATH_PREFIXES", ("/mnt/nas/",))
+    origem = filmes / "Silo (2023) Season 1"
+    origem.mkdir()
+    (origem / "ep.mkv").write_bytes(b"v")
+    lib = _lib_filmes(agent)
+    resultado = agent.op_library_merge_dir(
+        library_id=lib["id"],
+        source="Silo (2023) Season 1",
+        dest="Silo (2023)",
+    )
+    assert resultado["ok"] is True
+    assert (filmes / "Silo (2023)" / "ep.mkv").read_bytes() == b"v"
+
+
 def test_library_merge_recusa_biblioteca_desconhecida(agent_module, monkeypatch, tmp_path):
     agent = agent_module
     preparar(agent, monkeypatch, tmp_path)

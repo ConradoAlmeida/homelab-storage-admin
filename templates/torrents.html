@@ -200,7 +200,7 @@
                 {% for linha in pastas_fora %}
                   <tr>
                     <td>
-                      <input type="checkbox" name="marcar" value="{{ linha.atual }}" {% if not linha.tem_torrent %}checked{% endif %}{% if linha.tem_torrent %} disabled{% endif %}>
+                      <input type="checkbox" name="marcar" value="{{ linha.atual }}" {% if linha.tem_torrent %}disabled{% endif %}>
                     </td>
                     <td>
                       {{ linha.atual }}

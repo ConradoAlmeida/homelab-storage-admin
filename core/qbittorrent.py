@@ -615,13 +615,25 @@ def _mapa_torrents_por_pasta(libraries: list[dict]) -> dict[tuple[str, str], dic
         biblioteca = _biblioteca_do_caminho(save_path, libraries)
         if biblioteca is None:
             continue
-        pasta = _caminho_antigo(save_path, item.get("content_path") or "")
-        if pasta is None:
-            continue
         base = os.path.realpath(biblioteca.get("path") or "")
         if not base:
             continue
-        mapa[(base, pasta)] = item
+        nomes = []
+        pasta = _caminho_antigo(save_path, item.get("content_path") or "")
+        if pasta:
+            nomes.append(pasta)
+        # O nome do torrent continua na pasta antiga depois que o qBittorrent
+        # já moveu o conteúdo para Título (Ano). Essa pasta ainda é do torrent.
+        nome_torrent = (item.get("name") or "").strip()
+        if (
+            nome_torrent
+            and "/" not in nome_torrent
+            and "\\" not in nome_torrent
+            and os.path.isdir(os.path.join(base, nome_torrent))
+        ):
+            nomes.append(nome_torrent)
+        for nome in nomes:
+            mapa[(base, nome)] = item
     return mapa
 
 

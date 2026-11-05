@@ -384,8 +384,43 @@ def test_listar_pastas_feedback_torrent(monkeypatch, tmp_path):
     monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
     libs = [{"id": "series", "name": "Séries", "path": str(series)}]
     linhas = qbit.listar_pastas_fora_padrao(libs[0], libs)
+    assert linhas[0]["tem_torrent"] is True
     assert linhas[0]["torrent_organizavel"] is True
     assert linhas[0]["feedback"] == qbit._MSG_TORRENT_REMOVER_LISTA
+
+
+def test_listar_pasta_antiga_ainda_e_do_torrent(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    antiga = series / "From (2022) Season 1 S01"
+    nova = series / "From (2022)"
+    antiga.mkdir(parents=True)
+    nova.mkdir()
+    (antiga / "capa.jpg").write_bytes(b"x")
+    (nova / "ep.mkv").write_bytes(b"v")
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    info = [
+        {
+            "hash": "a" * 40,
+            "name": "From (2022) Season 1 S01",
+            "progress": 1,
+            "state": "uploading",
+            "save_path": str(series),
+            "content_path": str(nova),
+        }
+    ]
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, json.dumps(info)
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    linhas = qbit.listar_pastas_fora_padrao(libs[0], libs)
+    assert [linha["atual"] for linha in linhas] == ["From (2022) Season 1 S01"]
+    assert linhas[0]["tem_torrent"] is True
 
 
 def test_listar_pastas_feedback_torrent_instavel_nao_e_organizavel(

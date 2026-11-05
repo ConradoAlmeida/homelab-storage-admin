@@ -6069,9 +6069,17 @@ def _nome_pasta_biblioteca(nome: str) -> str:
 
 
 def _caminho_na_biblioteca(base: str, segmento: str) -> str:
-    base_real = os.path.realpath(_validate_share_path(base.rstrip("/")))
+    """Junta um nome de pasta à biblioteca do Jellyfin, sem a allowlist de share."""
+    segmento = _nome_pasta_biblioteca(segmento)
+    base_real = os.path.realpath((base or "").rstrip("/"))
+    if (
+        not base_real.startswith("/")
+        or not os.path.isdir(base_real)
+        or ".." in Path(base_real).parts
+    ):
+        raise AgentError("Caminho invalido")
     alvo = os.path.realpath(os.path.join(base_real, segmento))
-    if alvo != base_real and not alvo.startswith(base_real + os.sep):
+    if os.path.dirname(alvo) != base_real:
         raise AgentError("Caminho fora da biblioteca")
     return alvo
 
