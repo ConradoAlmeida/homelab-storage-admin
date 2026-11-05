@@ -3,9 +3,10 @@
 {% block title %}Torrents - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="torrent-page">
-  <input id="torrent-panel-none" class="torrent-panel-radio" type="radio" name="torrent-panel" value="none" {% if form.errors or token_erro or token_revelado %}{% else %}checked{% endif %}>
+  <input id="torrent-panel-none" class="torrent-panel-radio" type="radio" name="torrent-panel" value="none" {% if form.errors or token_erro or token_revelado or pastas_fora is not None or organizacao %}{% else %}checked{% endif %}>
   <input id="torrent-panel-add" class="torrent-panel-radio" type="radio" name="torrent-panel" value="add" {% if form.errors %}checked{% endif %}>
   <input id="torrent-panel-api" class="torrent-panel-radio" type="radio" name="torrent-panel" value="api" {% if not form.errors %}{% if token_erro or token_revelado %}checked{% endif %}{% endif %}>
+  <input id="torrent-panel-organizar" class="torrent-panel-radio" type="radio" name="torrent-panel" value="organizar" {% if not form.errors %}{% if not token_erro and not token_revelado %}{% if pastas_fora is not None or organizacao %}checked{% endif %}{% endif %}{% endif %}>
 
 <div class="page-head">
   <div>
@@ -18,6 +19,9 @@
     {% if overview.client.version %}<span class="status ok">qBittorrent {{ overview.client.version }}</span>{% endif %}
     {% if form %}
     <label class="btn" for="torrent-panel-add">Adicionar torrent</label>
+    {% endif %}
+    {% if overview.client.available and overview.libraries %}
+    <label class="btn" for="torrent-panel-organizar">Organizar</label>
     {% endif %}
     <label class="btn" for="torrent-panel-api">Configurar API</label>
   </div>
@@ -46,104 +50,6 @@
       <strong>Não foi possível listar os downloads</strong>
       <p>{{ overview.error }}</p>
     </div>
-  {% endif %}
-
-  {% if organizacao %}
-    <div class="card">
-      <h2>Organização</h2>
-      <p>
-        {{ organizacao.feitos|length }} feito{{ organizacao.feitos|length|pluralize:"s" }},
-        {{ organizacao.nao_feitos|length }} não feito{{ organizacao.nao_feitos|length|pluralize:"s" }}.
-      </p>
-      {% if organizacao.feitos %}
-        <h3>Feito</h3>
-        <ul>
-          {% for item in organizacao.feitos %}
-            <li>{{ item.de }} → {{ item.para }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-      {% if organizacao.nao_feitos %}
-        <h3>Não feito</h3>
-        <ul>
-          {% for item in organizacao.nao_feitos %}
-            <li>{% if item.nome %}{{ item.nome }} — {% endif %}{{ item.motivo }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </div>
-  {% endif %}
-
-  {% if overview.client.available and overview.libraries %}
-    <section class="section">
-      <div class="section-head">
-        <h2>Organizar biblioteca</h2>
-      </div>
-      <p class="muted text-12">
-        Escolha Séries ou Filmes, veja as pastas fora do padrão Título (Ano) e organize só as marcadas.
-        Linha com torrent ativo é renomeada pelo qBittorrent; pasta solta é mesclada pelo agente no host.
-      </p>
-      <div class="card">
-        <form method="post" action="{% url 'torrent_organize_list' %}">
-          {% csrf_token %}
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="torrent-organizar-biblioteca">Biblioteca</label>
-              <select id="torrent-organizar-biblioteca" class="form-control" name="library" required>
-                <option value="">Escolha…</option>
-                {% for biblioteca in overview.libraries %}
-                  <option value="{{ biblioteca.id }}" {% if biblioteca_organizar and biblioteca_organizar.id == biblioteca.id %}selected{% endif %}>{{ biblioteca.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn" type="submit">Listar pastas</button>
-          </div>
-        </form>
-      </div>
-      {% if pastas_fora is not None %}
-        {% if pastas_fora %}
-          <form method="post" action="{% url 'torrent_organize' %}" data-confirm="Organizar as pastas marcadas? Pastas com torrent ativo serão renomeadas no qBittorrent.">
-            {% csrf_token %}
-            <input type="hidden" name="library" value="{{ biblioteca_organizar.id }}">
-            <div class="table-wrap">
-              <table class="file-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Organizar</th>
-                    <th scope="col">Nome atual</th>
-                    <th scope="col">Nome proposto</th>
-                    <th scope="col">Torrent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for linha in pastas_fora %}
-                    <tr>
-                      <td>
-                        <input type="checkbox" name="marcar" value="{{ linha.atual }}" checked>
-                      </td>
-                      <td>
-                        {{ linha.atual }}
-                        {% if linha.sem_ano %}<span class="tag">sem ano</span>{% endif %}
-                        {% if linha.aviso %}<span class="muted text-11">{{ linha.aviso }}</span>{% endif %}
-                      </td>
-                      <td>{{ linha.alvo }}</td>
-                      <td>{% if linha.tem_torrent %}Sim{% else %}Não{% endif %}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <div class="form-actions">
-              <button class="btn primary" type="submit">Organizar marcadas</button>
-            </div>
-          </form>
-        {% else %}
-          <p class="empty">Nenhuma pasta fora do padrão nesta biblioteca.</p>
-        {% endif %}
-      {% endif %}
-    </section>
   {% endif %}
 
   {% if form %}
@@ -245,6 +151,104 @@
       {% endif %}
     </div>
   </section>
+
+  {% if overview.client.available and overview.libraries %}
+  <section class="torrent-panel torrent-panel-organizar" aria-label="Organizar biblioteca">
+    <div class="torrent-panel-head">
+      <h2>Organizar biblioteca</h2>
+      <label class="btn" for="torrent-panel-none">Fechar</label>
+    </div>
+    <p class="muted text-12">
+      Escolha Séries ou Filmes, veja as pastas fora do padrão Título (Ano) e organize só as marcadas.
+      Linha com torrent ativo é renomeada pelo qBittorrent; pasta solta é mesclada pelo agente no host.
+    </p>
+    <div class="card">
+      <form method="post" action="{% url 'torrent_organize_list' %}">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="torrent-organizar-biblioteca">Biblioteca</label>
+            <select id="torrent-organizar-biblioteca" class="form-control" name="library" required>
+              <option value="">Escolha…</option>
+              {% for biblioteca in overview.libraries %}
+                <option value="{{ biblioteca.id }}" {% if biblioteca_organizar and biblioteca_organizar.id == biblioteca.id %}selected{% endif %}>{{ biblioteca.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Listar pastas</button>
+        </div>
+      </form>
+    </div>
+    {% if pastas_fora is not None %}
+      {% if pastas_fora %}
+        <form method="post" action="{% url 'torrent_organize' %}" data-confirm="Organizar as pastas marcadas? Pastas com torrent ativo serão renomeadas no qBittorrent.">
+          {% csrf_token %}
+          <input type="hidden" name="library" value="{{ biblioteca_organizar.id }}">
+          <div class="table-wrap">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th scope="col">Organizar</th>
+                  <th scope="col">Nome atual</th>
+                  <th scope="col">Nome proposto</th>
+                  <th scope="col">Torrent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for linha in pastas_fora %}
+                  <tr>
+                    <td>
+                      <input type="checkbox" name="marcar" value="{{ linha.atual }}" checked>
+                    </td>
+                    <td>
+                      {{ linha.atual }}
+                      {% if linha.sem_ano %}<span class="tag">sem ano</span>{% endif %}
+                      {% if linha.aviso %}<span class="muted text-11">{{ linha.aviso }}</span>{% endif %}
+                    </td>
+                    <td>{{ linha.alvo }}</td>
+                    <td>{% if linha.tem_torrent %}Sim{% else %}Não{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">Organizar marcadas</button>
+          </div>
+        </form>
+      {% else %}
+        <p class="empty">Nenhuma pasta fora do padrão nesta biblioteca.</p>
+      {% endif %}
+    {% endif %}
+    {% if organizacao %}
+      <div class="card">
+        <h2>Organização</h2>
+        <p>
+          {{ organizacao.feitos|length }} feito{{ organizacao.feitos|length|pluralize:"s" }},
+          {{ organizacao.nao_feitos|length }} não feito{{ organizacao.nao_feitos|length|pluralize:"s" }}.
+        </p>
+        {% if organizacao.feitos %}
+          <h3>Feito</h3>
+          <ul>
+            {% for item in organizacao.feitos %}
+              <li>{{ item.de }} → {{ item.para }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% if organizacao.nao_feitos %}
+          <h3>Não feito</h3>
+          <ul>
+            {% for item in organizacao.nao_feitos %}
+              <li>{% if item.nome %}{{ item.nome }} — {% endif %}{{ item.motivo }}{% if item.aviso %} — {{ item.aviso }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+  {% endif %}
 
   <section
     class="section"

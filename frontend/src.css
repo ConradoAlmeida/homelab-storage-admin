@@ -78,7 +78,8 @@
   }
 
   .torrent-page:has(#torrent-panel-add:checked) .torrent-panel-add,
-  .torrent-page:has(#torrent-panel-api:checked) .torrent-panel-api {
+  .torrent-page:has(#torrent-panel-api:checked) .torrent-panel-api,
+  .torrent-page:has(#torrent-panel-organizar:checked) .torrent-panel-organizar {
     display: block;
   }
 
@@ -91,6 +92,13 @@
 
   .torrent-page:has(#torrent-panel-api:checked) label[for="torrent-panel-api"] {
     border-color: var(--acc);
+  }
+
+  .torrent-page:has(#torrent-panel-organizar:checked) label[for="torrent-panel-organizar"] {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: #061321;
+    font-weight: 600;
   }
 
   .torrent-panel-head {

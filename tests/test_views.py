@@ -263,7 +263,13 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Adicionar torrent")
         self.assertContains(resposta, "Configurar API")
         self.assertContains(resposta, 'id="torrent-panel-add"')
+        self.assertContains(resposta, 'id="torrent-panel-organizar"')
+        self.assertContains(resposta, 'for="torrent-panel-organizar">Organizar')
         self.assertContains(resposta, 'name="torrent-panel"')
+        self.assertNotRegex(
+            resposta.content.decode(),
+            r'id="torrent-panel-organizar"[^>]*\schecked',
+        )
         self.assertContains(resposta, "API de envio")
         self.assertContains(resposta, "https://homelab.conradhub.com/api/torrents/")
         self.assertContains(resposta, "torrent já existe na lista")
@@ -572,6 +578,10 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Colony (2016)")
         self.assertContains(resposta, "Arquivo diferente")
         self.assertContains(resposta, "Andamento")
+        self.assertRegex(
+            resposta.content.decode(),
+            r'id="torrent-panel-organizar"[^>]*\schecked',
+        )
         self.qbit.organizar_linhas.assert_called_once()
         log = AuditLog.objects.get(action="torrent.organize")
         self.assertIn("1 feitos", log.target)
@@ -604,6 +614,10 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Organizar biblioteca")
         self.assertContains(resposta, "Silo (2023) Season 1")
         self.assertContains(resposta, "Organizar marcadas")
+        self.assertRegex(
+            resposta.content.decode(),
+            r'id="torrent-panel-organizar"[^>]*\schecked',
+        )
         self.qbit.listar_pastas_fora_padrao.assert_called_once()
 
     def test_organizar_só_com_cliente_disponivel(self):
