@@ -789,8 +789,11 @@ def organizar_linhas(
             continue
         if resultado.get("ok"):
             feito = {"de": atual, "para": alvo}
+            nota = (resultado.get("motivo") or "").strip()
             if aviso:
                 feito["aviso"] = aviso
+            elif nota:
+                feito["aviso"] = nota
             relatorio["feitos"].append(feito)
         else:
             motivo = (resultado.get("motivo") or "").strip() or "Não foi possível organizar"

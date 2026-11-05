@@ -6094,6 +6094,22 @@ def _biblioteca_jellyfin_por_id(library_id: str) -> dict:
     raise AgentError("Biblioteca invalida")
 
 
+_METADADOS_PASTA = {
+    ".nfo",
+    ".srt",
+    ".sub",
+    ".idx",
+    ".ass",
+    ".ssa",
+    ".vtt",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".xml",
+    ".txt",
+}
+
+
 def _tenta_rmdir_vazia(caminho: str) -> None:
     try:
         if os.path.isdir(caminho) and not os.listdir(caminho):
@@ -6125,6 +6141,7 @@ def op_library_merge_dir(library_id=None, source=None, dest=None, **_):
     if not os.path.isdir(destino):
         raise AgentError("Destino existe e nao e pasta")
     conflitos: list[str] = []
+    metadados = 0
     for dirpath, _dirnames, filenames in os.walk(origem, topdown=False):
         rel_dir = os.path.relpath(dirpath, origem)
         for fname in filenames:
@@ -6146,8 +6163,11 @@ def op_library_merge_dir(library_id=None, source=None, dest=None, **_):
             except OSError:
                 conflitos.append(rel_file)
                 continue
-            if src_size == dst_size:
+            extensao = os.path.splitext(fname)[1].lower()
+            if src_size == dst_size or extensao in _METADADOS_PASTA:
                 os.remove(src_file)
+                if src_size != dst_size:
+                    metadados += 1
             else:
                 conflitos.append(rel_file)
         if dirpath != origem:
@@ -6166,7 +6186,9 @@ def op_library_merge_dir(library_id=None, source=None, dest=None, **_):
         "ok": True,
         "de": origem_nome,
         "para": destino_nome,
-        "motivo": "",
+        "motivo": (
+            "Metadados já na pasta de destino foram mantidos." if metadados else ""
+        ),
     }
 
 
