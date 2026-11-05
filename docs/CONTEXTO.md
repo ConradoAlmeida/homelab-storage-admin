@@ -48,7 +48,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   Token vazio no banco desliga a rota. A categoria no qBittorrent é
   sempre `jellyfin`. Hash já presente na lista responde `409`. **Organizar biblioteca**
   lista pastas fora de Título (Ano), aplica só as marcadas e mostra feito, não feito e ignorados.
-  Pastas sem ano (sem override) não são criadas; resíduo grande sem torrent é avisado;
+  Pastas sem ano (sem override) não são criadas; resíduo grande sem torrent é avisado
+  e, se marcada com ano no alvo, ainda é mesclada;
   pasta com torrent ativo fica ignorada até remover o torrent da lista (manter arquivos).
   O token fica
   legível no banco do painel. O `host.env` só grava o primeiro valor. O

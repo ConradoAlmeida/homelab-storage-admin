@@ -243,6 +243,28 @@ def test_pausar_usa_a_api_nova_e_a_antiga(monkeypatch, tmp_path):
         ("Eternauta 1080p NF", "O Eternauta (2025)"),
         ("Filme Legal (2019) 720p BluRay", "Filme Legal (2019)"),
         ("Só o título sem ano", "Só o título sem ano"),
+        (
+            "The.Walking.Dead.Daryl.Dixon.S01.COMPLETE.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb[TGx]",
+            "The Walking Dead Daryl Dixon (2023)",
+        ),
+        (
+            "The.Walking.Dead.The.Ones.Who.Live.S01.COMPLETE.1080p.WEB-DL.DDP5.1.H264-BEN.THE.MEN",
+            "The Walking Dead The Ones Who Live (2024)",
+        ),
+        (
+            "www.UIndex.org - Paradise-2025-S01 1080p WEBRip 10bit EAC3 5 1 x265-iVy",
+            "Paradise (2025)",
+        ),
+        ("Colony.S01.1080p.x265-ZMNT", "Colony (2016)"),
+        (
+            "See (2019) Season 1 S01 (1080p ATVP WEB-DL x265 HEVC 10bit EAC3 5.1 t3nzin) REPACK",
+            "See (2019)",
+        ),
+        (
+            "From (2022) Season 1 S01 (1080p AMZN WEB-DL x265 HEVC 10bit EAC3 5.1 t3nzin)",
+            "From (2022)",
+        ),
+        ("Station.Eleven.S01.1080p.WEBRip.x265[eztv.re]", "Station Eleven (2021)"),
     ],
 )
 def test_alvo_da_pasta_limpa_titulo(bruto, esperado):
@@ -606,7 +628,7 @@ def test_listar_pastas_residuo_arquivo_esparso(monkeypatch, tmp_path):
     assert linhas[0]["aviso"] == qbit._AVISO_RESIDUO
 
 
-def test_organizar_linhas_recusa_residuo_grande(monkeypatch, tmp_path):
+def test_organizar_linhas_mescla_residuo_grande_com_ano(monkeypatch, tmp_path):
     raiz = tmp_path / "jellyfin"
     series = raiz / "series"
     grande = series / "Show (2020) Season 1 S01"
@@ -623,13 +645,89 @@ def test_organizar_linhas_recusa_residuo_grande(monkeypatch, tmp_path):
 
     monkeypatch.setattr(qbit, "_abrir", abrir)
     libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    mesclado = []
 
-    def mesclar(*_args, **_kwargs):
-        raise AssertionError("não deveria mesclar resíduo grande")
+    def mesclar(lib_id, de, para):
+        mesclado.append((lib_id, de, para))
+        return {"ok": True}
 
     relatorio = qbit.organizar_linhas(libs[0], ["Show (2020) Season 1 S01"], libs, mesclar)
+    assert mesclado == [("series", "Show (2020) Season 1 S01", "Show (2020)")]
+    assert relatorio["feitos"] == [
+        {
+            "de": "Show (2020) Season 1 S01",
+            "para": "Show (2020)",
+            "aviso": qbit._AVISO_RESIDUO,
+        }
+    ]
+    assert relatorio["nao_feitos"] == []
+
+
+def test_organizar_linhas_recusa_residuo_grande_sem_ano(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    grande = series / "Serie Nova S01 1080p"
+    grande.mkdir(parents=True)
+    monkeypatch.setattr(qbit, "_RESIDUO_MIN_BYTES", 100)
+    (grande / "arquivo.bin").write_bytes(b"x" * 200)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+
+    def mesclar(*_args, **_kwargs):
+        raise AssertionError("não deveria mesclar pasta sem ano")
+
+    relatorio = qbit.organizar_linhas(libs[0], ["Serie Nova S01 1080p"], libs, mesclar)
     assert relatorio["feitos"] == []
-    assert relatorio["nao_feitos"][0]["motivo"] == qbit._AVISO_RESIDUO
+    assert relatorio["nao_feitos"][0]["motivo"] == "Sem ano no título e sem override"
+    assert relatorio["nao_feitos"][0]["aviso"] == qbit._AVISO_RESIDUO
+
+
+def test_organizar_linhas_mescla_residuo_grande_daryl_dixon(monkeypatch, tmp_path):
+    nome = (
+        "The.Walking.Dead.Daryl.Dixon.S01.COMPLETE.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb[TGx]"
+    )
+    raiz = tmp_path / "jellyfin"
+    series = raiz / "series"
+    grande = series / nome
+    grande.mkdir(parents=True)
+    monkeypatch.setattr(qbit, "_RESIDUO_MIN_BYTES", 100)
+    (grande / "arquivo.bin").write_bytes(b"x" * 200)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "series", "name": "Séries", "path": str(series)}]
+    mesclado = []
+
+    def mesclar(lib_id, de, para):
+        mesclado.append((lib_id, de, para))
+        return {"ok": True}
+
+    relatorio = qbit.organizar_linhas(libs[0], [nome], libs, mesclar)
+    assert mesclado == [
+        ("series", nome, "The Walking Dead Daryl Dixon (2023)"),
+    ]
+    assert relatorio["feitos"] == [
+        {
+            "de": nome,
+            "para": "The Walking Dead Daryl Dixon (2023)",
+            "aviso": qbit._AVISO_RESIDUO,
+        }
+    ]
+    assert relatorio["nao_feitos"] == []
 
 
 def test_estado_instavel_esconde_exclusao(monkeypatch, tmp_path):

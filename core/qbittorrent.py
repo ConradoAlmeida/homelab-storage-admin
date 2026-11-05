@@ -74,9 +74,9 @@ _CONCLUIDOS = {
     "checkingUP",
 }
 _DOMINIO_INDEXADOR = re.compile(
-    r"^(?:www\.)?(?:https?://)?[\w.-]+\."
+    r"^(?:www\.)?(?:https?://)?[A-Za-z0-9-]+\."
     r"(?:org|com|net|mx|ag|am|re|to|io|info|xyz|cc|tv|st|ws|biz|ru|su|la)"
-    r"[\s._-]*",
+    r"(?=[\s._-]|$)[\s._-]*",
     re.I,
 )
 _CORTE_TITULO = re.compile(
@@ -758,9 +758,6 @@ def organizar_linhas(
                 entrada["aviso"] = aviso
             relatorio["nao_feitos"].append(entrada)
             continue
-        if aviso:
-            relatorio["nao_feitos"].append({"nome": atual, "motivo": aviso})
-            continue
         if item:
             hash_torrent = (item.get("hash") or "").lower()
             if not _HASH_RE.match(hash_torrent):
@@ -790,7 +787,9 @@ def organizar_linhas(
         if resultado.get("ok"):
             feito = {"de": atual, "para": alvo}
             nota = (resultado.get("motivo") or "").strip()
-            if aviso:
+            if aviso and nota:
+                feito["aviso"] = f"{aviso}. {nota}"
+            elif aviso:
                 feito["aviso"] = aviso
             elif nota:
                 feito["aviso"] = nota

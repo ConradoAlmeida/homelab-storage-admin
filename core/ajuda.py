@@ -270,7 +270,8 @@ AJUDA: dict[str, dict[str, Any]] = {
                     "remover o torrent da lista mantendo os arquivos; pasta solta é "
                     "mesclada pelo agente. Sem ano no título e sem override manual "
                     "a pasta não é criada (tag sem ano). Pasta grande sem torrent "
-                    "aparece como resíduo. A página mostra feitos, não feitos e "
+                    "aparece como resíduo; se marcada e com ano no alvo, a mesclagem "
+                    "segue e o aviso fica no card. A página mostra feitos, não feitos e "
                     "ignorados."
                 ),
             },
