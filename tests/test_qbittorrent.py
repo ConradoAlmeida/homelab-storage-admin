@@ -265,6 +265,23 @@ def test_pausar_usa_a_api_nova_e_a_antiga(monkeypatch, tmp_path):
             "From (2022)",
         ),
         ("Station.Eleven.S01.1080p.WEBRip.x265[eztv.re]", "Station Eleven (2021)"),
+        (
+            "Everything Everywhere All At Once (2022) [1080p] [WEBRip] [5.1] [YTS.MX]",
+            "Everything Everywhere All At Once (2022)",
+        ),
+        (
+            "Everything Everywhere All At Once [1080p] [WEBRip] [5 1] [YTS MX] (2022)",
+            "Everything Everywhere All At Once (2022)",
+        ),
+        ("Blade Runner 2049 (2017) [1080p] [WEBRip]", "Blade Runner 2049 (2017)"),
+        ("Don't Breathe (2016)", "Don't Breathe (2016)"),
+        ("Movie Name [2022] 1080p WEBRip", "Movie Name (2022)"),
+        ("Movie Name (1080p) (WEBRip) (2022)", "Movie Name (2022)"),
+        ("Movie Name WEB-DL 2019", "Movie Name (2019)"),
+        (
+            "Show.Name.S01E01.1080p.WEB-DL.H.264-GROUP",
+            "Show Name",
+        ),
     ],
 )
 def test_alvo_da_pasta_limpa_titulo(bruto, esperado):
@@ -727,6 +744,62 @@ def test_organizar_linhas_mescla_residuo_grande_daryl_dixon(monkeypatch, tmp_pat
             "aviso": qbit._AVISO_RESIDUO,
         }
     ]
+    assert relatorio["nao_feitos"] == []
+
+
+def test_listar_pastas_eeaa_o_torta_e_padrao(monkeypatch, tmp_path):
+    raiz = tmp_path / "jellyfin"
+    filmes = raiz / "filmes"
+    torta = (
+        "Everything Everywhere All At Once [1080p] [WEBRip] [5 1] [YTS MX] (2022)"
+    )
+    (filmes / torta).mkdir(parents=True)
+    (filmes / "Everything Everywhere All At Once (2022)").mkdir(parents=True)
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "filmes", "name": "Filmes", "path": str(filmes)}]
+    linhas = qbit.listar_pastas_fora_padrao(libs[0], libs)
+    assert len(linhas) == 1
+    assert linhas[0]["atual"] == torta
+    assert linhas[0]["alvo"] == "Everything Everywhere All At Once (2022)"
+
+
+def test_organizar_linhas_mescla_eeaa_o_torta(monkeypatch, tmp_path):
+    torta = (
+        "Everything Everywhere All At Once [1080p] [WEBRip] [5 1] [YTS MX] (2022)"
+    )
+    alvo = "Everything Everywhere All At Once (2022)"
+    raiz = tmp_path / "jellyfin"
+    filmes = raiz / "filmes"
+    pasta = filmes / torta
+    pasta.mkdir(parents=True)
+    (pasta / "filme.mkv").write_bytes(b"x")
+    monkeypatch.setenv("JELLYFIN_ROOT", str(raiz))
+    monkeypatch.delenv("STORAGE_ADMIN_DEMO", raising=False)
+
+    def abrir(method, path, data=None, timeout=20):
+        if path.startswith("/api/v2/torrents/info"):
+            return 200, "[]"
+        return 200, "Ok."
+
+    monkeypatch.setattr(qbit, "_abrir", abrir)
+    libs = [{"id": "filmes", "name": "Filmes", "path": str(filmes)}]
+    mesclado = []
+
+    def mesclar(lib_id, de, para):
+        mesclado.append((lib_id, de, para))
+        return {"ok": True}
+
+    relatorio = qbit.organizar_linhas(libs[0], [torta], libs, mesclar)
+    assert mesclado == [("filmes", torta, alvo)]
+    assert relatorio["feitos"] == [{"de": torta, "para": alvo}]
     assert relatorio["nao_feitos"] == []
 
 

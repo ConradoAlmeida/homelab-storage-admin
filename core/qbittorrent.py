@@ -80,11 +80,13 @@ _DOMINIO_INDEXADOR = re.compile(
     re.I,
 )
 _CORTE_TITULO = re.compile(
-    r"(?:\s+|^)(?:S\d{2}|Season\s*\d+|Complete|1080p?|720p?|2160p?|WEB-DL|BluRay|WEBRip|"
-    r"NF|AMZN|ATVP|ITA|SPA|MULTI|DDP|h264|h265|x264|x265)\b",
+    r"(?:\s+|^)(?:S\d{2}E\d{2}|S\d{2}|Season\s*\d+|Complete|1080p?|720p?|2160p?|WEB\s*DL|"
+    r"BluRay|WEBRip|NF|AMZN|ATVP|ITA|SPA|MULTI|DDP|EAC3|AAC|HDR|REPACK|PROPER|10bit|"
+    r"H\s*264|H\s*265|X\s*264|X\s*265|h264|h265|x264|x265)\b",
     re.I,
 )
 _ANO_PAREN = re.compile(r"\((19|20)\d{2}\)")
+_ANO_COLCHETE = re.compile(r"\[(19|20)\d{2}\]")
 _ANO_SOLTO = re.compile(r"\b((19|20)\d{2})\b")
 _OVERRIDES_TITULO = {
     "Colony": "Colony (2016)",
@@ -483,21 +485,42 @@ def acao(torrent_hash: str, action: str, libraries: list[dict]) -> dict:
 def _limpar_titulo(bruto: str) -> tuple[str, int | None]:
     texto = (bruto or "").strip()
     texto = _DOMINIO_INDEXADOR.sub("", texto)
+    ano = None
+    match_paren = _ANO_PAREN.search(texto)
+    match_colchete = _ANO_COLCHETE.search(texto)
+    match_ano = None
+    if match_paren and match_colchete:
+        match_ano = (
+            match_paren
+            if match_paren.start() < match_colchete.start()
+            else match_colchete
+        )
+    elif match_paren:
+        match_ano = match_paren
+    elif match_colchete:
+        match_ano = match_colchete
+    if match_ano:
+        ano = int(match_ano.group(0)[1:-1])
+        texto = (texto[: match_ano.start()] + texto[match_ano.end() :]).strip()
+    texto = re.sub(r"\[[^\]]*\]", "", texto)
+    texto = re.sub(r"\([^)]*\)", "", texto)
     texto = re.sub(r"[._-]+", " ", texto)
     texto = re.sub(r"\s+", " ", texto).strip()
     corte = _CORTE_TITULO.search(texto)
+    resto = ""
     if corte:
+        resto = texto[corte.end() :]
         texto = texto[: corte.start()].strip()
-    ano = None
-    match = _ANO_PAREN.search(texto)
-    if match:
-        ano = int(match.group(0)[1:-1])
-        texto = (texto[: match.start()] + texto[match.end() :]).strip()
-    else:
-        match = _ANO_SOLTO.search(texto)
-        if match:
+    if ano is None:
+        matches = list(_ANO_SOLTO.finditer(texto))
+        if matches:
+            match = matches[-1]
             ano = int(match.group(1))
             texto = texto[: match.start()].strip()
+        else:
+            matches = list(_ANO_SOLTO.finditer(resto))
+            if matches:
+                ano = int(matches[-1].group(1))
     texto = re.sub(r"\s+", " ", texto).strip()
     return texto, ano
 

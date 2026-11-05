@@ -68,7 +68,8 @@ lista é `409` com `torrent já existe na lista`. Agente ou qBittorrent parado �
 
 A categoria gravada no qBittorrent é sempre `jellyfin`. **Organizar biblioteca**
 lista pastas fora do padrão Título (Ano), organiza só as marcadas e mostra feito,
-não feito e ignorados. Pasta sem ano no título (sem override manual) recebe a tag **sem ano**
+não feito e ignorados. Colchetes de release saem do título limpo; o alvo continua
+Título (Ano). Pasta sem ano no título (sem override manual) recebe a tag **sem ano**
 e não é movida. Pasta grande sem torrent aparece como **Resíduo grande, sem torrent**;
 se marcada e com ano no alvo, a mesclagem segue e o aviso permanece no card.
 Torrent em movimentação ou verificação não aceita Remover nem Apagar arquivos.
