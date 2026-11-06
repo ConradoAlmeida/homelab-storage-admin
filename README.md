@@ -121,6 +121,7 @@ Detalhes: [Arquitetura](docs/ARQUITETURA.md#perfis-de-host).
 | [Snapshots, discos e Samba](docs/ARMAZENAMENTO.md) | Snapshots, Jellyfin, histórico, SMART e shares |
 | [Backups](docs/BACKUPS.md) | Disco de backup, jobs restic, backup local, cópia fria e Gitea |
 | [Rede, saúde e containers](docs/REDE.md) | Saúde, nomes, firewall UFW e containers |
+| [Sistema](docs/SISTEMA.md) | Host, chaves SSH, logs, serviços systemd e terminal |
 | [Segurança e acesso remoto](docs/SEGURANCA.md) | Tailscale, cookies HTTPS e checklist |
 | [Testes na VM](docs/VM_TESTES.md) | Roteiro server-like no virt-manager |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Sintomas, causas e correções |

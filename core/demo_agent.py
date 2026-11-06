@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+
 from .agent import AgentClient, AgentError
 
 CAPS = {
@@ -18,6 +20,12 @@ CAPS = {
     "gitea": True,
     "jellyfin": True,
     "containers": True,
+    "firewall": True,
+    "apt": True,
+    "journal": True,
+    "systemctl": True,
+    "system_manage": True,
+    "terminal_enable": True,
 }
 
 DISKS = [
@@ -86,6 +94,16 @@ class DemoAgent(AgentClient):
             raise AgentError(f"Operação de demonstração não implementada: {op}")
         return dados
 
+    def _linha_json(self, caminho, payload, *, timeout: int | None = None):
+        op = str(payload.get("op") or "")
+        if op == "terminal_open":
+            return {"session_id": "demosess12345678", "cols": 80, "rows": 24}
+        if op == "terminal_io":
+            return {"output_b64": base64.b64encode(b"demo@homelab:~$ ").decode("ascii")}
+        if op == "terminal_close":
+            return {"closed": True}
+        raise AgentError("Socket de terminal indisponível na demonstração.")
+
 
 _GATILHOS = {
     "backup_disk_setup",
@@ -103,6 +121,8 @@ _GATILHOS = {
     "snapshot_create",
     "snapshot_restore",
     "snapshot_policy_save",
+    "apt_check",
+    "apt_upgrade",
 }
 _DEMO_TAREFAS: dict[str, dict] = {}
 _DEMO_SEQ = 0
@@ -133,18 +153,23 @@ def _demo_status(task: str) -> dict:
             "op": item["op"],
             "result": {},
         }
+    result: dict = {
+        "recovery_password": "demo-senha-restic",
+        "device": "/dev/sdc",
+        "mountpoint": "/mnt/backup/demo",
+        "repo": "/mnt/backup/demo/restic",
+        "share": "docs",
+        "name": "@GMT-2026.11.04-12.00.00",
+    }
+    if item["op"] == "apt_check":
+        result = {"upgradable": ["curl", "git"], "count": 2, "preview": ""}
+    elif item["op"] == "apt_upgrade":
+        result = {"ok": True, "log_tail": ""}
     return {
         "status": "ok",
         "message": "Concluído.",
         "op": item["op"],
-        "result": {
-            "recovery_password": "demo-senha-restic",
-            "device": "/dev/sdc",
-            "mountpoint": "/mnt/backup/demo",
-            "repo": "/mnt/backup/demo/restic",
-            "share": "docs",
-            "name": "@GMT-2026.11.04-12.00.00",
-        },
+        "result": result,
     }
 
 
@@ -531,4 +556,63 @@ def _dados(op: str, payload: dict):
         }
     if op == "gitea_overview":
         return {"status": {}}
+    if op == "host_info":
+        return {
+            "hostname": "demo-pi",
+            "friendly_name": "Homelab Storage",
+            "system": "Debian GNU/Linux 13 (trixie)",
+            "kernel": "6.12.0-demo",
+            "datetime": "2026-11-06 14:00:00 (America/Sao_Paulo)",
+        }
+    if op == "ssh_keys":
+        return {
+            "keys": [
+                {
+                    "user": "demo",
+                    "path": "/home/demo/.ssh/id_ed25519",
+                    "fingerprint": "SHA256:AbCdEf123",
+                    "type": "ED25519",
+                    "comment": "demo@homelab",
+                }
+            ]
+        }
+    if op == "journal":
+        filtro = str(payload.get("filtro") or "sistema")
+        if filtro == "container":
+            return {
+                "name": payload.get("name") or "caddy",
+                "tail": int(payload.get("tail") or 50),
+                "logs": "2026-11-06 demo | log de container\n",
+                "runtime": "docker",
+            }
+        return {
+            "lines": [
+                f"2026-11-06T14:00:01Z demo {filtro}: mensagem de journal",
+            ],
+            "filtro": filtro,
+            "count": 1,
+        }
+    if op == "systemd_list_units":
+        return {
+            "units": [
+                {
+                    "unit": "homelab-storage-agent.service",
+                    "load": "loaded",
+                    "active": "active",
+                    "sub": "running",
+                },
+                {
+                    "unit": "smbd.service",
+                    "load": "loaded",
+                    "active": "active",
+                    "sub": "running",
+                },
+            ]
+        }
+    if op == "systemd_unit_action":
+        return {"unit": payload.get("unit"), "action": payload.get("action"), "ok": True}
+    if op == "apt_check":
+        return {"upgradable": ["curl"], "count": 1, "preview": ""}
+    if op == "apt_upgrade":
+        return {"ok": True, "log_tail": ""}
     return None

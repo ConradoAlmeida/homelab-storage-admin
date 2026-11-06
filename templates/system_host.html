@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Host - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Host</h1>
+    <p class="lead">Identificação do sistema e, quando disponível, verificação de pacotes via apt.</p>
+  </div>
+</div>
+
+{% if host_error %}
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ host_error }}</p></div>
+{% elif host_info %}
+  <section class="section">
+    <div class="section-head">
+      <h2>Ficha</h2>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="file-table">
+          <tbody>
+            <tr><th scope="row">Hostname</th><td class="mono">{{ host_info.hostname|default:"—" }}</td></tr>
+            <tr><th scope="row">Nome amigável</th><td>{{ host_info.friendly_name|default:"—" }}</td></tr>
+            <tr><th scope="row">Sistema</th><td>{{ host_info.system|default:"—" }}</td></tr>
+            <tr><th scope="row">Kernel</th><td class="mono">{{ host_info.kernel|default:"—" }}</td></tr>
+            <tr><th scope="row">Horário</th><td>{{ host_info.datetime|default:"—" }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Pacotes (apt)</h2>
+    </div>
+    {% if not apt_cap %}
+      <div class="alert">O apt-get não está disponível neste host.</div>
+    {% elif not apt_manage %}
+      <div class="alert">A gestão de pacotes está desativada (SYSTEM_MANAGE=0 ou indisponível no agente).</div>
+    {% else %}
+      <div class="card">
+        <p class="muted text-12">A verificação lista atualizações; a instalação executa somente <code class="mono">apt-get upgrade -y</code>, sem nomes de pacotes pela interface.</p>
+        <form method="post" action="" class="form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="apt_check">
+          <button class="btn primary" type="submit">Verificar atualizações</button>
+        </form>
+        <form method="post" action="" class="form-grid">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="apt_upgrade">
+          <label for="confirm-apt">Digite <strong>ATUALIZAR</strong> para instalar atualizações</label>
+          <input id="confirm-apt" class="input" type="text" name="confirmation" autocomplete="off" placeholder="ATUALIZAR">
+          <button class="btn danger" type="submit">Instalar atualizações</button>
+        </form>
+      </div>
+      {% if tarefa %}
+        {% include "partials/task_poll.html" %}
+      {% endif %}
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

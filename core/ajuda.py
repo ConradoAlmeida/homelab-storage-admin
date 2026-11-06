@@ -144,6 +144,124 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
         ],
     },
+    "system_host": {
+        "title": "Host",
+        "summary": (
+            "Ficha somente leitura do sistema e, quando apt e gestão estão "
+            "disponíveis, verificação e atualização de pacotes."
+        ),
+        "chapters": [
+            {
+                "title": "Ficha",
+                "text": (
+                    "Hostname, nome amigável (SITE_NAME no host.env), sistema, "
+                    "kernel e horário local do agente."
+                ),
+            },
+            {
+                "title": "Pacotes",
+                "text": (
+                    "Sem apt-get no host, o bloco explica. Com gestão, a "
+                    "verificação roda apt-get update e lista atualizáveis; a "
+                    "instalação usa apenas apt-get upgrade -y após confirmar "
+                    "com a frase ATUALIZAR, como tarefa longa."
+                ),
+            },
+        ],
+    },
+    "system_keys": {
+        "title": "Chaves",
+        "summary": (
+            "Fingerprints de chaves SSH públicas; sem leitura de chave privada."
+        ),
+        "chapters": [
+            {
+                "title": "Chaves SSH",
+                "text": (
+                    "Cada linha vem de um ficheiro .pub em ~/.ssh dos utilizadores, "
+                    "com ssh-keygen -lf (sem abrir a chave privada)."
+                ),
+            },
+            {
+                "title": "API de torrents",
+                "requires": "jellyfin",
+                "text": (
+                    "Só aparece quando o Jellyfin está presente. Mostra se há "
+                    "token e o fingerprint SHA-256; o segredo continua na página Torrents."
+                ),
+            },
+        ],
+    },
+    "system_logs": {
+        "title": "Logs do sistema",
+        "summary": (
+            "Uma tela com filtros fixos: journal (host, armazenamento, rede, "
+            "unit) ou saída de container."
+        ),
+        "chapters": [
+            {
+                "title": "Filtros",
+                "text": (
+                    "Sistema, Storage, Rede e Serviço usam journalctl com argv "
+                    "fixos; Container reutiliza a mesma leitura de logs do "
+                    "container. Valores inválidos são recusados."
+                ),
+            },
+            {
+                "title": "Container",
+                "requires": "containers",
+                "text": (
+                    "Só aparece quando há Docker ou Podman. A rota antiga de "
+                    "logs do container redireciona para cá com o filtro adequado."
+                ),
+            },
+        ],
+    },
+    "system_services": {
+        "title": "Serviços systemd",
+        "summary": "Lista units e start/stop/restart/enable/disable quando permitido.",
+        "chapters": [
+            {
+                "title": "Segurança",
+                "text": (
+                    "Algumas units críticas (SSH, agente, journal, rede, motor de "
+                    "container) não aceitam ação. Parar, reiniciar e desabilitar "
+                    "exigem digitar o nome completo da unit."
+                ),
+            },
+            {
+                "title": "Log da unit",
+                "text": (
+                    "O atalho abre a tela Logs com filtro serviço e a unit "
+                    "pré-preenchida."
+                ),
+            },
+        ],
+    },
+    "system_terminal": {
+        "title": "Terminal",
+        "summary": (
+            "Sessão shell no host via segundo socket do agente; só com "
+            "TERMINAL_ENABLE e capability."
+        ),
+        "chapters": [
+            {
+                "title": "Disponibilidade",
+                "requires": "terminal_menu",
+                "text": (
+                    "A rota só aparece quando TERMINAL_ENABLE=1 no ambiente do "
+                    "app e terminal_enable no agente."
+                ),
+            },
+            {
+                "title": "Conteúdo",
+                "text": (
+                    "Abrir e fechar são auditados; o conteúdo da sessão não fica "
+                    "no banco. Inatividade encerra em 15 minutos."
+                ),
+            },
+        ],
+    },
     "containers": {
         "title": "Containers",
         "summary": "Lista e controla os containers Docker ou Podman do servidor.",
@@ -1277,6 +1395,32 @@ USE_CASES: dict[str, str] = {
         "192.168.0.0/24, ative o UFW com SSH garantido e, se um app parar, "
         "confira portas, rotas e regras antes de mexer no proxy."
     ),
+    "system_host": (
+        "Use para confirmar qual host está por trás do painel e se há "
+        "atualizações de pacotes. Exemplo: antes de uma mudança grande, "
+        "confira kernel e horário; com apt, rode a verificação e só depois "
+        "planeje o upgrade com a confirmação ATUALIZAR."
+    ),
+    "system_keys": (
+        "Use para conferir fingerprints SSH e o estado do token da API de "
+        "torrents (sem ver o segredo). Exemplo: depois de trocar máquina, "
+        "compare o fingerprint com o backup antes de aceitar novas chaves."
+    ),
+    "system_logs": (
+        "Use para isolar mensagens do journal ou de um container. Exemplo: "
+        "filtro Rede para timeouts de rede; filtro Serviço para uma unit "
+        "específica aberta na página Serviços."
+    ),
+    "system_services": (
+        "Use para listar units e reiniciar um serviço após configuração. "
+        "Exemplo: reinicie smbd.service e abra o log pelo atalho para ver se "
+        "o Samba subiu sem erro."
+    ),
+    "system_terminal": (
+        "Use apenas quando precisar de shell no host e o dono habilitou "
+        "TERMINAL_ENABLE. Exemplo: um comando rápido de diagnóstico; feche "
+        "a aba para encerrar a sessão."
+    ),
     "torrents": (
         "Use para colocar um filme ou episódio na biblioteca do Jellyfin a "
         "partir de um link magnético. Exemplo: cole o magnet, escolha Filmes "
@@ -1461,10 +1605,15 @@ def _flags_de_escopo() -> dict[str, bool]:
     gerencia = bool(settings.CREDENTIALS_MANAGE_USERS)
     return {
         "gitea": bool(caps.get("gitea")),
+        "jellyfin": bool(caps.get("jellyfin")),
         "credenciais_backup": bool(caps.get("credenciais_backup")),
         "restic": bool(caps.get("restic")),
         "credenciais_usuarios": gerencia,
         "usuarios_locais": not gerencia,
+        "containers": bool(caps.get("containers")),
+        "terminal_menu": bool(
+            getattr(settings, "TERMINAL_ENABLE", False) and caps.get("terminal_enable")
+        ),
     }
 
 

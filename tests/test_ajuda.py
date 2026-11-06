@@ -9,6 +9,11 @@ from core.ajuda import AJUDA, USE_CASES, ajuda_para, ajuda_visivel, page_help
 ROTAS_ESPERADAS = {
     "dashboard",
     "network_index",
+    "system_host",
+    "system_keys",
+    "system_logs",
+    "system_services",
+    "system_terminal",
     "containers",
     "container_logs",
     "torrents",

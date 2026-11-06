@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Serviços - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Serviços</h1>
+    <p class="lead">Units systemd do host. Ações sensíveis exigem digitar o nome da unit.</p>
+  </div>
+</div>
+
+{% if units_error %}
+  <div class="card border-danger"><strong>Indisponível</strong><p class="muted">{{ units_error }}</p></div>
+{% else %}
+  {% if not pode_agir %}
+    <div class="alert">A gestão de serviços está somente leitura (SYSTEM_MANAGE=0 ou systemctl indisponível).</div>
+  {% endif %}
+  <section class="section">
+    <div class="section-head"><h2>Units</h2></div>
+    <div class="table-wrap">
+      <table class="file-table">
+        <thead>
+          <tr>
+            <th>Unit</th>
+            <th>Estado</th>
+            <th>Sub</th>
+            <th>Log</th>
+            {% if pode_agir %}<th>Ações</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in units %}
+            <tr>
+              <td class="mono text-12">{{ u.unit }}</td>
+              <td>{{ u.active }}</td>
+              <td>{{ u.sub }}</td>
+              <td><a class="btn small" href="{% url 'system_logs' %}?filtro=servico&amp;unit={{ u.unit|urlencode }}">Abrir log</a></td>
+              {% if pode_agir %}
+              <td class="file-actions">
+                <form method="post" action="{% url 'system_service_action' %}" class="form-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="unit" value="{{ u.unit }}">
+                  <input type="hidden" name="action" value="start">
+                  <button class="btn small" type="submit">Iniciar</button>
+                </form>
+                <form method="post" action="{% url 'system_service_action' %}" class="form-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="unit" value="{{ u.unit }}">
+                  <input type="hidden" name="action" value="enable">
+                  <button class="btn small" type="submit">Habilitar</button>
+                </form>
+                <details class="card details-inline">
+                  <summary class="btn small">Parar / reiniciar / desabilitar</summary>
+                  <div class="card stack-tight">
+                    <p class="muted text-12">Confirme digitando o nome completo da unit: <code class="mono">{{ u.unit }}</code></p>
+                    <form method="post" action="{% url 'system_service_action' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="unit" value="{{ u.unit }}">
+                      <input type="hidden" name="action" value="stop">
+                      <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off">
+                      <button class="btn danger small" type="submit">Parar</button>
+                    </form>
+                    <form method="post" action="{% url 'system_service_action' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="unit" value="{{ u.unit }}">
+                      <input type="hidden" name="action" value="restart">
+                      <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off">
+                      <button class="btn small" type="submit">Reiniciar</button>
+                    </form>
+                    <form method="post" action="{% url 'system_service_action' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="unit" value="{{ u.unit }}">
+                      <input type="hidden" name="action" value="disable">
+                      <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off">
+                      <button class="btn danger small" type="submit">Desabilitar</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+              {% endif %}
+            </tr>
+          {% empty %}
+            <tr><td colspan="{% if pode_agir %}5{% else %}4{% endif %}" class="muted">Nenhuma unit listada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

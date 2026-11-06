@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Chaves - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Chaves</h1>
+    <p class="lead">Fingerprints de chaves SSH públicas no host (sem leitura de chave privada).</p>
+  </div>
+</div>
+
+{% if keys_error %}
+  <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ keys_error }}</p></div>
+{% else %}
+  <section class="section">
+    <div class="section-head"><h2>Chaves SSH</h2></div>
+    {% if keys %}
+      <div class="table-wrap">
+        <table class="file-table">
+          <thead>
+            <tr><th>Usuário</th><th>Fingerprint</th><th>Tipo</th><th>Comentário</th></tr>
+          </thead>
+          <tbody>
+            {% for k in keys %}
+            <tr>
+              <td>{{ k.user }}</td>
+              <td class="mono text-12">{{ k.fingerprint }}</td>
+              <td>{{ k.type }}</td>
+              <td class="muted">{{ k.comment|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert">Nenhuma chave SSH encontrada nos diretórios de usuários.</div>
+    {% endif %}
+  </section>
+
+  {% if show_torrent_slot %}
+  <section class="section">
+    <div class="section-head">
+      <h2>API de torrents</h2>
+      <span class="tag">Jellyfin</span>
+    </div>
+    <div class="card">
+      <p>O segredo do token continua na página <a href="{% url 'torrents' %}">Torrents</a>; aqui só o estado e o fingerprint.</p>
+      <div class="table-wrap">
+        <table class="file-table">
+          <tbody>
+            <tr><th scope="row">Token configurado</th><td>{% if torrent_token_presente %}<span class="tag ok">sim</span>{% else %}<span class="tag off">não</span>{% endif %}</td></tr>
+            <tr><th scope="row">Fingerprint SHA-256 (do token)</th><td class="mono text-12">{% if torrent_fingerprint_sha256 %}{{ torrent_fingerprint_sha256 }}{% else %}—{% endif %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

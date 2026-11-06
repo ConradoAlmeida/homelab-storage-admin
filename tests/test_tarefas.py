@@ -131,3 +131,89 @@ def test_disco_do_sistema_nao_entra_na_fila(agent_module, tmp_path, monkeypatch)
             },
         )
     assert not (tmp_path / "tasks").exists()
+
+
+def test_apt_upgrade_nao_roda_no_precheck(agent_module, tmp_path, monkeypatch):
+    monkeypatch.setattr(agent_module, "TASK_DIR", str(tmp_path / "tasks"))
+    monkeypatch.setattr(agent_module, "SYSTEM_MANAGE", True)
+    monkeypatch.setattr(
+        agent_module.shutil, "which", lambda nome: "/usr/bin/apt-get" if nome == "apt-get" else None
+    )
+
+    def proibido(*_args, **_kwargs):
+        raise AssertionError("apt nao deve rodar no precheck")
+
+    monkeypatch.setattr(agent_module.subprocess, "run", proibido)
+
+    def run_ok(args, **_kwargs):
+        assert args[:3] == ["systemctl", "start", "--no-block"]
+        return ""
+
+    monkeypatch.setattr(agent_module, "run", run_ok)
+    with pytest.raises(agent_module.AgentError, match="ATUALIZAR"):
+        agent_module._despachar("apt_upgrade", {"confirmation": "errado"})
+    dados = agent_module._despachar("apt_upgrade", {"confirmation": "ATUALIZAR"})
+    assert dados["status"] == "running"
+    assert dados["started"] is True
+
+
+def test_journal_rede_usa_identificador(agent_module, monkeypatch):
+    monkeypatch.setattr(
+        agent_module.shutil,
+        "which",
+        lambda nome: "/usr/bin/journalctl" if nome == "journalctl" else None,
+    )
+    vistos = []
+
+    def falso(argv, **_kwargs):
+        vistos.append(list(argv))
+
+        class Proc:
+            stdout = ""
+            stderr = ""
+            returncode = 0
+
+        return Proc()
+
+    monkeypatch.setattr(agent_module.subprocess, "run", falso)
+    dados = agent_module.op_journal(filtro="rede")
+    assert dados["lines"] == []
+    argv = vistos[0]
+    assert "-t" in argv
+    assert "systemd-networkd-wait-online" in argv
+    assert "-u" not in argv
+
+
+def test_ssh_keys_le_authorized_keys(agent_module, tmp_path, monkeypatch):
+    home = tmp_path / "home" / "ana"
+    sshdir = home / ".ssh"
+    sshdir.mkdir(parents=True)
+    (sshdir / "id_ed25519").write_text("privada\n")
+    (sshdir / "id_ed25519.pub").write_text("ssh-ed25519 AAAA ana\n")
+    autorizado = sshdir / "authorized_keys"
+    autorizado.write_text("ssh-ed25519 BBBB notebook\n")
+
+    class Ent:
+        pw_uid = 1000
+        pw_name = "ana"
+        pw_dir = str(home)
+
+    monkeypatch.setattr(agent_module.pwd, "getpwall", lambda: [Ent()])
+
+    def run(args, **_kwargs):
+        assert args[:2] == ["ssh-keygen", "-lf"]
+        assert args[2] == str(autorizado)
+        return "256 SHA256:abc notebook (ED25519)\n"
+
+    monkeypatch.setattr(agent_module, "run", run)
+    assert agent_module.op_ssh_keys() == {
+        "keys": [
+            {
+                "user": "ana",
+                "path": str(autorizado),
+                "fingerprint": "SHA256:abc",
+                "type": "ED25519",
+                "comment": "notebook",
+            }
+        ]
+    }

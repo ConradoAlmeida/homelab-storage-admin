@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Logs - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Logs</h1>
+    <p class="lead">Journal do host, rede, armazenamento ou saída de container, conforme o filtro.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="section-head"><h2>Filtro</h2></div>
+  <div class="card">
+    <form method="get" action="" class="form-grid">
+      <label for="filtro">Fonte</label>
+      <select id="filtro" name="filtro" class="input">
+        {% for f in filtros_disponiveis %}
+          <option value="{{ f }}" {% if filtro == f %}selected{% endif %}>{{ f }}</option>
+        {% endfor %}
+      </select>
+      {% if filtro == "sistema" %}
+        <label for="prioridade">Prioridade mínima</label>
+        <select id="prioridade" name="prioridade" class="input">
+          <option value="emerg" {% if prioridade == "emerg" %}selected{% endif %}>emerg</option>
+          <option value="alert" {% if prioridade == "alert" %}selected{% endif %}>alert</option>
+          <option value="crit" {% if prioridade == "crit" %}selected{% endif %}>crit</option>
+          <option value="err" {% if prioridade == "err" %}selected{% endif %}>err</option>
+          <option value="warning" {% if prioridade == "warning" %}selected{% endif %}>warning</option>
+          <option value="notice" {% if prioridade == "notice" %}selected{% endif %}>notice</option>
+          <option value="info" {% if prioridade == "info" %}selected{% endif %}>info</option>
+          <option value="debug" {% if prioridade == "debug" %}selected{% endif %}>debug</option>
+        </select>
+        <label for="periodo">Período</label>
+        <select id="periodo" name="periodo" class="input">
+          <option value="1h" {% if periodo == "1h" %}selected{% endif %}>última hora</option>
+          <option value="24h" {% if periodo == "24h" %}selected{% endif %}>últimas 24 h</option>
+          <option value="7d" {% if periodo == "7d" %}selected{% endif %}>últimos 7 dias</option>
+        </select>
+      {% endif %}
+      {% if filtro == "servico" %}
+        <label for="unit">Unit systemd</label>
+        <input id="unit" class="input mono" type="text" name="unit" value="{{ unit }}" placeholder="ex.: smbd.service">
+      {% endif %}
+      {% if filtro == "container" %}
+        <label for="name">Container</label>
+        <select id="name" name="name" class="input">
+          <option value="">—</option>
+          {% for c in container_names %}
+            <option value="{{ c }}" {% if name == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+      <label for="tail">Linhas (máx. 500)</label>
+      <input id="tail" class="input" type="number" name="tail" min="1" max="500" value="{{ tail }}">
+      <div>
+        <button class="btn primary" type="submit">Aplicar</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% if journal_error %}
+  <div class="alert danger"><strong>Não foi possível carregar os logs</strong><p>{{ journal_error }}</p></div>
+{% elif not journal_cap and filtro != "container" %}
+  <div class="alert">O journalctl não está disponível neste host.</div>
+{% else %}
+  <section class="section">
+    <div class="section-head"><h2>Saída</h2></div>
+    <div class="card">
+      {% if linhas %}
+        <div class="table-wrap"><table class="file-table">
+          <tbody>
+            {% for linha in linhas %}
+              <tr><td class="mono text-12">{{ linha }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      {% else %}
+        <p class="muted">Nenhuma linha retornada para este filtro.</p>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

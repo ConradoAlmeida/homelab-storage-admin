@@ -26,6 +26,7 @@ ENV_KEYS = (
     "BACKUP_ROOT",
     "JELLYFIN_ROOT",
     "AGENT_SOCKET",
+    "TERMINAL_SOCKET",
     "AGENT_SOCKET_DIR",
     "BIND_ADDR",
     "BIND_PORT",
@@ -63,6 +64,8 @@ ENV_KEYS = (
     "SYSTEMD_DIR",
     "LOG_FILE",
     "STORAGE_CACHE",
+    "SYSTEM_MANAGE",
+    "TERMINAL_ENABLE",
 )
 
 

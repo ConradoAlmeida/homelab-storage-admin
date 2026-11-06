@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-04**.
+Documento de retomada. Última atualização: **2026-11-06**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -76,6 +76,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   - **Dados dos apps** — 16 fontes, manual, sem timer.
 - Página **Rede**: firewall UFW editável (ativar/desativar, adicionar/remover
   regras), interfaces, rotas, portas e containers.
+- **Sistema** (`/sistema/…`): Host (ficha + apt com `SYSTEM_MANAGE`), Chaves
+  (fingerprints SSH + slot torrent com `jellyfin`), Logs (journal com filtros
+  fechados ou log de container), Serviços (units systemd), Terminal opcional
+  (`TERMINAL_ENABLE`, segundo socket). Ver [SISTEMA.md](SISTEMA.md).
 - Card **Saúde** no Dashboard: discos, backups, containers e pendências.
 - **Containers** (`/containers/`): Docker ou Podman, estado, portas, iniciar,
   parar, reiniciar e logs; sem remover nem executar comandos. O container do

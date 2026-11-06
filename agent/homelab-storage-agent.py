@@ -6,24 +6,32 @@ Samba, usuarios e snapshots. O app Django nunca executa shell direto.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import configparser
 import contextvars
 import datetime as dt
+import errno
+import fcntl
 import grp
 import hashlib
 import ipaddress
 import json
 import os
+import pty
 import pwd
 import re
 import secrets
+import select
 import shlex
 import shutil
 import socket
 import socketserver
 import sqlite3
+import struct
 import threading
 import subprocess
+import termios
 import sys
 import tarfile
 import tempfile
@@ -37,6 +45,12 @@ SOCKET_PATH = os.environ.get(
     "AGENT_SOCKET",
     os.environ.get("SOCKET_PATH", "/run/homelab-storage-admin/agent.sock"),
 )
+TERMINAL_SOCKET_PATH = os.path.join(
+    os.path.dirname(SOCKET_PATH) or "/run/homelab-storage-admin",
+    "terminal.sock",
+)
+SYSTEM_MANAGE = os.environ.get("SYSTEM_MANAGE", "1") == "1"
+TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "0") == "1"
 SMB_CONF = os.environ.get("SMB_CONF", "/etc/samba/smb.conf")
 CONFIG_DIR = os.environ.get("CONFIG_DIR", "/etc/homelab-storage-agent")
 SNAP_CONFIG = os.environ.get("SNAP_CONFIG", f"{CONFIG_DIR}/snapshots.json")
@@ -149,6 +163,26 @@ RESERVED_GROUPS = {
 BLOCK_DEVICE_RE = re.compile(
     r"^/dev/(?:sd[a-z]+|nvme\d+n\d+|mmcblk\d+|vd[a-z]+|xvd[a-z]+)$"
 )
+
+SYSTEMD_UNIT_DENY = frozenset(
+    {
+        "ssh",
+        "sshd",
+        "homelab-storage-agent",
+        "docker",
+        "containerd",
+        "podman",
+        "systemd-journald",
+        "systemd-networkd",
+    }
+)
+SYSTEMD_UNIT_RE = re.compile(r"^[a-zA-Z0-9:_.@\-]+$")
+
+JOURNAL_PRIORITIES = frozenset(
+    {"emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"}
+)
+JOURNAL_PERIODS = {"1h", "24h", "7d"}
+JOURNAL_FILTERS = {"sistema", "storage", "rede", "servico", "container"}
 
 # A politica e criada pelo app; o agente so mantem o estado em disco.
 DEFAULT_POLICY: dict = {}
@@ -293,6 +327,11 @@ def host_capabilities() -> dict:
         "jellyfin": _container_exists(JELLYFIN_CONTAINER),
         "containers": bool(_runtime_containers()),
         "firewall": bool(shutil.which("ufw")),
+        "apt": bool(shutil.which("apt-get")),
+        "journal": bool(shutil.which("journalctl")),
+        "systemctl": bool(shutil.which("systemctl")),
+        "system_manage": SYSTEM_MANAGE,
+        "terminal_enable": TERMINAL_ENABLE,
     }
 
 
@@ -5960,6 +5999,497 @@ def op_container_logs(name: str = "", tail: int = 200, **_):
     return {"name": nome, "tail": linhas, "logs": texto[-200000:], "runtime": runtime}
 
 
+def _friendly_hostname() -> str:
+    """Nome amigável do host (produto Django), não o hostname do SO."""
+    caminho = Path("/etc/homelab-storage-admin/host.env")
+    if caminho.is_file():
+        try:
+            for linha in caminho.read_text().splitlines():
+                linha = linha.strip()
+                if linha.startswith("SITE_NAME="):
+                    valor = linha.split("=", 1)[1].strip()
+                    if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in "\"'":
+                        valor = valor[1:-1]
+                    if valor:
+                        return valor
+        except OSError:
+            pass
+    return ""
+
+
+def _os_pretty_name() -> str:
+    caminho = Path("/etc/os-release")
+    if not caminho.is_file():
+        return ""
+    try:
+        for linha in caminho.read_text().splitlines():
+            if linha.startswith("PRETTY_NAME="):
+                valor = linha.split("=", 1)[1].strip().strip('"')
+                return valor or ""
+    except OSError:
+        pass
+    return ""
+
+
+def op_host_info(**_) -> dict:
+    try:
+        uname = os.uname()
+        kernel = uname.release
+        nodename = uname.nodename
+    except (AttributeError, OSError):
+        kernel = ""
+        nodename = ""
+    if not nodename:
+        nodename = socket.gethostname()
+    horario = ""
+    rc, out, _ = run_optional(
+        ["timedatectl", "show", "-p", "LocalRTC", "-p", "Timezone", "-p", "TimeUSec"],
+        timeout=10,
+    )
+    if rc == 0 and out.strip():
+        tz = ""
+        try:
+            bruto = run(["timedatectl", "show", "-p", "Timezone", "--value"], timeout=5)
+            tz = bruto.strip()
+        except AgentError:
+            for linha in out.splitlines():
+                if linha.startswith("Timezone="):
+                    tz = linha.split("=", 1)[1].strip()
+                    break
+        instante = dt.datetime.now()
+        if tz:
+            horario = f"{instante.strftime('%Y-%m-%d %H:%M:%S')} ({tz})"
+        else:
+            horario = instante.strftime("%Y-%m-%d %H:%M:%S %Z").strip()
+    if not horario:
+        horario = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return {
+        "hostname": nodename,
+        "friendly_name": _friendly_hostname(),
+        "system": _os_pretty_name(),
+        "kernel": kernel,
+        "datetime": horario,
+    }
+
+
+def _fingerprints_authorized_keys(caminho: Path, usuario: str) -> list[dict]:
+    try:
+        if not caminho.is_file() or caminho.stat().st_size > 65536:
+            return []
+    except OSError:
+        return []
+    try:
+        fp_out = run(["ssh-keygen", "-lf", str(caminho)], timeout=15)
+    except AgentError:
+        return []
+    chaves = []
+    for bruta in fp_out.splitlines():
+        linha_fp = bruta.strip().split()
+        if len(linha_fp) < 2:
+            continue
+        tipo = ""
+        comentario = ""
+        if linha_fp[-1].startswith("(") and linha_fp[-1].endswith(")"):
+            tipo = linha_fp[-1][1:-1]
+            if len(linha_fp) > 3:
+                comentario = " ".join(linha_fp[2:-1]).strip()
+        elif len(linha_fp) >= 3:
+            comentario = " ".join(linha_fp[2:]).strip()
+        chaves.append(
+            {
+                "user": usuario,
+                "path": str(caminho),
+                "fingerprint": linha_fp[1],
+                "type": tipo,
+                "comment": comentario,
+            }
+        )
+    return chaves
+
+
+def _chaves_ssh_usuario(home: Path, usuario: str) -> list[dict]:
+    return _fingerprints_authorized_keys(home / ".ssh" / "authorized_keys", usuario)
+
+
+def op_ssh_keys(**_) -> dict:
+    chaves = []
+    try:
+        for entrada in pwd.getpwall():
+            if entrada.pw_uid == 0 or entrada.pw_uid >= 1000:
+                chaves.extend(_chaves_ssh_usuario(Path(entrada.pw_dir), entrada.pw_name))
+    except (OSError, KeyError):
+        pass
+    return {"keys": chaves}
+
+
+def _journal_since(period: str) -> str:
+    return {"1h": "1 hour ago", "24h": "24 hours ago", "7d": "7 days ago"}.get(
+        period, "1 hour ago"
+    )
+
+
+def _journal_linhas(extra: list[str], n: int) -> list[str]:
+    argv = ["journalctl", "-n", str(n), "--no-pager", *extra]
+    try:
+        proc = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise AgentError(f"journalctl falhou: {exc}") from exc
+    texto = ((proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")).strip()
+    return [
+        linha
+        for linha in (texto.splitlines() if texto else [])
+        if linha.strip() != "-- No entries --"
+    ]
+
+
+def op_journal(
+    filtro: str = "",
+    prioridade: str = "info",
+    periodo: str = "1h",
+    unit: str = "",
+    name: str = "",
+    tail: int | str = 500,
+    **_extra,
+) -> dict:
+    if not shutil.which("journalctl"):
+        raise AgentError("journalctl nao esta instalado no host")
+    f = (filtro or "").strip().lower()
+    if f not in JOURNAL_FILTERS:
+        raise AgentError("Filtro de journal invalido")
+    try:
+        n = int(tail)
+    except (TypeError, ValueError):
+        n = 500
+    n = max(1, min(n, 500))
+    argv: list[str] = ["journalctl", "-n", str(n), "--no-pager"]
+
+    if f == "sistema":
+        p = (prioridade or "info").strip().lower()
+        if p not in JOURNAL_PRIORITIES:
+            raise AgentError("Prioridade invalida")
+        per = (periodo or "1h").strip().lower()
+        if per not in JOURNAL_PERIODS:
+            raise AgentError("Periodo invalido")
+        argv.extend(["-p", p, "-S", _journal_since(per)])
+    elif f == "storage":
+        # Duas fontes em OU: o identificador udisksd (o unit do apt/Cockpit
+        # nao filtra sozinho) e o kernel de Btrfs/md/RAID.
+        linhas_storage = _journal_linhas(
+            ["-t", "udisksd", "-S", "24 hours ago"], n
+        )
+        linhas_storage.extend(
+            _journal_linhas(
+                [
+                    "-t",
+                    "kernel",
+                    "-S",
+                    "24 hours ago",
+                    "-g",
+                    "btrfs|mdadm|RAID|linux_raid",
+                ],
+                n,
+            )
+        )
+        vistas = []
+        for linha in linhas_storage:
+            if linha not in vistas:
+                vistas.append(linha)
+        return {"lines": vistas[-n:], "filtro": f, "count": len(vistas[-n:])}
+    elif f == "rede":
+        # -t, nao -u: o timeout do wait-online nasce dentro do apt-daily.
+        argv.extend(
+            [
+                "-S",
+                "24 hours ago",
+                "-t",
+                "systemd-networkd",
+                "-t",
+                "systemd-networkd-wait-online",
+                "-t",
+                "NetworkManager",
+            ]
+        )
+    elif f == "servico":
+        unidade = (unit or "").strip()
+        if not unidade:
+            raise AgentError("Unit obrigatoria para o filtro servico")
+        if not SYSTEMD_UNIT_RE.match(unidade):
+            raise AgentError("Nome da unit invalido")
+        rc, load_out, _ = run_optional(
+            ["systemctl", "show", unidade, "-p", "LoadState", "--value"],
+            timeout=15,
+        )
+        if rc != 0 or (load_out or "").strip() in {"", "not-found"}:
+            raise AgentError("Unit nao encontrada")
+        argv.extend(["-u", unidade])
+    elif f == "container":
+        nome = (name or "").strip()
+        if not nome:
+            raise AgentError("Nome do container obrigatorio")
+        return op_container_logs(name=nome, tail=n)
+    linhas = _journal_linhas(argv[3:], n)
+    return {"lines": linhas[-n:], "filtro": f, "count": len(linhas[-n:])}
+
+
+def _systemd_validar_unit(nome: str) -> None:
+    if not nome or not SYSTEMD_UNIT_RE.match(nome):
+        raise AgentError("Nome da unit invalido")
+    base = nome.split("@", 1)[0].removesuffix(".service")
+    if base in SYSTEMD_UNIT_DENY:
+        raise AgentError("Unit recusada pela politica de seguranca")
+    try:
+        estado = run(
+            ["systemctl", "show", nome, "-p", "LoadState", "--value"],
+            timeout=15,
+        ).strip()
+    except AgentError:
+        raise AgentError("Unit nao encontrada") from None
+    if estado in {"", "not-found"}:
+        raise AgentError("Unit nao encontrada")
+
+
+def op_systemd_list_units(**_) -> dict:
+    if not shutil.which("systemctl"):
+        raise AgentError("systemctl nao esta instalado no host")
+    rc, out, err = run_optional(
+        [
+            "systemctl",
+            "list-units",
+            "--type=service",
+            "--all",
+            "--no-legend",
+            "--no-pager",
+        ],
+        timeout=30,
+    )
+    texto = (out or "") + (("\n" + err) if err else "")
+    unidades = []
+    for linha in texto.splitlines():
+        partes = linha.split()
+        if not partes:
+            continue
+        uname = partes[0]
+        if not uname.endswith(".service"):
+            continue
+        load = partes[1] if len(partes) > 1 else ""
+        active = partes[2] if len(partes) > 2 else ""
+        sub = partes[3] if len(partes) > 3 else ""
+        unidades.append(
+            {
+                "unit": uname,
+                "load": load,
+                "active": active,
+                "sub": sub,
+            }
+        )
+    return {"units": unidades}
+
+
+def op_systemd_unit_action(unit: str = "", action: str = "", **_):
+    if not SYSTEM_MANAGE:
+        raise AgentError("SYSTEM_MANAGE desligado no host")
+    if not shutil.which("systemctl"):
+        raise AgentError("systemctl nao esta instalado no host")
+    ac = (action or "").strip().lower()
+    if ac not in {"start", "stop", "restart", "enable", "disable"}:
+        raise AgentError("Acao invalida")
+    unidade = (unit or "").strip()
+    _systemd_validar_unit(unidade)
+    if ac in {"start", "restart", "enable"}:
+        run(["systemctl", ac, unidade], timeout=120)
+    elif ac == "stop":
+        run(["systemctl", "stop", unidade], timeout=120)
+    else:
+        run(["systemctl", "disable", unidade], timeout=120)
+    return {"unit": unidade, "action": ac, "ok": True}
+
+
+def op_apt_check(**_) -> dict:
+    if not SYSTEM_MANAGE:
+        raise AgentError("SYSTEM_MANAGE desligado no host")
+    if not shutil.which("apt-get"):
+        raise AgentError("apt-get nao esta instalado no host")
+    _checkpoint()
+    run(["apt-get", "update", "-qq"], timeout=600)
+    proc = subprocess.run(
+        ["apt-get", "-s", "upgrade"],
+        capture_output=True,
+        text=True,
+        timeout=600,
+        check=False,
+    )
+    saida = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    pacotes: list[str] = []
+    for linha in (proc.stdout or "").splitlines():
+        linha = linha.strip()
+        if linha.startswith("Inst "):
+            partes = linha.split()
+            if len(partes) > 1:
+                pacotes.append(partes[1])
+    return {
+        "upgradable": pacotes[:500],
+        "count": len(pacotes),
+        "preview": saida[-8000:],
+    }
+
+
+def op_apt_upgrade(confirmation: str = "", **_):
+    if not SYSTEM_MANAGE:
+        raise AgentError("SYSTEM_MANAGE desligado no host")
+    if not shutil.which("apt-get"):
+        raise AgentError("apt-get nao esta instalado no host")
+    if (confirmation or "").strip() != "ATUALIZAR":
+        raise AgentError('Digite a frase exata "ATUALIZAR" para confirmar')
+    _checkpoint()
+    proc = subprocess.run(
+        ["apt-get", "upgrade", "-y", "-qq"],
+        capture_output=True,
+        text=True,
+        timeout=3600,
+        check=False,
+    )
+    saida = ((proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")).strip()
+    if proc.returncode != 0:
+        raise AgentError(f"apt-get upgrade falhou: {saida[:500]}")
+    return {"ok": True, "log_tail": saida[-8000:]}
+
+
+_TERMINAL_LOCK = threading.Lock()
+_TERMINAL_SESSIONS: dict[str, dict] = {}
+
+
+def _terminal_limpar_sid(sid: str) -> None:
+    with _TERMINAL_LOCK:
+        sess = _TERMINAL_SESSIONS.pop(sid, None)
+    if not sess:
+        return
+    master = sess.get("master_fd")
+    pid = sess.get("pid")
+    try:
+        if master is not None:
+            os.close(master)
+    except OSError:
+        pass
+    if pid:
+        try:
+            os.kill(pid, 15)
+        except OSError:
+            pass
+        try:
+            os.waitpid(pid, os.WNOHANG)
+        except ChildProcessError:
+            pass
+
+
+def op_terminal_open(cols: int = 80, rows: int = 24, **_extra) -> dict:
+    if not TERMINAL_ENABLE:
+        raise AgentError("Terminal desligado no host (TERMINAL_ENABLE=0)")
+    try:
+        c = int(cols)
+        r = int(rows)
+    except (TypeError, ValueError):
+        c, r = 80, 24
+    c = max(20, min(c, 500))
+    r = max(5, min(r, 200))
+    master, slave = pty.openpty()
+    try:
+        pid = os.fork()
+    except OSError as exc:
+        os.close(master)
+        os.close(slave)
+        raise AgentError(f"fork falhou: {exc}") from exc
+    if pid == 0:
+        os.setsid()
+        os.close(master)
+        try:
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", r, c, 0, 0))
+        except OSError:
+            pass
+        os.dup2(slave, 0)
+        os.dup2(slave, 1)
+        os.dup2(slave, 2)
+        if slave > 2:
+            os.close(slave)
+        env = os.environ.copy()
+        env["TERM"] = env.get("TERM") or "xterm-256color"
+        shell = shutil.which("bash") or "/bin/sh"
+        try:
+            os.execvpe(shell, [shell, "-l"], env)
+        except OSError:
+            os._exit(127)
+    os.close(slave)
+    fl = fcntl.fcntl(master, fcntl.F_GETFL)
+    fcntl.fcntl(master, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+    sid = secrets.token_hex(8)
+    with _TERMINAL_LOCK:
+        _TERMINAL_SESSIONS[sid] = {
+            "master_fd": master,
+            "pid": pid,
+            "last": time.monotonic(),
+        }
+    return {"session_id": sid, "cols": c, "rows": r}
+
+
+def op_terminal_close(session_id: str = "", **_extra) -> dict:
+    sid = (session_id or "").strip()
+    if not sid:
+        raise AgentError("Sessao invalida")
+    _terminal_limpar_sid(sid)
+    return {"closed": True}
+
+
+def op_terminal_io(session_id: str = "", input_b64: str = "", **_extra) -> dict:
+    sid = (session_id or "").strip()
+    if not sid:
+        raise AgentError("Sessao invalida")
+    with _TERMINAL_LOCK:
+        sess = _TERMINAL_SESSIONS.get(sid)
+    if not sess:
+        raise AgentError("Sessao expirada ou inexistente")
+    if time.monotonic() - sess["last"] > 900:
+        _terminal_limpar_sid(sid)
+        raise AgentError("Sessao encerrada por inatividade")
+    sess["last"] = time.monotonic()
+    master = sess["master_fd"]
+    saida = b""
+    if input_b64:
+        try:
+            dados = base64.b64decode(input_b64.encode("ascii"), validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise AgentError("Entrada invalida") from exc
+        if dados:
+            try:
+                os.write(master, dados)
+            except OSError as exc:
+                raise AgentError(f"Escrita no pty falhou: {exc}") from exc
+    deadline = time.monotonic() + 0.15
+    while time.monotonic() < deadline:
+        try:
+            rlist, _, _ = select.select([master], [], [], 0.05)
+        except (OSError, ValueError):
+            break
+        if not rlist:
+            continue
+        try:
+            chunk = os.read(master, 65536)
+        except BlockingIOError:
+            continue
+        except OSError:
+            break
+        if not chunk:
+            break
+        saida += chunk
+        if len(saida) >= 262144:
+            break
+    return {"output_b64": base64.b64encode(saida).decode("ascii")}
+
+
 def _jellyfin_mounts() -> list[dict]:
     runtime = _runtime_containers()
     if not runtime:
@@ -6270,6 +6800,13 @@ OPS = {
     "cold_copy": op_cold_copy,
     "cold_eject": op_cold_eject,
     "network_metrics": op_network_metrics,
+    "host_info": op_host_info,
+    "ssh_keys": op_ssh_keys,
+    "journal": op_journal,
+    "systemd_list_units": op_systemd_list_units,
+    "systemd_unit_action": op_systemd_unit_action,
+    "apt_check": op_apt_check,
+    "apt_upgrade": op_apt_upgrade,
 }
 
 
@@ -6305,6 +6842,8 @@ GATILHOS = {
     "snapshot_create",
     "snapshot_restore",
     "snapshot_policy_save",
+    "apt_check",
+    "apt_upgrade",
 }
 GATILHO_MSG = {
     "backup_disk_setup": "Formatando o disco e criando o repositório…",
@@ -6322,6 +6861,8 @@ GATILHO_MSG = {
     "snapshot_create": "Criando o snapshot…",
     "snapshot_restore": "Restaurando o snapshot no share…",
     "snapshot_policy_save": "Salvando a política de snapshot…",
+    "apt_check": "Atualizando listas de pacotes e verificando atualizações…",
+    "apt_upgrade": "Instalando atualizações de pacotes (apt-get upgrade)…",
 }
 
 
@@ -6342,6 +6883,8 @@ def _tarefa_chave(op: str, payload: dict) -> str:
         "snapshot_create": payload.get("share"),
         "snapshot_restore": f"{payload.get('share')}:{payload.get('name')}",
         "snapshot_policy_save": payload.get("share"),
+        "apt_check": "apt",
+        "apt_upgrade": "apt",
     }
     return str(campos.get(op) or op)
 
@@ -6478,6 +7021,14 @@ def _tarefa_finalizar(task_id: str, op: str, resultado: dict) -> None:
         mensagem = "Verificação concluída."
     elif op == "credenciais_backup_run":
         mensagem = "Backup do Credenciais gerado."
+    elif op == "apt_check":
+        cnt = resultado.get("count")
+        if isinstance(cnt, int):
+            mensagem = f"Há {cnt} pacote(s) atualizável(is)." if cnt else "Nenhum pacote atualizável."
+        else:
+            mensagem = "Verificação de pacotes concluída."
+    elif op == "apt_upgrade":
+        mensagem = "Atualização de pacotes concluída."
     atual = _tarefa_ler(task_id)
     atual.update(
         {
@@ -6649,6 +7200,51 @@ class Server(socketserver.ThreadingUnixStreamServer):
     daemon_threads = True
 
 
+class TerminalHandler(socketserver.StreamRequestHandler):
+    def handle(self) -> None:
+        raw = self.rfile.readline(1024 * 1024).strip()
+        if not raw:
+            return
+        try:
+            request = json.loads(raw)
+            op = str(request.pop("op", "") or "")
+            if op == "terminal_open":
+                data = op_terminal_open(**request)
+            elif op == "terminal_io":
+                data = op_terminal_io(**request)
+            elif op == "terminal_close":
+                data = op_terminal_close(**request)
+            elif op == "ping":
+                data = {"pong": True}
+            else:
+                raise AgentError(f"Operacao de terminal invalida: {op}")
+            response = {"ok": True, "data": data}
+        except AgentError as exc:
+            response = {"ok": False, "error": str(exc)}
+        except Exception as exc:  # noqa: BLE001
+            log("TERM_ERROR " + traceback.format_exc().replace("\n", " | "))
+            response = {"ok": False, "error": f"Erro interno: {exc}"}
+        self.wfile.write(json.dumps(response).encode("utf-8") + b"\n")
+
+
+class TerminalServer(socketserver.ThreadingUnixStreamServer):
+    daemon_threads = True
+
+
+def _terminal_janitor() -> None:
+    while True:
+        time.sleep(60)
+        agora = time.monotonic()
+        with _TERMINAL_LOCK:
+            expirados = [
+                sid
+                for sid, sess in _TERMINAL_SESSIONS.items()
+                if agora - sess.get("last", 0) > 900
+            ]
+        for sid in expirados:
+            _terminal_limpar_sid(sid)
+
+
 def main() -> int:
     if os.geteuid() != 0:
         print("O agente precisa rodar como root.", file=sys.stderr)
@@ -6728,8 +7324,23 @@ def main() -> int:
         os.unlink(SOCKET_PATH)
     server = Server(SOCKET_PATH, Handler)
     os.chmod(SOCKET_PATH, 0o660)
+    term_server = None
+    if TERMINAL_ENABLE:
+        pasta = os.path.dirname(TERMINAL_SOCKET_PATH) or "."
+        os.makedirs(pasta, exist_ok=True)
+        if os.path.exists(TERMINAL_SOCKET_PATH):
+            os.unlink(TERMINAL_SOCKET_PATH)
+        term_server = TerminalServer(TERMINAL_SOCKET_PATH, TerminalHandler)
+        os.chmod(TERMINAL_SOCKET_PATH, 0o660)
+        threading.Thread(
+            target=_terminal_janitor, daemon=True, name="terminal-janitor"
+        ).start()
     log("AGENT START")
     try:
+        if term_server:
+            threading.Thread(
+                target=term_server.serve_forever, daemon=True, name="terminal-socket"
+            ).start()
         server.serve_forever()
     except KeyboardInterrupt:
         pass
@@ -6737,6 +7348,10 @@ def main() -> int:
         server.server_close()
         if os.path.exists(SOCKET_PATH):
             os.unlink(SOCKET_PATH)
+        if term_server:
+            term_server.server_close()
+            if os.path.exists(TERMINAL_SOCKET_PATH):
+                os.unlink(TERMINAL_SOCKET_PATH)
         log("AGENT STOP")
     return 0
 

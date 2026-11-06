@@ -43,3 +43,11 @@ def test_moya_bloqueia_apenas_identidade():
         assert cliente.get(caminho).status_code == 404, caminho
     # Grupo é operação de servidor e continua disponível (redireciona para login).
     assert cliente.get("/usuarios/grupos/novo/").status_code == 302
+    # Rotas de sistema não são bloqueadas pelo Credenciais.
+    for caminho in (
+        "/sistema/",
+        "/sistema/chaves/",
+        "/sistema/logs/",
+        "/sistema/servicos/",
+    ):
+        assert cliente.get(caminho).status_code == 302, caminho

@@ -16,17 +16,16 @@ class AgentClient:
         self.socket_path = socket_path or settings.AGENT_SOCKET
         self.timeout = timeout or settings.AGENT_TIMEOUT
 
-    def call(self, op: str, timeout: int | None = None, **payload):
+    def _linha_json(self, caminho: str, payload: dict, *, timeout: int | None = None):
         if not hasattr(socket, "AF_UNIX"):
             raise AgentError(
                 "Unix socket nao suportado nesta plataforma. Rode o app no Linux/servidor."
             )
-        request = {"op": op, **payload}
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
                 sock.settimeout(timeout or self.timeout)
-                sock.connect(self.socket_path)
-                sock.sendall(json.dumps(request).encode("utf-8") + b"\n")
+                sock.connect(caminho)
+                sock.sendall(json.dumps(payload).encode("utf-8") + b"\n")
                 chunks = []
                 while True:
                     chunk = sock.recv(65536)
@@ -37,7 +36,7 @@ class AgentClient:
                         break
         except (FileNotFoundError, ConnectionRefusedError, socket.timeout, OSError) as exc:
             raise AgentError(
-                f"Nao foi possivel falar com o agente em {self.socket_path}: {exc}"
+                f"Nao foi possivel falar com o agente em {caminho}: {exc}"
             ) from exc
 
         raw = b"".join(chunks).strip()
@@ -51,6 +50,9 @@ class AgentClient:
         if not response.get("ok"):
             raise AgentError(response.get("error", "Erro desconhecido no agente"))
         return response.get("data")
+
+    def call(self, op: str, timeout: int | None = None, **payload):
+        return self._linha_json(self.socket_path, {"op": op, **payload}, timeout=timeout)
 
     # atalhos
     def ping(self):
@@ -391,6 +393,50 @@ class AgentClient:
 
     def torrent_overview(self):
         return self.call("torrent_overview", timeout=30)
+
+    def host_info(self):
+        return self.call("host_info", timeout=15)
+
+    def ssh_keys(self):
+        return self.call("ssh_keys", timeout=60)
+
+    def journal(self, **kwargs):
+        return self.call("journal", timeout=90, **kwargs)
+
+    def systemd_list_units(self):
+        return self.call("systemd_list_units", timeout=45)
+
+    def systemd_unit_action(self, unit, action):
+        return self.call(
+            "systemd_unit_action", timeout=120, unit=unit, action=action
+        )
+
+    def apt_check(self):
+        return self.call("apt_check", timeout=660)
+
+    def apt_upgrade(self, confirmation):
+        return self.call("apt_upgrade", timeout=3660, confirmation=confirmation)
+
+    def terminal_open(self, cols=80, rows=24):
+        return self._linha_json(
+            settings.TERMINAL_SOCKET,
+            {"op": "terminal_open", "cols": cols, "rows": rows},
+            timeout=30,
+        )
+
+    def terminal_io(self, session_id, input_b64=""):
+        return self._linha_json(
+            settings.TERMINAL_SOCKET,
+            {"op": "terminal_io", "session_id": session_id, "input_b64": input_b64},
+            timeout=30,
+        )
+
+    def terminal_close(self, session_id):
+        return self._linha_json(
+            settings.TERMINAL_SOCKET,
+            {"op": "terminal_close", "session_id": session_id},
+            timeout=15,
+        )
 
     def library_merge_dir(self, library_id, source, dest):
         return self.call(

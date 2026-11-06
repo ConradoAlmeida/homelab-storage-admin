@@ -930,6 +930,26 @@ details.card > summary:hover {
   border-top: 1px solid var(--line);
 }
 
+.terminal-screen {
+  min-height: 24rem;
+  background: #0b0f14;
+  color: #e6edf3;
+  overflow: auto;
+}
+
+.form-inline {
+  display: inline;
+}
+
+.details-inline {
+  display: inline-block;
+  min-width: 14rem;
+}
+
+.stack-tight > * + * {
+  margin-top: 0.5rem;
+}
+
 .pre,
 pre {
   display: block;

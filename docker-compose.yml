@@ -10,6 +10,7 @@ services:
       - .env
     environment:
       - AGENT_SOCKET=${AGENT_SOCKET:-/run/homelab-storage-admin/agent.sock}
+      - TERMINAL_SOCKET=${TERMINAL_SOCKET:-/run/homelab-storage-admin/terminal.sock}
       - SITE_NAME=${SITE_NAME:-Homelab Storage}
       - STORAGE_ROOT=${STORAGE_ROOT:-/mnt/nas}
       - SNAPSHOT_ROOT=${SNAPSHOT_ROOT:-/mnt/nas/.snapshots}
@@ -21,6 +22,9 @@ services:
       - SNAPSHOT_DENYLIST=${SNAPSHOT_DENYLIST:-}
       - CREDENTIALS_MANAGE_USERS=${CREDENTIALS_MANAGE_USERS:-0}
       - FIREWALL_MANAGE=${FIREWALL_MANAGE:-1}
+      - SYSTEM_MANAGE=${SYSTEM_MANAGE:-1}
+      - TERMINAL_ENABLE=${TERMINAL_ENABLE:-0}
+      - TERMINAL_SOCKET=${TERMINAL_SOCKET:-}
       - TORRENT_API_TOKEN=${TORRENT_API_TOKEN:-}
     volumes:
       - "${DATA_DIR:-./data}:/app/data"

@@ -1,10 +1,33 @@
 from django.urls import path
 
-from . import downloads, views
+from . import downloads, system_views, views
 
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("rede/", views.NetworkView.as_view(), name="network_index"),
+    path("sistema/", system_views.SystemHostView.as_view(), name="system_host"),
+    path("sistema/chaves/", system_views.SystemKeysView.as_view(), name="system_keys"),
+    path("sistema/logs/", system_views.SystemLogsView.as_view(), name="system_logs"),
+    path(
+        "sistema/servicos/",
+        system_views.SystemServicesView.as_view(),
+        name="system_services",
+    ),
+    path(
+        "sistema/servicos/acao/",
+        system_views.SystemServiceActionView.as_view(),
+        name="system_service_action",
+    ),
+    path(
+        "sistema/terminal/",
+        system_views.TerminalPageView.as_view(),
+        name="system_terminal",
+    ),
+    path(
+        "sistema/terminal/io/",
+        system_views.TerminalIoView.as_view(),
+        name="system_terminal_io",
+    ),
     path(
         "rede/firewall/",
         views.FirewallActionView.as_view(),

@@ -133,6 +133,10 @@ LOGOUT_REDIRECT_URL = "login"
 
 # Unix socket do agente privilegiado (host)
 AGENT_SOCKET = os.environ.get("AGENT_SOCKET", "/run/homelab-storage-admin/agent.sock")
+TERMINAL_SOCKET = os.environ.get(
+    "TERMINAL_SOCKET",
+    str(Path(AGENT_SOCKET).parent / "terminal.sock"),
+)
 AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "90"))
 
 # Credenciais (moyaserver). Vazio no Pi: mantém o login local.
@@ -145,6 +149,12 @@ CREDENTIALS_MANAGE_USERS = os.environ.get("CREDENTIALS_MANAGE_USERS", "0") == "1
 
 # Gestao do firewall UFW pela pagina Rede. 0 deixa a pagina somente leitura.
 FIREWALL_MANAGE = os.environ.get("FIREWALL_MANAGE", "1") == "1"
+
+# Gestao de pacotes apt e systemd. 0 deixa Host/Servicos somente leitura.
+SYSTEM_MANAGE = os.environ.get("SYSTEM_MANAGE", "1") == "1"
+
+# Terminal no navegador (segundo socket do agente). 0 oculta a rota e o menu.
+TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "0") == "1"
 
 # Bearer da API de envio de torrents. Vazio desliga /api/torrents/.
 TORRENT_API_TOKEN = os.environ.get("TORRENT_API_TOKEN", "")

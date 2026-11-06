@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -295,16 +296,8 @@ class ContainerLogsView(AgentView):
         except (TypeError, ValueError):
             tail = 200
         tail = max(1, min(tail, 1000))
-        context = {"name": name, "tail": tail, "logs": "", "error": None, "opcoes": [100, 200, 500, 1000]}
-        try:
-            dados = agent.container_logs(name, tail)
-        except AgentError as exc:
-            context["error"] = str(exc)
-        else:
-            context["name"] = dados.get("name") or name
-            context["logs"] = dados.get("logs") or ""
-            context["runtime"] = dados.get("runtime") or ""
-        return render(request, "container_logs.html", context)
+        q = {"filtro": "container", "name": name, "tail": str(tail)}
+        return redirect(f"{reverse('system_logs')}?{urlencode(q)}")
 
 
 class NetworkMetricsView(AgentView):

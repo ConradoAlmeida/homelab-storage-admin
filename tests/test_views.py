@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -10,6 +11,7 @@ from django.test import TestCase, override_settings
 import backups.views as backup_views
 import core.context_processors as context_processors
 import core.downloads as core_downloads
+import core.system_views as system_views_module
 import core.views as core_views
 import storage.views as storage_views
 from core.agent import AgentError
@@ -128,7 +130,24 @@ def fake_agent(capabilities=None):
         "storage_root_mounted": False,
         "storage_root_fstype": "ext4",
         "snapshot_backend": "none",
+        "apt": False,
+        "journal": False,
+        "systemctl": False,
+        "system_manage": True,
+        "terminal_enable": False,
     }
+    agent.host_info.return_value = {
+        "hostname": "test",
+        "friendly_name": "",
+        "system": "Test OS",
+        "kernel": "1.0",
+        "datetime": "2026-01-01 00:00:00",
+    }
+    agent.ssh_keys.return_value = {"keys": []}
+    agent.journal.return_value = {"lines": [], "count": 0}
+    agent.systemd_list_units.return_value = {"units": []}
+    agent.apt_check.return_value = {"started": True, "task": "aptcheck-abcdef12", "status": "running"}
+    agent.apt_upgrade.return_value = {"started": True, "task": "aptupgrade-abcd1234", "status": "running"}
     return agent
 
 
@@ -1543,9 +1562,135 @@ class ViewSmokeTests(TestCase):
         )
         self.fake.container_action.assert_not_called()
 
-    def test_container_logs_renderiza(self):
+    def test_container_logs_redireciona_para_sistema_logs(self):
         resposta = self.client.get(
             "/containers/logs/", {"name": "gitea", "tail": "100"}
         )
-        self.assertContains(resposta, "linha de log")
-        self.fake.container_logs.assert_called_once_with("gitea", 100)
+        self.assertEqual(resposta.status_code, 302)
+        loc = resposta["Location"]
+        self.assertIn("/sistema/logs/", loc)
+        self.assertIn("filtro=container", loc)
+        self.assertIn("name=gitea", loc)
+        self.fake.container_logs.assert_not_called()
+
+
+class SystemPagesTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="sys-t", password="test-password"
+        )
+        self.client.force_login(self.user)
+        self.fake = fake_agent()
+        for module in (
+            core_views,
+            core_downloads,
+            context_processors,
+            system_views_module,
+        ):
+            patcher = patch.object(module, "agent", self.fake)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.fake.terminal_open.return_value = {"session_id": "abc", "cols": 80, "rows": 24}
+        self.fake.terminal_io.return_value = {"output_b64": ""}
+        self.fake.terminal_close.return_value = {"closed": True}
+        context_processors._cached_caps = None
+        context_processors._cached_at = 0.0
+
+    def test_system_host_renders_sem_apt(self):
+        resp = self.client.get("/sistema/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Hostname")
+
+    @override_settings(SYSTEM_MANAGE=False)
+    def test_apt_nao_dispara_com_system_manage_off(self):
+        caps = dict(self.fake.host_capabilities.return_value)
+        caps["apt"] = True
+        caps["system_manage"] = True
+        self.fake.host_capabilities.return_value = caps
+        context_processors._cached_caps = None
+        self.client.post("/sistema/", {"acao": "apt_check"})
+        self.fake.apt_check.assert_not_called()
+        self.client.post(
+            "/sistema/",
+            {"acao": "apt_upgrade", "confirmation": "ATUALIZAR"},
+        )
+        self.fake.apt_upgrade.assert_not_called()
+
+    def test_frase_errada_nao_dispara_apt_upgrade(self):
+        caps = dict(self.fake.host_capabilities.return_value)
+        caps.update({"apt": True, "system_manage": True})
+        self.fake.host_capabilities.return_value = caps
+        context_processors._cached_caps = None
+        self.client.post(
+            "/sistema/",
+            {"acao": "apt_upgrade", "confirmation": "errado"},
+        )
+        self.fake.apt_upgrade.assert_not_called()
+
+    @override_settings(SYSTEM_MANAGE=True)
+    def test_sistema_logs_filtro_invalido(self):
+        caps = dict(self.fake.host_capabilities.return_value)
+        caps["journal"] = True
+        self.fake.host_capabilities.return_value = caps
+        context_processors._cached_caps = None
+        r = self.client.get("/sistema/logs/", {"filtro": "invalido"})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "desconhecido")
+
+    def test_systemd_unit_recusada(self):
+        caps = dict(self.fake.host_capabilities.return_value)
+        caps.update({"systemctl": True, "system_manage": True})
+        self.fake.host_capabilities.return_value = caps
+        context_processors._cached_caps = None
+        r = self.client.post(
+            "/sistema/servicos/acao/",
+            {"unit": "ssh", "action": "stop", "confirmation": "ssh"},
+        )
+        self.assertRedirects(r, "/sistema/servicos/")
+        self.fake.systemd_unit_action.assert_not_called()
+
+    def test_keys_sem_jellyfin_sem_slot_torrent(self):
+        self.fake.host_capabilities.return_value = {
+            **dict(self.fake.host_capabilities.return_value),
+            "jellyfin": False,
+        }
+        context_processors._cached_caps = None
+        r = self.client.get("/sistema/chaves/")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "Fingerprint SHA-256")
+
+    @override_settings(TERMINAL_ENABLE=False)
+    def test_terminal_rota_oculta(self):
+        self.fake.host_capabilities.return_value = {
+            **dict(self.fake.host_capabilities.return_value),
+            "terminal_enable": False,
+        }
+        context_processors._cached_caps = None
+        self.assertEqual(self.client.get("/sistema/terminal/").status_code, 404)
+
+    @override_settings(TERMINAL_ENABLE=True)
+    def test_terminal_abre_com_flag(self):
+        self.fake.host_capabilities.return_value = {
+            **dict(self.fake.host_capabilities.return_value),
+            "terminal_enable": True,
+        }
+        context_processors._cached_caps = None
+        r = self.client.get("/sistema/terminal/")
+        self.assertEqual(r.status_code, 200)
+
+    @override_settings(TERMINAL_ENABLE=True)
+    def test_terminal_io_audita_abrir(self):
+        self.fake.host_capabilities.return_value = {
+            **dict(self.fake.host_capabilities.return_value),
+            "terminal_enable": True,
+        }
+        context_processors._cached_caps = None
+        self.client.post(
+            "/sistema/terminal/io/",
+            json.dumps({"op": "open"}),
+            content_type="application/json",
+        )
+        self.fake.terminal_open.assert_called_once()
+        self.assertTrue(
+            AuditLog.objects.filter(action="terminal.open").exists()
+        )
