@@ -6416,6 +6416,27 @@ def _sudo_confere(usuario: str, senha: str) -> pwd.struct_passwd:
     return conta
 
 
+def _terminal_assumir_tty(slave: int, uid: int, gid: int) -> None:
+    """Faz o slave o terminal de controle e entrega a posse à conta.
+
+    O fd aberto antes do ``setsid`` não vira o terminal da sessão. Reabrir
+    o caminho depois do ``setsid`` é o que o kernel usa para isso. Sem
+    terminal de controle o bash sobe sem job control e o sudo recusa a
+    senha.
+    """
+    os.setsid()
+    os.fchown(slave, uid, gid)
+    os.fchmod(slave, 0o600)
+    nome = os.ttyname(slave)
+    os.dup2(slave, 0)
+    os.dup2(slave, 1)
+    os.dup2(slave, 2)
+    if slave > 2:
+        os.close(slave)
+    extra = os.open(nome, os.O_RDWR)
+    os.close(extra)
+
+
 def op_terminal_open(
     cols: int = 80,
     rows: int = 24,
@@ -6441,17 +6462,15 @@ def op_terminal_open(
         os.close(slave)
         raise AgentError(f"fork falhou: {exc}") from exc
     if pid == 0:
-        os.setsid()
         os.close(master)
         try:
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", r, c, 0, 0))
         except OSError:
             pass
-        os.dup2(slave, 0)
-        os.dup2(slave, 1)
-        os.dup2(slave, 2)
-        if slave > 2:
-            os.close(slave)
+        try:
+            _terminal_assumir_tty(slave, conta.pw_uid, conta.pw_gid)
+        except OSError:
+            os._exit(127)
         try:
             os.initgroups(conta.pw_name, conta.pw_gid)
             os.setgid(conta.pw_gid)

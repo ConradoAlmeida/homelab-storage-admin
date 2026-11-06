@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import pty
+
 import pytest
 
 
@@ -243,6 +246,35 @@ def test_sudo_recusa_sem_colocar_senha_no_argv(agent_module, monkeypatch):
     assert vistos
     assert "segredo" not in vistos[0][0]
     assert vistos[0][1] == "segredo\n"
+
+
+def test_terminal_slave_vira_controlador(agent_module):
+    master, slave = pty.openpty()
+    leitura, escrita = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        os.close(master)
+        os.close(leitura)
+        codigo = 1
+        try:
+            agent_module._terminal_assumir_tty(slave, os.getuid(), os.getgid())
+            tty = os.open("/dev/tty", os.O_RDWR)
+            os.close(tty)
+            fg = os.tcgetpgrp(0)
+            os.write(escrita, f"{fg}\n".encode())
+            codigo = 0
+        except OSError as exc:
+            os.write(escrita, f"erro {exc.errno} {exc}\n".encode())
+            codigo = 1
+        os._exit(codigo)
+    os.close(slave)
+    os.close(escrita)
+    _, status = os.waitpid(pid, 0)
+    dado = os.read(leitura, 64)
+    os.close(leitura)
+    os.close(master)
+    assert os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0, dado
+    assert int(dado.strip()) > 0
 
 
 def test_terminal_nao_abre_com_sudo_recusado(agent_module, monkeypatch):

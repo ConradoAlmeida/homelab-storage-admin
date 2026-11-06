@@ -137,3 +137,5 @@ a volta ao inativo.
 
 Em 2026-11-06, à tarde: `TERMINAL_ENABLE` passa a valer 1 por padrão. A
 sessão só abre depois de `sudo -S -v` da conta Linux e o shell é dessa conta.
+O slave do pty vira o terminal de controle da conta, senão o `sudo` recusa
+a autenticação.

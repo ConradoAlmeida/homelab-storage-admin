@@ -48,7 +48,9 @@ systemd-networkd.
 
 Ligado por padrão (`TERMINAL_ENABLE=1` no app e no agente). `0` oculta a
 rota. A página pede usuário Linux e senha sudo; o agente confere com
-`sudo -S -v` dessa conta e abre o shell **dela**, não um shell root. A senha
+`sudo -S -v` dessa conta e abre o shell **dela**, não um shell root. O pty
+vira o terminal de controle da sessão, com posse da conta, para o bash ter
+job control e o `sudo` pedir a senha nesse terminal. A senha
 vai no stdin e não entra na auditoria nem no argv. Segundo socket Unix
 (`TERMINAL_SOCKET` / `terminal.sock`). Abrir e fechar são auditados. O
 conteúdo da sessão não é gravado. Inatividade de 15 minutos encerra.
