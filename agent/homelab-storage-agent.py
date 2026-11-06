@@ -6508,6 +6508,7 @@ def op_terminal_io(session_id: str = "", input_b64: str = "", **_extra) -> dict:
     sess["last"] = time.monotonic()
     master = sess["master_fd"]
     saida = b""
+    dados = b""
     if input_b64:
         try:
             dados = base64.b64decode(input_b64.encode("ascii"), validate=True)
@@ -6518,25 +6519,28 @@ def op_terminal_io(session_id: str = "", input_b64: str = "", **_extra) -> dict:
                 os.write(master, dados)
             except OSError as exc:
                 raise AgentError(f"Escrita no pty falhou: {exc}") from exc
-    deadline = time.monotonic() + 0.15
-    while time.monotonic() < deadline:
+    # Com tecla, espera pouco pelo eco e devolve. Sem tecla, espera o
+    # próximo output, mas sai assim que o primeiro bloco chega.
+    limite = time.monotonic() + (0.04 if dados else 0.25)
+    while time.monotonic() < limite and len(saida) < 262144:
         try:
-            rlist, _, _ = select.select([master], [], [], 0.05)
+            rlist, _, _ = select.select(
+                [master], [], [], max(0.0, limite - time.monotonic())
+            )
         except (OSError, ValueError):
             break
         if not rlist:
-            continue
+            break
         try:
             chunk = os.read(master, 65536)
         except BlockingIOError:
-            continue
+            break
         except OSError:
             break
         if not chunk:
             break
         saida += chunk
-        if len(saida) >= 262144:
-            break
+        limite = min(limite, time.monotonic() + 0.01)
     return {"output_b64": base64.b64encode(saida).decode("ascii")}
 
 

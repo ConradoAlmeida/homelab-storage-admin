@@ -22,11 +22,12 @@
     <button class="btn primary" type="submit">Abrir sessão</button>
   </form>
   <div class="card" data-terminal-session hidden>
-    <p class="muted text-12">Clique na área escura e digite. Enter envia linha; setas básicas são enviadas como escape.</p>
-    <pre class="pre terminal-screen" data-terminal-screen tabindex="0"></pre>
+    <div class="terminal-screen" data-terminal-screen></div>
   </div>
 </section>
 {% endblock %}
 {% block extra_js %}
+<link rel="stylesheet" href="{% static 'vendor/xterm/xterm.css' %}">
+<script src="{% static 'vendor/xterm/xterm.js' %}"></script>
 <script src="{% static 'js/terminal-client.js' %}"></script>
 {% endblock %}

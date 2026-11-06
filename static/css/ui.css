@@ -931,10 +931,9 @@ details.card > summary:hover {
 }
 
 .terminal-screen {
-  min-height: 24rem;
+  height: 28rem;
+  padding: 8px;
   background: #0b0f14;
-  color: #e6edf3;
-  overflow: auto;
 }
 
 .form-inline {
