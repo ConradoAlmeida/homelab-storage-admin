@@ -24,7 +24,6 @@ services:
       - FIREWALL_MANAGE=${FIREWALL_MANAGE:-1}
       - SYSTEM_MANAGE=${SYSTEM_MANAGE:-1}
       - TERMINAL_ENABLE=${TERMINAL_ENABLE:-1}
-      - TERMINAL_SOCKET=${TERMINAL_SOCKET:-}
       - TORRENT_API_TOKEN=${TORRENT_API_TOKEN:-}
     volumes:
       - "${DATA_DIR:-./data}:/app/data"

@@ -133,9 +133,8 @@ LOGOUT_REDIRECT_URL = "login"
 
 # Unix socket do agente privilegiado (host)
 AGENT_SOCKET = os.environ.get("AGENT_SOCKET", "/run/homelab-storage-admin/agent.sock")
-TERMINAL_SOCKET = os.environ.get(
-    "TERMINAL_SOCKET",
-    str(Path(AGENT_SOCKET).parent / "terminal.sock"),
+TERMINAL_SOCKET = os.environ.get("TERMINAL_SOCKET") or str(
+    Path(AGENT_SOCKET).parent / "terminal.sock"
 )
 AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "90"))
 

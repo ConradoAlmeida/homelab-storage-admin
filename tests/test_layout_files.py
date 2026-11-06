@@ -14,6 +14,8 @@ def test_generic_compose_has_no_pi_ip():
     assert "192.168.0.150" not in text
     assert "BIND_ADDR" in text
     assert "AGENT_SOCKET" in text
+    assert "TERMINAL_SOCKET=${TERMINAL_SOCKET:-/run/homelab-storage-admin/terminal.sock}" in text
+    assert "TERMINAL_SOCKET=${TERMINAL_SOCKET:-}" not in text
     assert "TORRENT_API_TOKEN=${TORRENT_API_TOKEN:-}" in text
 
 
