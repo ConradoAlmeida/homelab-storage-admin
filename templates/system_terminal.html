@@ -5,16 +5,23 @@
 <div class="page-head">
   <div>
     <h1>Terminal</h1>
-    <p class="lead">Sessão no host via agente. O conteúdo não é gravado; inatividade de 15 minutos encerra.</p>
+    <p class="lead">Shell do usuário Linux no host. A sessão só abre com a senha sudo dessa conta. O conteúdo não é gravado; inatividade de 15 minutos encerra.</p>
   </div>
 </div>
 
 <section class="section" data-terminal-app data-endpoint="{% url 'system_terminal_io' %}">
   <div class="section-head">
     <h2>Sessão</h2>
-    <span class="tag" data-terminal-status>conectando…</span>
+    <span class="tag" data-terminal-status>informe a senha sudo</span>
   </div>
-  <div class="card">
+  <form class="card form-grid" data-terminal-unlock>
+    <label for="terminal-user">Usuário Linux</label>
+    <input id="terminal-user" class="input" name="user" autocomplete="username" required>
+    <label for="terminal-password">Senha sudo</label>
+    <input id="terminal-password" class="input" type="password" name="password" autocomplete="current-password" required>
+    <button class="btn primary" type="submit">Abrir sessão</button>
+  </form>
+  <div class="card" data-terminal-session hidden>
     <p class="muted text-12">Clique na área escura e digite. Enter envia linha; setas básicas são enviadas como escape.</p>
     <pre class="pre terminal-screen" data-terminal-screen tabindex="0"></pre>
   </div>

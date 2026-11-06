@@ -417,10 +417,16 @@ class AgentClient:
     def apt_upgrade(self, confirmation):
         return self.call("apt_upgrade", timeout=3660, confirmation=confirmation)
 
-    def terminal_open(self, cols=80, rows=24):
+    def terminal_open(self, cols=80, rows=24, user="", password=""):
         return self._linha_json(
             settings.TERMINAL_SOCKET,
-            {"op": "terminal_open", "cols": cols, "rows": rows},
+            {
+                "op": "terminal_open",
+                "cols": cols,
+                "rows": rows,
+                "user": user,
+                "password": password,
+            },
             timeout=30,
         )
 

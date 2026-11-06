@@ -46,18 +46,19 @@ systemd-networkd.
 
 ## Terminal (`/sistema/terminal/`)
 
-Só com **TERMINAL_ENABLE=1** no ambiente do app e `terminal_enable` nas
-capabilities do agente. Segundo socket Unix no mesmo diretório que o socket
-principal (`TERMINAL_SOCKET` / `terminal.sock`). O cliente HTTP fala com o
-agente via `terminal_*` no JSON; abrir/fechar vão para auditoria; conteúdo da
-sessão não é gravado. Inatividade 15 minutos encerra no agente.
+Ligado por padrão (`TERMINAL_ENABLE=1` no app e no agente). `0` oculta a
+rota. A página pede usuário Linux e senha sudo; o agente confere com
+`sudo -S -v` dessa conta e abre o shell **dela**, não um shell root. A senha
+vai no stdin e não entra na auditoria nem no argv. Segundo socket Unix
+(`TERMINAL_SOCKET` / `terminal.sock`). Abrir e fechar são auditados. O
+conteúdo da sessão não é gravado. Inatividade de 15 minutos encerra.
 
 ## Variáveis
 
 | Variável | Onde | Efeito |
 |---|---|---|
 | `SYSTEM_MANAGE` | `host.env`, agente, Django | 1 liga apt e systemctl na UI; 0 somente leitura |
-| `TERMINAL_ENABLE` | `host.env`, agente, Django | 1 publica rota e menu; 0 oculta |
+| `TERMINAL_ENABLE` | `host.env`, agente, Django | padrão 1, publica rota e menu; 0 oculta |
 | `TERMINAL_SOCKET` | Django (opcional) | Caminho do segundo socket (default: `.../terminal.sock`) |
 
 Capabilities derivadas de binários no host: `apt`, `journal`, `systemctl`;

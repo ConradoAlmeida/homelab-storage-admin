@@ -241,16 +241,17 @@ AJUDA: dict[str, dict[str, Any]] = {
     "system_terminal": {
         "title": "Terminal",
         "summary": (
-            "Sessão shell no host via segundo socket do agente; só com "
-            "TERMINAL_ENABLE e capability."
+            "Shell do usuário Linux no host. Aberto por padrão; a sessão pede "
+            "a senha sudo. TERMINAL_ENABLE=0 oculta a rota."
         ),
         "chapters": [
             {
                 "title": "Disponibilidade",
                 "requires": "terminal_menu",
                 "text": (
-                    "A rota só aparece quando TERMINAL_ENABLE=1 no ambiente do "
-                    "app e terminal_enable no agente."
+                    "A rota aparece com TERMINAL_ENABLE=1 (padrão) e terminal_enable "
+                    "no agente. Abrir pede usuário Linux e senha sudo. O shell "
+                    "dessa conta não é root."
                 ),
             },
             {
@@ -1417,9 +1418,8 @@ USE_CASES: dict[str, str] = {
         "o Samba subiu sem erro."
     ),
     "system_terminal": (
-        "Use apenas quando precisar de shell no host e o dono habilitou "
-        "TERMINAL_ENABLE. Exemplo: um comando rápido de diagnóstico; feche "
-        "a aba para encerrar a sessão."
+        "Use para um shell no host com a senha sudo da conta Linux. "
+        "Exemplo: entre com o usuário do Pi, rode o diagnóstico e feche a aba."
     ),
     "torrents": (
         "Use para colocar um filme ou episódio na biblioteca do Jellyfin a "

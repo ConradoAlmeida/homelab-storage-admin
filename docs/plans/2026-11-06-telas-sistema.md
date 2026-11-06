@@ -134,3 +134,6 @@ Bancada: pytest local e na VM `linux2024` (`192.168.122.26`) 358 passed,
 pi e moya, journal, systemctl e `apt-get -s upgrade` reais; `ssh.service`
 recusado. UFW estava inativo; a ativação de prova ficou para o dono confirmar
 a volta ao inativo.
+
+Em 2026-11-06, à tarde: `TERMINAL_ENABLE` passa a valer 1 por padrão. A
+sessão só abre depois de `sudo -S -v` da conta Linux e o shell é dessa conta.

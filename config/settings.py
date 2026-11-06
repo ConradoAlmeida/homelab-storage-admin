@@ -154,7 +154,7 @@ FIREWALL_MANAGE = os.environ.get("FIREWALL_MANAGE", "1") == "1"
 SYSTEM_MANAGE = os.environ.get("SYSTEM_MANAGE", "1") == "1"
 
 # Terminal no navegador (segundo socket do agente). 0 oculta a rota e o menu.
-TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "0") == "1"
+TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "1") == "1"
 
 # Bearer da API de envio de torrents. Vazio desliga /api/torrents/.
 TORRENT_API_TOKEN = os.environ.get("TORRENT_API_TOKEN", "")

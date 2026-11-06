@@ -217,3 +217,44 @@ def test_ssh_keys_le_authorized_keys(agent_module, tmp_path, monkeypatch):
             }
         ]
     }
+
+
+def test_sudo_recusa_sem_colocar_senha_no_argv(agent_module, monkeypatch):
+    vistos = []
+
+    class Proc:
+        returncode = 1
+        stdout = ""
+        stderr = "Sorry, try again."
+
+    def run(argv, **kwargs):
+        vistos.append((list(argv), kwargs.get("input")))
+        return Proc()
+
+    monkeypatch.setattr(agent_module.subprocess, "run", run)
+    monkeypatch.setattr(agent_module.shutil, "which", lambda nome: f"/usr/bin/{nome}")
+    monkeypatch.setattr(
+        agent_module.pwd,
+        "getpwnam",
+        lambda nome: type("C", (), {"pw_name": nome, "pw_gid": 1000, "pw_uid": 1000, "pw_dir": "/home/ana"})(),
+    )
+    with pytest.raises(agent_module.AgentError, match="recusada"):
+        agent_module._sudo_confere("ana", "segredo")
+    assert vistos
+    assert "segredo" not in vistos[0][0]
+    assert vistos[0][1] == "segredo\n"
+
+
+def test_terminal_nao_abre_com_sudo_recusado(agent_module, monkeypatch):
+    monkeypatch.setattr(agent_module, "TERMINAL_ENABLE", True)
+
+    def recusa(usuario, senha):
+        raise agent_module.AgentError("Senha sudo recusada")
+
+    def aborta(*_args, **_kwargs):
+        raise AssertionError("fork nao deve rodar")
+
+    monkeypatch.setattr(agent_module, "_sudo_confere", recusa)
+    monkeypatch.setattr(agent_module.os, "fork", aborta)
+    with pytest.raises(agent_module.AgentError, match="recusada"):
+        agent_module.op_terminal_open(user="ana", password="errada")

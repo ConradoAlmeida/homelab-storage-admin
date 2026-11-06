@@ -13,7 +13,7 @@ def test_moya_example_profile():
     assert values["DOWNLOAD_DIR"] == "/opt/stacks/homelab-storage-admin/data/downloads"
     assert values["COMPOSE_OVERLAY"] == "docker-compose.moya.yml"
     assert values["SYSTEM_MANAGE"] == "1"
-    assert values["TERMINAL_ENABLE"] == "0"
+    assert values["TERMINAL_ENABLE"] == "1"
 
 
 def test_moya_overlay_does_not_use_pi_paths_or_ip():

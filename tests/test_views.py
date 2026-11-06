@@ -1677,6 +1677,22 @@ class SystemPagesTests(TestCase):
         context_processors._cached_caps = None
         r = self.client.get("/sistema/terminal/")
         self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Senha sudo")
+
+    @override_settings(TERMINAL_ENABLE=True)
+    def test_terminal_pede_senha_sudo(self):
+        self.fake.host_capabilities.return_value = {
+            **dict(self.fake.host_capabilities.return_value),
+            "terminal_enable": True,
+        }
+        context_processors._cached_caps = None
+        r = self.client.post(
+            "/sistema/terminal/io/",
+            json.dumps({"op": "open", "user": "ana"}),
+            content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.fake.terminal_open.assert_not_called()
 
     @override_settings(TERMINAL_ENABLE=True)
     def test_terminal_io_audita_abrir(self):
@@ -1687,10 +1703,13 @@ class SystemPagesTests(TestCase):
         context_processors._cached_caps = None
         self.client.post(
             "/sistema/terminal/io/",
-            json.dumps({"op": "open"}),
+            json.dumps({"op": "open", "user": "ana", "password": "segredo"}),
             content_type="application/json",
         )
-        self.fake.terminal_open.assert_called_once()
-        self.assertTrue(
-            AuditLog.objects.filter(action="terminal.open").exists()
+        self.fake.terminal_open.assert_called_once_with(
+            cols=80, rows=24, user="ana", password="segredo"
         )
+        log = AuditLog.objects.get(action="terminal.open")
+        self.assertEqual(log.target, "ana")
+        self.assertNotIn("segredo", log.detail or "")
+        self.assertNotIn("segredo", log.target or "")

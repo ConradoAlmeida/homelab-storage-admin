@@ -8,8 +8,10 @@
 
   var pre = root.querySelector("[data-terminal-screen]");
   var status = root.querySelector("[data-terminal-status]");
+  var form = root.querySelector("[data-terminal-unlock]");
+  var sessao = root.querySelector("[data-terminal-session]");
   var endpoint = root.getAttribute("data-endpoint");
-  if (!pre || !endpoint) return;
+  if (!pre || !form || !endpoint) return;
 
   var sessionId = "";
   var pollTimer = null;
@@ -94,16 +96,19 @@
       });
   }
 
-  function openSession() {
-    setStatus("Abrindo sessão…");
-    postJson({ op: "open", cols: 100, rows: 28 })
+  function openSession(usuario, senha) {
+    setStatus("Conferindo a senha sudo…");
+    postJson({ op: "open", cols: 100, rows: 28, user: usuario, password: senha })
       .then(function (res) {
         if (!res.ok) throw new Error(res.error || "open");
         sessionId = res.data.session_id || "";
         if (!sessionId) throw new Error("sem id");
-        setStatus("Conectado. Inatividade encerra em 15 minutos.");
+        form.hidden = true;
+        if (sessao) sessao.hidden = false;
+        setStatus("Conectado como " + usuario + ". Inatividade encerra em 15 minutos.");
         pollTimer = window.setInterval(ioLoop, 300);
         ioLoop();
+        pre.focus();
       })
       .catch(function (e) {
         setStatus("Não foi possível abrir: " + (e.message || e));
@@ -150,5 +155,16 @@
     }
   });
 
-  openSession();
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var usuario = (form.querySelector("[name=user]").value || "").trim();
+    var campo = form.querySelector("[name=password]");
+    var senha = campo.value || "";
+    campo.value = "";
+    if (!usuario || !senha) {
+      setStatus("Informe o usuário Linux e a senha sudo.");
+      return;
+    }
+    openSession(usuario, senha);
+  });
 })();

@@ -50,7 +50,7 @@ TERMINAL_SOCKET_PATH = os.path.join(
     "terminal.sock",
 )
 SYSTEM_MANAGE = os.environ.get("SYSTEM_MANAGE", "1") == "1"
-TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "0") == "1"
+TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "1") == "1"
 SMB_CONF = os.environ.get("SMB_CONF", "/etc/samba/smb.conf")
 CONFIG_DIR = os.environ.get("CONFIG_DIR", "/etc/homelab-storage-agent")
 SNAP_CONFIG = os.environ.get("SNAP_CONFIG", f"{CONFIG_DIR}/snapshots.json")
@@ -6387,9 +6387,45 @@ def _terminal_limpar_sid(sid: str) -> None:
             pass
 
 
-def op_terminal_open(cols: int = 80, rows: int = 24, **_extra) -> dict:
+def _sudo_confere(usuario: str, senha: str) -> pwd.struct_passwd:
+    """Confere a senha sudo da conta. A senha vai no stdin, nunca no argv."""
+    nome = (usuario or "").strip()
+    if nome == "root" or not USER_RE.match(nome):
+        raise AgentError("Usuário inválido")
+    if not senha or len(senha) > 256 or "\n" in senha or "\x00" in senha:
+        raise AgentError("Senha sudo recusada")
+    if not shutil.which("runuser") or not shutil.which("sudo"):
+        raise AgentError("sudo não está disponível no host")
+    try:
+        conta = pwd.getpwnam(nome)
+    except KeyError as exc:
+        raise AgentError("Senha sudo recusada") from exc
+    try:
+        proc = subprocess.run(
+            ["runuser", "-u", nome, "--", "sudo", "-k", "-S", "-p", "", "-v"],
+            input=senha + "\n",
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise AgentError("Não foi possível conferir a senha sudo") from exc
+    if proc.returncode != 0:
+        raise AgentError("Senha sudo recusada")
+    return conta
+
+
+def op_terminal_open(
+    cols: int = 80,
+    rows: int = 24,
+    user: str = "",
+    password: str = "",
+    **_extra,
+) -> dict:
     if not TERMINAL_ENABLE:
         raise AgentError("Terminal desligado no host (TERMINAL_ENABLE=0)")
+    conta = _sudo_confere(user, password)
     try:
         c = int(cols)
         r = int(rows)
@@ -6416,9 +6452,23 @@ def op_terminal_open(cols: int = 80, rows: int = 24, **_extra) -> dict:
         os.dup2(slave, 2)
         if slave > 2:
             os.close(slave)
-        env = os.environ.copy()
-        env["TERM"] = env.get("TERM") or "xterm-256color"
+        try:
+            os.initgroups(conta.pw_name, conta.pw_gid)
+            os.setgid(conta.pw_gid)
+            os.setuid(conta.pw_uid)
+            os.chdir(conta.pw_dir or "/")
+        except OSError:
+            os._exit(127)
         shell = shutil.which("bash") or "/bin/sh"
+        env = {
+            "TERM": "xterm-256color",
+            "HOME": conta.pw_dir or "/",
+            "USER": conta.pw_name,
+            "LOGNAME": conta.pw_name,
+            "SHELL": shell,
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG": os.environ.get("LANG") or "C.UTF-8",
+        }
         try:
             os.execvpe(shell, [shell, "-l"], env)
         except OSError:

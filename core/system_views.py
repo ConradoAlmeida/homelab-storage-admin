@@ -344,12 +344,21 @@ class TerminalIoView(AgentView):
         op = str(payload.get("op") or "").strip()
         try:
             if op == "open":
+                usuario = str(payload.get("user") or "").strip()
+                senha = str(payload.get("password") or "")
+                if not usuario or not senha:
+                    return JsonResponse(
+                        {"ok": False, "error": "Informe o usuário Linux e a senha sudo."},
+                        status=400,
+                    )
                 dados = agent.terminal_open(
                     cols=int(payload.get("cols") or 80),
                     rows=int(payload.get("rows") or 24),
+                    user=usuario,
+                    password=senha,
                 )
                 sid = dados.get("session_id") or ""
-                _audit(self.request, "terminal.open", sid[:16])
+                _audit(self.request, "terminal.open", usuario, sid[:16])
                 return JsonResponse({"ok": True, "data": dados})
             if op == "io":
                 dados = agent.terminal_io(

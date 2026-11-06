@@ -42,7 +42,7 @@ def test_host_env_example_is_pi_profile():
     assert values["COMPOSE_OVERLAY"] == "docker-compose.homelab.yml"
     assert values["TORRENT_API_TOKEN"] == ""
     assert values["SYSTEM_MANAGE"] == "1"
-    assert values["TERMINAL_ENABLE"] == "0"
+    assert values["TERMINAL_ENABLE"] == "1"
 
 
 def test_metrics_timer_is_installed_and_daily():
