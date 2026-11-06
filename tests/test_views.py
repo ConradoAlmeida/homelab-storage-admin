@@ -1678,6 +1678,7 @@ class SystemPagesTests(TestCase):
         r = self.client.get("/sistema/terminal/")
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "Senha sudo")
+        self.assertContains(r, "Desconectar")
 
     @override_settings(TERMINAL_ENABLE=True)
     def test_terminal_pede_senha_sudo(self):

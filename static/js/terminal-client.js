@@ -10,6 +10,7 @@
   var status = root.querySelector("[data-terminal-status]");
   var form = root.querySelector("[data-terminal-unlock]");
   var sessao = root.querySelector("[data-terminal-session]");
+  var botao = root.querySelector("[data-terminal-disconnect]");
   var endpoint = root.getAttribute("data-endpoint");
   if (!tela || !form || !endpoint) return;
 
@@ -57,10 +58,33 @@
     return bytes;
   }
 
+  function mostrarSessao(ligada) {
+    form.hidden = ligada;
+    if (sessao) sessao.hidden = !ligada;
+    if (botao) botao.hidden = !ligada;
+  }
+
   function falhou(msg) {
     encerrado = true;
     sessionId = "";
+    pending = "";
+    mostrarSessao(false);
     setStatus(msg || "Sessão encerrada ou agente indisponível.");
+  }
+
+  function desconectar() {
+    var sid = sessionId;
+    sessionId = "";
+    pending = "";
+    encerrado = true;
+    mostrarSessao(false);
+    setStatus("Desconectado. Informe a senha sudo para abrir de novo.");
+    if (term) {
+      term.dispose();
+      term = null;
+    }
+    if (!sid) return;
+    postJson({ op: "close", session_id: sid }).catch(function () {});
   }
 
   function bombear() {
@@ -116,8 +140,7 @@
         sessionId = res.data.session_id || "";
         if (!sessionId) throw new Error("sem id");
         encerrado = false;
-        form.hidden = true;
-        if (sessao) sessao.hidden = false;
+        mostrarSessao(true);
         setStatus("Conectado como " + usuario + ". Inatividade encerra em 15 minutos.");
         term.focus();
         bombear();
@@ -147,6 +170,8 @@
       /* ignore */
     }
   });
+
+  if (botao) botao.addEventListener("click", desconectar);
 
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
