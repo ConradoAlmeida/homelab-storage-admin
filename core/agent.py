@@ -131,7 +131,9 @@ class AgentClient:
             confirmation=confirmation,
         )
 
-    def snapshot_policy_save(self, share, enabled=True, keep=7, create_now=False):
+    def snapshot_policy_save(
+        self, share, enabled=True, keep=7, create_now=False, confirmation=""
+    ):
         return self.call(
             "snapshot_policy_save",
             timeout=60,
@@ -139,6 +141,7 @@ class AgentClient:
             enabled=enabled,
             keep=keep,
             create_now=create_now,
+            confirmation=confirmation,
         )
 
     def storage_overview(self):

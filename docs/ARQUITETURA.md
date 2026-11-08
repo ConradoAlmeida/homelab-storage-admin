@@ -121,15 +121,15 @@ order = 10
   `storage_overview`, `storage_smart` e `storage_smart_test` via socket.
 - O banco SQLite e os dados do app ficam em
   `/mnt/nas/apps/homelab-storage-admin/data` (bind mount), fora do microSD.
-- Cada share que terá snapshots é um **subvolume Btrfs** próprio:
-  `/mnt/nas/documentos`, `/mnt/nas/midia`, etc.
+- Cada share no Btrfs é um **subvolume** próprio (`/mnt/nas/documentos`, etc.),
+  mesmo quando nasce sem política de versões; a política pode ser ligada depois.
 - Os snapshots ficam fora do share, em
   `/mnt/nas/.snapshots/<share>/@GMT-YYYY.MM.DD-HH.MM.SS`.
 - O Samba usa `vfs objects = shadow_copy2` com `shadow:snapdir` apontando para
   esse diretório. No Windows, isso vira a aba **Versões anteriores**.
 
-Se um share foi criado como diretório comum (sem snapshot), ele não pode ser
-snapshotado pelo Btrfs. Recrie-o como subvolume com a opção de snapshot marcada.
+Shares antigos que ainda são diretório comum só viram subvolume quando a
+política de snapshot é ativada com confirmação explícita do nome do share.
 
 ## Estrutura do repositório
 

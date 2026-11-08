@@ -1120,18 +1120,111 @@ def _ensure_group(name: str) -> None:
         run(["groupadd", name])
 
 
+def _path_is_subvolume(path: str) -> bool:
+    if not os.path.exists(path):
+        return False
+    try:
+        run(["btrfs", "subvolume", "show", path], timeout=10)
+        return True
+    except AgentError:
+        return False
+
+
 def _ensure_subvolume(path: str) -> None:
     """Cria o share como subvolume Btrfs (necessario para snapshot nativo)."""
     if os.path.exists(path):
-        try:
-            run(["btrfs", "subvolume", "show", path], timeout=10)
-        except AgentError as exc:
+        if not _path_is_subvolume(path):
             raise AgentError(
                 f"{path} existe mas nao e um subvolume Btrfs; snapshots nativos exigem subvolume"
-            ) from exc
+            )
         return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     run(["btrfs", "subvolume", "create", path])
+
+
+def _convert_directory_to_subvolume(share: str, path: str) -> str | None:
+    """Converte um diretório comum em subvolume Btrfs, preservando o conteúdo."""
+    path = _validate_share_path(path)
+    if os.path.abspath(path) == os.path.abspath(STORAGE_ROOT):
+        raise AgentError("Nao converta a raiz do volume")
+    if os.path.abspath(path).startswith(os.path.abspath(SNAPSHOT_ROOT) + os.sep):
+        raise AgentError("Nao converta um caminho dentro de .snapshots")
+    if not os.path.isdir(path):
+        raise AgentError(f"Caminho inexistente ou invalido: {path}")
+    if _path_is_subvolume(path):
+        return None
+    if not shutil.which("rsync"):
+        raise AgentError("rsync nao encontrado; conversao para subvolume indisponivel")
+    parent = os.path.dirname(path)
+    staging = os.path.join(parent, f".{share}.subvol-new")
+    residue = os.path.join(parent, f".{share}.dir-old")
+    if os.path.exists(staging) or os.path.exists(residue):
+        raise AgentError(
+            f"Conversao bloqueada: ja existe resíduo ({staging} ou {residue}). "
+            "Remova manualmente antes de tentar de novo."
+        )
+    nome = os.path.basename(path.rstrip("/")) or share
+    rc, saida, _ = run_optional(
+        ["btrfs", "subvolume", "list", "-a", os.path.dirname(path.rstrip("/"))],
+        timeout=30,
+    )
+    if rc == 0:
+        prefix = f"{nome}/"
+        for line in (saida or "").splitlines():
+            if " path " not in line:
+                continue
+            sub = line.split(" path ", 1)[-1].strip()
+            if sub.startswith(prefix):
+                raise AgentError(
+                    "A pasta contem subvolumes Btrfs aninhados; "
+                    "remova-os antes de converter."
+                )
+    os.makedirs(parent, exist_ok=True)
+    run(["btrfs", "subvolume", "create", staging], timeout=60)
+    try:
+        run(
+            [
+                "rsync",
+                "-aHAX",
+                "--numeric-ids",
+                f"{path.rstrip('/')}/",
+                f"{staging.rstrip('/')}/",
+            ],
+            timeout=1800,
+        )
+        os.rename(path, residue)
+        try:
+            os.rename(staging, path)
+        except OSError as exc:
+            if os.path.exists(residue) and not os.path.exists(path):
+                os.rename(residue, path)
+            if os.path.isdir(staging):
+                try:
+                    run(["btrfs", "subvolume", "delete", staging], timeout=60)
+                except AgentError:
+                    pass
+            raise AgentError(f"Falha ao concluir a conversao: {exc}") from exc
+        if not _path_is_subvolume(path):
+            raise AgentError("Conversao concluida, mas o caminho final nao e subvolume")
+        aviso = None
+        if os.path.exists(residue):
+            try:
+                shutil.rmtree(residue)
+            except OSError as exc:
+                aviso = (
+                    f"Subvolume ativo, mas nao foi possivel apagar {residue}: {exc}"
+                )
+                log(f"WARN conversao {share}: {aviso}")
+        return aviso
+    except AgentError:
+        if os.path.isdir(staging) and not os.path.exists(path) and os.path.exists(residue):
+            os.rename(residue, path)
+        if os.path.isdir(staging):
+            try:
+                run(["btrfs", "subvolume", "delete", staging], timeout=60)
+            except AgentError:
+                pass
+        raise
 
 
 def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_keep=7, private=False, **_):
@@ -1174,7 +1267,15 @@ def op_create_share(name: str, path: str, comment="", snapshot=False, snapshot_k
         os.makedirs(snapdir, exist_ok=True)
         os.chmod(snapdir, 0o755)
     else:
-        os.makedirs(path, exist_ok=True)
+        backend_auto = snapshot_backend_for(path)
+        if backend_auto == "btrfs":
+            if not os.path.ismount(STORAGE_ROOT):
+                raise AgentError(
+                    f"{STORAGE_ROOT} nao esta montado; monte o Btrfs antes de criar o share"
+                )
+            _ensure_subvolume(path)
+        else:
+            os.makedirs(path, exist_ok=True)
 
     file_group = name
     ro_group = f"{name}_ro"
@@ -1599,7 +1700,20 @@ def _as_bool(value) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-def op_snapshot_policy_save(share: str, enabled=True, keep=7, create_now=False, **_):
+_MSG_CONFIRMACAO_CONVERSAO = (
+    "Para ativar snapshots no Btrfs, confirme digitando o nome do share no campo "
+    "de confirmação: a pasta será convertida em subvolume e os arquivos serão movidos."
+)
+
+
+def op_snapshot_policy_save(
+    share: str,
+    enabled=True,
+    keep=7,
+    create_now=False,
+    confirmation: str = "",
+    **_,
+):
     """Cria ou edita a política de snapshot de um share que já existe no Samba."""
     if not SHARE_RE.match(share or ""):
         raise AgentError("Nome de share invalido (1-32: A-Z a-z 0-9 _ -)")
@@ -1614,6 +1728,19 @@ def op_snapshot_policy_save(share: str, enabled=True, keep=7, create_now=False, 
     ativa = _as_bool(enabled)
     criar = _as_bool(create_now) and ativa
     path = _validate_share_path(_share_path_from_conf(share))
+    confirmado = (confirmation or "").strip()
+    if ativa and snapshot_backend_for(path) == "btrfs":
+        if not os.path.ismount(STORAGE_ROOT):
+            raise AgentError(
+                f"{STORAGE_ROOT} nao esta montado; monte o Btrfs antes de criar snapshots"
+            )
+        if os.path.isdir(path) and not _path_is_subvolume(path):
+            if confirmado != share:
+                if confirmado:
+                    raise AgentError(
+                        f"Confirmacao incorreta. Digite exatamente o nome do share: {share}"
+                    )
+                raise AgentError(_MSG_CONFIRMACAO_CONVERSAO)
     _checkpoint()
     _tarefa_andamento("Salvando a política de snapshot…")
     policy = load_policies()
@@ -1628,11 +1755,12 @@ def op_snapshot_policy_save(share: str, enabled=True, keep=7, create_now=False, 
                 f"Snapshots indisponiveis para {path}; backend={SNAPSHOT_BACKEND}"
             )
         if backend == "btrfs":
-            if not os.path.ismount(STORAGE_ROOT):
-                raise AgentError(
-                    f"{STORAGE_ROOT} nao esta montado; monte o Btrfs antes de criar snapshots"
-                )
-            _ensure_subvolume(path)
+            if os.path.isdir(path) and not _path_is_subvolume(path):
+                aviso = _convert_directory_to_subvolume(share, path)
+                if aviso:
+                    log(f"WARN {share}: {aviso}")
+            elif not os.path.exists(path):
+                _ensure_subvolume(path)
         elif not shutil.which("rsync"):
             raise AgentError("rsync nao encontrado; snapshots rsync indisponiveis")
         else:

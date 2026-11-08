@@ -11,7 +11,7 @@
 | “Agente indisponível” | serviço parado ou socket ausente | `sudo systemctl status homelab-storage-agent` |
 | `ModuleNotFoundError: No module named 'django'` | rodou `python3 manage.py` no host, fora do venv/container | use `uv run manage.py ...` ou `docker compose exec web ...` |
 | `attempt to write a readonly database` | rodou no diretório antigo `~/homelab-storage-admin` ou sem `DJANGO_SQLITE_PATH` | use `/opt/stacks/homelab-storage-admin` e o banco em `/mnt/nas/apps/...`; ou o container |
-| `btrfs ... not a subvolume` | share criado como diretório comum | recriar com snapshot marcado |
+| `btrfs ... not a subvolume` | pasta ainda é diretório comum | ativar a política e confirmar o nome do share para converter |
 | `/mnt/nas nao esta montado` | array não montado | `mount /mnt/nas` / conferir `fstab` |
 | `testparm` falhou | seção inválida no `smb.conf` | o app restaura o backup; revisar o log |
 | Versões anteriores vazias | `shadow_copy2`/`shadow:snapdir` errado | conferir a seção do share e reiniciar o `smbd` |

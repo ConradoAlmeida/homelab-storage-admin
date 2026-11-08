@@ -29,10 +29,13 @@
   continua só leitura (navegar e baixar). A aba Versões anteriores do Windows
   segue disponível.
 
-No backend Btrfs o agente exige que o share seja um subvolume e que
-`STORAGE_ROOT` esteja montado; se o mount cair, ele aborta em vez de escrever no
-microSD. No backend rsync não há essa exigência, mas o path precisa estar dentro
-de um prefixo permitido.
+No backend Btrfs o share **nasce subvolume** ao ser criado, mesmo sem política
+de versões; a política pode ser ligada depois na tela Snapshots. Se a pasta
+ainda for diretório comum (criada antes dessa regra), a ativação pede o nome
+do share para converter em subvolume, preservando os arquivos. O
+`STORAGE_ROOT` precisa estar montado; se o mount cair, o agente aborta em vez de
+escrever no microSD. No backend rsync não há essa exigência, mas o path precisa
+estar dentro de um prefixo permitido.
 
 ### Downloads para o Jellyfin
 

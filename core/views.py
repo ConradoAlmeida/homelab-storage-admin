@@ -745,21 +745,29 @@ class SnapshotPolicyView(AgentView):
                 politicas=politicas,
                 form=form,
             )
+        confirmacao = (request.POST.get("confirmation") or "").strip()
         try:
             resultado = agent.snapshot_policy_save(
                 share=alvo,
                 enabled=bool(form.cleaned_data.get("enabled")),
                 keep=form.cleaned_data["keep"],
                 create_now=bool(form.cleaned_data.get("create_now")),
+                confirmation=confirmacao,
             )
         except AgentError as exc:
-            form.add_error(None, str(exc))
+            mensagem = str(exc)
+            converter = "campo de confirmação" in mensagem
+            if not converter:
+                form.add_error(None, mensagem)
             return self._render(
                 request,
                 share=share,
                 shares=shares,
                 politicas=politicas,
                 form=form,
+                converter=converter,
+                confirmacao_share=alvo if converter else "",
+                converter_aviso=mensagem if converter else "",
             )
         task = disparo(request, resultado, action="snapshot.policy", target=alvo)
         return redirect(com_tarefa(reverse("snapshots"), task))
@@ -819,6 +827,9 @@ class SnapshotPolicyView(AgentView):
         data=None,
         form=None,
         agent_error=None,
+        converter=False,
+        confirmacao_share="",
+        converter_aviso="",
     ):
         shares = shares or []
         politicas = politicas or {}
@@ -841,6 +852,9 @@ class SnapshotPolicyView(AgentView):
                 "agent_error": agent_error,
                 "sem_share": form is None and agent_error is None,
                 "sem_compartilhamento": not shares and not share,
+                "converter": converter,
+                "confirmacao_share": confirmacao_share,
+                "converter_aviso": converter_aviso,
             },
         )
 

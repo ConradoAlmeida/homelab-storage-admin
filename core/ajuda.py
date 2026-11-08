@@ -639,8 +639,10 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Snapshot",
                 "text": (
-                    "Ao marcar, o share já nasce com política de versões. Btrfs "
-                    "usa subvolume; ext4 usa snapshots rsync com hardlinks."
+                    "A caixa inclui o share na política de versões. No Btrfs o "
+                    "diretório já nasce subvolume, com ou sem a caixa, para o "
+                    "snapshot poder ser ligado depois. No ext4 a caixa usa "
+                    "snapshots rsync com hardlinks."
                 ),
             },
             {

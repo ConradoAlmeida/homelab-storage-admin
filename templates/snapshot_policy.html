@@ -40,10 +40,24 @@
       {% csrf_token %}
       {% include "partials/form_alert.html" %}
       {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+      {% if converter %}
+        <div class="alert warn" role="alert">
+          <strong>Conversão para subvolume Btrfs</strong>
+          <p>{{ converter_aviso }}</p>
+          <p>Digite exatamente <code class="phrase">{{ confirmacao_share }}</code> para confirmar.</p>
+        </div>
+      {% endif %}
       <div class="form-grid">
         {% for field in form.visible_fields %}
           {% include "partials/form_field.html" with field=field %}
         {% endfor %}
+        {% if converter %}
+          <div class="form-control">
+            <label for="id_confirmation">Nome do share (confirmação)</label>
+            <input type="text" name="confirmation" id="id_confirmation" class="form-control" required autocomplete="off" value="">
+            <div class="help">O agente move os arquivos para um subvolume Btrfs antes de gravar a política.</div>
+          </div>
+        {% endif %}
       </div>
       <div class="help">
         Desativar a política não apaga snapshots. Reduzir as versões a manter só remove as antigas quando o próximo snapshot for criado.

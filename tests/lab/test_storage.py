@@ -111,3 +111,66 @@ def test_agent_btrfs_share_and_snapshot(loop_factory, mountpoint, mounted, tmp_p
     finally:
         for group in groups:
             _run("groupdel", group, check=False)
+
+
+def test_agent_btrfs_share_sem_politica_ativa_conversao(
+    loop_factory, mountpoint, mounted, tmp_path, monkeypatch
+):
+    _need("btrfs")
+    _need("mkfs.btrfs")
+    _need("testparm")
+    _need("rsync")
+    device = loop_factory(160)
+    _run("mkfs.btrfs", "-f", device)
+    mounted(device, mountpoint, "btrfs")
+    snaproot = mountpoint / ".snapshots"
+    smb = tmp_path / "smb.conf"
+    smb.write_text("[global]\n   workgroup = WORKGROUP\n")
+    values = {
+        "STORAGE_ROOT": str(mountpoint),
+        "SNAPSHOT_ROOT": str(snaproot),
+        "ALLOWED_PATH_PREFIXES": f"{mountpoint}/",
+        "DF_MOUNTS": f"/,{mountpoint}",
+        "SHARE_OWNER": "conrado",
+        "SNAPSHOT_BACKEND": "btrfs",
+        "SNAPSHOT_DENYLIST": "",
+        "BACKUP_ROOT": str(tmp_path / "backup"),
+        "AGENT_SOCKET": str(tmp_path / "agent.sock"),
+        "SMB_CONF": str(smb),
+        "CONFIG_DIR": str(tmp_path / "config"),
+        "SNAP_CONFIG": str(tmp_path / "config" / "snapshots.json"),
+        "LOG_FILE": str(tmp_path / "agent.log"),
+    }
+    agent = load_agent(monkeypatch, values)
+    groups = ["lablate", "lablate_ro", "lablate_rw"]
+    share = mountpoint / "lablate"
+    legado = mountpoint / "legdir"
+    legado.mkdir()
+    (legado / "velho.txt").write_text("preservado")
+    legado_smb = "[global]\n   workgroup = WORKGROUP\n\n[legdir]\n    path = " + str(
+        legado
+    ) + "\n    comment = legado\n"
+    smb.write_text(legado_smb)
+    groups_leg = ["legdir", "legdir_ro", "legdir_rw"]
+    try:
+        result = agent.op_create_share("lablate", str(share), snapshot=False)
+        assert result["path"] == str(share)
+        (share / "file.txt").write_text("conteudo")
+        _run("btrfs", "subvolume", "show", str(share))
+        agent.op_snapshot_policy_save("lablate", enabled=True, keep=2)
+        assert (share / "file.txt").read_text() == "conteudo"
+        created = agent.op_snapshot_create("lablate")
+        snap = snaproot / "lablate" / created["name"]
+        _run("btrfs", "subvolume", "show", str(snap))
+        assert (snap / "file.txt").read_text() == "conteudo"
+
+        with pytest.raises(agent.AgentError, match="confirma"):
+            agent.op_snapshot_policy_save("legdir", enabled=True, keep=2)
+        agent.op_snapshot_policy_save(
+            "legdir", enabled=True, keep=2, confirmation="legdir"
+        )
+        _run("btrfs", "subvolume", "show", str(legado))
+        assert (legado / "velho.txt").read_text() == "preservado"
+    finally:
+        for group in groups + groups_leg:
+            _run("groupdel", group, check=False)

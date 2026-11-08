@@ -25,10 +25,39 @@ def prepare(agent, monkeypatch):
 
     def fake_run(args, input_text=None, timeout=60):
         commands.append(list(args))
+        if args[:3] == ["btrfs", "subvolume", "create"]:
+            os.makedirs(args[3], exist_ok=True)
         return ""
 
     monkeypatch.setattr(agent, "run", fake_run)
     return commands
+
+
+def test_create_share_btrfs_sem_politica_cria_subvolume(agent_module, monkeypatch):
+    agent = agent_module
+    commands = prepare(agent, monkeypatch)
+    agent.SNAPSHOT_BACKEND = "btrfs"
+    monkeypatch.setattr(agent, "_fstype", lambda path: "btrfs")
+    monkeypatch.setattr(agent.os.path, "ismount", lambda path: True)
+    path = Path(agent.STORAGE_ROOT) / "docs"
+    result = agent.op_create_share("docs", str(path), snapshot=False)
+    assert result["path"] == str(path)
+    assert any(cmd[:3] == ["btrfs", "subvolume", "create"] for cmd in commands)
+    assert "docs" not in agent.load_policies()
+    texto = Path(agent.SMB_CONF).read_text()
+    assert "shadow:" not in texto
+
+
+def test_create_share_btrfs_desmontado_sem_snapshot_recusa(agent_module, monkeypatch):
+    agent = agent_module
+    prepare(agent, monkeypatch)
+    agent.SNAPSHOT_BACKEND = "btrfs"
+    monkeypatch.setattr(agent, "_fstype", lambda path: "btrfs")
+    monkeypatch.setattr(agent.os.path, "ismount", lambda path: False)
+    path = Path(agent.STORAGE_ROOT) / "docs"
+    with pytest.raises(agent.AgentError, match="montado"):
+        agent.op_create_share("docs", str(path), snapshot=False)
+    assert not path.exists()
 
 
 def test_create_share_without_snapshot_does_not_need_storage_mount(agent_module, monkeypatch, tmp_path):

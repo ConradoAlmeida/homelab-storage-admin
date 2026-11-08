@@ -263,8 +263,54 @@ def test_policy_save_btrfs_recusa_diretorio_que_nao_e_subvolume(agent_module, mo
     monkeypatch.setattr(agent.os.path, "ismount", lambda path: True)
     falso_run(agent, monkeypatch, falhar="btrfs")
     original = Path(agent.SMB_CONF).read_text()
-    with pytest.raises(agent.AgentError, match="subvolume"):
+    with pytest.raises(agent.AgentError, match="confirma"):
         agent.op_snapshot_policy_save("docs", enabled=True, keep=2)
+    assert Path(agent.SMB_CONF).read_text() == original
+    assert "docs" not in agent.load_policies()
+
+
+def test_policy_save_btrfs_converte_com_confirmacao(agent_module, monkeypatch):
+    agent = agent_module
+    path = gravar_smb(agent)
+    agent.SNAPSHOT_BACKEND = "btrfs"
+    monkeypatch.setattr(agent, "_fstype", lambda path: "btrfs")
+    monkeypatch.setattr(agent.os.path, "ismount", lambda path: True)
+    comandos = falso_run(agent, monkeypatch, falhar="btrfs")
+
+    def fake_convert(share, share_path):
+        comandos.append(["convert", share, share_path])
+        return None
+
+    monkeypatch.setattr(agent, "_convert_directory_to_subvolume", fake_convert)
+    monkeypatch.setattr(agent, "_path_is_subvolume", lambda p: False)
+
+    resultado = agent.op_snapshot_policy_save(
+        "docs", enabled=True, keep=3, confirmation="docs"
+    )
+    assert resultado["enabled"] is True
+    assert resultado["backend"] == "btrfs"
+    assert ["convert", "docs", str(path)] in comandos
+    assert "shadow:snapdir" in Path(agent.SMB_CONF).read_text()
+    assert agent.load_policies()["docs"]["enabled"] is True
+
+
+def test_policy_save_btrfs_confirmacao_errada_nao_converte(agent_module, monkeypatch):
+    agent = agent_module
+    gravar_smb(agent)
+    agent.SNAPSHOT_BACKEND = "btrfs"
+    monkeypatch.setattr(agent, "_fstype", lambda path: "btrfs")
+    monkeypatch.setattr(agent.os.path, "ismount", lambda path: True)
+    falso_run(agent, monkeypatch, falhar="btrfs")
+    original = Path(agent.SMB_CONF).read_text()
+    monkeypatch.setattr(
+        agent,
+        "_convert_directory_to_subvolume",
+        lambda *args: pytest.fail("nao deve converter"),
+    )
+    with pytest.raises(agent.AgentError, match="Confirmacao incorreta"):
+        agent.op_snapshot_policy_save(
+            "docs", enabled=True, keep=2, confirmation="errado"
+        )
     assert Path(agent.SMB_CONF).read_text() == original
     assert "docs" not in agent.load_policies()
 

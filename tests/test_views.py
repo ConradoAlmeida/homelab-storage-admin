@@ -1107,7 +1107,7 @@ class ViewSmokeTests(TestCase):
         )
         self.assertRedirects(response, "/snapshots/")
         self.fake.snapshot_policy_save.assert_called_once_with(
-            share="docs", enabled=True, keep=5, create_now=True
+            share="docs", enabled=True, keep=5, create_now=True, confirmation=""
         )
         self.assertTrue(
             AuditLog.objects.filter(action="snapshot.policy", target="docs").exists()
@@ -1135,7 +1135,7 @@ class ViewSmokeTests(TestCase):
         )
         self.assertRedirects(response, "/snapshots/")
         self.fake.snapshot_policy_save.assert_called_once_with(
-            share="midia", enabled=True, keep=9, create_now=False
+            share="midia", enabled=True, keep=9, create_now=False, confirmation=""
         )
 
     def test_editar_politica_pode_desativar(self):
@@ -1157,7 +1157,7 @@ class ViewSmokeTests(TestCase):
         )
         self.assertRedirects(response, "/snapshots/")
         self.fake.snapshot_policy_save.assert_called_once_with(
-            share="midia", enabled=False, keep=7, create_now=False
+            share="midia", enabled=False, keep=7, create_now=False, confirmation=""
         )
 
     def test_configurar_share_especifico_oferece_o_primeiro_snapshot(self):
@@ -1182,6 +1182,52 @@ class ViewSmokeTests(TestCase):
         ]
         response = self.client.get("/snapshots/politica/nova/")
         self.assertContains(response, "já têm política")
+
+    def test_politica_sem_confirmacao_reexibe_campo_converter(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = []
+        self.fake.snapshot_policy_save.side_effect = AgentError(
+            "Para ativar snapshots no Btrfs, confirme digitando o nome do share no "
+            "campo de confirmação: a pasta será convertida em subvolume."
+        )
+        response = self.client.post(
+            "/snapshots/politica/nova/",
+            {"share": "docs", "keep": "7", "enabled": "on"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Conversão para subvolume Btrfs")
+        self.assertContains(response, 'name="confirmation"')
+        self.fake.snapshot_policy_save.assert_called_once_with(
+            share="docs", enabled=True, keep=7, create_now=False, confirmation=""
+        )
+        self.assertFalse(AuditLog.objects.filter(action="snapshot.policy").exists())
+
+    def test_politica_com_confirmacao_envia_ao_agente(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = []
+        self.fake.snapshot_policy_save.return_value = {
+            "share": "docs",
+            "enabled": True,
+            "keep": 7,
+            "created": None,
+        }
+        response = self.client.post(
+            "/snapshots/politica/nova/",
+            {
+                "share": "docs",
+                "keep": "7",
+                "enabled": "on",
+                "confirmation": "docs",
+            },
+        )
+        self.assertRedirects(response, "/snapshots/")
+        self.fake.snapshot_policy_save.assert_called_once_with(
+            share="docs", enabled=True, keep=7, create_now=False, confirmation="docs"
+        )
 
     def test_politica_mostra_erro_do_agente(self):
         self.fake.list_shares.return_value = [

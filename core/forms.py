@@ -152,7 +152,11 @@ class ShareCreateForm(forms.Form):
         label="Criar com snapshot e incluir na politica de versoes",
         required=False,
         initial=False,
-        help_text="Btrfs usa subvolume; ext4 usa snapshots rsync com hardlinks.",
+        help_text=(
+            "Inclui o share na política de versões. No Btrfs o diretório já nasce "
+            "subvolume, com ou sem esta caixa, para o snapshot poder ser ligado depois. "
+            "No ext4 a caixa usa snapshots rsync."
+        ),
     )
     snapshot_keep = forms.IntegerField(
         label="Versoes a manter", min_value=1, max_value=168, initial=7, required=False
