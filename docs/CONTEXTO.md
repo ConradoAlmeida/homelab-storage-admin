@@ -29,7 +29,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados. No
   Btrfs o share nasce subvolume mesmo sem política; ligar o snapshot depois ou
-  converter pasta antiga exige confirmação do nome do share.
+  converter pasta antiga exige confirmação do nome do share. Com o disco do
+  Jellyfin montado, o portal também cria share numa pasta dele
+  (`/mnt/jellyfin/fotos`); em ext4 ela nasce diretório comum.
 - No homelab a marca é Conradhub Homelab: símbolo mais CONRADHUB, com HOMELAB
   na linha de baixo, na faixa em degradê da barra. O login usa o wordmark
   vertical. O menu separa Visão geral, Dados e Sistema. No moya

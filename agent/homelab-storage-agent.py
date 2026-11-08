@@ -138,6 +138,7 @@ ALLOWED_PATH_PREFIXES = tuple(
     for p in os.environ.get("ALLOWED_PATH_PREFIXES", "/mnt/nas/").split(",")
     if p.strip()
 )
+JELLYFIN_ROOT = os.environ.get("JELLYFIN_ROOT", "/mnt/jellyfin")
 DF_MOUNTS = tuple(
     m.strip() for m in os.environ.get("DF_MOUNTS", "/,/mnt/nas").split(",") if m.strip()
 )
@@ -1102,14 +1103,23 @@ def op_list_shares(include_size=False, **_):
     return sorted(shares, key=lambda item: item["name"])
 
 
+def _share_prefixes() -> tuple[str, ...]:
+    """Prefixos de share. O disco do Jellyfin entra quando está montado."""
+    prefixes = list(ALLOWED_PATH_PREFIXES)
+    root = (JELLYFIN_ROOT or "").rstrip("/")
+    extra = f"{root}/" if root else ""
+    if extra and extra not in prefixes and os.path.ismount(root):
+        prefixes.append(extra)
+    return tuple(prefixes)
+
+
 def _validate_share_path(path: str) -> str:
     path = (path or "").rstrip("/")
     if not path.startswith("/"):
         raise AgentError("Caminho deve ser absoluto")
-    if not any(path.startswith(prefix) for prefix in ALLOWED_PATH_PREFIXES):
-        raise AgentError(
-            "Caminho nao permitido. Use: " + ", ".join(ALLOWED_PATH_PREFIXES)
-        )
+    prefixes = _share_prefixes()
+    if not any(path.startswith(prefix) for prefix in prefixes):
+        raise AgentError("Caminho nao permitido. Use: " + ", ".join(prefixes))
     if ".." in Path(path).parts:
         raise AgentError("Caminho invalido")
     return path

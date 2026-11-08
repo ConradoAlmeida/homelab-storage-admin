@@ -72,7 +72,33 @@ def test_django_settings_read_environment(monkeypatch, profile_env):
 def test_share_form_help_uses_first_allowed_prefix():
     with override_settings(ALLOWED_PATH_PREFIXES=("/srv/samba/", "/mnt/data/")):
         form = ShareCreateForm()
-    assert "/srv/samba/documentos" in form.fields["path"].help_text
+    assert "/srv/samba/pasta" in form.fields["path"].help_text
+
+
+def test_share_form_aceita_pasta_no_disco_jellyfin_montado(monkeypatch):
+    monkeypatch.setattr("core.paths.os.path.ismount", lambda path: path == "/mnt/jellyfin")
+    with override_settings(
+        ALLOWED_PATH_PREFIXES=("/mnt/nas/",),
+        JELLYFIN_ROOT="/mnt/jellyfin",
+    ):
+        form = ShareCreateForm(
+            {"name": "fotos", "path": "/mnt/jellyfin/fotos", "snapshot_keep": "7"}
+        )
+        assert form.is_valid(), form.errors
+        assert "/mnt/jellyfin/pasta" in form.fields["path"].help_text
+
+
+def test_share_form_recusa_jellyfin_sem_mount(monkeypatch):
+    monkeypatch.setattr("core.paths.os.path.ismount", lambda path: False)
+    with override_settings(
+        ALLOWED_PATH_PREFIXES=("/mnt/nas/",),
+        JELLYFIN_ROOT="/mnt/jellyfin",
+    ):
+        form = ShareCreateForm(
+            {"name": "fotos", "path": "/mnt/jellyfin/fotos", "snapshot_keep": "7"}
+        )
+        assert not form.is_valid()
+        assert "permitido" in str(form.errors)
 
 
 class DiskRoleTests(SimpleTestCase):

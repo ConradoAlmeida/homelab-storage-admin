@@ -633,7 +633,10 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "title": "Nome e caminho",
                 "text": (
                     "O nome aceita de 1 a 32 caracteres (A-Z, a-z, 0-9, hífen "
-                    "e sublinhado). O caminho é o diretório usado pelo share."
+                    "e sublinhado). O caminho é o diretório usado pelo share. "
+                    "Com o disco do Jellyfin montado, uma pasta dele também vale, "
+                    "por exemplo /mnt/jellyfin/fotos. Nesse disco ext4 a pasta "
+                    "nasce como diretório comum."
                 ),
             },
             {

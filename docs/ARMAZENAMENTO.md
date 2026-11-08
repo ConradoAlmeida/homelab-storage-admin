@@ -37,6 +37,10 @@ do share para converter em subvolume, preservando os arquivos. O
 escrever no microSD. No backend rsync não há essa exigência, mas o path precisa
 estar dentro de um prefixo permitido.
 
+Com `/mnt/jellyfin` montado, o formulário de share também aceita uma pasta
+desse disco, por exemplo `/mnt/jellyfin/fotos`. O disco é ext4: a pasta nasce
+diretório comum. Sem o mount, o caminho continua recusado.
+
 ### Downloads para o Jellyfin
 
 A página **Torrents** só aparece quando o container `jellyfin` existe. Ela lê

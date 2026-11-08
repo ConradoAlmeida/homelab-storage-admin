@@ -1,5 +1,6 @@
 from django import forms
-from django.conf import settings
+
+from core.paths import prefixos_de_share
 
 
 class UserCreateForm(forms.Form):
@@ -170,9 +171,10 @@ class ShareCreateForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        prefixes = settings.ALLOWED_PATH_PREFIXES
+        prefixes = prefixos_de_share()
         if prefixes:
-            self.fields["path"].help_text = f"Ex.: {prefixes[0]}documentos"
+            exemplos = ", ".join(f"{prefix}pasta" for prefix in prefixes)
+            self.fields["path"].help_text = f"Ex.: {exemplos}"
 
     def clean_path(self):
         path = self.cleaned_data["path"].strip().rstrip("/")
@@ -180,7 +182,7 @@ class ShareCreateForm(forms.Form):
             raise forms.ValidationError("Use caminho absoluto.")
         if ".." in path.split("/"):
             raise forms.ValidationError("Caminho invalido.")
-        prefixes = settings.ALLOWED_PATH_PREFIXES
+        prefixes = prefixos_de_share()
         if not prefixes:
             raise forms.ValidationError("Nenhum caminho permitido configurado.")
         if not path.startswith(prefixes):

@@ -60,6 +60,31 @@ def test_create_share_btrfs_desmontado_sem_snapshot_recusa(agent_module, monkeyp
     assert not path.exists()
 
 
+def test_create_share_no_disco_jellyfin_ext4(agent_module, monkeypatch, tmp_path):
+    agent = agent_module
+    prepare(agent, monkeypatch)
+    jelly = tmp_path / "jellyfin"
+    jelly.mkdir()
+    fotos = jelly / "fotos"
+    agent.JELLYFIN_ROOT = str(jelly)
+    agent.ALLOWED_PATH_PREFIXES = ("/mnt/nas/",)
+    monkeypatch.setattr(agent.os.path, "ismount", lambda path: path == str(jelly))
+    monkeypatch.setattr(agent, "_fstype", lambda path: "ext4")
+    result = agent.op_create_share("fotos", str(fotos), snapshot=False)
+    assert result["path"] == str(fotos)
+    assert fotos.is_dir()
+    assert "fotos" not in agent.load_policies()
+
+
+def test_share_path_recusa_jellyfin_desmontado(agent_module, monkeypatch):
+    agent = agent_module
+    agent.JELLYFIN_ROOT = "/mnt/jellyfin"
+    agent.ALLOWED_PATH_PREFIXES = ("/mnt/nas/",)
+    monkeypatch.setattr(agent.os.path, "ismount", lambda path: False)
+    with pytest.raises(agent.AgentError, match="nao permitido"):
+        agent._validate_share_path("/mnt/jellyfin/fotos")
+
+
 def test_create_share_without_snapshot_does_not_need_storage_mount(agent_module, monkeypatch, tmp_path):
     agent = agent_module
     commands = prepare(agent, monkeypatch)
