@@ -80,7 +80,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   - **Dados dos apps** — 16 fontes, manual, sem timer.
 - Página **Rede**: firewall UFW editável (ativar/desativar, adicionar/remover
   regras), interfaces, rotas, portas e containers.
-- **Sistema** (`/sistema/…`): Host (ficha + apt com `SYSTEM_MANAGE`), Chaves
+- **Sistema** (`/sistema/…`): Host (ficha + apt com `SYSTEM_MANAGE`), **Configuração**
+  (SSH e caminhos de `host.env`, `.env` e `services.ini` no host), Chaves
   (fingerprints SSH + slot torrent com `jellyfin`), Logs (journal com filtros
   fechados ou log de container), Serviços (units systemd), Terminal ligado
   por padrão e aberto só com senha sudo da conta Linux. Ver [SISTEMA.md](SISTEMA.md).

@@ -25,6 +25,12 @@ services:
       - SYSTEM_MANAGE=${SYSTEM_MANAGE:-1}
       - TERMINAL_ENABLE=${TERMINAL_ENABLE:-1}
       - TORRENT_API_TOKEN=${TORRENT_API_TOKEN:-}
+      - SSH_LOGIN=${SSH_LOGIN:-}
+      - SHARE_OWNER=${SHARE_OWNER:-conrado}
+      - HOST_ENV_PATH=${HOST_ENV_PATH:-/etc/homelab-storage-admin/host.env}
+      - STACK_ENV_PATH=${STACK_ENV_PATH:-/opt/stacks/homelab-storage-admin/.env}
+      - SERVICES_INI_HOST=${SERVICES_INI_HOST:-${DATA_DIR:-./data}/services.ini}
+      - CREDENCIAIS_ENV=${CREDENCIAIS_ENV:-}
     volumes:
       - "${DATA_DIR:-./data}:/app/data"
       - "${STORAGE_ROOT:-/mnt/nas}:${STORAGE_ROOT:-/mnt/nas}:ro"

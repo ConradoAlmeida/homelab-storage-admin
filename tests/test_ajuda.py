@@ -10,6 +10,7 @@ ROTAS_ESPERADAS = {
     "dashboard",
     "network_index",
     "system_host",
+    "system_config",
     "system_keys",
     "system_logs",
     "system_services",

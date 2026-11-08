@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Configuração - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Configuração</h1>
+    <p class="lead">Onde ficam os arquivos de perfil e segredos no host. Esta página não grava nada.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="section-head">
+    <h2>SSH</h2>
+  </div>
+  <div class="card">
+    <pre class="mono">{{ ssh_comando }}</pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <h2>Arquivos no host</h2>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table class="file-table">
+        <thead>
+          <tr>
+            <th scope="col">Arquivo</th>
+            <th scope="col">Caminho</th>
+            <th scope="col">O que controla</th>
+            <th scope="col">Quando vale</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for arq in arquivos %}
+          <tr>
+            <th scope="row">{{ arq.nome }}</th>
+            <td class="mono">{{ arq.caminho }}</td>
+            <td>{{ arq.controlo }}</td>
+            <td>{{ arq.vigencia }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="alert">
+  Alterações em <span class="mono">host.env</span> e no <span class="mono">.env</span> do stack só valem depois de
+  <span class="mono">sudo ./install-agent.sh</span> (quando couber) e <span class="mono">./deploy.sh</span>.
+  O <span class="mono">services.ini</span> vale ao recarregar a página. Não há botão de salvar aqui.
+</div>
+{% endblock %}

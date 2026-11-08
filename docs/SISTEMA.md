@@ -1,7 +1,25 @@
-# Sistema (host, chaves, logs, serviços, terminal)
+# Sistema (host, configuração, chaves, logs, serviços, terminal)
 
-Cinco telas no menu **Sistema**, mesmo código no Pi e no moyaserver. O que o host
+Seis telas no menu **Sistema**, mesmo código no Pi e no moyaserver. O que o host
 não oferece some com explicação (sem erro 500).
+
+## Configuração (`/sistema/config/`)
+
+Somente leitura: comando **SSH** em destaque (`SSH_LOGIN` no `host.env`, ou
+`SHARE_OWNER` + hostname do agente) e tabela com caminhos absolutos no host:
+
+- `/etc/homelab-storage-admin/host.env` — perfil (prefixos, overlay, `SSH_LOGIN`).
+- `/opt/stacks/homelab-storage-admin/.env` — segredo Django do painel.
+- `services.ini` no `DATA_DIR` do host — no Pi
+  `/mnt/nas/apps/homelab-storage-admin/data/services.ini`; no moya
+  `/opt/stacks/homelab-storage-admin/data/services.ini` (atalhos da home).
+- No moyaserver, com `CREDENCIAIS_ENV` definido: caminho do `.env` do Credenciais
+  (ex.: `/home/conrado/moya_credenciais_app/.env`). No Pi essa linha não aparece.
+
+O Compose repassa `SSH_LOGIN`, `SERVICES_INI_HOST`, `STACK_ENV_PATH` e
+`CREDENCIAIS_ENV` para o Django sem expor `/app/data` na UI. Não há botão de
+salvar; `host.env` e `.env` do stack valem após `install-agent.sh` e `deploy.sh`;
+`services.ini` vale ao recarregar o painel.
 
 ## Host (`/sistema/`)
 

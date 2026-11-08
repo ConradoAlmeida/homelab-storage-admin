@@ -47,6 +47,16 @@ BIND_ADDR = os.environ.get("BIND_ADDR", "127.0.0.1")
 BIND_PORT = int(os.environ.get("BIND_PORT", "8060"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR / "data")))
 SERVICES_FILE = Path(os.environ.get("SERVICES_FILE", str(DATA_DIR / "services.ini")))
+SHARE_OWNER = os.environ.get("SHARE_OWNER", "conrado")
+SSH_LOGIN = os.environ.get("SSH_LOGIN", "").strip()
+HOST_ENV_PATH = os.environ.get("HOST_ENV_PATH", "/etc/homelab-storage-admin/host.env")
+STACK_ENV_PATH = os.environ.get(
+    "STACK_ENV_PATH", "/opt/stacks/homelab-storage-admin/.env"
+)
+SERVICES_INI_HOST = os.environ.get(
+    "SERVICES_INI_HOST", str(DATA_DIR / "services.ini")
+)
+CREDENCIAIS_ENV = os.environ.get("CREDENCIAIS_ENV", "").strip()
 
 INSTALLED_APPS = [
     "django.contrib.admin",

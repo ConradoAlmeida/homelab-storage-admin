@@ -14,6 +14,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .agent import AgentError, agent
+from .config_locais import contexto_config_locais
 from .context_processors import capacidades_do_host
 from .models import AuditLog, token_da_api
 from .tarefas import com_tarefa, disparo
@@ -138,6 +139,31 @@ class SystemHostView(AgentView):
         task = disparo(request, resultado, action="apt.upgrade", target="apt")
         _audit(request, "apt.upgrade", "apt")
         return redirect(com_tarefa(reverse("system_host"), task))
+
+
+class SystemConfigView(AgentView):
+    template_name = "system_config.html"
+    http_method_names = ["get", "head"]
+
+    def get(self, request):
+        hostname = None
+        try:
+            info = agent.host_info()
+            if isinstance(info, dict):
+                hostname = info.get("hostname")
+        except AgentError:
+            pass
+        ctx = contexto_config_locais(
+            ssh_login=settings.SSH_LOGIN,
+            share_owner=settings.SHARE_OWNER,
+            hostname=hostname,
+            host_env_path=settings.HOST_ENV_PATH,
+            stack_env_path=settings.STACK_ENV_PATH,
+            services_ini_host=settings.SERVICES_INI_HOST,
+            credenciais_env=settings.CREDENCIAIS_ENV,
+        )
+        ctx["host_error"] = None
+        return render(request, self.template_name, ctx)
 
 
 class SystemKeysView(AgentTemplateView):

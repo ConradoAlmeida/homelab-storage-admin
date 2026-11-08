@@ -6,6 +6,11 @@ urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("rede/", views.NetworkView.as_view(), name="network_index"),
     path("sistema/", system_views.SystemHostView.as_view(), name="system_host"),
+    path(
+        "sistema/config/",
+        system_views.SystemConfigView.as_view(),
+        name="system_config",
+    ),
     path("sistema/chaves/", system_views.SystemKeysView.as_view(), name="system_keys"),
     path("sistema/logs/", system_views.SystemLogsView.as_view(), name="system_logs"),
     path(

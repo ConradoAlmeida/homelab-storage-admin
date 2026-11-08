@@ -144,6 +144,30 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
         ],
     },
+    "system_config": {
+        "title": "Configuração",
+        "summary": (
+            "Comando SSH do host e caminhos absolutos dos arquivos de perfil "
+            "e segredos. Somente leitura."
+        ),
+        "chapters": [
+            {
+                "title": "SSH",
+                "text": (
+                    "O bloco em destaque usa SSH_LOGIN do host.env quando "
+                    "definido; senão, usuário SHARE_OWNER e hostname do agente."
+                ),
+            },
+            {
+                "title": "Arquivos",
+                "text": (
+                    "host.env no /etc, .env do stack, services.ini no DATA_DIR "
+                    "do host e, no moyaserver com CREDENCIAIS_ENV, o .env do "
+                    "Credenciais. Valide com install-agent, deploy ou recarga."
+                ),
+            },
+        ],
+    },
     "system_host": {
         "title": "Host",
         "summary": (
@@ -1400,6 +1424,11 @@ USE_CASES: dict[str, str] = {
         "diagnosticar a rede. Exemplo: libere 8080/tcp apenas para "
         "192.168.0.0/24, ative o UFW com SSH garantido e, se um app parar, "
         "confira portas, rotas e regras antes de mexer no proxy."
+    ),
+    "system_config": (
+        "Use para copiar o SSH e saber onde editar host.env, .env e services.ini "
+        "no host. Exemplo: antes de mudar BIND_PORT, anote o caminho do host.env "
+        "e conecte com o comando mostrado."
     ),
     "system_host": (
         "Use para confirmar qual host está por trás do painel e se há "

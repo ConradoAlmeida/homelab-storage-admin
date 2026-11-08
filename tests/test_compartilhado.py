@@ -46,6 +46,7 @@ def test_moya_bloqueia_apenas_identidade():
     # Rotas de sistema não são bloqueadas pelo Credenciais.
     for caminho in (
         "/sistema/",
+        "/sistema/config/",
         "/sistema/chaves/",
         "/sistema/logs/",
         "/sistema/servicos/",
