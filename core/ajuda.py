@@ -614,8 +614,9 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Tabela de shares",
                 "text": (
-                    "Mostra caminho, política de snapshot, espaço de dados, "
-                    "espaço dos snapshots e total."
+                    "Mostra caminho, o disco em que o caminho está montado, "
+                    "política de snapshot, espaço de dados, espaço dos snapshots "
+                    "e total. Um RAID aparece com os dois discos."
                 ),
             },
             {
@@ -1170,7 +1171,11 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
             {
                 "title": "Dumps no servidor",
-                "text": "Lista os arquivos disponíveis com data e tamanho.",
+                "text": (
+                    "Lista os zips com data, tamanho, o diretório e o disco. "
+                    "Baixar entrega o arquivo. Restaurar pede o nome do zip "
+                    "antes de aplicar no container."
+                ),
             },
             {
                 "title": "Restaurar",

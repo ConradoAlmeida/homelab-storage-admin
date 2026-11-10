@@ -6,7 +6,7 @@ from pathlib import Path
 from django.test import SimpleTestCase, override_settings
 
 from core.forms import ShareCreateForm
-from core.hostinfo import disk_role, volume_for
+from core.hostinfo import disk_role, disks_for_path, rotulo_discos, volume_for
 
 from .conftest import ROOT, load_agent, set_env
 
@@ -110,6 +110,19 @@ class DiskRoleTests(SimpleTestCase):
         assert disk_role({"mounts": ["/mnt/nas"]}, "/mnt/nas", "/mnt/backup") == "dados/RAID"
         assert disk_role({"mounts": ["/mnt/backup/hdd700"]}, "/mnt/nas", "/mnt/backup") == "backup"
         assert disk_role({"mounts": ["/mnt/other"]}, "/mnt/nas", "/mnt/backup") == "—"
+
+    def test_disco_do_share_prefere_o_mount_mais_especifico(self):
+        sistema = {"name": "sda", "model": "ST2000NM012B-2TD", "mounts": ["/", "/mnt/backup"]}
+        espelho_a = {"name": "sdb", "model": "WDC WD40EFZZ-68C", "mounts": ["/mnt/data"]}
+        espelho_b = {"name": "sdc", "model": "WDC WD40EFZZ-68C", "mounts": ["/mnt/data"]}
+        discos = [espelho_b, sistema, espelho_a]
+        assert disks_for_path("/srv/samba/print_files", discos) == [sistema]
+        assert disks_for_path("/mnt/data/Veronte_Images", discos) == [espelho_a, espelho_b]
+        assert rotulo_discos([sistema]) == "Disco sda · ST2000NM012B-2TD"
+        assert (
+            rotulo_discos([espelho_a, espelho_b])
+            == "Discos sdb + sdc · WDC WD40EFZZ-68C"
+        )
 
     def test_volume_for_prefers_most_specific_mount(self):
         volumes = [

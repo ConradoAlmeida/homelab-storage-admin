@@ -7,6 +7,25 @@ from pathlib import Path
 import pytest
 
 
+def test_download_do_dump_reusa_o_arquivo_no_mesmo_disco(agent_module, tmp_path, monkeypatch):
+    origem_dir = tmp_path / "gitea"
+    origem_dir.mkdir()
+    origem = origem_dir / "gitea-20261028-113707.zip"
+    origem.write_bytes(b"zip")
+    data = tmp_path / "data"
+    (data / "downloads").mkdir(parents=True)
+    monkeypatch.setattr(agent_module, "GITEA_BACKUP_DIR", str(origem_dir))
+    monkeypatch.setattr(agent_module, "DATA_DIR", str(data))
+    monkeypatch.setattr(agent_module, "DOWNLOAD_DIR", str(data / "downloads"))
+
+    resultado = agent_module.op_gitea_download("gitea-20261028-113707.zip")
+
+    alvo = data / resultado["relative"]
+    assert alvo.is_file()
+    assert alvo.stat().st_ino == origem.stat().st_ino
+    assert origem.read_bytes() == b"zip"
+
+
 def test_usb_detection_lista_apenas_removiveis(agent_module, monkeypatch):
     dados = {
         "blockdevices": [

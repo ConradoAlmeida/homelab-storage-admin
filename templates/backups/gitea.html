@@ -146,7 +146,12 @@
 
   <section class="section">
     <div class="section-head">
-      <h2>Dumps no servidor</h2>
+      <div>
+        <h2>Dumps no servidor</h2>
+        <p class="muted text-12">
+          <span class="mono">{{ overview.backup_dir }}</span>{% if overview.disk_label %} · {{ overview.disk_label }}{% endif %}
+        </p>
+      </div>
       <span class="muted text-12">{{ overview.dumps|length }} arquivo{{ overview.dumps|length|pluralize }}</span>
     </div>
     <div class="table-wrap"><table class="file-table">
@@ -158,6 +163,7 @@
             <td class="muted">{{ item.created_label }}</td>
             <td>{{ item.size_label }}</td>
             <td class="file-actions">
+              <a class="btn small" href="{% url 'gitea_download' item.name %}">Baixar</a>
               <details class="restore-details">
                 <summary class="btn small danger">Restaurar</summary>
                 <form method="post" action="{% url 'gitea_restore' item.name %}" class="restore-form"

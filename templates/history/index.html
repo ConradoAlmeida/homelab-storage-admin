@@ -29,6 +29,7 @@
             <strong>{{ s.name }}</strong>
             {% if not s.browseable %}<span class="tag">privado</span>{% endif %}
             <div class="muted mono text-12">{{ s.path }}</div>
+            {% if s.disk_label %}<div class="muted text-11">{{ s.disk_label }}</div>{% endif %}
           </td>
           <td class="muted">{{ s.snapshot_count }}</td>
           <td class="muted">{{ s.last_snapshot|default:"—" }}</td>

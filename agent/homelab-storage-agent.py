@@ -4803,6 +4803,35 @@ def _gitea_aplicar_dump(estagio: Path, volume: Path) -> list[str]:
     return feitos
 
 
+def op_gitea_download(archive: str, **_):
+    """Publica o zip em DOWNLOAD_DIR para o container servir o arquivo."""
+    nome = Path(archive or "").name
+    if not GITEA_DUMP_RE.match(nome):
+        raise AgentError("Arquivo de dump invalido")
+    origem = Path(GITEA_BACKUP_DIR) / nome
+    if not origem.is_file():
+        raise AgentError("Dump nao encontrado no servidor")
+    _cleanup_downloads()
+    token = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(4)
+    pasta = Path(DOWNLOAD_DIR) / token
+    pasta.mkdir(parents=True, exist_ok=False)
+    os.chmod(pasta.parent, 0o700)
+    os.chmod(pasta, 0o700)
+    alvo = pasta / nome
+    try:
+        os.link(origem, alvo)
+    except OSError:
+        shutil.copyfile(origem, alvo)
+        os.chmod(alvo, 0o600)
+    raiz = Path(DATA_DIR).resolve()
+    try:
+        relativo = alvo.resolve().relative_to(raiz)
+    except ValueError as exc:
+        shutil.rmtree(pasta, ignore_errors=True)
+        raise AgentError("DOWNLOAD_DIR fora de DATA_DIR") from exc
+    return {"relative": str(relativo), "filename": nome, "size": alvo.stat().st_size}
+
+
 def op_gitea_restore(archive: str, confirmation: str = "", **_):
     if not _container_exists(GITEA_CONTAINER):
         raise AgentError("Gitea nao esta instalado neste host")
@@ -6971,6 +7000,7 @@ OPS = {
     "backup_check": op_backup_check,
     "gitea_overview": op_gitea_overview,
     "gitea_start": op_gitea_start,
+    "gitea_download": op_gitea_download,
     "gitea_restore": op_gitea_restore,
     "backup_job_save": op_backup_job_save,
     "backup_job_toggle": op_backup_job_toggle,

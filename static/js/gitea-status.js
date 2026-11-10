@@ -17,39 +17,6 @@
     return document.getElementById(id);
   }
 
-  function renderDumps(dumps) {
-    var corpo = el("gitea-dumps-body");
-    if (!corpo) return;
-    corpo.innerHTML = "";
-    if (!dumps.length) {
-      var vazio = document.createElement("tr");
-      var celula = document.createElement("td");
-      celula.colSpan = 3;
-      var caixa = document.createElement("div");
-      caixa.className = "empty";
-      caixa.textContent = "Nenhum dump no servidor ainda.";
-      celula.appendChild(caixa);
-      vazio.appendChild(celula);
-      corpo.appendChild(vazio);
-      return;
-    }
-    dumps.forEach(function (item) {
-      var linha = document.createElement("tr");
-      var nome = document.createElement("td");
-      nome.className = "mono text-12";
-      nome.textContent = item.name || "";
-      var criado = document.createElement("td");
-      criado.className = "muted";
-      criado.textContent = item.created_label || "";
-      var tamanho = document.createElement("td");
-      tamanho.textContent = item.size_label || "";
-      linha.appendChild(nome);
-      linha.appendChild(criado);
-      linha.appendChild(tamanho);
-      corpo.appendChild(linha);
-    });
-  }
-
   function render(dados) {
     var status = dados.status || {};
     var rodando = status.status === "running";
@@ -119,7 +86,6 @@
       botao.disabled = rodando || bloqueado;
     });
 
-    renderDumps(dados.dumps || []);
     return rodando;
   }
 
@@ -130,9 +96,13 @@
         return resposta.json();
       })
       .then(function (dados) {
+        var estava = raiz.getAttribute("data-running") === "1";
         var rodando = render(dados);
         if (rodando) {
+          raiz.setAttribute("data-running", "1");
           timer = window.setTimeout(consultar, 2000);
+        } else if (estava) {
+          window.location.reload();
         }
       })
       .catch(function () {

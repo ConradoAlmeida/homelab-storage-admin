@@ -262,7 +262,7 @@
       <tbody>
         {% for s in shares %}
           <tr data-share="{{ s.name }}">
-            <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.read_only %} <span class="tag">RO</span>{% endif %}</td>
+            <td><strong>{{ s.name }}</strong>{% if not s.browseable %} <span class="tag">privado</span>{% endif %}{% if s.read_only %} <span class="tag">RO</span>{% endif %}{% if s.disk_label %}<div class="muted text-11">{{ s.disk_label }}</div>{% endif %}</td>
             <td class="muted">{{ s.backend|default:"—" }}</td>
             <td class="muted" data-size>—</td>
             <td class="muted" data-snap-size>—</td>

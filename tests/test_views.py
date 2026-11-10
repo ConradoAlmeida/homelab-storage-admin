@@ -1031,6 +1031,30 @@ class ViewSmokeTests(TestCase):
         self.fake.list_shares.assert_called_once_with(include_size=False)
         self.fake.snapshot_usage.assert_called_once_with(include_size=False)
 
+    def test_shares_mostra_o_disco_do_caminho(self):
+        self.fake.list_shares.return_value = [
+            {"name": "veronte", "path": "/mnt/data/Veronte_Images", "browseable": True, "read_only": False},
+            {"name": "print", "path": "/srv/samba/print_files", "browseable": True, "read_only": False},
+        ]
+        self.fake.snapshot_usage.return_value = []
+        self.fake.storage_overview.return_value = {
+            "disks": [
+                {"name": "sda", "model": "ST2000NM012B-2TD", "mounts": ["/", "/mnt/backup"]},
+                {"name": "sdc", "model": "WDC WD40EFZZ-68C", "mounts": ["/mnt/data"]},
+                {"name": "sdb", "model": "WDC WD40EFZZ-68C", "mounts": ["/mnt/data"]},
+            ],
+            "raid": {"mdstat": "", "detail": ""},
+            "btrfs": {},
+            "system": {},
+        }
+        response = self.client.get("/shares/")
+        self.assertContains(response, "Discos sdb + sdc · WDC WD40EFZZ-68C")
+        self.assertContains(response, "Disco sda · ST2000NM012B-2TD")
+        painel = self.client.get("/")
+        self.assertContains(painel, "Discos sdb + sdc · WDC WD40EFZZ-68C")
+        snaps = self.client.get("/snapshots/")
+        self.assertContains(snaps, "Disco sda · ST2000NM012B-2TD")
+
     def test_snapshots_oferece_configurar_editar_e_criar(self):
         self.fake.list_shares.return_value = [
             {"name": "docs", "path": "/mnt/nas/docs"},

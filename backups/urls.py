@@ -55,6 +55,11 @@ urlpatterns = [
         name="gitea_backup_status",
     ),
     path(
+        "gitea/<str:archive>/download/",
+        views.GiteaDownloadView.as_view(),
+        name="gitea_download",
+    ),
+    path(
         "gitea/<str:archive>/restore/",
         views.GiteaRestoreView.as_view(),
         name="gitea_restore",

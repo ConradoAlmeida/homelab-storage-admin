@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-08**.
+Documento de retomada. Última atualização: **2026-11-10**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -8,8 +8,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão em produção | `3eafc2e` (kit Tailwind, Torrents, highlight do menu) |
-| Último deploy | 04/11/2026, Pi (`./deploy.sh`; cookies seguros) |
+| Versão no moya | `b099d51` (2026-11-10; Sistema, terminal, tarefas) |
+| Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`). O Pi segue no deploy de 04/11 |
 | Testes | `278 passed` no Linux; lab na VM `5 passed` (2026-11-03) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -26,6 +26,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
   Ver [REDE](REDE.md#nomes).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
+  A lista do share cita o disco do caminho; um RAID mostra os dois membros.
   A política de snapshot também se configura e se edita pela UI, inclusive em
   share que nasceu sem ela. Desativar não apaga os snapshots já criados. No
   Btrfs o share nasce subvolume mesmo sem política; ligar o snapshot depois ou
@@ -73,7 +74,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   - restore de snapshot de share (Btrfs/rsync) para o share, com confirmação;
   - **backup local de arquivos** com jobs independentes (fontes, agenda,
     retenção, restore verificado, cópia para USB);
-  - backup do Gitea (dump + USB + restore no container quando o Gitea existe);
+  - backup do Gitea (dump + USB + restore no container quando o Gitea existe).
+    A lista dos dumps mostra o diretório, o disco, baixar e restaurar;
   - cópia fria USB implementada, dependente de repo primário.
 - Jobs em produção:
   - **Credenciais** — banco + `.env`, diário 03:30, 30 dias;
@@ -149,11 +151,16 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
    de cópia fria continua o limite para o teste físico.
 4. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
    O alerta "Firewall inativo" continua real até a ativação.
-5. **Gitea**: automatizar o dump quando houver RAID/disco; apagar os arquivos
-   USB antigos inválidos.
+5. **Gitea**: o RAID1 do moya já existe; automatizar o dump e apagar os
+   arquivos USB antigos inválidos continua pendente.
 6. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
-7. **RAID1**: quando os discos chegarem, revisar retenção e cópia externa.
+7. **RAID1 no moya** (2026-11-10): `/dev/md0` ext4 com os dois WD Red Plus
+   de 4 TB, montado em `/mnt/data` (Veronte, Production, datasheets). O Seagate
+   de 2 TB continua com o sistema; o `data-lv` foi para `/mnt/backup` e o
+   backup do Samba aponta para lá. O resync inicial ainda corria no corte.
+   A árvore antiga permanece em `/mnt/backup` até esse resync terminar; não é
+   uma segunda política de backup. Retenção e restic não mudaram.
 8. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
 
 ## Testes em VM

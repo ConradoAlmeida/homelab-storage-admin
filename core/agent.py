@@ -221,6 +221,9 @@ class AgentClient:
     def gitea_start(self, target="host"):
         return self.call("gitea_start", timeout=60, target=target)
 
+    def gitea_download(self, archive):
+        return self.call("gitea_download", timeout=660, archive=archive)
+
     def gitea_restore(self, archive, confirmation=""):
         return self.call(
             "gitea_restore",

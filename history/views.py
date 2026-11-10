@@ -15,6 +15,7 @@ from django.urls import reverse
 from core.agent import AgentError, agent
 from core.http import file_response
 from core.view_base import AgentTemplateView, AgentView
+from core.views import _anexar_discos
 
 SNAP_RE = re.compile(r"^@GMT-\d{4}\.\d{2}\.\d{2}-\d{2}\.\d{2}\.\d{2}$")
 
@@ -23,6 +24,7 @@ def _share(share: str) -> dict:
     try:
         for item in agent.list_shares(include_size=False):
             if item["name"] == share:
+                _anexar_discos([item])
                 return item
     except AgentError as exc:
         raise Http404(f"Agente indisponivel: {exc}") from exc
@@ -161,7 +163,7 @@ class HistoryIndexView(AgentTemplateView):
             item["snapshot_count"] = len(snaps)
             item["last_snapshot"] = snaps[0]["label"] if snaps else None
             item["url"] = reverse("history_share", args=[item["name"]])
-        context["shares"] = shares
+        context["shares"] = _anexar_discos(shares)
         return context
 
 

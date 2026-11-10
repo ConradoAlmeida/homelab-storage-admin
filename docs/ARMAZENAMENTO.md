@@ -149,6 +149,10 @@ Regras de standby:
 
 ## Samba
 
+A lista de shares, o dashboard, os snapshots, o histórico e o formulário
+de job restic mostram o disco em que o caminho está montado. Os dois
+membros de um RAID aparecem juntos (`sdb + sdc`).
+
 O app escreve seções no `/etc/samba/smb.conf`, roda `testparm -s` e recarrega
 com `smbcontrol smbd reload-config`. Se a configuração for inválida, restaura o
 backup `.bak-AAAAMMDD-HHMMSS`.

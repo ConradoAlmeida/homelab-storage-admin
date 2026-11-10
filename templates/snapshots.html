@@ -38,6 +38,7 @@
             <div>
               <strong>{{ s.share }}</strong>
               <span class="muted mono text-12">· {{ s.path }}</span>
+              {% if s.disk_label %}<span class="muted text-12">· {{ s.disk_label }}</span>{% endif %}
             </div>
             <div>
               {% if not s.configured %}<span class="tag off">não configurado</span>

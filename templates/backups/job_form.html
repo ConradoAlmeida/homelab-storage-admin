@@ -52,7 +52,7 @@
           {% for share in shares %}
             <label class="check-row">
               <input type="checkbox" name="sources" value="{{ share.name }}" {% if share.name in form.sources %}checked{% endif %}>
-              <span><strong>{{ share.name }}</strong><span class="muted text-12"> · {{ share.path }}</span></span>
+              <span><strong>{{ share.name }}</strong><span class="muted text-12"> · {{ share.path }}{% if share.disk_label %} · {{ share.disk_label }}{% endif %}</span></span>
             </label>
           {% empty %}
             <span class="muted">Nenhum share encontrado.</span>

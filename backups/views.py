@@ -11,8 +11,10 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from core.agent import AgentError, agent
+from core.hostinfo import disks_for_path, rotulo_discos
 from core.http import file_response
 from core.models import AuditLog
+from core.views import _anexar_discos
 from core.tarefas import com_tarefa, disparo
 from core.view_base import AgentPostView, AgentTemplateView, AgentView
 
@@ -560,6 +562,7 @@ class JobFormView(AgentView):
             shares_error = str(exc)
         else:
             shares_error = None
+            _anexar_discos(shares)
         disks = [disk for disk in overview.get("disks", []) if disk.get("configured")]
         job = None
         if name:
@@ -1178,9 +1181,25 @@ class GiteaBackupView(ExigeCapacidadeMixin, AgentTemplateView):
             context["overview"] = agent.gitea_overview()
         except AgentError as exc:
             context["error"] = str(exc)
-        if context.get("overview"):
-            status = context["overview"].get("status") or {}
+        overview = context.get("overview")
+        if overview:
+            status = overview.get("status") or {}
             context["erro_gitea"] = _gitea_error_text(status.get("error", ""))
+            try:
+                armazenamento = agent.storage_overview()
+            except AgentError:
+                armazenamento = None
+            discos = (
+                armazenamento.get("disks")
+                if isinstance(armazenamento, dict)
+                else None
+            )
+            overview["disk_label"] = rotulo_discos(
+                disks_for_path(
+                    overview.get("backup_dir"),
+                    discos if isinstance(discos, list) else [],
+                )
+            )
         return context
 
 
@@ -1226,6 +1245,28 @@ class GiteaBackupStartView(ExigeCapacidadeMixin, AgentPostView):
                 "O andamento aparece nesta página automaticamente.",
             )
         return redirect("gitea_backup")
+
+
+class GiteaDownloadView(ExigeCapacidadeMixin, AgentView):
+    capacidade = "gitea"
+
+    def get(self, request, archive):
+        try:
+            resultado = agent.gitea_download(archive)
+        except AgentError as exc:
+            messages.error(request, f"Não foi possível baixar {archive}: {exc}")
+            return redirect("gitea_backup")
+        destino = _safe_download_path(resultado.get("relative") or "")
+        if destino is None or not destino.is_file():
+            messages.error(request, "Arquivo de download não encontrado no app.")
+            return redirect("gitea_backup")
+        AuditLog.objects.create(
+            actor=request.user,
+            action="gitea_download",
+            target=archive,
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        return file_response(destino, resultado.get("filename") or destino.name)
 
 
 class GiteaRestoreView(ExigeCapacidadeMixin, AgentPostView):

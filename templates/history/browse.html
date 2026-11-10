@@ -5,6 +5,7 @@
   <div>
     <h1>{{ share.name }}</h1>
     <p class="lead mono">{{ share.path }}</p>
+    {% if share.disk_label %}<p class="muted text-12">{{ share.disk_label }}</p>{% endif %}
   </div>
   <div class="page-actions">
     {% if is_snapshot %}

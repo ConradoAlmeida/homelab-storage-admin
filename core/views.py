@@ -18,11 +18,21 @@ from .forms import (
     SnapshotPolicyForm,
     UserCreateForm,
 )
-from .hostinfo import disk_role, volume_for
+from .hostinfo import anexar_discos, disk_role, volume_for
 from .http import agent_json_error
 from .models import AuditLog
 from .tarefas import com_tarefa, disparo
 from .view_base import AgentFormView, AgentPostView, AgentTemplateView, AgentView
+
+
+def _anexar_discos(itens, chave="path"):
+    """Associa cada item ao disco do mount. Falha do cache de discos não esconde a lista."""
+    try:
+        overview = agent.storage_overview()
+    except AgentError:
+        overview = None
+    discos = overview.get("disks") if isinstance(overview, dict) else None
+    return anexar_discos(itens, discos if isinstance(discos, list) else [], chave)
 
 
 def _campo_rota(partes, flag):
@@ -140,6 +150,7 @@ class DashboardView(AgentTemplateView):
             share["snapshot_enabled"] = bool(snap and snap.get("enabled"))
             share["snapshot_keep"] = snap.get("keep") if snap else None
             share["snapshot_count"] = int(snap.get("count") or 0) if snap else 0
+        _anexar_discos(context["shares"])
         total_count = sum(int(item.get("count") or 0) for item in snapshots)
         total_size = sum(int(item.get("size") or 0) for item in snapshots)
         latest = None
@@ -592,6 +603,7 @@ class SharesView(AgentTemplateView):
                 share["snapshot_enabled"] = bool(snap and snap.get("enabled"))
                 share["snapshot_keep"] = snap.get("keep") if snap else None
                 share["snapshot_count"] = snap.get("count") if snap else 0
+            _anexar_discos(shares)
             context["shares"] = shares
         except AgentError as exc:
             context["agent_error"] = str(exc)
@@ -688,8 +700,8 @@ class SnapshotsView(AgentTemplateView):
             for name, item in policies.items():
                 if name not in seen:
                     result.append({**item, "configured": True})
-            context["shares"] = sorted(
-                result, key=lambda item: item.get("share", "")
+            context["shares"] = _anexar_discos(
+                sorted(result, key=lambda item: item.get("share", ""))
             )
             context["summary"] = {
                 "total": len(result),

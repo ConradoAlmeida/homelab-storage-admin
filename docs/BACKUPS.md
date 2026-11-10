@@ -141,7 +141,9 @@ manualmente para um drive USB. O Gitea continua rodando durante o dump.
 - **Dump**: `gitea dump` executado como usuário `git` dentro do container,
   com `--skip-log --skip-index`. O zip é copiado para
   `/var/backups/gitea/gitea-AAAAMMDD-HHMMSS.zip`, `600 root`, com `sha256`
-  registrado. Mantém os últimos `GITEA_KEEP` dumps (padrão 2).
+  registrado. Mantém os últimos `GITEA_KEEP` dumps (padrão 2). A lista mostra
+  esse diretório e o disco em que ele está montado. **Baixar** entrega o zip.
+  **Restaurar** continua pedindo o nome do arquivo.
 - **USB**: a tela lista drives removíveis (USB), mostra filesystem, rótulo e
   espaço livre. O backup monta o drive (se preciso), confere o espaço, copia
   para `<drive>/gitea/<zip>` + `.sha256`, confere o hash e desmonta.

@@ -94,6 +94,8 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "Backup do Gitea")
         self.assertContains(resposta, "gitea-20261028-113707.zip")
         self.assertContains(resposta, "Restaurar")
+        self.assertContains(resposta, "Baixar")
+        self.assertContains(resposta, "/var/backups/gitea")
         self.assertContains(resposta, "sdb")
         self.assertContains(resposta, "Backup para USB")
 
@@ -176,6 +178,42 @@ class GiteaBackupViewTests(TestCase):
         self.fake.gitea_overview.return_value = {**OVERVIEW, "usb": []}
         resposta = self.client.get("/backups/gitea/")
         self.assertContains(resposta, "Nenhum drive USB detectado")
+
+    def test_lista_diz_o_disco_do_diretorio(self):
+        self.fake.storage_overview.return_value = {
+            "disks": [
+                {
+                    "name": "sda",
+                    "model": "ST2000NM012B-2TD",
+                    "mounts": ["/", "/mnt/backup"],
+                }
+            ]
+        }
+        resposta = self.client.get("/backups/gitea/")
+        self.assertContains(resposta, "Disco sda · ST2000NM012B-2TD")
+
+    def test_download_entrega_o_zip_e_audita(self):
+        from pathlib import Path
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            alvo = data_dir / "downloads" / "token" / "gitea-20261028-113707.zip"
+            alvo.parent.mkdir(parents=True)
+            alvo.write_bytes(b"zip")
+            self.fake.gitea_download.return_value = {
+                "relative": "downloads/token/gitea-20261028-113707.zip",
+                "filename": "gitea-20261028-113707.zip",
+                "size": 3,
+            }
+            with self.settings(DATA_DIR=data_dir):
+                resposta = self.client.get(
+                    "/backups/gitea/gitea-20261028-113707.zip/download/"
+                )
+            self.assertEqual(resposta.status_code, 200)
+            self.assertEqual(b"".join(resposta.streaming_content), b"zip")
+        self.fake.gitea_download.assert_called_once_with("gitea-20261028-113707.zip")
+        self.assertTrue(AuditLog.objects.filter(action="gitea_download").exists())
 
     def test_restore_exige_confirmacao(self):
         resposta = self.client.post(
