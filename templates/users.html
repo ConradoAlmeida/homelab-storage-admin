@@ -31,46 +31,49 @@
     <div class="person-grid">
       {% for u in users %}
       <article class="person-card{% if not u.enabled %} is-off{% endif %}">
-        <span class="avatar" aria-hidden="true">{{ u.initial }}{% if u.enabled %}<i class="avatar-dot"></i>{% endif %}</span>
-        <div class="person-id">
-          <div class="person-id-head">
-            <strong title="{{ u.username }}">{{ u.username }}</strong>
-            {% if not u.enabled %}<span class="status off">desativado</span>{% endif %}
-          </div>
-          <div class="muted text-12 person-fullname" title="{{ u.fullname }}">{{ u.fullname }}</div>
-          <div class="chip-list" title="{{ u.share_groups|join:', ' }}">
-            {% for g in u.share_groups %}<span class="tag" title="{{ g }}">{{ g }}</span>{% empty %}<span class="muted text-12">sem share</span>{% endfor %}
-          </div>
-          <div class="person-sys">
-          {% if u.system_groups %}
-          <details class="sys-fold">
-            <summary title="{{ u.system_groups|join:', ' }}">sistema · {{ u.system_groups|length }}</summary>
-            <div class="chip-list">
-              {% for g in u.system_groups %}<span class="tag sys" title="{{ g }}">{{ g }}</span>{% endfor %}
+        <div class="person-top">
+          <span class="avatar" aria-hidden="true">{{ u.initial }}{% if u.enabled %}<i class="avatar-dot"></i>{% endif %}</span>
+          <div class="person-id">
+            <div class="person-id-head">
+              <strong title="{{ u.username }}">{{ u.username }}</strong>
+              {% if not u.enabled %}<span class="status off">desativado</span>{% endif %}
             </div>
-          </details>
+            <div class="muted text-12 person-fullname" title="{{ u.fullname }}">{{ u.fullname }}</div>
+          </div>
+        </div>
+        <div class="chip-list" title="{{ u.share_groups|join:', ' }}">
+          {% for g in u.share_groups|slice:":3" %}<span class="tag" title="{{ g }}">{{ g }}</span>{% empty %}<span class="muted text-12">sem share</span>{% endfor %}
+          {% if u.share_groups|length > 3 %}<span class="tag more" title="{{ u.share_groups|join:', ' }}">+{{ u.share_groups|length|add:"-3" }}</span>{% endif %}
+        </div>
+        <div class="person-sys" title="{{ u.system_groups|join:', ' }}">{% if u.system_groups %}sistema · {{ u.system_groups|length }}{% endif %}</div>
+        <div class="person-actions">
+          {% if credenciais_gerencia_usuarios %}
+          <a class="btn" href="{{ credenciais_url }}" title="Senha no Credenciais">{% include "partials/icon.html" with name="key" %}Senha</a>
+          <a class="btn icon-only" href="{{ credenciais_url }}" title="Grupos no Credenciais" aria-label="Grupos no Credenciais">{% include "partials/icon.html" with name="users" %}</a>
+          {% if u.enabled %}
+          <a class="btn icon-only" href="{{ credenciais_url }}" title="Desativar no Credenciais" aria-label="Desativar no Credenciais">{% include "partials/icon.html" with name="off" %}</a>
+          {% else %}
+          <a class="btn icon-only" href="{{ credenciais_url }}" title="Ativar no Credenciais" aria-label="Ativar no Credenciais">{% include "partials/icon.html" with name="check" %}</a>
           {% endif %}
-          </div>
-          {% if not credenciais_gerencia_usuarios %}
-          <div class="row-actions person-actions">
-            <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="key" %}Senha</a>
-            <a class="btn" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="users" %}Grupos</a>
-            <form method="post" action="{% url 'user_toggle' %}">
-              {% csrf_token %}
-              <input type="hidden" name="username" value="{{ u.username }}">
-              <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
-              {% if u.enabled %}
-              <button class="btn danger" type="submit">{% include "partials/icon.html" with name="off" %}Desativar</button>
-              {% else %}
-              <button class="btn primary" type="submit">{% include "partials/icon.html" with name="check" %}Ativar</button>
-              {% endif %}
-            </form>
-            <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
-              {% csrf_token %}
-              <input type="hidden" name="username" value="{{ u.username }}">
-              <button class="btn ghost icon-only" type="submit" aria-label="Excluir {{ u.username }}">{% include "partials/icon.html" with name="trash" %}</button>
-            </form>
-          </div>
+          <a class="btn ghost" href="{{ credenciais_url }}" title="Excluir no Credenciais">{% include "partials/icon.html" with name="trash" %}Excluir</a>
+          {% else %}
+          <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="key" %}Senha</a>
+          <a class="btn icon-only" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}" title="Grupos" aria-label="Grupos">{% include "partials/icon.html" with name="users" %}</a>
+          <form method="post" action="{% url 'user_toggle' %}">
+            {% csrf_token %}
+            <input type="hidden" name="username" value="{{ u.username }}">
+            <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
+            {% if u.enabled %}
+            <button class="btn danger icon-only" type="submit" title="Desativar" aria-label="Desativar">{% include "partials/icon.html" with name="off" %}</button>
+            {% else %}
+            <button class="btn primary icon-only" type="submit" title="Ativar" aria-label="Ativar">{% include "partials/icon.html" with name="check" %}</button>
+            {% endif %}
+          </form>
+          <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
+            {% csrf_token %}
+            <input type="hidden" name="username" value="{{ u.username }}">
+            <button class="btn ghost" type="submit">{% include "partials/icon.html" with name="trash" %}Excluir</button>
+          </form>
           {% endif %}
         </div>
       </article>

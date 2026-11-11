@@ -1642,28 +1642,29 @@ body.brand-moya .side-nav a.active .count {
 .users-board .section { margin-top: 0; }
 .person-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 240px);
-  justify-content: start;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   align-items: stretch;
   gap: 10px;
 }
 .person-card {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   box-sizing: border-box;
-  width: 240px;
-  height: 118px;
-  min-width: 240px;
-  max-width: 240px;
+  width: 100%;
+  height: 158px;
+  min-width: 0;
   overflow: hidden;
-  padding: 10px 12px;
+  padding: 10px 12px 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
 }
-.person-card:has(.person-actions) {
-  height: 168px;
+.person-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
 }
 .avatar {
   position: relative;
@@ -1714,35 +1715,45 @@ body.brand-moya .side-nav a.active .count {
   overflow: hidden;
 }
 .person-card .chip-list .tag {
-  flex: 0 0 auto;
-  max-width: 100%;
+  flex: 0 1 auto;
+  max-width: 28%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.person-card .person-sys { height: 18px; min-height: 18px; overflow: hidden; }
-.person-card:has(.sys-fold[open]) { overflow: visible; z-index: 3; }
-.person-card .sys-fold[open] > .chip-list {
-  position: absolute;
-  z-index: 4;
-  left: 12px;
-  right: 12px;
-  height: auto;
-  max-height: none;
-  flex-wrap: wrap;
-  overflow: visible;
-  margin-top: 4px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel-2);
+.person-card .chip-list .tag.more { flex: 0 0 auto; max-width: none; }
+.person-card .person-sys {
+  height: 16px;
+  min-height: 16px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .person-actions {
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  width: 100%;
   min-width: 0;
-  margin-top: 8px;
+  overflow: hidden;
+  flex-wrap: nowrap;
 }
+.person-actions .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+  overflow: hidden;
+}
+.person-actions .btn.icon-only,
+.person-actions form {
+  flex: 0 0 34px;
+}
+.person-actions form { display: inline-flex; margin: 0; }
+.person-actions form .btn { width: 34px; padding: 0; }
 .tag.sys {
   color: var(--muted);
   background: transparent;
@@ -1903,11 +1914,9 @@ body.brand-moya .side-nav a.active .count {
 }
 @media (max-width: 720px) {
   .person-grid { grid-template-columns: 1fr; }
-  .person-card,
-  .person-card:has(.person-actions) {
+  .person-card {
     width: 100%;
-    min-width: 0;
-    max-width: none;
+    height: 158px;
   }
 }
 @media (max-width: 720px) {

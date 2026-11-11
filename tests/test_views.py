@@ -1584,6 +1584,56 @@ class ViewSmokeTests(TestCase):
         self.assertNotContains(resposta, "<th>Status</th>")
         self.assertNotContains(resposta, 'class="chip"')
 
+    def test_usuarios_card_corta_muitos_grupos(self):
+        muitos = [f"grupo{i:02d}_nome_longo" for i in range(22)]
+        self.fake.list_users.return_value = [
+            {"username": "vazio", "fullname": "", "groups": ["vazio"], "enabled": True},
+            {
+                "username": "ana",
+                "fullname": "Ana Souza de Oliveira Campos",
+                "groups": ["ana", "casa", "midia", "documentos"],
+                "enabled": True,
+            },
+            {
+                "username": "conrado",
+                "fullname": "Conrado",
+                "groups": ["conrado", *muitos],
+                "enabled": True,
+            },
+        ]
+        self.fake.list_groups.return_value = [
+            "vazio",
+            "ana",
+            "conrado",
+            "casa",
+            "midia",
+            "documentos",
+            *muitos,
+        ]
+        resposta = self.client.get("/usuarios/")
+        self.assertContains(resposta, "sem share")
+        self.assertContains(resposta, "casa")
+        self.assertContains(resposta, 'title="Ana Souza de Oliveira Campos"')
+        self.assertContains(resposta, "+19")
+        self.assertContains(resposta, 'title="' + ", ".join(muitos) + '"')
+        self.assertContains(resposta, "Senha")
+        self.assertContains(resposta, "Excluir")
+        self.assertNotContains(resposta, 'title="grupo03_nome_longo">grupo03_nome_longo</span>')
+
+    @override_settings(CREDENTIALS_MANAGE_USERS=True, CREDENTIALS_URL="http://credenciais.local")
+    def test_moya_card_mostra_atalhos_do_credenciais(self):
+        self.fake.list_users.return_value = [
+            {"username": "ana", "fullname": "Ana", "groups": ["ana", "midia"], "enabled": True}
+        ]
+        self.fake.list_groups.return_value = ["ana", "midia"]
+        resposta = self.client.get("/usuarios/")
+        self.assertContains(resposta, "Senha")
+        self.assertContains(resposta, "Excluir")
+        self.assertContains(resposta, "http://credenciais.local")
+        self.assertContains(resposta, "feitos no Credenciais")
+        self.assertNotContains(resposta, 'action="/usuarios/excluir/"')
+        self.assertNotContains(resposta, 'href="/usuarios/senha/')
+
     def test_discos_omite_uso_e_dump_do_dashboard(self):
         capacidades = dict(self.fake.host_capabilities.return_value)
         capacidades["smartctl"] = True

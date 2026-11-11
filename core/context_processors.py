@@ -52,6 +52,7 @@ def homelab(request):
         "brand_alt": visual["alt"],
         "capabilities": capacidades_do_host(),
         "credenciais_gerencia_usuarios": settings.CREDENTIALS_MANAGE_USERS,
+        "credenciais_url": settings.CREDENTIALS_URL,
         "system_manage": settings.SYSTEM_MANAGE,
         "terminal_menu": bool(
             getattr(settings, "TERMINAL_ENABLE", False)
