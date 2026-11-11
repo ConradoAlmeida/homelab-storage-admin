@@ -16,7 +16,8 @@
 {% if agent_error %}
   <div class="card border-danger"><strong>Agente indisponível</strong><p class="muted">{{ agent_error }}</p></div>
 {% else %}
-  <section class="section">
+<div class="users-board">
+  <section class="section users-people">
     <div class="section-head">
       <h2>Pessoas</h2>
       <div class="page-actions">
@@ -27,64 +28,58 @@
       </div>
     </div>
     {% if users %}
-    <div class="table-wrap table-fit"><table class="file-table">
-      <thead>
-        <tr>
-          <th>Pessoa</th><th>Grupos</th>
-          {% if not credenciais_gerencia_usuarios %}<th aria-label="Ações"></th>{% endif %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for u in users %}
-          <tr>
-            <td>
-              <div class="person-id">
-                <div class="person-id-head">
-                  <strong>{{ u.username }}</strong>
-                  {% if u.enabled %}<span class="status ok">ativo</span>
-                  {% else %}<span class="status off">desativado</span>{% endif %}
-                </div>
-                <div class="muted">{{ u.fullname|default:"—" }}</div>
-              </div>
-            </td>
-            <td>
-              <div class="chip-list">
-                {% for g in u.groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted">—</span>{% endfor %}
-              </div>
-            </td>
-            {% if not credenciais_gerencia_usuarios %}
-            <td class="file-actions">
-              <div class="row-actions">
-                <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="key" %}Senha</a>
-                <a class="btn" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="users" %}Grupos</a>
-                <form method="post" action="{% url 'user_toggle' %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="username" value="{{ u.username }}">
-                  <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
-                  {% if u.enabled %}
-                  <button class="btn danger" type="submit">{% include "partials/icon.html" with name="off" %}Desativar</button>
-                  {% else %}
-                  <button class="btn primary" type="submit">{% include "partials/icon.html" with name="check" %}Ativar</button>
-                  {% endif %}
-                </form>
-                <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
-                  {% csrf_token %}
-                  <input type="hidden" name="username" value="{{ u.username }}">
-                  <button class="btn danger" type="submit">{% include "partials/icon.html" with name="trash" %}Excluir</button>
-                </form>
-              </div>
-            </td>
-            {% endif %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
+    <div class="person-grid">
+      {% for u in users %}
+      <article class="person-card{% if not u.enabled %} is-off{% endif %}">
+        <span class="avatar" aria-hidden="true">{{ u.initial }}{% if u.enabled %}<i class="avatar-dot"></i>{% endif %}</span>
+        <div class="person-id">
+          <div class="person-id-head">
+            <strong>{{ u.username }}</strong>
+            {% if not u.enabled %}<span class="status off">desativado</span>{% endif %}
+          </div>
+          {% if u.fullname %}<div class="muted text-12">{{ u.fullname }}</div>{% endif %}
+          <div class="chip-list">
+            {% for g in u.share_groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted text-12">sem share</span>{% endfor %}
+          </div>
+          {% if u.system_groups %}
+          <details class="sys-fold">
+            <summary>sistema · {{ u.system_groups|length }}</summary>
+            <div class="chip-list">
+              {% for g in u.system_groups %}<span class="tag sys">{{ g }}</span>{% endfor %}
+            </div>
+          </details>
+          {% endif %}
+          {% if not credenciais_gerencia_usuarios %}
+          <div class="row-actions person-actions">
+            <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="key" %}Senha</a>
+            <a class="btn" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="users" %}Grupos</a>
+            <form method="post" action="{% url 'user_toggle' %}">
+              {% csrf_token %}
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
+              {% if u.enabled %}
+              <button class="btn danger" type="submit">{% include "partials/icon.html" with name="off" %}Desativar</button>
+              {% else %}
+              <button class="btn primary" type="submit">{% include "partials/icon.html" with name="check" %}Ativar</button>
+              {% endif %}
+            </form>
+            <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
+              {% csrf_token %}
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <button class="btn ghost icon-only" type="submit" aria-label="Excluir {{ u.username }}">{% include "partials/icon.html" with name="trash" %}</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
     {% else %}
       <div class="empty">Nenhuma conta Samba cadastrada.</div>
     {% endif %}
   </section>
 
-  <section class="section">
+  <section class="section users-groups">
     <div class="section-head">
       <h2>Grupos de share</h2>
       <div class="page-actions">
@@ -94,21 +89,45 @@
     </div>
     <p class="muted text-12 section-note">O grupo privado de cada pessoa sai junto com a conta. Estes são os grupos usados pelas pastas compartilhadas.</p>
     {% if groups %}
-      <ul class="group-strip">
-        {% for nome in groups %}
-          <li>
-            <strong>{{ nome }}</strong>
-            <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
-              {% csrf_token %}
-              <input type="hidden" name="name" value="{{ nome }}">
-              <button class="btn danger" type="submit">{% include "partials/icon.html" with name="trash" %}Excluir</button>
-            </form>
-          </li>
+      <ul class="share-list">
+        {% for g in groups %}
+        <li class="share-row">
+          <div class="share-id">
+            <strong>{{ g.name }}</strong>
+            <span class="muted text-12">{{ g.members|length }} · {% if g.members %}{{ g.members|join:", " }}{% else %}ninguém{% endif %}</span>
+          </div>
+          <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ g.name }}? Quem estava nele perde esse acesso.">
+            {% csrf_token %}
+            <input type="hidden" name="name" value="{{ g.name }}">
+            <button class="btn ghost icon-only" type="submit" aria-label="Excluir {{ g.name }}">{% include "partials/icon.html" with name="trash" %}</button>
+          </form>
+        </li>
         {% endfor %}
       </ul>
     {% else %}
       <div class="empty">Nenhum grupo de share ainda.</div>
     {% endif %}
+    {% if system_groups %}
+    <details class="sys-fold sys-fold-block">
+      <summary>Sistema · {{ system_groups|length }}</summary>
+      <ul class="share-list">
+        {% for g in system_groups %}
+        <li class="share-row is-system">
+          <div class="share-id">
+            <strong>{{ g.name }}</strong>
+            <span class="muted text-12">{{ g.members|length }} · {% if g.members %}{{ g.members|join:", " }}{% else %}ninguém{% endif %}</span>
+          </div>
+          <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ g.name }}? Quem estava nele perde esse acesso.">
+            {% csrf_token %}
+            <input type="hidden" name="name" value="{{ g.name }}">
+            <button class="btn ghost icon-only" type="submit" aria-label="Excluir {{ g.name }}">{% include "partials/icon.html" with name="trash" %}</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
   </section>
+</div>
 {% endif %}
 {% endblock %}

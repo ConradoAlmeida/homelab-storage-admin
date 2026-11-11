@@ -352,15 +352,111 @@ class ShareSizesView(AgentView):
         )
 
 
+# Grupos de sistema (GID baixo ou nomes reservados do Linux). Não são share.
+_GRUPOS_SISTEMA = frozenset(
+    {
+        "adm",
+        "audio",
+        "backup",
+        "bin",
+        "bluetooth",
+        "cdrom",
+        "crontab",
+        "daemon",
+        "dialout",
+        "dip",
+        "disk",
+        "docker",
+        "fax",
+        "floppy",
+        "games",
+        "gpio",
+        "i2c",
+        "input",
+        "kvm",
+        "lp",
+        "lpadmin",
+        "lxd",
+        "mail",
+        "man",
+        "messagebus",
+        "netdev",
+        "nogroup",
+        "operator",
+        "plugdev",
+        "render",
+        "root",
+        "sambashare",
+        "scanner",
+        "shadow",
+        "spi",
+        "src",
+        "ssh",
+        "staff",
+        "sudo",
+        "sys",
+        "systemd-journal",
+        "tape",
+        "tty",
+        "users",
+        "utmp",
+        "video",
+        "voice",
+        "wheel",
+        "www-data",
+    }
+)
+
+
+def _pessoas_e_grupos(users, nomes):
+    """Separa grupo privado, grupo de share e grupo de sistema."""
+    contas = {item["username"] for item in users}
+    share_nomes = [
+        nome for nome in nomes if nome not in contas and nome not in _GRUPOS_SISTEMA
+    ]
+    sistema_nomes = [
+        nome for nome in nomes if nome not in contas and nome in _GRUPOS_SISTEMA
+    ]
+    membros = {nome: [] for nome in share_nomes + sistema_nomes}
+    pessoas = []
+    for item in users:
+        share = []
+        sistema = []
+        for grupo in item.get("groups") or []:
+            if grupo in contas:
+                continue
+            if grupo in _GRUPOS_SISTEMA:
+                sistema.append(grupo)
+            else:
+                share.append(grupo)
+            if grupo in membros:
+                membros[grupo].append(item["username"])
+        pessoas.append(
+            {
+                **item,
+                "share_groups": share,
+                "system_groups": sistema,
+                "initial": (item.get("username") or "?")[:1].upper(),
+            }
+        )
+
+    def pacote(lista, sistema):
+        return [
+            {"name": nome, "members": membros[nome], "system": sistema}
+            for nome in lista
+        ]
+
+    return pessoas, pacote(share_nomes, False), pacote(sistema_nomes, True)
+
+
 class UsersView(AgentTemplateView):
     template_name = "users.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({"agent_error": None, "users": []})
-        context["groups"] = []
+        context.update({"agent_error": None, "users": [], "groups": [], "system_groups": []})
         try:
-            context["users"] = agent.list_users()
+            users = agent.list_users()
         except AgentError as exc:
             context["agent_error"] = str(exc)
             return context
@@ -369,8 +465,10 @@ class UsersView(AgentTemplateView):
         except AgentError as exc:
             context["agent_error"] = str(exc)
             return context
-        contas = {item["username"] for item in context["users"]}
-        context["groups"] = [nome for nome in nomes if nome not in contas]
+        pessoas, grupos, sistema = _pessoas_e_grupos(users, nomes)
+        context["users"] = pessoas
+        context["groups"] = grupos
+        context["system_groups"] = sistema
         return context
 
 

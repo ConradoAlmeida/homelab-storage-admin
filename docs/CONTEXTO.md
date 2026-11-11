@@ -42,6 +42,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   primário ciano, secundário com borda, perigo só contorno. Badge de estado
   leva ponto colorido. O menu lateral permanece o original (roxo no item
   ativo, seções e Sair); os tokens novos não entram nele.
+- Usuários Samba é um quadro de cartões (inicial, share, sistema colapsado)
+  com os grupos de share ao lado, contagem de membros e excluir só no ícone.
+  Em Serviços, Parar/reiniciar/desabilitar abre num painel sobreposto e pede
+  o nome da unit. Em Containers, Logs/Parar/Reiniciar ficam em slots fixos;
+  o painel mostra um cadeado no lugar de parar.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o
   handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do

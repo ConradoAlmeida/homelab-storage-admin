@@ -1568,11 +1568,12 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "Grupos de share")
         self.assertContains(resposta, "Novo grupo")
         self.assertContains(resposta, "midia")
-        self.assertContains(resposta, "person-id")
-        self.assertContains(resposta, "status ok")
+        self.assertContains(resposta, "person-card")
         self.assertContains(resposta, "Ana")
         self.assertContains(resposta, "Senha")
-        self.assertContains(resposta, "group-strip")
+        self.assertContains(resposta, "share-row")
+        self.assertNotContains(resposta, "status ok")
+        self.assertNotContains(resposta, ">ativo<")
         self.assertContains(
             resposta,
             'data-confirm="Excluir o grupo midia? Quem estava nele perde esse acesso."',

@@ -56,14 +56,17 @@
               {% if item.status %}<div class="muted text-11">{{ item.status }}</div>{% endif %}
               {% if item.health and item.health not in item.status %}<div class="muted text-11">health: {{ item.health }}</div>{% endif %}
             </td>
-            <td class="mono text-11">
-              {% for porta in item.ports %}{{ porta }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}
+            <td>
+              <div class="port-chips">
+                {% for porta in item.ports|slice:":2" %}<span class="tag type" title="{{ porta }}">{{ porta }}</span>{% empty %}—{% endfor %}
+                {% if item.ports|length > 2 %}<span class="tag" title="{{ item.ports|join:', ' }}">+{{ item.ports|length|add:"-2" }}</span>{% endif %}
+              </div>
             </td>
             <td class="file-actions">
-              <div class="row-actions">
-                <a class="btn {% if item.running %}primary{% endif %}" href="{% url 'container_logs' %}?name={{ item.name|urlencode }}">{% include "partials/icon.html" with name="logs" %}Logs</a>
+              <div class="row-actions slots">
+                <a class="btn" href="{% url 'container_logs' %}?name={{ item.name|urlencode }}">{% include "partials/icon.html" with name="logs" %}Logs</a>
                 {% if item.name == app_container %}
-                  <span class="muted text-12">container do painel</span>
+                  <span class="slot-note" title="Container do painel. Parar e reiniciar não estão disponíveis nesta tela.">{% include "partials/icon.html" with name="lock" %}painel</span>
                 {% elif item.running %}
                   <form method="post" action="{% url 'container_action' %}"
                         data-confirm="Parar o container {{ item.name }}?">
@@ -84,7 +87,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="name" value="{{ item.name }}">
                     <input type="hidden" name="action" value="start">
-                    <button class="btn primary" type="submit">{% include "partials/icon.html" with name="play" %}Iniciar</button>
+                    <button class="btn" type="submit">{% include "partials/icon.html" with name="play" %}Iniciar</button>
                   </form>
                 {% endif %}
               </div>
