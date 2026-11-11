@@ -67,17 +67,20 @@
                     {% endif %}
                   </span>
                   <a href="{{ e.url }}">{{ e.name }}</a>
+                  {% if e.ext %}<span class="tag type">{{ e.ext }}</span>{% endif %}
                 </div>
               </td>
               <td class="muted">{% if e.is_dir %}—{% else %}{{ e.size|filesizeformat }}{% endif %}</td>
               <td class="muted">{{ e.mtime|date:"d/m/Y H:i" }}</td>
               <td class="file-actions">
+                <div class="row-actions">
                 {% if e.is_dir %}
-                  <a class="btn small" href="{{ e.url }}">Abrir</a>
+                  <a class="btn primary" href="{{ e.url }}">{% include "partials/icon.html" with name="open" %}Abrir</a>
                 {% else %}
-                  <a class="btn small" href="{{ e.url }}">Baixar</a>
-                  <a class="btn small" href="{{ e.versions_url }}">Versões</a>
+                  <a class="btn primary" href="{{ e.url }}">{% include "partials/icon.html" with name="download" %}Baixar</a>
+                  <a class="btn" href="{{ e.versions_url }}">{% include "partials/icon.html" with name="clock" %}Versões</a>
                 {% endif %}
+                </div>
               </td>
             </tr>
           {% empty %}

@@ -27,11 +27,11 @@
         <td class="muted text-12">{{ item.next_run|default:"—" }}</td>
         <td class="file-actions">
           <div class="row-actions">
+            <a class="btn primary" href="{% url 'arquivos_job' job=item.name %}">{% include "partials/icon.html" with name="open" %}Abrir</a>
             <form method="post" action="{% url 'arquivos_job_run' job=item.name %}">
               {% csrf_token %}
-              <button class="btn" type="submit">Rodar agora</button>
+              <button class="btn" type="submit">{% include "partials/icon.html" with name="play" %}Rodar agora</button>
             </form>
-            <a class="btn" href="{% url 'arquivos_job' job=item.name %}">Abrir</a>
           </div>
         </td>
       </tr>

@@ -72,7 +72,7 @@
                       {% csrf_token %}
                       <input type="hidden" name="acao" value="delete">
                       <input type="hidden" name="spec" value="{{ rule.spec }}">
-                      <button class="btn danger" type="submit">Remover</button>
+                      <button class="btn danger" type="submit">{% include "partials/icon.html" with name="trash" %}Remover</button>
                     </form>
                   </td>
                   {% endif %}

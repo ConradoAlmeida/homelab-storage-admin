@@ -106,7 +106,7 @@
         {% else %}
         <span class="user-chip">{{ request.user.username }}</span>
         {% endif %}
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn" type="submit">Sair</button></form>
       </div>
     </aside>
     <div class="workspace">

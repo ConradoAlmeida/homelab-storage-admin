@@ -23,7 +23,7 @@
         <td><strong>Versão atual</strong></td>
         <td class="muted">{{ live.size|filesizeformat }}</td>
         <td class="muted">{{ live.mtime|date:"d/m/Y H:i" }}</td>
-        <td class="file-actions"><a class="btn small" href="{{ live.url }}">Baixar</a></td>
+        <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{{ live.url }}">{% include "partials/icon.html" with name="download" %}Baixar</a></div></td>
       </tr>
     {% endif %}
     {% for v in versions %}
@@ -31,7 +31,7 @@
         <td><span class="tag">{{ v.label }}</span></td>
         <td class="muted">{{ v.size|filesizeformat }}</td>
         <td class="muted">{{ v.mtime|date:"d/m/Y H:i" }}</td>
-        <td class="file-actions"><a class="btn small" href="{{ v.url }}">Baixar</a></td>
+        <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{{ v.url }}">{% include "partials/icon.html" with name="download" %}Baixar</a></div></td>
       </tr>
     {% empty %}
       <tr><td colspan="4"><div class="empty">Nenhuma versão em snapshot encontrada.</div></td></tr>
