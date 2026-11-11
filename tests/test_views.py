@@ -1572,7 +1572,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "midia")
         self.assertContains(resposta, "person-card")
         self.assertContains(resposta, "Ana")
-        self.assertContains(resposta, "Senha")
+        self.assertContains(resposta, 'title="Senha"')
+        self.assertContains(resposta, "btn icon-only danger")
         self.assertContains(resposta, "share-row")
         self.assertContains(resposta, "person-actions")
         self.assertNotContains(resposta, "status ok")
@@ -1602,8 +1603,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "grupo0")
         self.assertContains(resposta, "grupo1")
         html = resposta.content.decode()
-        inicio = html.index("person-share-chips")
-        fim = html.index("person-sys", inicio)
+        inicio = html.index('class="chip-list person-share-chips"')
+        fim = html.index("person-card-spacer", inicio)
         faixa = html[inicio:fim]
         self.assertNotIn(">grupo2<", faixa)
 
