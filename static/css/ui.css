@@ -1635,11 +1635,14 @@ body.brand-moya .side-nav a.active .count {
 /* Usuários: cartões densos e grupos ao lado. */
 .users-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: 20px;
   align-items: start;
+  width: 100%;
 }
 .users-board .section { margin-top: 0; }
+.users-people { min-width: 0; }
+.users-groups { min-width: 0; }
 .person-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 240px);
@@ -1648,12 +1651,12 @@ body.brand-moya .side-nav a.active .count {
   gap: 10px;
 }
 .person-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
   box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto 22px minmax(18px, 22px) 1fr var(--control-h);
+  gap: 4px;
   width: 240px;
-  height: 118px;
+  height: 156px;
   min-width: 240px;
   max-width: 240px;
   overflow: hidden;
@@ -1662,8 +1665,18 @@ body.brand-moya .side-nav a.active .count {
   border-radius: var(--radius);
   background: var(--panel);
 }
-.person-card:has(.person-actions) {
-  height: 168px;
+.person-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.person-names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .avatar {
   position: relative;
@@ -1688,7 +1701,6 @@ body.brand-moya .side-nav a.active .count {
   background: var(--ok);
   box-shadow: 0 0 0 2px var(--panel);
 }
-.person-card .person-id { flex: 1; min-width: 0; overflow: hidden; }
 .person-card .person-id-head { flex-wrap: nowrap; min-width: 0; }
 .person-card .person-id-head strong {
   min-width: 0;
@@ -1704,23 +1716,34 @@ body.brand-moya .side-nav a.active .count {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.person-card .chip-list {
+.person-share-chips {
+  display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  gap: 4px;
   height: 22px;
   min-height: 22px;
   max-height: 22px;
-  margin-top: 4px;
   overflow: hidden;
 }
-.person-card .chip-list .tag {
-  flex: 0 0 auto;
-  max-width: 100%;
+.person-share-chips .tag {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 72px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.person-card .person-sys { height: 18px; min-height: 18px; overflow: hidden; }
+.person-share-chips .tag.tag-more {
+  flex: 0 0 auto;
+  max-width: none;
+}
+.person-card .person-sys {
+  min-height: 0;
+  max-height: 22px;
+  overflow: hidden;
+}
+.person-card:not(:has(.sys-fold)) .person-sys { visibility: hidden; }
 .person-card:has(.sys-fold[open]) { overflow: visible; z-index: 3; }
 .person-card .sys-fold[open] > .chip-list {
   position: absolute;
@@ -1738,10 +1761,22 @@ body.brand-moya .side-nav a.active .count {
   background: var(--panel-2);
 }
 .person-actions {
+  align-self: end;
   justify-content: flex-start;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  gap: 4px;
   min-width: 0;
-  margin-top: 8px;
+  margin: 0;
+  overflow: hidden;
+  height: var(--control-h);
+}
+.person-actions .btn.small {
+  padding: 0 7px;
+  font-size: 12px;
+}
+.person-actions form {
+  flex: 0 0 auto;
+  margin: 0;
 }
 .tag.sys {
   color: var(--muted);
@@ -1903,8 +1938,7 @@ body.brand-moya .side-nav a.active .count {
 }
 @media (max-width: 720px) {
   .person-grid { grid-template-columns: 1fr; }
-  .person-card,
-  .person-card:has(.person-actions) {
+  .person-card {
     width: 100%;
     min-width: 0;
     max-width: none;

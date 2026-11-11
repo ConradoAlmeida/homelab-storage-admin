@@ -150,6 +150,9 @@ AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "90"))
 
 # Credenciais (moyaserver). Vazio no Pi: mantém o login local.
 CREDENTIALS_URL = os.environ.get("CREDENTIALS_URL", "").rstrip("/")
+# URL pública do Credenciais no navegador (moya). O CREDENTIALS_URL do Compose
+# costuma ser hostname interno e não serve para links na UI.
+CREDENTIALS_BROWSER_URL = os.environ.get("CREDENTIALS_BROWSER_URL", "").rstrip("/")
 CREDENTIALS_API_TOKEN = os.environ.get("CREDENTIALS_API_TOKEN", "")
 CREDENTIALS_APP = os.environ.get("CREDENTIALS_APP", "storage")
 # Explícito por host: desliga só a gestão de identidade que o Credenciais assume.
