@@ -85,7 +85,7 @@
                       <td class="muted">{{ snap.mtime }}</td>
                       <td class="file-actions">
                         <div class="row-actions">
-                          <a class="btn small" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">Navegar</a>
+                          <a class="btn primary" href="{% url 'history_browse_root' share=s.share snapshot=snap.name %}">{% include "partials/icon.html" with name="open" %}Navegar</a>
                           <details class="restore-details">
                             <summary class="btn small danger">Restaurar</summary>
                             <form method="post" action="{% url 'snapshot_restore' %}" class="restore-form"

@@ -33,7 +33,7 @@
           </td>
           <td class="muted">{{ s.snapshot_count }}</td>
           <td class="muted">{{ s.last_snapshot|default:"—" }}</td>
-          <td class="file-actions"><a class="btn small" href="{{ s.url }}">Navegar</a></td>
+          <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{{ s.url }}">{% include "partials/icon.html" with name="open" %}Navegar</a></div></td>
         </tr>
       {% endfor %}
     </tbody>

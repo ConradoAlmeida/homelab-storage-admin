@@ -165,7 +165,7 @@
               <span class="muted">sem montagem</span>
             {% endif %}
           </td>
-          <td class="file-actions"><a class="btn small" href="{% url 'storage_index' %}">Detalhes</a></td>
+          <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{% url 'storage_index' %}">{% include "partials/icon.html" with name="open" %}Detalhes</a></div></td>
         </tr>
       {% empty %}
         <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
@@ -207,7 +207,7 @@
               {% if job.status.finished_at %}<div class="muted text-11">{{ job.status.finished_at }}</div>{% endif %}
             </td>
             <td class="muted text-12">{{ job.next_run|default:"—" }}</td>
-            <td class="file-actions"><a class="btn small" href="{% url 'arquivos_job' job=job.name %}">Abrir</a></td>
+            <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{% url 'arquivos_job' job=job.name %}">{% include "partials/icon.html" with name="open" %}Abrir</a></div></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -246,7 +246,7 @@
             <td class="muted">{{ job.next_run_label|default:"—" }}</td>
             <td class="muted">{{ job.source_count }} share{{ job.source_count|pluralize }}</td>
             <td>{{ job.disk_label }}{% if job.volume %}<div class="muted text-11">{{ job.volume.free|filesizeformat }} livres</div>{% endif %}</td>
-            <td class="file-actions"><a class="btn small" href="{% url 'backup_index' %}">Gerenciar</a></td>
+            <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{% url 'backup_index' %}">{% include "partials/icon.html" with name="open" %}Gerenciar</a></div></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -285,7 +285,7 @@
             <td class="muted" data-snap-size>—</td>
             <td data-total><strong>—</strong></td>
             <td>{% if s.snapshot_enabled %}<span class="tag ok">{{ s.snapshot_count }} · keep {{ s.snapshot_keep }}</span>{% else %}<span class="tag off">sem snap</span>{% endif %}</td>
-            <td class="file-actions"><a class="btn small" href="{% url 'shares' %}">Gerenciar</a></td>
+            <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{% url 'shares' %}">{% include "partials/icon.html" with name="open" %}Gerenciar</a></div></td>
           </tr>
         {% endfor %}
       </tbody>

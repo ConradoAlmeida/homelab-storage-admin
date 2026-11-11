@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-10**.
+Documento de retomada. Última atualização: **2026-11-11**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -37,6 +37,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   na linha de baixo, na faixa em degradê da barra. O login usa o wordmark
   vertical. O menu separa Visão geral, Dados e Sistema. No moya
   (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
+- Controles (botão, badge, tabela, foco) saem dos tokens em
+  `static/css/app.css`. Ação de linha é um grupo horizontal de 34px:
+  primário ciano, secundário com borda, perigo só contorno. Badge de estado
+  leva ponto colorido. O menu lateral permanece o original (roxo no item
+  ativo, seções e Sair); os tokens novos não entram nele.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o
   handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do

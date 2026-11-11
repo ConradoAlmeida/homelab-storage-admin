@@ -3,17 +3,17 @@
 @source "../templates/**/*.html";
 
 @theme {
-  --color-canvas: #1a1d29;
-  --color-deep: #141722;
-  --color-panel: #252936;
-  --color-line: #363a4a;
-  --color-ink: #ffffff;
-  --color-quiet: #a8adb8;
-  --color-accent: #4a9eff;
-  --color-ok: #5cd6a8;
-  --color-warn: #f0a030;
-  --color-danger: #ff6b6b;
-  --font-sans: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --color-canvas: #0b1220;
+  --color-deep: #070d18;
+  --color-panel: #121a2c;
+  --color-line: #243049;
+  --color-ink: #e8eef8;
+  --color-quiet: #8ea0b8;
+  --color-accent: #3ad7ea;
+  --color-ok: #3ee0a0;
+  --color-warn: #f0b429;
+  --color-danger: #ff6b8a;
+  --font-sans: "Segoe UI", "Noto Sans", "Liberation Sans", system-ui, sans-serif;
 }
 
 @layer components {
@@ -45,8 +45,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    min-height: 32px;
-    padding: 4px 10px;
+    min-height: var(--control-h, 34px);
+    padding: 4px 8px 4px 12px;
     border: 1px solid var(--line);
     border-radius: 6px;
     background: var(--panel);
@@ -57,7 +57,8 @@
   }
 
   .table-wrap.table-fit table {
-    min-width: 0;
+    width: max-content;
+    min-width: 100%;
   }
 
   .torrent-page > .torrent-panel-radio {
@@ -86,7 +87,7 @@
   .torrent-page:has(#torrent-panel-add:checked) label[for="torrent-panel-add"] {
     background: var(--acc);
     border-color: var(--acc);
-    color: #061321;
+    color: var(--acc-ink);
     font-weight: 600;
   }
 
@@ -97,7 +98,7 @@
   .torrent-page:has(#torrent-panel-organizar:checked) label[for="torrent-panel-organizar"] {
     background: var(--acc);
     border-color: var(--acc);
-    color: #061321;
+    color: var(--acc-ink);
     font-weight: 600;
   }
 

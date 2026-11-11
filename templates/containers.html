@@ -61,7 +61,7 @@
             </td>
             <td class="file-actions">
               <div class="row-actions">
-                <a class="btn" href="{% url 'container_logs' %}?name={{ item.name|urlencode }}">Logs</a>
+                <a class="btn {% if item.running %}primary{% endif %}" href="{% url 'container_logs' %}?name={{ item.name|urlencode }}">{% include "partials/icon.html" with name="logs" %}Logs</a>
                 {% if item.name == app_container %}
                   <span class="muted text-12">container do painel</span>
                 {% elif item.running %}
@@ -70,21 +70,21 @@
                     {% csrf_token %}
                     <input type="hidden" name="name" value="{{ item.name }}">
                     <input type="hidden" name="action" value="stop">
-                    <button class="btn danger" type="submit">Parar</button>
+                    <button class="btn danger" type="submit">{% include "partials/icon.html" with name="stop" %}Parar</button>
                   </form>
                   <form method="post" action="{% url 'container_action' %}"
                         data-confirm="Reiniciar o container {{ item.name }}?">
                     {% csrf_token %}
                     <input type="hidden" name="name" value="{{ item.name }}">
                     <input type="hidden" name="action" value="restart">
-                    <button class="btn" type="submit">Reiniciar</button>
+                    <button class="btn" type="submit">{% include "partials/icon.html" with name="restart" %}Reiniciar</button>
                   </form>
                 {% else %}
                   <form method="post" action="{% url 'container_action' %}">
                     {% csrf_token %}
                     <input type="hidden" name="name" value="{{ item.name }}">
                     <input type="hidden" name="action" value="start">
-                    <button class="btn" type="submit">Iniciar</button>
+                    <button class="btn primary" type="submit">{% include "partials/icon.html" with name="play" %}Iniciar</button>
                   </form>
                 {% endif %}
               </div>

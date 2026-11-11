@@ -55,18 +55,22 @@
             {% if not credenciais_gerencia_usuarios %}
             <td class="file-actions">
               <div class="row-actions">
-                <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">Senha</a>
-                <a class="btn" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">Grupos</a>
+                <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="key" %}Senha</a>
+                <a class="btn" href="{% url 'user_groups' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="users" %}Grupos</a>
                 <form method="post" action="{% url 'user_toggle' %}">
                   {% csrf_token %}
                   <input type="hidden" name="username" value="{{ u.username }}">
                   <input type="hidden" name="enabled" value="{% if u.enabled %}0{% else %}1{% endif %}">
-                  <button class="btn {% if u.enabled %}danger{% endif %}" type="submit">{% if u.enabled %}Desativar{% else %}Ativar{% endif %}</button>
+                  {% if u.enabled %}
+                  <button class="btn danger" type="submit">{% include "partials/icon.html" with name="off" %}Desativar</button>
+                  {% else %}
+                  <button class="btn primary" type="submit">{% include "partials/icon.html" with name="check" %}Ativar</button>
+                  {% endif %}
                 </form>
                 <form method="post" action="{% url 'user_delete' %}" data-confirm="Excluir {{ u.username }}? A conta Linux, o Samba e a pasta home serão removidos.">
                   {% csrf_token %}
                   <input type="hidden" name="username" value="{{ u.username }}">
-                  <button class="btn danger" type="submit">Excluir</button>
+                  <button class="btn danger" type="submit">{% include "partials/icon.html" with name="trash" %}Excluir</button>
                 </form>
               </div>
             </td>
@@ -97,7 +101,7 @@
             <form method="post" action="{% url 'group_delete' %}" data-confirm="Excluir o grupo {{ nome }}? Quem estava nele perde esse acesso.">
               {% csrf_token %}
               <input type="hidden" name="name" value="{{ nome }}">
-              <button class="btn danger" type="submit">Excluir</button>
+              <button class="btn danger" type="submit">{% include "partials/icon.html" with name="trash" %}Excluir</button>
             </form>
           </li>
         {% endfor %}

@@ -10,17 +10,19 @@
       {% for result in search_results %}
         <tr>
           <td class="path-cell"><a href="{{ result.browse_url }}">{{ result.rel }}</a></td>
-          <td class="muted">{% if result.is_dir %}Pasta{% else %}Arquivo{% endif %}</td>
+          <td>{% if result.is_dir %}<span class="tag">pasta</span>{% elif result.ext %}<span class="tag type">{{ result.ext }}</span>{% else %}<span class="tag">arquivo</span>{% endif %}</td>
           <td class="muted">{% if result.is_dir %}—{% else %}{{ result.size|filesizeformat }}{% endif %}</td>
           <td class="muted">{{ result.mtime_text|default:result.mtime|default:"—" }}</td>
           <td class="file-actions">
+            <div class="row-actions">
             {% if result.is_dir %}
-              <a class="btn small" href="{{ result.browse_url }}">Abrir</a>
+              <a class="btn primary" href="{{ result.browse_url }}">{% include "partials/icon.html" with name="open" %}Abrir</a>
             {% else %}
-              <a class="btn small" href="{{ result.browse_url }}">Abrir pasta</a>
-              <a class="btn small" href="{{ result.download_url }}">Baixar</a>
-              {% if result.versions_url %}<a class="btn small" href="{{ result.versions_url }}">Versões</a>{% endif %}
+              <a class="btn" href="{{ result.browse_url }}">{% include "partials/icon.html" with name="open" %}Abrir pasta</a>
+              <a class="btn primary" href="{{ result.download_url }}">{% include "partials/icon.html" with name="download" %}Baixar</a>
+              {% if result.versions_url %}<a class="btn" href="{{ result.versions_url }}">{% include "partials/icon.html" with name="clock" %}Versões</a>{% endif %}
             {% endif %}
+            </div>
           </td>
         </tr>
       {% endfor %}

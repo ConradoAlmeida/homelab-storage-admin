@@ -120,11 +120,19 @@ def _search(base: Path, query: str, limit: int = 200) -> tuple[list[dict], int, 
                         "name": name,
                         "rel": rel,
                         "is_dir": full.is_dir(),
+                        "ext": _ext(name, full.is_dir()),
                         "size": 0 if full.is_dir() else stat.st_size,
                         "mtime": dt.datetime.fromtimestamp(stat.st_mtime),
                     }
                 )
     return matches, total, total > limit
+
+
+def _ext(name: str, is_dir: bool) -> str:
+    if is_dir or "." not in name:
+        return ""
+    suffix = PurePosixPath(name).suffix.lstrip(".")
+    return suffix.upper()
 
 
 def _url_browse(share: str, snapshot: str, path: str = "") -> str:
@@ -199,6 +207,7 @@ class HistoryBrowseView(AgentView):
                     {
                         "name": entry.name,
                         "is_dir": is_dir,
+                        "ext": _ext(entry.name, is_dir),
                         "size": 0 if is_dir else stat.st_size,
                         "mtime": dt.datetime.fromtimestamp(stat.st_mtime),
                         "url": _url_browse(share, snapshot, rel)

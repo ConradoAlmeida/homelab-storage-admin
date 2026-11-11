@@ -187,7 +187,7 @@
                   {% endif %}
                 {% endif %}
                 {% if disk.candidate %}
-                  <a class="btn {% if disk.extra_confirmation %}danger{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
+                  <a class="btn {% if disk.extra_confirmation %}danger{% elif not disk.configured %}primary{% endif %}" href="{% url 'backup_disk_wizard' %}?device={{ disk.path|urlencode }}">
                     {% if disk.configured %}Reconfigurar{% elif disk.has_filesystem %}Preparar (apaga FS){% else %}Preparar{% endif %}
                   </a>
                 {% elif not disk.configured %}
@@ -233,10 +233,10 @@
               <td class="muted text-12">{{ job.next_run_label|default:"—" }}</td>
               <td class="file-actions">
                 <div class="row-actions">
-                  <a class="btn" href="{% url 'backup_job_edit' name=job.name %}">Editar</a>
+                  <a class="btn primary" href="{% url 'backup_job_edit' name=job.name %}">{% include "partials/icon.html" with name="edit" %}Editar</a>
                   <form method="post" action="{% url 'backup_job_run' name=job.name %}">
                     {% csrf_token %}
-                    <button class="btn" type="submit">Rodar agora</button>
+                    <button class="btn" type="submit">{% include "partials/icon.html" with name="play" %}Rodar agora</button>
                   </form>
                 </div>
               </td>
