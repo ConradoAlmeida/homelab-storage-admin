@@ -118,9 +118,10 @@ Equivalente a:
 sudo env HOMELAB_LAB=1 /usr/local/bin/uv run --python 3.12 pytest tests/lab -q
 ```
 
-Esperado: **5 passed** — restic, mdadm RAID1, Btrfs, snapshot do agente e grupo
-real. Esses testes criam loop devices, montam filesystems e apagam tudo no
-final; rode somente na VM descartável, como root.
+Esperado: restic, mdadm RAID1, Btrfs, snapshot do agente, grupo real e o
+timer do dump do Gitea. O timer é criado em `/etc/systemd/system` e apagado
+no final. Esses testes criam loop devices, montam filesystems e apagam tudo
+no final; rode somente na VM descartável, como root.
 
 ## 3. Perfil moyaserver
 

@@ -221,6 +221,19 @@ class AgentClient:
     def gitea_start(self, target="host"):
         return self.call("gitea_start", timeout=60, target=target)
 
+    def gitea_schedule_save(
+        self, enabled=False, frequency="daily", time="05:00", weekday=0, monthday=1
+    ):
+        return self.call(
+            "gitea_schedule_save",
+            timeout=60,
+            enabled=enabled,
+            frequency=frequency,
+            time=time,
+            weekday=weekday,
+            monthday=monthday,
+        )
+
     def gitea_download(self, archive):
         return self.call("gitea_download", timeout=660, archive=archive)
 

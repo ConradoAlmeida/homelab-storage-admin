@@ -135,9 +135,14 @@ existe um **disco externo** disponível:
 
 ## Backup do Gitea
 
-**Backups → Backup do Gitea** gera um dump consistente e permite copiá-lo
-manualmente para um drive USB. O Gitea continua rodando durante o dump.
+**Backups → Backup do Gitea** gera um dump consistente, permite agendar o dump
+no servidor e copiar manualmente para um drive USB. O Gitea continua rodando
+durante o dump.
 
+- **Agenda**: na própria página, marque **Agenda ativa**, escolha periodicidade
+  (diária, semanal ou mensal) e horário. O timer systemd chama só
+  `homelab-gitea-backup@host.service`; a cópia para USB continua manual.
+  A agenda fica em `/etc/homelab-backup/gitea-schedule.json` e nasce desligada.
 - **Dump**: `gitea dump` executado como usuário `git` dentro do container,
   com `--skip-log --skip-index`. O zip é copiado para
   `/var/backups/gitea/gitea-AAAAMMDD-HHMMSS.zip`, `600 root`, com `sha256`
@@ -162,6 +167,6 @@ manualmente para um drive USB. O Gitea continua rodando durante o dump.
 > O fluxo **dump + cópia para pendrive** foi validado manualmente. Não é
 > necessário repetir o teste enquanto o código de dump/cópia USB não mudar.
 
-O backup do Gitea é **manual por decisão** (dump + USB). Quando houver
-repositório restic, a pasta `/var/backups/gitea` pode entrar em um job restic
-para versionamento e cópia fora do disco.
+A cópia para USB segue manual por decisão. Quando houver repositório restic,
+a pasta `/var/backups/gitea` pode entrar em um job restic para versionamento
+e cópia fora do disco.

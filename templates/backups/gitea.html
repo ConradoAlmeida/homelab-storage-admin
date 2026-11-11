@@ -145,6 +145,59 @@
   </section>
 
   <section class="section">
+    <div class="section-head"><h2>Agenda</h2></div>
+    <div class="card">
+      {% if overview.schedule.enabled %}
+        <p class="mb-4">
+          <span class="tag ok">{{ overview.schedule.label }}</span>
+          {% if overview.schedule.next_run_label %}
+            <span class="tag">próxima execução {{ overview.schedule.next_run_label }}</span>
+          {% endif %}
+        </p>
+      {% endif %}
+      <p class="muted text-12 mb-4">
+        Gera o dump no servidor automaticamente no horário escolhido.
+        A cópia para USB <strong>não</strong> entra na agenda — use o cartão de drives acima quando quiser.
+        Mantém apenas os últimos {{ overview.keep }} dump(s) no servidor.
+      </p>
+      <form method="post" action="{% url 'gitea_schedule_save' %}">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="gitea-frequency">Periodicidade</label>
+            <select class="form-control" id="gitea-frequency" name="frequency">
+              <option value="daily" {% if overview.schedule.frequency == "daily" %}selected{% endif %}>Diário</option>
+              <option value="weekly" {% if overview.schedule.frequency == "weekly" %}selected{% endif %}>Semanal</option>
+              <option value="monthly" {% if overview.schedule.frequency == "monthly" %}selected{% endif %}>Mensal</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="gitea-time">Horário</label>
+            <input class="form-control" id="gitea-time" type="time" name="time" value="{{ overview.schedule.time|default:'05:00' }}" required>
+          </div>
+          <div class="form-group">
+            <label for="gitea-weekday">Dia da semana (semanal)</label>
+            <select class="form-control" id="gitea-weekday" name="weekday">
+              {% for valor, rotulo in weekdays %}
+                <option value="{{ valor }}" {% if overview.schedule.weekday == valor %}selected{% endif %}>{{ rotulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="gitea-monthday">Dia do mês (mensal, 1–28)</label>
+            <input class="form-control" id="gitea-monthday" type="number" name="monthday" min="1" max="28" value="{{ overview.schedule.monthday|default:1 }}">
+          </div>
+        </div>
+        <div class="check mb-4">
+          <input id="gitea-schedule-enabled" type="checkbox" name="enabled" value="1" {% if overview.schedule.enabled %}checked{% endif %}>
+          <label for="gitea-schedule-enabled">Agenda ativa</label>
+        </div>
+        <button class="btn primary" type="submit">Salvar agenda</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="section">
     <div class="section-head">
       <div>
         <h2>Dumps no servidor</h2>

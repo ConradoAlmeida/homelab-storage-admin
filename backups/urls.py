@@ -50,6 +50,11 @@ urlpatterns = [
         name="gitea_backup_start",
     ),
     path(
+        "gitea/schedule/",
+        views.GiteaScheduleSaveView.as_view(),
+        name="gitea_schedule_save",
+    ),
+    path(
         "gitea/status/",
         views.GiteaBackupStatusView.as_view(),
         name="gitea_backup_status",

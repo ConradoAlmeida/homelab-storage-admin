@@ -87,6 +87,11 @@ GITEA_CONTAINER = os.environ.get("GITEA_CONTAINER", "gitea")
 JELLYFIN_CONTAINER = os.environ.get("JELLYFIN_CONTAINER", "jellyfin")
 GITEA_BACKUP_DIR = os.environ.get("GITEA_BACKUP_DIR", "/var/backups/gitea")
 GITEA_STATUS = os.environ.get("GITEA_STATUS", "/etc/homelab-backup/gitea.json")
+GITEA_SCHEDULE = os.environ.get(
+    "GITEA_SCHEDULE", "/etc/homelab-backup/gitea-schedule.json"
+)
+GITEA_TIMER = "homelab-gitea-backup.timer"
+GITEA_TIMER_UNIT = "homelab-gitea-backup@host.service"
 GITEA_KEEP = int(os.environ.get("GITEA_KEEP", "2"))
 GITEA_USB_ROOT = os.environ.get("GITEA_USB_ROOT", "/mnt/gitea-usb")
 GITEA_USB_MIN_FREE = int(
@@ -4248,6 +4253,161 @@ def _gitea_status_write(dados: dict) -> dict:
     return dados
 
 
+def _gitea_schedule_defaults() -> dict:
+    return {
+        "enabled": False,
+        "frequency": "daily",
+        "time": "05:00",
+        "weekday": 0,
+        "monthday": 1,
+        "on_calendar": "",
+        "label": "desligada",
+        "next_run": None,
+    }
+
+
+def _gitea_schedule_read() -> dict:
+    caminho = Path(GITEA_SCHEDULE)
+    if not caminho.is_file():
+        return {}
+    try:
+        dados = json.loads(caminho.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return dados if isinstance(dados, dict) else {}
+
+
+def _gitea_schedule_write(dados: dict) -> dict:
+    caminho = Path(GITEA_SCHEDULE)
+    caminho.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(caminho.parent, 0o700)
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, indent=2, sort_keys=True) + "\n")
+    os.chmod(temporario, 0o600)
+    temporario.replace(caminho)
+    return dados
+
+
+def _gitea_agenda_label(
+    frequency: str, time_value: str, weekday: int | None, monthday: int | None
+) -> str:
+    if frequency == "weekly":
+        try:
+            dia = WEEKDAY_LABELS_PT[int(weekday or 0) % 7]
+        except (TypeError, ValueError):
+            dia = "Segunda"
+        return f"semanal ({dia.lower()}) {time_value}"
+    if frequency == "monthly":
+        return f"mensal dia {monthday} {time_value}"
+    return f"diário {time_value}"
+
+
+def _gitea_on_calendar(
+    frequency: str, time_value: str, weekday: int | None, monthday: int | None
+) -> str:
+    if frequency == "weekly":
+        indice = min(6, max(0, int(weekday or 0)))
+        return f"{WEEKDAYS[indice]} *-*-* {time_value}:00"
+    if frequency == "monthly":
+        dia = int(monthday or 1)
+        return f"*-*-{dia:02d} {time_value}:00"
+    return f"*-*-* {time_value}:00"
+
+
+def _gitea_schedule_public() -> dict:
+    armazenado = _gitea_schedule_read()
+    if not armazenado:
+        return _gitea_schedule_defaults()
+    frequencia = str(armazenado.get("frequency") or "daily").lower()
+    if frequencia not in ("daily", "weekly", "monthly"):
+        frequencia = "daily"
+    horario = str(armazenado.get("time") or "05:00")
+    try:
+        dia_semana = (
+            None
+            if armazenado.get("weekday") is None
+            else min(6, max(0, int(armazenado.get("weekday", 0))))
+        )
+    except (TypeError, ValueError):
+        dia_semana = 0
+    try:
+        dia_mes = (
+            None
+            if armazenado.get("monthday") is None
+            else int(armazenado.get("monthday", 1))
+        )
+    except (TypeError, ValueError):
+        dia_mes = 1
+    ativo = bool(armazenado.get("enabled"))
+    resultado = {
+        "enabled": ativo,
+        "frequency": frequencia,
+        "time": horario,
+        "weekday": dia_semana if dia_semana is not None else 0,
+        "monthday": dia_mes if dia_mes is not None else 1,
+        "on_calendar": str(armazenado.get("on_calendar") or ""),
+        "label": str(armazenado.get("label") or ""),
+        "next_run": None,
+    }
+    if ativo:
+        resultado["on_calendar"] = _gitea_on_calendar(
+            frequencia, horario, dia_semana, dia_mes
+        )
+        resultado["label"] = _gitea_agenda_label(
+            frequencia, horario, dia_semana, dia_mes
+        )
+        resultado["next_run"] = _next_run(
+            {
+                "frequency": frequencia,
+                "time": horario,
+                "weekday": dia_semana,
+                "monthday": dia_mes,
+            }
+        )
+    else:
+        resultado["label"] = resultado["label"] or "desligada"
+        resultado["on_calendar"] = ""
+        resultado["next_run"] = None
+    return resultado
+
+
+def _gitea_apply_timer(agenda: dict) -> None:
+    base = Path(SYSTEMD_DIR)
+    if not base.is_dir():
+        return
+    caminho = base / GITEA_TIMER
+    if agenda.get("enabled"):
+        conteudo = (
+            "[Unit]\n"
+            "Description=Agendamento do dump do Gitea no servidor\n\n"
+            "[Timer]\n"
+            f"OnCalendar={agenda['on_calendar']}\n"
+            "Persistent=true\n"
+            f"Unit={GITEA_TIMER_UNIT}\n\n"
+            "[Install]\n"
+            "WantedBy=timers.target\n"
+        )
+        try:
+            atual = caminho.read_text() if caminho.is_file() else ""
+            if atual != conteudo:
+                caminho.write_text(conteudo)
+                os.chmod(caminho, 0o644)
+            run_optional(["systemctl", "daemon-reload"], timeout=30)
+            stamp = Path("/var/lib/systemd/timers") / f"stamp-{GITEA_TIMER}"
+            try:
+                stamp.parent.mkdir(parents=True, exist_ok=True)
+                stamp.touch()
+            except OSError:
+                pass
+            run_optional(["systemctl", "enable", "--now", GITEA_TIMER], timeout=30)
+        except OSError as exc:
+            raise AgentError(f"Nao foi possivel atualizar o timer: {exc}") from exc
+    else:
+        run_optional(["systemctl", "disable", "--now", GITEA_TIMER], timeout=30)
+        caminho.unlink(missing_ok=True)
+        run_optional(["systemctl", "daemon-reload"], timeout=30)
+
+
 def _gitea_dumps() -> list[dict]:
     pasta = Path(GITEA_BACKUP_DIR)
     if not pasta.is_dir():
@@ -4672,7 +4832,74 @@ def op_gitea_overview(**_):
         "usb": _gitea_usb_disks() if shutil.which("lsblk") else [],
         "backup_dir": GITEA_BACKUP_DIR,
         "keep": GITEA_KEEP,
+        "schedule": _gitea_schedule_public(),
     }
+
+
+def op_gitea_schedule_save(
+    enabled=False,
+    frequency="daily",
+    time="05:00",
+    weekday=0,
+    monthday=1,
+    **_,
+):
+    ativo = bool(enabled)
+    frequencia = str(frequency or "daily").strip().lower()
+    horario = str(time or "").strip()
+    if not TIME_RE.match(horario):
+        raise AgentError("Horario invalido; use HH:MM")
+    dia_semana = None
+    dia_mes = None
+    if frequencia == "daily":
+        on_calendar = f"*-*-* {horario}:00"
+    elif frequencia == "weekly":
+        try:
+            dia_semana = int(weekday if weekday is not None else 0)
+        except (TypeError, ValueError) as exc:
+            raise AgentError("Dia da semana invalido") from exc
+        if dia_semana < 0 or dia_semana > 6:
+            raise AgentError("Dia da semana invalido")
+        on_calendar = f"{WEEKDAYS[dia_semana]} *-*-* {horario}:00"
+    elif frequencia == "monthly":
+        try:
+            dia_mes = int(monthday if monthday is not None else 1)
+        except (TypeError, ValueError) as exc:
+            raise AgentError("Dia do mes invalido") from exc
+        if dia_mes < 1 or dia_mes > 28:
+            raise AgentError("Dia do mes deve ficar entre 1 e 28")
+        on_calendar = f"*-*-{dia_mes:02d} {horario}:00"
+    else:
+        raise AgentError("Periodicidade invalida")
+
+    rotulo = (
+        _gitea_agenda_label(frequencia, horario, dia_semana, dia_mes)
+        if ativo
+        else "desligada"
+    )
+    agenda = {
+        "enabled": ativo,
+        "frequency": frequencia,
+        "time": horario,
+        "weekday": dia_semana,
+        "monthday": dia_mes,
+        "on_calendar": on_calendar if ativo else "",
+        "label": rotulo,
+        "next_run": None,
+    }
+    if ativo:
+        agenda["next_run"] = _next_run(
+            {
+                "frequency": frequencia,
+                "time": horario,
+                "weekday": dia_semana,
+                "monthday": dia_mes,
+            }
+        )
+    _gitea_schedule_write(agenda)
+    _gitea_apply_timer(agenda)
+    log(f"GITEA_SCHEDULE_SAVE enabled={ativo} {frequencia} {horario}")
+    return agenda
 
 
 def op_gitea_start(target: str = "host", **_):
@@ -7000,6 +7227,7 @@ OPS = {
     "backup_check": op_backup_check,
     "gitea_overview": op_gitea_overview,
     "gitea_start": op_gitea_start,
+    "gitea_schedule_save": op_gitea_schedule_save,
     "gitea_download": op_gitea_download,
     "gitea_restore": op_gitea_restore,
     "backup_job_save": op_backup_job_save,

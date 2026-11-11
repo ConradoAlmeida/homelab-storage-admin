@@ -50,6 +50,16 @@ OVERVIEW = {
             "partitions": [],
         }
     ],
+    "schedule": {
+        "enabled": False,
+        "frequency": "daily",
+        "time": "05:00",
+        "weekday": 0,
+        "monthday": 1,
+        "on_calendar": "",
+        "label": "desligada",
+        "next_run": None,
+    },
 }
 
 
@@ -87,6 +97,12 @@ class GiteaBackupViewTests(TestCase):
         self.assertContains(resposta, "Backup de arquivos")
         pagina = self.client.get("/backups/gitea/")
         self.assertEqual(pagina.status_code, 200)
+
+    def test_pagina_mostra_agenda(self):
+        resposta = self.client.get("/backups/gitea/")
+        self.assertContains(resposta, "Agenda")
+        self.assertContains(resposta, "05:00")
+        self.assertContains(resposta, "Salvar agenda")
 
     def test_pagina_mostra_estado_e_usb(self):
         resposta = self.client.get("/backups/gitea/")
@@ -252,3 +268,48 @@ class GiteaBackupViewTests(TestCase):
             follow=True,
         )
         self.assertContains(resposta, "Disco USB nao encontrado")
+
+    def test_salvar_agenda_ativa_audita(self):
+        self.fake.gitea_schedule_save.return_value = {
+            "enabled": True,
+            "frequency": "daily",
+            "time": "05:00",
+        }
+        resposta = self.client.post(
+            "/backups/gitea/schedule/",
+            data={
+                "enabled": "1",
+                "frequency": "daily",
+                "time": "05:00",
+                "weekday": "0",
+                "monthday": "1",
+            },
+            follow=True,
+        )
+        self.fake.gitea_schedule_save.assert_called_once_with(
+            enabled=True,
+            frequency="daily",
+            time="05:00",
+            weekday=0,
+            monthday=1,
+        )
+        self.assertContains(resposta, "Agenda do dump do Gitea salva")
+        self.assertTrue(
+            AuditLog.objects.filter(action="gitea_schedule_save").exists()
+        )
+
+    def test_erro_na_agenda_aparece(self):
+        self.fake.gitea_schedule_save.side_effect = backup_views.AgentError(
+            "Horario invalido; use HH:MM"
+        )
+        resposta = self.client.post(
+            "/backups/gitea/schedule/",
+            data={
+                "frequency": "daily",
+                "time": "25:00",
+                "weekday": "0",
+                "monthday": "1",
+            },
+            follow=True,
+        )
+        self.assertContains(resposta, "Horario invalido")

@@ -1156,6 +1156,13 @@ AJUDA: dict[str, dict[str, Any]] = {
                 ),
             },
             {
+                "title": "Agenda",
+                "text": (
+                    "Marque Agenda ativa para o dump no servidor rodar sozinho "
+                    "no horário escolhido. A cópia para USB não entra na agenda."
+                ),
+            },
+            {
                 "title": "Backup para USB",
                 "text": (
                     "Monta o drive, copia o dump, confere o hash e desmonta no "

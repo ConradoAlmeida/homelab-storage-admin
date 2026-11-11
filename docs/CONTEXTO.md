@@ -151,8 +151,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
    de cópia fria continua o limite para o teste físico.
 4. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
    O alerta "Firewall inativo" continua real até a ativação.
-5. **Gitea**: o RAID1 do moya já existe; automatizar o dump e apagar os
-   arquivos USB antigos inválidos continua pendente.
+5. **Gitea**: o dump no servidor pode ser agendado pelo admin; continuam
+   pendentes a cópia USB automática (não fazer) e apagar os arquivos USB
+   antigos inválidos.
 6. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
 7. **RAID1 no moya** (2026-11-10): `/dev/md0` ext4 com os dois WD Red Plus

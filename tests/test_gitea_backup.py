@@ -121,6 +121,108 @@ def test_backup_usb_ignora_chmod_de_exfat(agent_module, monkeypatch, tmp_path):
     assert resultado["sha256"] in sidecar.read_text()
 
 
+def _preparar_systemd(agent_module, monkeypatch):
+    """Grava o unit num diretório temporário e não chama o systemctl do host."""
+    pasta = Path(agent_module.SYSTEMD_DIR)
+    pasta.mkdir(parents=True, exist_ok=True)
+    chamadas = []
+
+    def run_optional(args, timeout=30):
+        chamadas.append(list(args))
+        return (0, "", "")
+
+    monkeypatch.setattr(agent_module, "run_optional", run_optional)
+    return pasta / agent_module.GITEA_TIMER, chamadas
+
+
+def test_agenda_diaria_grava_timer(agent_module, monkeypatch):
+    timer, chamadas = _preparar_systemd(agent_module, monkeypatch)
+    dados = agent_module.op_gitea_schedule_save(
+        enabled=True, frequency="daily", time="05:00"
+    )
+    assert dados["on_calendar"] == "*-*-* 05:00:00"
+    texto = timer.read_text()
+    assert "OnCalendar=*-*-* 05:00:00" in texto
+    assert f"Unit={agent_module.GITEA_TIMER_UNIT}" in texto
+    assert ["systemctl", "enable", "--now", agent_module.GITEA_TIMER] in chamadas
+    assert not any(chamada[0] != "systemctl" for chamada in chamadas)
+
+
+def test_agenda_semanal_segunda(agent_module, monkeypatch):
+    timer, chamadas = _preparar_systemd(agent_module, monkeypatch)
+    dados = agent_module.op_gitea_schedule_save(
+        enabled=True, frequency="weekly", time="05:00", weekday=0
+    )
+    assert dados["on_calendar"] == "Mon *-*-* 05:00:00"
+    assert "OnCalendar=Mon *-*-* 05:00:00" in timer.read_text()
+    assert ["systemctl", "enable", "--now", agent_module.GITEA_TIMER] in chamadas
+
+
+def test_agenda_mensal_dia_1(agent_module, monkeypatch):
+    timer, chamadas = _preparar_systemd(agent_module, monkeypatch)
+    dados = agent_module.op_gitea_schedule_save(
+        enabled=True, frequency="monthly", time="05:00", monthday=1
+    )
+    assert dados["on_calendar"] == "*-*-01 05:00:00"
+    assert "OnCalendar=*-*-01 05:00:00" in timer.read_text()
+    assert ["systemctl", "enable", "--now", agent_module.GITEA_TIMER] in chamadas
+
+
+def test_agenda_recusa_horario_e_dia_invalidos(agent_module, monkeypatch):
+    _timer, chamadas = _preparar_systemd(agent_module, monkeypatch)
+    with pytest.raises(agent_module.AgentError, match="Horario invalido"):
+        agent_module.op_gitea_schedule_save(enabled=True, time="25:00")
+    with pytest.raises(agent_module.AgentError, match="entre 1 e 28"):
+        agent_module.op_gitea_schedule_save(
+            enabled=True, frequency="monthly", time="05:00", monthday=31
+        )
+    assert chamadas == []
+
+
+def test_agenda_desligada_remove_timer_e_mantem_json(agent_module, monkeypatch):
+    timer, chamadas = _preparar_systemd(agent_module, monkeypatch)
+    agent_module.op_gitea_schedule_save(
+        enabled=True, frequency="daily", time="06:00"
+    )
+    assert timer.is_file()
+    agent_module.op_gitea_schedule_save(
+        enabled=False, frequency="weekly", time="06:00", weekday=2
+    )
+    assert not timer.is_file()
+    gravado = json.loads(Path(agent_module.GITEA_SCHEDULE).read_text())
+    assert gravado["enabled"] is False
+    assert gravado["frequency"] == "weekly"
+    assert gravado["weekday"] == 2
+    assert gravado["next_run"] is None
+    assert ["systemctl", "disable", "--now", agent_module.GITEA_TIMER] in chamadas
+
+
+def test_agenda_sem_systemd_nao_falha(agent_module, monkeypatch, tmp_path):
+    ausente = tmp_path / "sem-systemd"
+    chamadas = []
+
+    def run_optional(args, timeout=30):
+        chamadas.append(list(args))
+        return (0, "", "")
+
+    monkeypatch.setattr(agent_module, "SYSTEMD_DIR", str(ausente))
+    monkeypatch.setattr(agent_module, "run_optional", run_optional)
+    dados = agent_module.op_gitea_schedule_save(
+        enabled=True, frequency="daily", time="05:00"
+    )
+    assert dados["enabled"] is True
+    assert Path(agent_module.GITEA_SCHEDULE).is_file()
+    assert chamadas == []
+
+
+def test_overview_inclui_agenda_desligada(agent_module, monkeypatch):
+    monkeypatch.setattr(agent_module, "run_optional", lambda *a, **k: (0, "", ""))
+    visao = agent_module.op_gitea_overview()
+    agenda = visao["schedule"]
+    assert agenda["enabled"] is False
+    assert agenda["time"] == "05:00"
+
+
 def test_backup_usb_recusa_copia_corrompida(agent_module, monkeypatch, tmp_path):
     dump, montado = _preparar_usb(agent_module, monkeypatch, tmp_path)
     original = agent_module.shutil.copyfile

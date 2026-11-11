@@ -1200,6 +1200,12 @@ class GiteaBackupView(ExigeCapacidadeMixin, AgentTemplateView):
                     discos if isinstance(discos, list) else [],
                 )
             )
+            agenda = overview.get("schedule") or {}
+            proxima = agenda.get("next_run")
+            if proxima:
+                agenda["next_run_label"] = proxima.replace("T", " ")[:16]
+            overview["schedule"] = agenda
+            context["weekdays"] = WEEKDAYS
         return context
 
 
@@ -1219,6 +1225,48 @@ class GiteaBackupStatusView(ExigeCapacidadeMixin, AgentView):
                 "running": bool(overview.get("running")),
             }
         )
+
+
+class GiteaScheduleSaveView(ExigeCapacidadeMixin, AgentPostView):
+    capacidade = "gitea"
+
+    def post(self, request):
+        ativo = request.POST.get("enabled") == "1"
+        frequencia = (request.POST.get("frequency") or "daily").strip()
+        horario = (request.POST.get("time") or "05:00").strip()
+        try:
+            dia_semana = int(request.POST.get("weekday", 0))
+        except (TypeError, ValueError):
+            dia_semana = 0
+        try:
+            dia_mes = int(request.POST.get("monthday", 1))
+        except (TypeError, ValueError):
+            dia_mes = 1
+        try:
+            agent.gitea_schedule_save(
+                enabled=ativo,
+                frequency=frequencia,
+                time=horario,
+                weekday=dia_semana,
+                monthday=dia_mes,
+            )
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            return redirect("gitea_backup")
+        AuditLog.objects.create(
+            actor=request.user,
+            action="gitea_schedule_save",
+            target=f"{frequencia} {horario}",
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        if ativo:
+            messages.success(
+                request,
+                "Agenda do dump do Gitea salva. A cópia para USB continua manual.",
+            )
+        else:
+            messages.success(request, "Agenda do dump do Gitea desligada.")
+        return redirect("gitea_backup")
 
 
 class GiteaBackupStartView(ExigeCapacidadeMixin, AgentPostView):
