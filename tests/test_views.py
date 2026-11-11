@@ -268,6 +268,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "images/conradhub/site.webmanifest")
         self.assertNotContains(response, "images/conrado/")
         self.assertNotContains(response, "moya_wordmark_official.svg")
+        self.assertNotContains(response, "brand-moya")
         self.fake.list_shares.assert_any_call(include_size=False)
         self.fake.snapshot_usage.assert_any_call(include_size=False)
 
@@ -293,6 +294,7 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/")
         self.assertContains(response, "moya_wordmark_official.svg")
         self.assertContains(response, 'alt="Moya"')
+        self.assertContains(response, 'class="brand-moya"')
         self.assertNotContains(response, "images/conradhub/")
         self.assertNotContains(response, "images/conrado/")
         icone = self.client.get("/favicon.ico")

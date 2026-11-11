@@ -36,7 +36,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - No homelab a marca é Conradhub Homelab: símbolo mais CONRADHUB, com HOMELAB
   na linha de baixo, na faixa em degradê da barra. O login usa o wordmark
   vertical. O menu separa Visão geral, Dados e Sistema. No moya
-  (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya.
+  (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya. Nesse
+  contexto o `<body>` recebe `brand-moya` e os acentos roxos da sidebar
+  passam ao ciano da marca (`#3ceef8`). No homelab a sidebar segue roxa.
 - Controles (botão, badge, tabela, foco) saem dos tokens em
   `static/css/app.css`. Ação de linha é um grupo horizontal de 34px:
   primário ciano, secundário com borda, perigo só contorno. Badge de estado

@@ -1612,6 +1612,26 @@ textarea:focus {
   box-shadow: none;
 }
 
+/* Moya: o roxo da sidebar vira o ciano da marca (#3ceef8). O homelab fica roxo. */
+body.brand-moya .side-nav .nav-section {
+  color: #3ceef8;
+}
+body.brand-moya .side-nav a.active {
+  background: rgba(60, 238, 248, 0.16);
+}
+body.brand-moya .side-nav a.active .ico {
+  color: #3ceef8;
+}
+body.brand-moya .side-nav .count {
+  color: #3ceef8;
+  border-color: rgba(60, 238, 248, 0.45);
+}
+body.brand-moya .side-nav a.active .count {
+  color: #e7fdff;
+  background: rgba(60, 238, 248, 0.22);
+  border-color: rgba(60, 238, 248, 0.55);
+}
+
 /* Usuários: cartões densos e grupos ao lado. */
 .users-board {
   display: grid;
