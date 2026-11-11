@@ -114,13 +114,6 @@ class DashboardView(AgentTemplateView):
 
         volumes = context["volumes"]
         for disk in storage.get("disks", []):
-            mounts = disk.get("mounts") or []
-            volume = None
-            for mount in mounts:
-                volume = volume_for(mount, volumes)
-                if volume:
-                    break
-            disk["volume"] = volume
             disk["role"] = disk_role(
                 disk,
                 settings.STORAGE_ROOT,

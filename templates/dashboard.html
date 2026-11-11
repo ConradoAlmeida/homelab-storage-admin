@@ -128,7 +128,7 @@
           <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
           <td>{{ disk.role }}</td>
           <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
-          <td>{{ disk.size|default:"—" }}<div class="muted text-11">{{ disk.fstype|default:"sem FS" }}</div></td>
+          <td>{{ disk.size|default:"—" }}</td>
           <td>
             <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
             {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
@@ -142,10 +142,27 @@
             </div>
           </td>
           <td>
-            {% if disk.mounts %}<span class="muted">{{ disk.mounts|join:", " }}</span>{% else %}<span class="muted">sem montagem</span>{% endif %}
-            {% if disk.volume %}
-              <div class="muted text-11">{{ disk.volume.free|filesizeformat }} livres de {{ disk.volume.total|filesizeformat }} ({{ disk.volume.percent }}%)</div>
-              <progress class="bar {% if disk.volume.percent >= 90 %}err{% elif disk.volume.percent >= 75 %}warn{% endif %}" value="{{ disk.volume.percent }}" max="100"></progress>
+            {% if disk.parts %}
+              {% for part in disk.parts %}
+                <div class="{% if not forloop.first %}mt-8{% endif %}">
+                  <strong class="mono text-11">{{ part.name }}</strong>
+                  {% if part.fstype %}<span class="muted text-11"> · {{ part.fstype }}</span>{% endif %}
+                  {% if part.size %}<span class="muted text-11"> · {{ part.size }}</span>{% endif %}
+                  {% if part.mounts %}
+                    <div class="muted text-11">{{ part.mounts|join:", " }}</div>
+                  {% elif not part.fstype %}
+                    <div class="muted text-11">sem montagem</div>
+                  {% endif %}
+                  {% for u in part.usages %}
+                    <div class="muted text-11">{{ u.free|filesizeformat }} livres de {{ u.total|filesizeformat }} ({{ u.percent }}%)</div>
+                    <progress class="bar {% if u.percent >= 90 %}err{% elif u.percent >= 75 %}warn{% endif %}" value="{{ u.percent }}" max="100"></progress>
+                  {% endfor %}
+                </div>
+              {% endfor %}
+            {% elif disk.mounts %}
+              <span class="muted">{{ disk.mounts|join:", " }}</span>
+            {% else %}
+              <span class="muted">sem montagem</span>
             {% endif %}
           </td>
           <td class="file-actions"><a class="btn small" href="{% url 'storage_index' %}">Detalhes</a></td>

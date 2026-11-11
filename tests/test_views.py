@@ -181,6 +181,63 @@ class ViewSmokeTests(TestCase):
         context_processors._cached_caps = None
         context_processors._cached_at = 0.0
 
+    def test_dashboard_mostra_uso_por_fatia(self):
+        self.fake.storage_overview.return_value = {
+            "collected_at": "2026-11-10T06:00:00",
+            "stale": False,
+            "disks": [
+                {
+                    "name": "sda",
+                    "path": "/dev/sda",
+                    "size": "2T",
+                    "model": "ST2000NM012B-2TD",
+                    "serial": "ABC",
+                    "state": "active/idle",
+                    "smart": {"temperature": 32, "health": "PASSED"},
+                    "parts": [
+                        {
+                            "name": "sda1",
+                            "size": "512M",
+                            "fstype": "vfat",
+                            "mounts": ["/boot/efi"],
+                            "usages": [
+                                {
+                                    "mount": "/boot/efi",
+                                    "total": 500_000_000,
+                                    "used": 100_000_000,
+                                    "free": 400_000_000,
+                                    "percent": 20.0,
+                                }
+                            ],
+                        },
+                        {
+                            "name": "data-lv",
+                            "size": "1.5T",
+                            "fstype": "ext4",
+                            "mounts": ["/mnt/backup"],
+                            "usages": [
+                                {
+                                    "mount": "/mnt/backup",
+                                    "total": 1_500_000_000_000,
+                                    "used": 300_000_000_000,
+                                    "free": 1_200_000_000_000,
+                                    "percent": 20.0,
+                                }
+                            ],
+                        },
+                    ],
+                }
+            ],
+            "raid": {"mdstat": "", "detail": ""},
+            "btrfs": {"usage": "", "stats": "", "scrub": ""},
+            "system": {},
+        }
+        resposta = self.client.get("/")
+        self.assertNotContains(resposta, "sem FS")
+        self.assertContains(resposta, "/mnt/backup")
+        self.assertContains(resposta, "data-lv")
+        self.assertContains(resposta, "vfat")
+
     def test_dashboard_mostra_resync_do_mdstat(self):
         self.fake.storage_overview.return_value["raid"] = {
             "mdstat": "md0 : active raid1\n      [==>..]  resync = 32.0%",

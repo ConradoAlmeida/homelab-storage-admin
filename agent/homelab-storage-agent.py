@@ -398,6 +398,83 @@ def _collect_mounts(device: dict) -> list[str]:
     return mounts
 
 
+def _subtree_has_mount(node: dict) -> bool:
+    if any(m for m in (node.get("mountpoints") or []) if m):
+        return True
+    for child in node.get("children") or []:
+        if _subtree_has_mount(child):
+            return True
+    return False
+
+
+def _disk_parts(device: dict) -> list[dict]:
+    """Achata a arvore lsblk do disco em fatias para o dashboard."""
+    parts: list[dict] = []
+
+    def walk(node: dict) -> None:
+        mounts = [m for m in (node.get("mountpoints") or []) if m]
+        fstype = (node.get("fstype") or "").strip()
+        children = node.get("children") or []
+        include = False
+        if mounts:
+            include = True
+        elif fstype:
+            if fstype == "LVM2_member" and _subtree_has_mount(node):
+                include = False
+            elif fstype == "linux_raid_member":
+                include = True
+            elif not _subtree_has_mount(node):
+                include = True
+        if include:
+            parts.append(
+                {
+                    "name": node.get("name") or "",
+                    "size": node.get("size"),
+                    "fstype": fstype,
+                    "mounts": mounts,
+                    "usage": None,
+                }
+            )
+        for child in children:
+            walk(child)
+
+    for child in device.get("children") or []:
+        walk(child)
+    return parts
+
+
+def _mount_usage(mount: str) -> dict | None:
+    if not os.path.ismount(mount) and mount != "/":
+        return None
+    try:
+        usage = shutil.disk_usage(mount)
+    except OSError:
+        return None
+    percent = round(usage.used / usage.total * 100, 1) if usage.total else 0
+    return {
+        "mount": mount,
+        "total": usage.total,
+        "used": usage.used,
+        "free": usage.free,
+        "percent": percent,
+    }
+
+
+def _parts_usage_now(parts: list[dict]) -> list[dict]:
+    enriched: list[dict] = []
+    for part in parts:
+        row = dict(part)
+        usages: list[dict] = []
+        for mount in part.get("mounts") or []:
+            usage = _mount_usage(mount)
+            if usage:
+                usages.append(usage)
+        row["usages"] = usages
+        row["usage"] = usages[0] if len(usages) == 1 else None
+        enriched.append(row)
+    return enriched
+
+
 def _system_info() -> dict:
     zones = []
     for zone in sorted(Path("/sys/class/thermal").glob("thermal_zone*")):
@@ -523,6 +600,7 @@ def _collect_storage_overview() -> dict:
                 "tran": device.get("tran"),
                 "fstype": device.get("fstype"),
                 "mounts": _collect_mounts(device),
+                "parts": _disk_parts(device),
                 "state": state,
                 "smart": smart,
             }
@@ -596,6 +674,8 @@ def op_storage_overview(force=False, **_):
             data["cache_age_seconds"] = age
             data["stale"] = age > STORAGE_CACHE_MAX_AGE
     data["raid"] = _raid_now()
+    for disk in data.get("disks", []):
+        disk["parts"] = _parts_usage_now(disk.get("parts") or [])
     return data
 
 

@@ -134,7 +134,8 @@ A coleta de **discos/SMART/Btrfs** é **diária**
 `/storage/` não executam `smartctl` no request. O botão **Atualizar agora**
 força uma coleta. Disco em standby não é acordado. O `/proc/mdstat` é relido
 em toda abertura dessas páginas, então o percentual do resync não espera o
-ciclo diário.
+ciclo diário. No dashboard, o uso de cada partição montada é relido na hora
+(`shutil.disk_usage`); a árvore de fatias vem do cache diário.
 
 As métricas de **hardware do Pi** (CPU %, temperatura da CPU, load, RAM e fans)
 têm um endpoint próprio, `/metrics/live/`, consultado a cada 1 s pelo
