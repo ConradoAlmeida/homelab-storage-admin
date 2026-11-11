@@ -1572,8 +1572,10 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "midia")
         self.assertContains(resposta, "person-card")
         self.assertContains(resposta, "Ana")
-        self.assertContains(resposta, "Senha")
+        self.assertContains(resposta, 'title="Senha"')
+        self.assertContains(resposta, "btn icon-only danger")
         self.assertContains(resposta, "share-row")
+        self.assertContains(resposta, "person-actions")
         self.assertNotContains(resposta, "status ok")
         self.assertNotContains(resposta, ">ativo<")
         self.assertContains(
@@ -1583,6 +1585,59 @@ class ViewSmokeTests(TestCase):
         self.assertNotContains(resposta, "<th>Nome</th>")
         self.assertNotContains(resposta, "<th>Status</th>")
         self.assertNotContains(resposta, 'class="chip"')
+
+    def test_usuarios_cartao_limita_chips_de_share(self):
+        share = [f"grupo{i}" for i in range(22)]
+        self.fake.list_users.return_value = [
+            {
+                "username": "conrado",
+                "fullname": "Conrado Almeida com nome longo",
+                "groups": share + ["sudo", "docker"],
+                "enabled": True,
+            }
+        ]
+        self.fake.list_groups.return_value = share + ["conrado", "sudo", "docker"]
+        resposta = self.client.get("/usuarios/")
+        self.assertContains(resposta, "tag-more")
+        self.assertContains(resposta, ">+20<")
+        self.assertContains(resposta, "grupo0")
+        self.assertContains(resposta, "grupo1")
+        html = resposta.content.decode()
+        inicio = html.index('class="chip-list person-share-chips"')
+        fim = html.index("person-card-spacer", inicio)
+        faixa = html[inicio:fim]
+        self.assertNotIn(">grupo2<", faixa)
+
+    @patch(
+        "core.middleware.sessao",
+        return_value={"ok": True, "ativo": True, "autorizado": True},
+    )
+    @override_settings(
+        CREDENTIALS_MANAGE_USERS=True,
+        CREDENTIALS_URL="http://credenciais",
+        CREDENTIALS_API_TOKEN="segredo",
+    )
+    def test_usuarios_moya_mostra_acoes_no_credenciais(self, _sessao):
+        self.fake.list_users.return_value = [
+            {
+                "username": "barbara.luz",
+                "fullname": "",
+                "groups": ["barbara.luz", "veronte"],
+                "enabled": True,
+            }
+        ]
+        self.fake.list_groups.return_value = ["barbara.luz", "veronte"]
+        resposta = self.client.get("/usuarios/")
+        self.assertContains(resposta, "person-actions")
+        self.assertContains(
+            resposta,
+            'href="http://credenciais/usuarios/senha/?username=barbara.luz"',
+        )
+        self.assertContains(
+            resposta,
+            'href="http://credenciais/usuarios/grupos/?username=barbara.luz"',
+        )
+        self.assertNotContains(resposta, 'action="/usuarios/toggle/"')
 
     def test_discos_omite_uso_e_dump_do_dashboard(self):
         capacidades = dict(self.fake.host_capabilities.return_value)

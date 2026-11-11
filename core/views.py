@@ -10,6 +10,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 
 from .agent import AgentError, agent
+from .credenciais import urls_usuario
 from .forms import (
     GroupCreateForm,
     GroupsForm,
@@ -353,6 +354,9 @@ class ShareSizesView(AgentView):
 
 
 # Grupos de sistema (GID baixo ou nomes reservados do Linux). Não são share.
+_CHIPS_SHARE_VISIVEIS = 2
+
+
 _GRUPOS_SISTEMA = frozenset(
     {
         "adm",
@@ -431,14 +435,26 @@ def _pessoas_e_grupos(users, nomes):
                 share.append(grupo)
             if grupo in membros:
                 membros[grupo].append(item["username"])
-        pessoas.append(
-            {
-                **item,
-                "share_groups": share,
-                "system_groups": sistema,
-                "initial": (item.get("username") or "?")[:1].upper(),
-            }
-        )
+        visivel = share[:_CHIPS_SHARE_VISIVEIS]
+        extra = len(share) - len(visivel)
+        registro = {
+            **item,
+            "share_groups": share,
+            "share_groups_visible": visivel,
+            "share_groups_extra": extra,
+            "system_groups": sistema,
+            "initial": (item.get("username") or "?")[:1].upper(),
+        }
+        if settings.CREDENTIALS_MANAGE_USERS:
+            links = urls_usuario(item["username"])
+            registro.update(
+                {
+                    "credenciais_senha": links.get("senha", ""),
+                    "credenciais_grupos": links.get("grupos", ""),
+                    "credenciais_conta": links.get("conta", ""),
+                }
+            )
+        pessoas.append(registro)
 
     def pacote(lista, sistema):
         return [
