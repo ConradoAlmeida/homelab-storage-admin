@@ -8,8 +8,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `d25e98d` (2026-11-10; mdstat relido no dashboard) |
-| Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`). O Pi segue no deploy de 04/11 |
+| Versão no moya | `b3549ff` (2026-11-10; uso de cada fatia no dashboard) |
+| Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`; uso por fatia). O Pi segue no deploy de 04/11 |
 | Testes | `278 passed` no Linux; lab na VM `5 passed` (2026-11-03) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
