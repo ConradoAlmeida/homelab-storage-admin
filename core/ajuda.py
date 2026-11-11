@@ -68,7 +68,8 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "RAID e volumes",
                 "text": (
-                    "Exibe o estado dos arrays e volumes. Membro degradado ou "
+                    "Exibe o estado dos arrays e volumes. O andamento do espelho "
+                    "é relido ao abrir o dashboard. Membro degradado ou "
                     "ausente deve ser resolvido antes de gravar novos dados."
                 ),
             },

@@ -490,6 +490,15 @@ def _md_details(mdstat: str) -> str:
     return "\n\n".join(details)
 
 
+def _raid_now() -> dict:
+    """Lê o andamento do array. Não passa pelo cache diário de SMART."""
+    try:
+        mdstat = Path("/proc/mdstat").read_text()
+    except OSError:
+        mdstat = ""
+    return {"mdstat": mdstat, "detail": _md_details(mdstat)}
+
+
 def _collect_storage_overview() -> dict:
     raw = run(
         ["lsblk", "-J", "-o", "NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL,SERIAL,TRAN"]
@@ -519,12 +528,7 @@ def _collect_storage_overview() -> dict:
             }
         )
 
-    raid = {}
-    try:
-        raid["mdstat"] = Path("/proc/mdstat").read_text()
-    except OSError:
-        raid["mdstat"] = ""
-    raid["detail"] = _md_details(raid["mdstat"])
+    raid = _raid_now()
 
     btrfs = {}
     if shutil.which("btrfs"):
@@ -582,13 +586,16 @@ def _refresh_storage_cache() -> dict:
 
 def op_storage_overview(force=False, **_):
     if force:
-        return _refresh_storage_cache()
-    data = _load_storage_cache()
-    if data is None:
-        return _refresh_storage_cache()
-    age = max(0, int(time.time() - float(data.get("collected_ts") or 0)))
-    data["cache_age_seconds"] = age
-    data["stale"] = age > STORAGE_CACHE_MAX_AGE
+        data = _refresh_storage_cache()
+    else:
+        data = _load_storage_cache()
+        if data is None:
+            data = _refresh_storage_cache()
+        else:
+            age = max(0, int(time.time() - float(data.get("collected_ts") or 0)))
+            data["cache_age_seconds"] = age
+            data["stale"] = age > STORAGE_CACHE_MAX_AGE
+    data["raid"] = _raid_now()
     return data
 
 

@@ -169,6 +169,8 @@ class DashboardView(AgentTemplateView):
         mdstat = (storage.get("raid") or {}).get("mdstat", "")
         if "[U_]" in mdstat or "[_U]" in mdstat:
             context["raid_status"] = "degradado"
+        elif "resync" in mdstat or "recovery" in mdstat:
+            context["raid_status"] = "sincronizando"
         elif "[UU]" in mdstat:
             context["raid_status"] = "ok"
         context["storage"] = storage

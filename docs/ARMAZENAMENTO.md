@@ -129,10 +129,12 @@ caminho; qualquer escrita continua no agente root.
 - temperatura **somente se o disco já estiver ativo**;
 - RAID (`/proc/mdstat`, `mdadm --detail`) e Btrfs (usage, device stats, scrub).
 
-A coleta de **discos/SMART/RAID/Btrfs** é **diária**
+A coleta de **discos/SMART/Btrfs** é **diária**
 (`homelab-storage-metrics.timer`, 06:00) e fica em cache; o dashboard e
 `/storage/` não executam `smartctl` no request. O botão **Atualizar agora**
-força uma coleta. Disco em standby não é acordado.
+força uma coleta. Disco em standby não é acordado. O `/proc/mdstat` é relido
+em toda abertura dessas páginas, então o percentual do resync não espera o
+ciclo diário.
 
 As métricas de **hardware do Pi** (CPU %, temperatura da CPU, load, RAM e fans)
 têm um endpoint próprio, `/metrics/live/`, consultado a cada 1 s pelo

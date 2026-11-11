@@ -63,7 +63,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   própria conta. Sem token, o botão é Criar token. O mesmo registro aparece
   em `/admin`. Quem acompanha o término do arquivo faz isso pelo SMB, na pasta da
   biblioteca: stat remoto e comparação de tamanho, o mesmo critério dos transfers.
-- Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo.
+- Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo. O `/proc/mdstat`
+  é relido ao abrir o dashboard; o SMART continua na coleta diária.
 - Backups:
   - ações longas (disco, cópia fria, restore, verificação, Gitea, backup local
     e snapshot) só disparam: o agente grava o status e a página consulta até

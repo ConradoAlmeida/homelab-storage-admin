@@ -25,6 +25,26 @@ def test_storage_overview_uses_cache_and_force_refreshes(agent_module, monkeypat
     assert calls == [1, 2]
 
 
+def test_mdstat_e_relido_mesmo_com_cache_de_disco(agent_module, monkeypatch):
+    agent = agent_module
+    leituras = []
+
+    def collect():
+        return {"disks": [{"name": "sda"}], "raid": {"mdstat": "velho", "detail": ""}}
+
+    def raid_now():
+        leituras.append(1)
+        return {"mdstat": "resync = 32.0%", "detail": ""}
+
+    monkeypatch.setattr(agent, "_collect_storage_overview", collect)
+    monkeypatch.setattr(agent, "_raid_now", raid_now)
+    agent.op_storage_overview()
+    segunda = agent.op_storage_overview()
+    assert segunda["disks"] == [{"name": "sda"}]
+    assert segunda["raid"]["mdstat"] == "resync = 32.0%"
+    assert len(leituras) == 2
+
+
 def test_refresh_storage_bypasses_cache(agent_module, monkeypatch):
     agent = agent_module
     calls = []

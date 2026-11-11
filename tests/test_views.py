@@ -181,6 +181,15 @@ class ViewSmokeTests(TestCase):
         context_processors._cached_caps = None
         context_processors._cached_at = 0.0
 
+    def test_dashboard_mostra_resync_do_mdstat(self):
+        self.fake.storage_overview.return_value["raid"] = {
+            "mdstat": "md0 : active raid1\n      [==>..]  resync = 32.0%",
+            "detail": "",
+        }
+        resposta = self.client.get("/")
+        self.assertContains(resposta, "resync = 32.0%")
+        self.assertContains(resposta, "RAID sincronizando")
+
     def test_dashboard_renders_without_optional_capabilities(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
