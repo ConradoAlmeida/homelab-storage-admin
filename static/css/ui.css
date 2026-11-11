@@ -1198,7 +1198,7 @@ a.btn:hover,
 .row-actions .btn.danger,
 .group-strip .btn.danger {
   background: transparent;
-  border-color: rgba(255, 107, 138, 0.45);
+  border: 1px solid rgba(255, 107, 138, 0.45);
   color: var(--err);
   box-shadow: none;
 }
@@ -1610,4 +1610,306 @@ textarea:focus {
   background: transparent;
   color: #ffffff;
   box-shadow: none;
+}
+
+/* Moya: o roxo da sidebar vira o ciano da marca (#3ceef8). O homelab fica roxo. */
+body.brand-moya .side-nav .nav-section {
+  color: #3ceef8;
+}
+body.brand-moya .side-nav a.active {
+  background: rgba(60, 238, 248, 0.16);
+}
+body.brand-moya .side-nav a.active .ico {
+  color: #3ceef8;
+}
+body.brand-moya .side-nav .count {
+  color: #3ceef8;
+  border-color: rgba(60, 238, 248, 0.45);
+}
+body.brand-moya .side-nav a.active .count {
+  color: #e7fdff;
+  background: rgba(60, 238, 248, 0.22);
+  border-color: rgba(60, 238, 248, 0.55);
+}
+
+/* Usuários: cartões densos e grupos ao lado. */
+.users-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 18px;
+  align-items: start;
+}
+.users-board .section { margin-top: 0; }
+.person-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 240px);
+  justify-content: start;
+  align-items: stretch;
+  gap: 10px;
+}
+.person-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 240px;
+  height: 118px;
+  min-width: 240px;
+  max-width: 240px;
+  overflow: hidden;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.person-card:has(.person-actions) {
+  height: 168px;
+}
+.avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  background: var(--acc-soft);
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 700;
+}
+.avatar-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.person-card .person-id { flex: 1; min-width: 0; overflow: hidden; }
+.person-card .person-id-head { flex-wrap: nowrap; min-width: 0; }
+.person-card .person-id-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.person-card .person-id-head .status { flex: 0 0 auto; }
+.person-card .person-fullname {
+  height: 16px;
+  min-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.person-card .chip-list {
+  flex-wrap: nowrap;
+  align-items: center;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.person-card .chip-list .tag {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.person-card .person-sys { height: 18px; min-height: 18px; overflow: hidden; }
+.person-card:has(.sys-fold[open]) { overflow: visible; z-index: 3; }
+.person-card .sys-fold[open] > .chip-list {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  height: auto;
+  max-height: none;
+  flex-wrap: wrap;
+  overflow: visible;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.person-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin-top: 8px;
+}
+.tag.sys {
+  color: var(--muted);
+  background: transparent;
+  font-size: 11px;
+}
+.sys-fold { margin-top: 6px; }
+.sys-fold > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.sys-fold > summary::-webkit-details-marker { display: none; }
+.sys-fold > summary::marker { content: ""; }
+.sys-fold-block { margin-top: 14px; }
+.share-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.share-row.is-system { background: transparent; }
+.share-id { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.share-id .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn.icon-only {
+  width: var(--control-h);
+  padding: 0;
+}
+
+/* Ações de tabela: slots fixos e menu que não empurra a linha. */
+.file-table td.file-actions {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  min-width: max-content;
+  background: var(--panel);
+}
+.file-table tbody tr:hover td.file-actions {
+  background: #162033;
+}
+.row-actions.slots {
+  display: grid;
+  grid-template-columns: 84px 92px 116px;
+  align-items: center;
+  justify-content: end;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 308px;
+  min-width: 308px;
+}
+.row-actions.slots > .btn,
+.row-actions.slots > form,
+.row-actions.slots > form .btn {
+  width: 100%;
+  max-width: 100%;
+}
+.row-actions.slots .slot-note {
+  grid-column: 2 / span 2;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.slot-note .ico,
+.action-menu .ico {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.port-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  width: 250px;
+  max-width: 250px;
+  overflow: hidden;
+}
+.port-chips .tag {
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.action-menu,
+.restore-details {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.action-menu > summary,
+.restore-details > summary {
+  list-style: none;
+}
+.action-menu > summary::-webkit-details-marker,
+.restore-details > summary::-webkit-details-marker { display: none; }
+.action-menu > summary::marker,
+.restore-details > summary::marker { content: ""; }
+.action-menu > summary::before,
+.restore-details > summary::before { content: none; }
+.action-menu-panel,
+.restore-details .restore-form {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(320px, 72vw);
+  margin: 0;
+  white-space: normal;
+  text-align: left;
+}
+.action-menu-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  box-shadow: var(--shadow);
+}
+.action-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.action-menu-row input { flex: 1; min-width: 0; }
+.table-wrap:has(details[open]) { overflow: visible; }
+
+@media (max-width: 900px) {
+  .users-board { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .person-grid { grid-template-columns: 1fr; }
+  .person-card,
+  .person-card:has(.person-actions) {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+}
+@media (max-width: 720px) {
+  .row-actions.slots { justify-content: start; }
 }

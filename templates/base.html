@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{% static 'css/kit.css' %}">
   {% include "partials/brand_icons.html" %}
 </head>
-<body>
+<body{% if not brand_homelab %} class="brand-moya"{% endif %}>
   <a class="skip" href="#main">Ir para o conteúdo</a>
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">

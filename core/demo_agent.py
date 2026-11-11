@@ -202,26 +202,90 @@ def _dados(op: str, payload: dict):
     if op == "list_users":
         return [
             {
+                "username": "barbara.luz",
+                "fullname": "",
+                "groups": ["barbara.luz"],
+                "enabled": True,
+            },
+            {
+                "username": "barbetta",
+                "fullname": "",
+                "groups": ["barbetta", "veronte"],
+                "enabled": True,
+            },
+            {
                 "username": "conrado",
                 "fullname": "Conrado",
-                "groups": ["midia", "engenharia"],
+                "groups": [
+                    "adm",
+                    "cdrom",
+                    "conrado",
+                    "dip",
+                    "docker",
+                    "drawings",
+                    "impressao3d",
+                    "kicad",
+                    "lxd",
+                    "plugdev",
+                    "sudo",
+                    "veronte",
+                ],
                 "enabled": True,
             },
             {
-                "username": "ana",
-                "fullname": "Ana",
-                "groups": ["midia"],
-                "enabled": True,
-            },
-            {
-                "username": "visita",
+                "username": "joao",
                 "fullname": "",
-                "groups": [],
-                "enabled": False,
+                "groups": ["cnc", "joao"],
+                "enabled": True,
+            },
+            {
+                "username": "lucas",
+                "fullname": "",
+                "groups": ["lucas", "veronte"],
+                "enabled": True,
+            },
+            {
+                "username": "renato",
+                "fullname": "",
+                "groups": ["cnc", "renato"],
+                "enabled": True,
+            },
+            {
+                "username": "rubens",
+                "fullname": "",
+                "groups": ["drawings", "impressao3d", "kicad", "rubens", "veronte"],
+                "enabled": True,
+            },
+            {
+                "username": "rubens.godoi",
+                "fullname": "",
+                "groups": [
+                    "drawings",
+                    "impressao3d",
+                    "kicad",
+                    "rubens.godoi",
+                    "veronte",
+                ],
+                "enabled": True,
             },
         ]
     if op == "list_groups":
-        return ["conrado", "ana", "visita", "midia", "engenharia", "backup"]
+        return [
+            "barbara.luz",
+            "barbetta",
+            "cnc",
+            "conrado",
+            "drawings",
+            "impressao3d",
+            "joao",
+            "kicad",
+            "lucas",
+            "nogroup",
+            "renato",
+            "rubens",
+            "rubens.godoi",
+            "veronte",
+        ]
     if op in {"list_shares", "share_sizes"}:
         shares = [
             {
@@ -428,7 +492,25 @@ def _dados(op: str, payload: dict):
                     "restart_count": 0,
                     "project": "infra",
                     "service": "caddy",
-                    "ports": ["0.0.0.0:80->80/tcp", "0.0.0.0:443->443/tcp"],
+                    "ports": [
+                        "0.0.0.0:80->80/tcp",
+                        "0.0.0.0:443->443/tcp",
+                        "0.0.0.0:2019->2019/tcp",
+                        "127.0.0.1:8080->8080/tcp",
+                    ],
+                },
+                {
+                    "name": "homelab-storage-admin",
+                    "id": "aa11bb22cc33",
+                    "image": "homelab-storage-admin:local",
+                    "state": "running",
+                    "status": "Up 2 hours",
+                    "running": True,
+                    "health": "healthy",
+                    "restart_count": 0,
+                    "project": "homelab",
+                    "service": "web",
+                    "ports": ["127.0.0.1:8060->8060/tcp"],
                 },
                 {
                     "name": "pihole",
@@ -596,16 +678,28 @@ def _dados(op: str, payload: dict):
         return {
             "units": [
                 {
-                    "unit": "homelab-storage-agent.service",
+                    "unit": "apparmor.service",
                     "load": "loaded",
                     "active": "active",
-                    "sub": "running",
+                    "sub": "exited",
+                },
+                {
+                    "unit": "apport-autoreport.service",
+                    "load": "loaded",
+                    "active": "inactive",
+                    "sub": "dead",
+                },
+                {
+                    "unit": "apport.service",
+                    "load": "loaded",
+                    "active": "active",
+                    "sub": "exited",
                 },
                 {
                     "unit": "smbd.service",
                     "load": "loaded",
-                    "active": "active",
-                    "sub": "running",
+                    "active": "failed",
+                    "sub": "failed",
                 },
             ]
         }

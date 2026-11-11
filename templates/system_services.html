@@ -31,50 +31,62 @@
           {% for u in units %}
             <tr>
               <td class="mono text-12">{{ u.unit }}</td>
-              <td>{{ u.active }}</td>
+              <td>
+                {% if u.active == "active" %}<span class="status ok">active</span>
+                {% elif u.active == "failed" %}<span class="status off">failed</span>
+                {% else %}<span class="status">{{ u.active|default:"inactive" }}</span>{% endif %}
+              </td>
               <td>{{ u.sub }}</td>
-              <td><a class="btn small" href="{% url 'system_logs' %}?filtro=servico&amp;unit={{ u.unit|urlencode }}">Abrir log</a></td>
+              <td><a class="btn" href="{% url 'system_logs' %}?filtro=servico&amp;unit={{ u.unit|urlencode }}">Abrir log</a></td>
               {% if pode_agir %}
               <td class="file-actions">
-                <form method="post" action="{% url 'system_service_action' %}" class="form-inline">
-                  {% csrf_token %}
-                  <input type="hidden" name="unit" value="{{ u.unit }}">
-                  <input type="hidden" name="action" value="start">
-                  <button class="btn small" type="submit">Iniciar</button>
-                </form>
-                <form method="post" action="{% url 'system_service_action' %}" class="form-inline">
-                  {% csrf_token %}
-                  <input type="hidden" name="unit" value="{{ u.unit }}">
-                  <input type="hidden" name="action" value="enable">
-                  <button class="btn small" type="submit">Habilitar</button>
-                </form>
-                <details class="card details-inline">
-                  <summary class="btn small">Parar / reiniciar / desabilitar</summary>
-                  <div class="card stack-tight">
-                    <p class="muted text-12">Confirme digitando o nome completo da unit: <code class="mono">{{ u.unit }}</code></p>
-                    <form method="post" action="{% url 'system_service_action' %}">
-                      {% csrf_token %}
-                      <input type="hidden" name="unit" value="{{ u.unit }}">
-                      <input type="hidden" name="action" value="stop">
-                      <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off">
-                      <button class="btn danger small" type="submit">Parar</button>
-                    </form>
-                    <form method="post" action="{% url 'system_service_action' %}">
-                      {% csrf_token %}
-                      <input type="hidden" name="unit" value="{{ u.unit }}">
-                      <input type="hidden" name="action" value="restart">
-                      <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off">
-                      <button class="btn small" type="submit">Reiniciar</button>
-                    </form>
-                    <form method="post" action="{% url 'system_service_action' %}">
-                      {% csrf_token %}
-                      <input type="hidden" name="unit" value="{{ u.unit }}">
-                      <input type="hidden" name="action" value="disable">
-                      <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off">
-                      <button class="btn danger small" type="submit">Desabilitar</button>
-                    </form>
-                  </div>
-                </details>
+                <div class="row-actions">
+                  <form method="post" action="{% url 'system_service_action' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="unit" value="{{ u.unit }}">
+                    <input type="hidden" name="action" value="start">
+                    <button class="btn" type="submit">Iniciar</button>
+                  </form>
+                  <form method="post" action="{% url 'system_service_action' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="unit" value="{{ u.unit }}">
+                    <input type="hidden" name="action" value="enable">
+                    <button class="btn" type="submit">Habilitar</button>
+                  </form>
+                  <details class="action-menu">
+                    <summary class="btn">{% include "partials/icon.html" with name="more" %}Avançado</summary>
+                    <div class="action-menu-panel">
+                      <p class="muted text-12">Digite <span class="mono">{{ u.unit }}</span> para confirmar.</p>
+                      <form method="post" action="{% url 'system_service_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="unit" value="{{ u.unit }}">
+                        <input type="hidden" name="action" value="stop">
+                        <div class="action-menu-row">
+                          <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off" required>
+                          <button class="btn danger" type="submit">Parar</button>
+                        </div>
+                      </form>
+                      <form method="post" action="{% url 'system_service_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="unit" value="{{ u.unit }}">
+                        <input type="hidden" name="action" value="restart">
+                        <div class="action-menu-row">
+                          <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off" required>
+                          <button class="btn" type="submit">Reiniciar</button>
+                        </div>
+                      </form>
+                      <form method="post" action="{% url 'system_service_action' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="unit" value="{{ u.unit }}">
+                        <input type="hidden" name="action" value="disable">
+                        <div class="action-menu-row">
+                          <input class="input mono" type="text" name="confirmation" placeholder="{{ u.unit }}" autocomplete="off" required>
+                          <button class="btn danger" type="submit">Desabilitar</button>
+                        </div>
+                      </form>
+                    </div>
+                  </details>
+                </div>
               </td>
               {% endif %}
             </tr>
