@@ -1576,3 +1576,38 @@ textarea:focus {
   border-radius: var(--radius-sm);
   border-color: var(--line-strong);
 }
+
+/* O menu lateral fica com o visual da main. Tokens novos não entram aqui. */
+.sidebar .brand:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+.sidebar a:focus-visible,
+.sidebar .btn:focus-visible {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.sidebar .btn,
+.sidebar .btn.small {
+  height: auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #363a4a;
+  background: transparent;
+  color: #ffffff;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+.sidebar .btn:hover,
+.sidebar .btn.small:hover {
+  border-color: #4a9eff;
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}

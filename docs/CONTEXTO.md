@@ -40,7 +40,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Controles (botão, badge, tabela, foco) saem dos tokens em
   `static/css/app.css`. Ação de linha é um grupo horizontal de 34px:
   primário ciano, secundário com borda, perigo só contorno. Badge de estado
-  leva ponto colorido.
+  leva ponto colorido. O menu lateral permanece o original (roxo no item
+  ativo, seções e Sair); os tokens novos não entram nele.
 - No host com Jellyfin, a página Torrents envia um link magnético para uma
   biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o
   handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do
