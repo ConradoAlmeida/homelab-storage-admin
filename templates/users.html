@@ -34,21 +34,23 @@
         <span class="avatar" aria-hidden="true">{{ u.initial }}{% if u.enabled %}<i class="avatar-dot"></i>{% endif %}</span>
         <div class="person-id">
           <div class="person-id-head">
-            <strong>{{ u.username }}</strong>
+            <strong title="{{ u.username }}">{{ u.username }}</strong>
             {% if not u.enabled %}<span class="status off">desativado</span>{% endif %}
           </div>
-          {% if u.fullname %}<div class="muted text-12">{{ u.fullname }}</div>{% endif %}
-          <div class="chip-list">
-            {% for g in u.share_groups %}<span class="tag">{{ g }}</span>{% empty %}<span class="muted text-12">sem share</span>{% endfor %}
+          <div class="muted text-12 person-fullname" title="{{ u.fullname }}">{{ u.fullname }}</div>
+          <div class="chip-list" title="{{ u.share_groups|join:', ' }}">
+            {% for g in u.share_groups %}<span class="tag" title="{{ g }}">{{ g }}</span>{% empty %}<span class="muted text-12">sem share</span>{% endfor %}
           </div>
+          <div class="person-sys">
           {% if u.system_groups %}
           <details class="sys-fold">
-            <summary>sistema · {{ u.system_groups|length }}</summary>
+            <summary title="{{ u.system_groups|join:', ' }}">sistema · {{ u.system_groups|length }}</summary>
             <div class="chip-list">
-              {% for g in u.system_groups %}<span class="tag sys">{{ g }}</span>{% endfor %}
+              {% for g in u.system_groups %}<span class="tag sys" title="{{ g }}">{{ g }}</span>{% endfor %}
             </div>
           </details>
           {% endif %}
+          </div>
           {% if not credenciais_gerencia_usuarios %}
           <div class="row-actions person-actions">
             <a class="btn" href="{% url 'user_password' %}?username={{ u.username|urlencode }}">{% include "partials/icon.html" with name="key" %}Senha</a>

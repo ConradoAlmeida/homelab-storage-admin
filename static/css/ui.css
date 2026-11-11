@@ -1622,18 +1622,28 @@ textarea:focus {
 .users-board .section { margin-top: 0; }
 .person-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, 240px);
+  justify-content: start;
+  align-items: stretch;
   gap: 10px;
 }
 .person-card {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  min-width: 0;
+  box-sizing: border-box;
+  width: 240px;
+  height: 118px;
+  min-width: 240px;
+  max-width: 240px;
+  overflow: hidden;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
+}
+.person-card:has(.person-actions) {
+  height: 168px;
 }
 .avatar {
   position: relative;
@@ -1658,8 +1668,55 @@ textarea:focus {
   background: var(--ok);
   box-shadow: 0 0 0 2px var(--panel);
 }
-.person-card .person-id { flex: 1; min-width: 0; }
-.person-card .chip-list { margin-top: 6px; }
+.person-card .person-id { flex: 1; min-width: 0; overflow: hidden; }
+.person-card .person-id-head { flex-wrap: nowrap; min-width: 0; }
+.person-card .person-id-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.person-card .person-id-head .status { flex: 0 0 auto; }
+.person-card .person-fullname {
+  height: 16px;
+  min-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.person-card .chip-list {
+  flex-wrap: nowrap;
+  align-items: center;
+  height: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.person-card .chip-list .tag {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.person-card .person-sys { height: 18px; min-height: 18px; overflow: hidden; }
+.person-card:has(.sys-fold[open]) { overflow: visible; z-index: 3; }
+.person-card .sys-fold[open] > .chip-list {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  height: auto;
+  max-height: none;
+  flex-wrap: wrap;
+  overflow: visible;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
 .person-actions {
   justify-content: flex-start;
   flex-wrap: wrap;
@@ -1823,6 +1880,15 @@ textarea:focus {
 
 @media (max-width: 900px) {
   .users-board { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .person-grid { grid-template-columns: 1fr; }
+  .person-card,
+  .person-card:has(.person-actions) {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
 }
 @media (max-width: 720px) {
   .row-actions.slots { justify-content: start; }
