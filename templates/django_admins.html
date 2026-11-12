@@ -38,89 +38,98 @@
     </p>
   </div>
 
-  <div class="admin-grid">
-    {% for app in apps %}
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <h2>{{ app.label }}</h2>
-          <p class="muted text-12 mono">{{ app.container }}</p>
-        </div>
-        <div class="page-actions">
-          <div class="chip-list">
-            {% if app.running %}
-            <span class="tag ok">no ar</span>
-            {% else %}
-            <span class="tag off">indisponível</span>
-            {% endif %}
-            {% if app.exists %}
-            <span class="tag">admin presente</span>
-            {% else %}
-            <span class="tag off">sem admin</span>
-            {% endif %}
-            {% if app.exists and app.is_superuser and app.usable_password %}
-            <span class="tag ok">senha utilizável</span>
-            {% elif app.exists %}
-            <span class="tag off">senha indisponível</span>
-            {% endif %}
-          </div>
-        </div>
-      </div>
+  <section class="section">
+    <div class="section-head">
+      <h2>Apps Django</h2>
+      <span class="muted text-12">{{ apps|length }} app{{ apps|length|pluralize }}</span>
+    </div>
 
-      {% if app.error %}
-      <p class="muted text-12">{{ app.error }}</p>
-      {% else %}
-      <div class="table-wrap">
-        <table class="file-table">
-          <tbody>
-            <tr><th scope="row">Usuário alvo</th><td class="mono">{{ app.username }}</td></tr>
-            <tr>
-              <th scope="row">Superusers atuais</th>
-              <td>
-                <div class="chip-list">
-                  {% for nome in app.superusers %}
-                  <span class="tag">{{ nome }}</span>
-                  {% empty %}
-                  <span class="muted text-12">nenhum</span>
-                  {% endfor %}
-                </div>
-              </td>
-            </tr>
-            {% if app.last_login %}
-            <tr><th scope="row">Último login</th><td class="muted text-12">{{ app.last_login }}</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-
-      <form method="post" action="{% url 'django_admin_action' %}" class="form-grid">
-        {% csrf_token %}
-        <input type="hidden" name="acao" value="ensure">
-        <input type="hidden" name="app" value="{{ app.app }}">
-        <button class="btn primary" type="submit">
-          {% if app.exists and app.is_superuser and app.usable_password %}Garantir admin{% else %}Criar admin{% endif %}
-        </button>
-      </form>
-
-      {% if app.exists %}
-      <form method="post" action="{% url 'django_admin_action' %}" class="form-grid"
-            data-confirm="Rotacionar a senha de {{ app.username }} em {{ app.label }}? A senha atual deixa de funcionar imediatamente.">
-        {% csrf_token %}
-        <input type="hidden" name="acao" value="rotate">
-        <input type="hidden" name="app" value="{{ app.app }}">
-        <label for="confirm-{{ app.app }}" class="text-12">
-          Digite <span class="mono">{{ app.app }}</span> para confirmar a rotação
-        </label>
-        <input id="confirm-{{ app.app }}" class="input" type="text" name="confirmation"
-               autocomplete="off" placeholder="{{ app.app }}" required>
-        <button class="btn danger" type="submit">Rotacionar senha</button>
-      </form>
-      {% endif %}
-      {% endif %}
-    </section>
-    {% empty %}
-    <div class="card"><p class="muted">Nenhum app Django registrado no agente.</p></div>
-    {% endfor %}
-  </div>
+    <div class="table-wrap">
+      <table class="data-table admin-table">
+        <thead>
+          <tr>
+            <th>App</th>
+            <th>Estado</th>
+            <th>Usuário alvo</th>
+            <th>Superusers atuais</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in apps %}
+          <tr>
+            <td>
+              <strong>{{ app.label }}</strong>
+              <div class="muted mono text-11">{{ app.container }}</div>
+              {% if app.error %}<div class="muted text-11">{{ app.error }}</div>{% endif %}
+            </td>
+            <td>
+              <div class="chip-list">
+                {% if app.running %}
+                <span class="tag ok">no ar</span>
+                {% else %}
+                <span class="tag off">indisponível</span>
+                {% endif %}
+                {% if app.exists %}
+                <span class="tag">admin presente</span>
+                {% else %}
+                <span class="tag off">sem admin</span>
+                {% endif %}
+                {% if app.exists and app.is_superuser and app.usable_password %}
+                <span class="tag ok">senha utilizável</span>
+                {% elif app.exists %}
+                <span class="tag off">senha indisponível</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <span class="mono">{{ app.username }}</span>
+              {% if app.last_login %}
+              <div class="muted text-11">último login {{ app.last_login }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <div class="chip-list">
+                {% for nome in app.superusers %}
+                <span class="tag">{{ nome }}</span>
+                {% empty %}
+                <span class="muted text-12">nenhum</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td>
+              {% if app.running %}
+              <div class="admin-table-actions">
+                <form method="post" action="{% url 'django_admin_action' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="acao" value="ensure">
+                  <input type="hidden" name="app" value="{{ app.app }}">
+                  <button class="btn small primary" type="submit">
+                    {% if app.exists and app.is_superuser and app.usable_password %}Garantir{% else %}Criar{% endif %}
+                  </button>
+                </form>
+                {% if app.exists %}
+                <form method="post" action="{% url 'django_admin_action' %}" class="admin-rotate-inline"
+                      data-confirm="Rotacionar a senha de {{ app.username }} em {{ app.label }}? A senha atual deixa de funcionar imediatamente.">
+                  {% csrf_token %}
+                  <input type="hidden" name="acao" value="rotate">
+                  <input type="hidden" name="app" value="{{ app.app }}">
+                  <input class="input" type="text" name="confirmation" required
+                         autocomplete="off" placeholder="{{ app.app }}"
+                         aria-label="Digite {{ app.app }} para confirmar a rotação">
+                  <button class="btn small danger" type="submit">Rotacionar</button>
+                </form>
+                {% endif %}
+              </div>
+              {% else %}
+              <span class="muted text-12">indisponível</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 {% endif %}
 {% endblock %}
