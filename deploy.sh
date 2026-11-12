@@ -45,9 +45,8 @@ fi
 if [[ ! -f /etc/systemd/system/homelab-storage-agent.service ]] || ! cmp -s agent/homelab-storage-agent.service /etc/systemd/system/homelab-storage-agent.service; then
   NEED_AGENT=1
 fi
-if [[ ! -f /etc/systemd/system/homelab-storage-snapshot.timer ]] || ! cmp -s agent/homelab-storage-snapshot.timer /etc/systemd/system/homelab-storage-snapshot.timer; then
-  NEED_AGENT=1
-fi
+# O timer de snapshots e dinamico: o agente reescreve OnCalendar conforme a
+# agenda salva (1 a 24 copias por dia), entao nao serve para comparar aqui.
 if [[ ! -f /etc/systemd/system/homelab-storage-snapshot.service ]] || ! cmp -s agent/homelab-storage-snapshot.service /etc/systemd/system/homelab-storage-snapshot.service; then
   NEED_AGENT=1
 fi

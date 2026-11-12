@@ -1,5 +1,5 @@
 [Unit]
-Description=Homelab Storage Admin - snapshots dos shares (padrao 2x/dia)
+Description=Homelab Storage Admin - snapshots dos shares (2x/dia)
 
 [Timer]
 OnCalendar=*-*-* 00:05:00
