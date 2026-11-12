@@ -8,8 +8,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `47ce001` (2026-11-12; admins locais dos apps Django) |
-| Último deploy | 12/11/2026, moya (`./deploy.sh` e `install-agent.sh`; `DJANGO_ADMIN_MANAGE=1` no host.env). O Pi segue no deploy de 04/11 |
+| Versão no moya | `e6a2d25` (2026-11-12; menu de serviços no topo e cards de disco) |
+| Último deploy | 12/11/2026, moya (`./deploy.sh`; topo com serviços, admins locais e `DJANGO_ADMIN_MANAGE=1`). O Pi segue no deploy de 04/11 |
 | Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
