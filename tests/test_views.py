@@ -276,6 +276,10 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "/mnt/backup")
         self.assertContains(resposta, "data-lv")
         self.assertContains(resposta, "vfat")
+        self.assertContains(resposta, "disk-mount-compact")
+        self.assertContains(resposta, 'data-disk-toggle="sda"')
+        self.assertContains(resposta, "2 partições · 2 montagens")
+        self.assertContains(resposta, "disk-parts-subtable")
 
     def test_dashboard_mostra_resync_do_mdstat(self):
         self.fake.storage_overview.return_value["raid"] = {

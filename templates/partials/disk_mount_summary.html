@@ -1,0 +1,19 @@
+<div class="disk-mount-compact">
+  <div class="disk-mount-line">
+    {% if mount_display.raid_chip %}
+      <span class="tag ok disk-raid-chip">{{ mount_display.raid_label }}</span>
+    {% elif mount_display.summary %}
+      <span class="disk-mount-summary muted text-12">{{ mount_display.summary }}</span>
+    {% else %}
+      <span class="muted text-12">sem montagem</span>
+    {% endif %}
+  </div>
+  {% with u=mount_display.usage %}
+    {% if u %}
+      <div class="disk-mount-bar-block">
+        <span class="disk-mount-pct muted text-11">{{ u.percent }}% usado</span>
+        <progress class="bar disk-mount-bar {% if u.percent >= 90 %}err{% elif u.percent >= 75 %}warn{% endif %}" value="{{ u.percent }}" max="100"></progress>
+      </div>
+    {% endif %}
+  {% endwith %}
+</div>
