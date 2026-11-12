@@ -8,7 +8,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `a9e8121` (2026-11-12; admins locais em tabela e menu de serviços) |
+| Versão no moya | `b7fceeb` (2026-11-12; containers com todas as portas e admins em tabela) |
 | Último deploy | 12/11/2026, moya (`./deploy.sh`; topo com serviços, admins locais e `DJANGO_ADMIN_MANAGE=1`). O Pi segue no deploy de 04/11 |
 | Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
@@ -107,8 +107,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   por padrão e aberto só com senha sudo da conta Linux. Ver [SISTEMA.md](SISTEMA.md).
 - Card **Saúde** no Dashboard: discos, backups, containers e pendências.
 - **Containers** (`/containers/`): Docker ou Podman, estado, portas, iniciar,
-  parar, reiniciar e logs; sem remover nem executar comandos. O container do
-  painel é protegido contra parada/reinício pela própria UI.
+  parar, reiniciar e logs; sem remover nem executar comandos. Todas as portas
+  aparecem em chips com quebra de linha; a tabela tem colunas fixas para não
+  esconder conteúdo sob as ações. O container do painel é protegido contra
+  parada/reinício pela própria UI.
 - Login pelo Credenciais no moya, com `CREDENTIALS_MANAGE_USERS=1` e
   break-glass local. No Pi, sem `CREDENTIALS_URL`, o login é local.
 - Textos, ajuda e rotas de Gitea, backup local de arquivos e gestão pelo
