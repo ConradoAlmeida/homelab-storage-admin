@@ -6764,20 +6764,27 @@ _DJANGO_ADMIN_STATUS_CODE = r"""
 import json
 import os
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 U = get_user_model()
 name = os.environ["DJANGO_ADMIN_USER"]
 user = U.objects.filter(username=name).first()
-def iso(value):
-    return value.strftime("%Y-%m-%d %H:%M") if value else None
+def stamp(value):
+    if not value:
+        return None
+    try:
+        value = timezone.localtime(value)
+    except (ValueError, AttributeError):
+        pass
+    return value.strftime("%Y-%m-%d %H:%M")
 data = {
     "exists": bool(user),
     "is_superuser": bool(user and user.is_superuser),
     "is_staff": bool(user and user.is_staff),
     "is_active": bool(user and user.is_active),
     "usable_password": bool(user and user.has_usable_password()),
-    "last_login": iso(user.last_login) if user else None,
-    "date_joined": iso(user.date_joined) if user else None,
+    "last_login": stamp(user.last_login) if user else None,
+    "date_joined": stamp(user.date_joined) if user else None,
     "superusers": list(
         U.objects.filter(is_superuser=True).order_by("username").values_list(
             "username", flat=True
