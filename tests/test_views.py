@@ -192,6 +192,34 @@ class ViewSmokeTests(TestCase):
         context_processors._cached_caps = None
         context_processors._cached_at = 0.0
 
+    @override_settings(
+        CREDENTIALS_MANAGE_USERS=True,
+        CREDENTIALS_URL="http://credenciais",
+        CREDENTIALS_API_TOKEN="segredo",
+    )
+    def test_moya_esconde_link_usuarios(self):
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@moya.local", "x"
+        )
+        self.client.force_login(admin)
+        resposta = self.client.get("/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertNotContains(resposta, 'href="/usuarios/"')
+
+    @override_settings(
+        CREDENTIALS_MANAGE_USERS=False,
+        CREDENTIALS_URL="http://credenciais",
+        CREDENTIALS_API_TOKEN="segredo",
+    )
+    def test_pi_mostra_link_usuarios(self):
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@moya.local", "x"
+        )
+        self.client.force_login(admin)
+        resposta = self.client.get("/")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'href="/usuarios/"')
+
     def test_dashboard_mostra_uso_por_fatia(self):
         self.fake.storage_overview.return_value = {
             "collected_at": "2026-11-10T06:00:00",
@@ -1626,36 +1654,18 @@ class ViewSmokeTests(TestCase):
         faixa = html[inicio:fim]
         self.assertNotIn(">grupo2<", faixa)
 
-    @patch(
-        "core.middleware.sessao",
-        return_value={"ok": True, "ativo": True, "autorizado": True},
-    )
     @override_settings(
         CREDENTIALS_MANAGE_USERS=True,
         CREDENTIALS_URL="http://credenciais",
         CREDENTIALS_API_TOKEN="segredo",
     )
-    def test_usuarios_moya_mostra_acoes_no_credenciais(self, _sessao):
-        self.fake.list_users.return_value = [
-            {
-                "username": "barbara.luz",
-                "fullname": "",
-                "groups": ["barbara.luz", "veronte"],
-                "enabled": True,
-            }
-        ]
-        self.fake.list_groups.return_value = ["barbara.luz", "veronte"]
+    def test_usuarios_moya_esta_bloqueado(self):
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@moya.local", "x"
+        )
+        self.client.force_login(admin)
         resposta = self.client.get("/usuarios/")
-        self.assertContains(resposta, "person-actions")
-        self.assertContains(
-            resposta,
-            'href="http://credenciais/usuarios/senha/?username=barbara.luz"',
-        )
-        self.assertContains(
-            resposta,
-            'href="http://credenciais/usuarios/grupos/?username=barbara.luz"',
-        )
-        self.assertNotContains(resposta, 'action="/usuarios/toggle/"')
+        self.assertEqual(resposta.status_code, 404)
 
     def test_discos_omite_uso_e_dump_do_dashboard(self):
         capacidades = dict(self.fake.host_capabilities.return_value)

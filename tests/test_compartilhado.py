@@ -31,18 +31,19 @@ def test_rotas_continuam_existindo_no_pi(name):
     CREDENTIALS_APP="storage",
     CREDENTIALS_MANAGE_USERS=True,
 )
-def test_moya_bloqueia_apenas_identidade():
+def test_moya_bloqueia_toda_a_secao_de_usuarios():
     cliente = Client()
     for caminho in (
+        "/usuarios/",
         "/usuarios/novo/",
         "/usuarios/senha/",
         "/usuarios/toggle/",
         "/usuarios/excluir/",
         "/usuarios/grupos/",
+        "/usuarios/grupos/novo/",
+        "/usuarios/grupos/excluir/",
     ):
         assert cliente.get(caminho).status_code == 404, caminho
-    # Grupo é operação de servidor e continua disponível (redireciona para login).
-    assert cliente.get("/usuarios/grupos/novo/").status_code == 302
     # Rotas de sistema não são bloqueadas pelo Credenciais.
     for caminho in (
         "/sistema/",
