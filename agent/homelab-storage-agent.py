@@ -6769,7 +6769,7 @@ U = get_user_model()
 name = os.environ["DJANGO_ADMIN_USER"]
 user = U.objects.filter(username=name).first()
 def iso(value):
-    return value.isoformat() if value else None
+    return value.strftime("%Y-%m-%d %H:%M") if value else None
 data = {
     "exists": bool(user),
     "is_superuser": bool(user and user.is_superuser),
