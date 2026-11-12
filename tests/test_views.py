@@ -290,6 +290,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "disk-card")
         self.assertContains(resposta, "2 partições · 2 montagens")
         self.assertContains(resposta, "disk-parts-subtable")
+        self.assertContains(resposta, "disk-parts-wrap")
 
     def test_dashboard_mostra_resync_do_mdstat(self):
         self.fake.storage_overview.return_value["raid"] = {
