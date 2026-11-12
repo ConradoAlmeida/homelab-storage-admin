@@ -16,21 +16,21 @@
 </div>
 
 <div class="dash-summary">
-  <a class="dash-card" href="#saude">
+  <div class="dash-card is-static">
     <span class="dash-label">Saúde</span>
     <strong class="dash-value {% if health and not health.ok %}warn{% else %}ok{% endif %}">
       {% if health %}{% if health.ok %}tudo ok{% else %}{{ health.alerts|length }} alerta{{ health.alerts|length|pluralize }}{% endif %}{% else %}—{% endif %}
     </strong>
     <span class="dash-note">agente, Samba, discos e backups</span>
-  </a>
+  </div>
 
-  <a class="dash-card" href="#volumes">
+  <div class="dash-card is-static">
     <span class="dash-label">Volumes</span>
     <strong class="dash-value">{% if volumes_summary %}{{ volumes_summary.count }}{% else %}0{% endif %}</strong>
     <span class="dash-note">
       {% if volumes_summary %}menor folga {{ volumes_summary.free_percent }}% em {{ volumes_summary.mount }}{% else %}sem volumes{% endif %}
     </span>
-  </a>
+  </div>
 
   <a class="dash-card" href="{% url 'storage_index' %}">
     <span class="dash-label">Discos</span>

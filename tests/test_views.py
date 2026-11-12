@@ -1437,6 +1437,9 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "tudo ok")
         self.assertContains(resposta, "dash-summary")
         self.assertContains(resposta, "app-footer")
+        self.assertNotContains(resposta, 'href="#saude"')
+        self.assertNotContains(resposta, 'href="#volumes"')
+        self.assertContains(resposta, "dash-card is-static")
 
     def test_dashboard_saude_em_blocos(self):
         self.fake.health_overview.return_value = {
