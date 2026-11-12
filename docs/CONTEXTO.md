@@ -8,7 +8,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `e6a2d25` (2026-11-12; menu de serviços no topo e cards de disco) |
+| Versão no moya | `a9e8121` (2026-11-12; admins locais em tabela e menu de serviços) |
 | Último deploy | 12/11/2026, moya (`./deploy.sh`; topo com serviços, admins locais e `DJANGO_ADMIN_MANAGE=1`). O Pi segue no deploy de 04/11 |
 | Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
@@ -152,7 +152,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
   superuser, cria/rotaciona o superuser `admin` dos apps Django via agente.
   Registry fixa de apps; a senha é gerada no agente, vai por stdin e é
-  devolvida uma vez; nada de container ou comando vindo do cliente.
+  devolvida uma vez; nada de container ou comando vindo do cliente. A página
+  é uma tabela única com estado, usuário alvo, superusers e ações alinhadas.
   Desligável com `DJANGO_ADMIN_MANAGE=0` no host e `DJANGO_ADMIN_ENABLE=0` no
   agente. Detalhe em [SEGURANCA](SEGURANCA.md#admins-locais-dos-apps-django).
 
