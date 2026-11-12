@@ -2104,3 +2104,122 @@ body.brand-moya .side-nav a.active .count {
   .service-filter { grid-template-columns: 1fr; }
   .service-filter-actions { justify-content: flex-start; }
 }
+
+/* --- Contrato visual Moya: botões, inputs e tags --- */
+:root {
+  --ui-control-h: 34px;
+  --ui-radius-control: 8px;
+  --ui-radius-input: 6px;
+  --ui-transition: 150ms ease;
+  --ui-focus: 0 0 0 2px rgba(58, 215, 234, .38);
+}
+
+.btn, a.btn, button.btn, summary.btn, .btn-primary, .btn-secondary {
+  height: var(--ui-control-h);
+  min-height: var(--ui-control-h);
+  padding: 0 12px;
+  border-radius: var(--ui-radius-control);
+  font: 600 13px/1 var(--font-sans);
+  transition: background var(--ui-transition), border-color var(--ui-transition),
+    color var(--ui-transition), box-shadow var(--ui-transition);
+}
+.btn {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  color: var(--txt);
+}
+.btn:hover {
+  border-color: var(--acc);
+  color: var(--txt);
+  box-shadow: 0 0 0 1px var(--acc-soft);
+}
+.btn.primary, .btn-primary {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: var(--acc-ink);
+}
+.btn.primary:hover, .btn-primary:hover {
+  background: var(--acc-hover);
+  border-color: var(--acc-hover);
+  color: var(--acc-ink);
+}
+.btn.danger, .btn-danger {
+  background: var(--panel);
+  border-color: var(--line-strong);
+  color: var(--err);
+}
+.btn.danger:hover, .btn-danger:hover {
+  border-color: var(--err);
+  background: var(--err-soft);
+  color: var(--err);
+}
+.btn:focus-visible, a.btn:focus-visible, button.btn:focus-visible,
+summary.btn:focus-visible, .btn-primary:focus-visible, .btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: var(--ui-focus);
+}
+.btn:disabled, .btn-primary:disabled, .btn-secondary:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.btn.small {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.file-actions .btn, .row-actions .btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+}
+.file-actions .btn.icon-only {
+  height: var(--ui-control-h);
+  min-height: var(--ui-control-h);
+}
+
+.input, input[type="text"], input[type="password"], input[type="number"],
+input[type="search"], input[type="email"], input[type="url"], select, textarea {
+  height: var(--ui-control-h);
+  padding: 0 10px;
+  border-radius: var(--ui-radius-input);
+  font-size: 13px;
+  transition: border-color var(--ui-transition), box-shadow var(--ui-transition);
+}
+textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 10px 12px;
+}
+.input:focus, input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--acc);
+  box-shadow: var(--ui-focus);
+}
+.input:disabled, input:disabled, select:disabled, textarea:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.tag, .badge {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.tag + .tag, .badge + .badge { margin-left: 6px; }
+.tag.ok, .badge.live {
+  color: var(--ok);
+  border-color: rgba(62, 224, 160, .35);
+  background: var(--ok-soft);
+}
+.tag.off, .badge.danger {
+  color: var(--err);
+  border-color: rgba(255, 107, 138, .35);
+  background: var(--err-soft);
+}
