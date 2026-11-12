@@ -1,8 +1,9 @@
 [Unit]
-Description=Homelab Storage Admin - snapshot Btrfs diario (03:00)
+Description=Homelab Storage Admin - snapshots dos shares (padrao 2x/dia)
 
 [Timer]
-OnCalendar=*-*-* 03:00:00
+OnCalendar=*-*-* 00:05:00
+OnCalendar=*-*-* 12:05:00
 Persistent=true
 RandomizedDelaySec=300
 

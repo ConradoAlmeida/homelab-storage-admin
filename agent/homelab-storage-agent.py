@@ -98,6 +98,13 @@ VERSOES_CRON_LINE_RE = re.compile(
     + r"\s*(?:#.*)?$"
 )
 VERSOES_TIME_RE = re.compile(r"^([01]\d|2[0-3]):05$")
+SNAPSHOT_TIMER_NAME = "homelab-storage-snapshot.timer"
+SNAPSHOT_SCHEDULE = os.environ.get(
+    "SNAPSHOT_SCHEDULE", os.path.join(CONFIG_DIR, "snapshot-schedule.json")
+)
+SNAPSHOT_PER_DAY_DEFAULT = 2
+SNAPSHOT_FIRST_TIME_DEFAULT = "00:05"
+SNAPSHOT_TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 GITEA_TIMER = "homelab-gitea-backup.timer"
 GITEA_TIMER_UNIT = "homelab-gitea-backup@host.service"
 GITEA_KEEP = int(os.environ.get("GITEA_KEEP", "2"))
@@ -4923,19 +4930,6 @@ def parse_versoes_schedule_file(text: str) -> dict:
     return _versoes_schedule_defaults()
 
 
-def format_versoes_schedule_cron_line(hora_a: str, hora_b: str) -> str:
-    ha = int(hora_a.split(":")[0])
-    hb = int(hora_b.split(":")[0])
-    if ha > hb:
-        ha, hb = hb, ha
-    return f"5 {ha},{hb} * * * root {VERSOES_SNAPSHOT_SCRIPT}"
-
-
-def format_versoes_schedule_file(hora_a: str, hora_b: str) -> str:
-    linha = format_versoes_schedule_cron_line(hora_a, hora_b)
-    return f"# Snapshots Samba (tiered, minuto 05)\n{linha}\n"
-
-
 def _versoes_schedule_validate_hora(valor: str) -> int:
     texto = str(valor or "").strip()
     if not VERSOES_TIME_RE.match(texto):
@@ -4943,35 +4937,179 @@ def _versoes_schedule_validate_hora(valor: str) -> int:
     return int(texto.split(":")[0])
 
 
-def op_versoes_schedule(**_):
-    caminho = Path(VERSOES_CRON)
-    if not caminho.is_file():
-        return _versoes_schedule_defaults()
+def _snapshot_times(per_day: int, first_time: str) -> list[str]:
+    """Distribui N copias por dia a partir do primeiro horario."""
+    match = SNAPSHOT_TIME_RE.match((first_time or "").strip())
+    if not match:
+        raise AgentError("Horario invalido; use HH:MM")
     try:
-        return parse_versoes_schedule_file(caminho.read_text())
+        total = int(per_day)
+    except (TypeError, ValueError) as exc:
+        raise AgentError("Copias por dia deve ser um numero entre 1 e 24") from exc
+    if total < 1 or total > 24:
+        raise AgentError("Copias por dia deve ficar entre 1 e 24")
+    inicio = int(match.group(1)) * 60 + int(match.group(2))
+    passo = 1440 / total
+    horarios: list[str] = []
+    for indice in range(total):
+        minutos = int(round(inicio + indice * passo)) % 1440
+        horarios.append(f"{minutos // 60:02d}:{minutos % 60:02d}")
+    return horarios
+
+
+def _snapshot_schedule_label(horarios: list[str]) -> str:
+    total = len(horarios)
+    if total == 1:
+        return f"1×/dia às {horarios[0]}"
+    if total == 24:
+        return "24×/dia, a cada hora"
+    lista = ", ".join(horarios[:-1])
+    return f"{total}×/dia às {lista} e {horarios[-1]}"
+
+
+def _snapshot_schedule_payload(per_day, first_time) -> dict:
+    horarios = _snapshot_times(per_day, first_time)
+    return {
+        "per_day": len(horarios),
+        "first_time": (first_time or "").strip(),
+        "times": horarios,
+        "label": _snapshot_schedule_label(horarios),
+    }
+
+
+def _snapshot_schedule_from_legacy_cron() -> dict | None:
+    caminho = Path(VERSOES_CRON)
+    try:
+        texto = caminho.read_text(encoding="utf-8")
     except OSError:
-        return _versoes_schedule_defaults()
+        return None
+    for linha in texto.splitlines():
+        parsed = parse_versoes_schedule_line(linha)
+        if parsed:
+            return _snapshot_schedule_payload(2, f"{parsed[0]:02d}:05")
+    return None
 
 
-def op_versoes_schedule_save(hora_a="", hora_b="", **_):
-    ha = _versoes_schedule_validate_hora(hora_a)
-    hb = _versoes_schedule_validate_hora(hora_b)
-    if ha == hb:
-        raise AgentError("Os dois horarios precisam ser distintos")
-    ord_a = f"{min(ha, hb):02d}:05"
-    ord_b = f"{max(ha, hb):02d}:05"
-    caminho = Path(VERSOES_CRON)
-    conteudo = format_versoes_schedule_file(ord_a, ord_b)
+def _load_snapshot_schedule() -> dict:
+    caminho = Path(SNAPSHOT_SCHEDULE)
+    if caminho.is_file():
+        try:
+            dados = json.loads(caminho.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            dados = None
+        if isinstance(dados, dict):
+            try:
+                return _snapshot_schedule_payload(
+                    dados.get("per_day", SNAPSHOT_PER_DAY_DEFAULT),
+                    dados.get("first_time", SNAPSHOT_FIRST_TIME_DEFAULT),
+                )
+            except AgentError:
+                pass
+    legado = _snapshot_schedule_from_legacy_cron()
+    if legado:
+        return legado
+    return _snapshot_schedule_payload(
+        SNAPSHOT_PER_DAY_DEFAULT, SNAPSHOT_FIRST_TIME_DEFAULT
+    )
+
+
+def _save_snapshot_schedule(dados: dict) -> None:
+    caminho = Path(SNAPSHOT_SCHEDULE)
     caminho.parent.mkdir(parents=True, exist_ok=True)
-    temporario = caminho.with_suffix(".tmp")
-    temporario.write_text(conteudo)
-    temporario.replace(caminho)
+    temporario = caminho.with_name(caminho.name + ".tmp")
+    conteudo = {"per_day": dados["per_day"], "first_time": dados["first_time"]}
+    temporario.write_text(
+        json.dumps(conteudo, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    os.replace(temporario, caminho)
     try:
-        os.chmod(caminho, 0o644)
+        os.chmod(caminho, 0o600)
     except OSError:
         pass
-    log(f"VERSOES_SCHEDULE_SAVE {ord_a} {ord_b}")
-    return {"hora_a": ord_a, "hora_b": ord_b}
+
+
+def _snapshot_timer_text(horarios: list[str]) -> str:
+    linhas = "\n".join(f"OnCalendar=*-*-* {hora}:00" for hora in horarios)
+    return (
+        "[Unit]\n"
+        "Description=Homelab Storage Admin - snapshots dos shares "
+        f"({len(horarios)}x/dia)\n"
+        "\n"
+        "[Timer]\n"
+        f"{linhas}\n"
+        "Persistent=true\n"
+        "RandomizedDelaySec=300\n"
+        "\n"
+        "[Install]\n"
+        "WantedBy=timers.target\n"
+    )
+
+
+def _apply_snapshot_timer(horarios: list[str]) -> None:
+    caminho = Path(SYSTEMD_DIR) / SNAPSHOT_TIMER_NAME
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_name(caminho.name + ".tmp")
+    temporario.write_text(_snapshot_timer_text(horarios), encoding="utf-8")
+    os.chmod(temporario, 0o644)
+    os.replace(temporario, caminho)
+    rc, _, erro = run_optional(["systemctl", "daemon-reload"], timeout=30)
+    if rc != 0:
+        raise AgentError(f"Timer gravado, mas o systemd nao recarregou: {erro or rc}")
+    rc, _, erro = run_optional(
+        ["systemctl", "restart", SNAPSHOT_TIMER_NAME], timeout=30
+    )
+    if rc != 0:
+        raise AgentError(f"Timer gravado, mas nao reiniciou: {erro or rc}")
+
+
+def _remove_legacy_versoes_cron() -> None:
+    caminho = Path(VERSOES_CRON)
+    try:
+        texto = caminho.read_text(encoding="utf-8")
+    except OSError:
+        return
+    if VERSOES_SNAPSHOT_SCRIPT not in texto:
+        return
+    if not any(VERSOES_CRON_LINE_RE.match(linha) for linha in texto.splitlines()):
+        return
+    try:
+        caminho.unlink()
+        log(f"VERSOES_CRON removido (agenda agora e do systemd): {caminho}")
+    except OSError as exc:
+        log(f"WARN nao foi possivel remover {caminho}: {exc}")
+
+
+def _reconcile_snapshot_schedule() -> dict:
+    dados = _load_snapshot_schedule()
+    _remove_legacy_versoes_cron()
+    if not Path(SNAPSHOT_SCHEDULE).is_file():
+        _save_snapshot_schedule(dados)
+    _apply_snapshot_timer(dados["times"])
+    return dados
+
+
+def op_versoes_schedule(**_):
+    return _load_snapshot_schedule()
+
+
+def op_versoes_schedule_save(per_day=None, first_time="", hora_a="", hora_b="", **_):
+    if (per_day in (None, "")) and (hora_a or hora_b):
+        # Compatibilidade com a agenda antiga de dois horarios.
+        ha = _versoes_schedule_validate_hora(hora_a)
+        hb = _versoes_schedule_validate_hora(hora_b)
+        if ha == hb:
+            raise AgentError("Os dois horarios precisam ser distintos")
+        per_day = 2
+        first_time = f"{min(ha, hb):02d}:05"
+    dados = _snapshot_schedule_payload(per_day, first_time)
+    _save_snapshot_schedule(dados)
+    _remove_legacy_versoes_cron()
+    _apply_snapshot_timer(dados["times"])
+    log(
+        f"VERSOES_SCHEDULE_SAVE per_day={dados['per_day']} "
+        f"first={dados['first_time']} times={','.join(dados['times'])}"
+    )
+    return dados
 
 
 def op_gitea_overview(**_):
@@ -7969,6 +8107,10 @@ def main() -> int:
         return 0
     os.makedirs(CONFIG_DIR, exist_ok=True)
     load_policies()
+    try:
+        _reconcile_snapshot_schedule()
+    except (AgentError, OSError) as exc:
+        log(f"WARN agenda de snapshots: {exc}")
     if os.path.exists(SOCKET_PATH):
         os.unlink(SOCKET_PATH)
     server = Server(SOCKET_PATH, Handler)

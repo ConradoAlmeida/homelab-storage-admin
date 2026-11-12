@@ -237,12 +237,12 @@ class AgentClient:
     def versoes_schedule(self):
         return self.call("versoes_schedule", timeout=30)
 
-    def versoes_schedule_save(self, hora_a="", hora_b=""):
+    def versoes_schedule_save(self, per_day=2, first_time="00:05"):
         return self.call(
             "versoes_schedule_save",
-            timeout=30,
-            hora_a=hora_a,
-            hora_b=hora_b,
+            timeout=60,
+            per_day=per_day,
+            first_time=first_time,
         )
 
     def gitea_download(self, archive):

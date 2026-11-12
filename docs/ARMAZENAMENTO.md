@@ -14,8 +14,13 @@
   na hora.
 - **Manual:** botão “Criar snapshot agora” na tela Snapshots, para shares com
   política ativa.
-- **Diário:** `homelab-storage-snapshot.timer` roda às 03:00 e cria um snapshot
-  para cada share com política ativa.
+- **Agenda global:** em **Backups → versoes_snapshots** você define quantas
+  cópias por dia (1 a 24) e o primeiro horário; os demais horários são
+  distribuídos igualmente. O agente grava a agenda em
+  `snapshot-schedule.json` e reescreve o
+  `homelab-storage-snapshot.timer` com um `OnCalendar` por horário.
+  O cron legado `samba-snapshot.sh` é removido na primeira reconciliação para
+  não duplicar snapshots. Um share com política ativa é copiado em cada horário.
 - **Retenção:** campo `keep` da política (padrão 7).
 - **Backend:** `auto` usa Btrfs quando o filesystem é Btrfs; senão usa `rsync`.
   `SNAPSHOT_BACKEND=btrfs|rsync|none` força o modo.

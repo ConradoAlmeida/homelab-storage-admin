@@ -623,7 +623,8 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Política de snapshot",
                 "text": (
-                    "keep N é quantos snapshots a política mantém. 'Não "
+                    "A agenda global define quantas cópias por dia e o primeiro "
+                    "horário; cada share só define keep e se está ativo. 'Não "
                     "configurado' significa que o share não tem política de "
                     "versões."
                 ),
@@ -1007,7 +1008,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "versoes_snapshots",
                 "text": (
-                    "Dois horários e as cópias de cada share. "
+                    "Agenda global de cópias por dia e o keep de cada share. "
                     "Editar a retenção de um share abre a política de snapshot."
                 ),
             },

@@ -229,7 +229,10 @@
 <section class="section" id="versoes_snapshots">
   <div class="section-head">
     <h2>versoes_snapshots</h2>
-    <a class="btn" href="{% url 'snapshots' %}">Abrir</a>
+    <div class="page-actions">
+      {% if versoes_agenda %}<span class="muted text-12">{{ versoes_agenda.label }}</span>{% endif %}
+      <a class="btn" href="{% url 'snapshots' %}">Abrir</a>
+    </div>
   </div>
   {% if versoes_error %}
     <div class="card">
@@ -239,7 +242,7 @@
   {% endif %}
   {% if versoes %}
     <div class="table-wrap"><table class="file-table">
-      <thead><tr><th>Share</th><th>Estado</th><th>Keep</th><th>Snapshots</th><th aria-label="Ações"></th></tr></thead>
+      <thead><tr><th>Share</th><th>Estado</th><th>Keep</th><th>Snapshots</th><th>Último</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
         {% for item in versoes %}
           <tr>
@@ -250,12 +253,13 @@
             </td>
             <td class="muted">{{ item.keep }}</td>
             <td class="muted">{{ item.count }}</td>
+            <td class="muted text-12">{{ item.snapshots.0.mtime|default:"—" }}</td>
             <td class="file-actions">
               <a class="btn" href="{% url 'snapshot_policy_edit' share=item.share %}">Editar</a>
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="5"><div class="empty">Nenhum share com política.</div></td></tr>
+          <tr><td colspan="6"><div class="empty">Nenhum share com política.</div></td></tr>
         {% endfor %}
       </tbody>
     </table></div>
@@ -263,17 +267,25 @@
     <div class="empty">Nenhum share com política.</div>
   {% endif %}
   <div class="card">
-    <p class="muted text-12 mb-4">Agenda global do script <span class="mono">samba-snapshot.sh</span>. O minuto fica fixo em <strong>05</strong>; o script mantém até <strong>48</strong> cópias por share.</p>
+    <p class="muted text-12 mb-4">
+      Agenda global dos snapshots de share. Vale para todos os shares com política ativa;
+      o keep de cada share continua na política dele.
+    </p>
+    <p class="muted text-12 mb-4">
+      Agora: <strong>{% if versoes_agenda %}{{ versoes_agenda.label }}{% else %}—{% endif %}</strong>.
+    </p>
     <form method="post" action="{% url 'versoes_schedule_save' %}">
       {% csrf_token %}
       <div class="form-grid">
         <div class="form-group">
-          <label for="hora_a">Primeiro horário</label>
-          <input class="form-control" id="hora_a" name="hora_a" type="time" value="{{ versoes_agenda.hora_a|default:'00:05' }}" required>
+          <label for="per_day">Cópias por dia</label>
+          <input class="form-control" id="per_day" name="per_day" type="number" min="1" max="24" value="{{ versoes_agenda.per_day|default:2 }}" required>
+          <p class="help">1 a 24. Os horários são distribuídos igualmente a partir do primeiro.</p>
         </div>
         <div class="form-group">
-          <label for="hora_b">Segundo horário</label>
-          <input class="form-control" id="hora_b" name="hora_b" type="time" value="{{ versoes_agenda.hora_b|default:'12:05' }}" required>
+          <label for="first_time">Primeiro horário</label>
+          <input class="form-control" id="first_time" name="first_time" type="time" value="{{ versoes_agenda.first_time|default:'00:05' }}" required>
+          <p class="help">Horários atuais: {% if versoes_agenda %}{{ versoes_agenda.times|join:", " }}{% else %}—{% endif %}.</p>
         </div>
         <div class="form-group">
           <label aria-hidden="true">&nbsp;</label>

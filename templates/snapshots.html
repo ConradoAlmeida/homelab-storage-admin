@@ -25,6 +25,7 @@
   </div>
 {% elif shares %}
   <div class="metric-grid">
+    <div class="metric"><span>Agenda</span><strong>{% if agenda %}{{ agenda.per_day }}×/dia{% else %}—{% endif %}</strong>{% if agenda %}<div class="muted text-11">{{ agenda.times|join:", " }}</div>{% endif %}</div>
     <div class="metric"><span>Políticas ativas</span><strong>{{ summary.enabled }}/{{ summary.total }}</strong></div>
     <div class="metric"><span>Snapshots</span><strong>{{ summary.count }}</strong></div>
     <div class="metric"><span>Tamanho aprox.</span><strong data-snap-total><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></strong></div>

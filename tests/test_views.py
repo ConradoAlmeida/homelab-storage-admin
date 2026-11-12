@@ -25,8 +25,18 @@ def fake_agent(capabilities=None):
     agent.list_users.return_value = []
     agent.list_groups.return_value = []
     agent.snapshot_usage.return_value = []
-    agent.versoes_schedule.return_value = {"hora_a": "00:05", "hora_b": "12:05"}
-    agent.versoes_schedule_save.return_value = {"hora_a": "00:05", "hora_b": "12:05"}
+    agent.versoes_schedule.return_value = {
+        "per_day": 2,
+        "first_time": "00:05",
+        "times": ["00:05", "12:05"],
+        "label": "2×/dia às 00:05 e 12:05",
+    }
+    agent.versoes_schedule_save.return_value = {
+        "per_day": 2,
+        "first_time": "00:05",
+        "times": ["00:05", "12:05"],
+        "label": "2×/dia às 00:05 e 12:05",
+    }
     agent.gitea_overview.return_value = {
         "backup_dir": "/var/backups/gitea",
         "dumps": [],
@@ -824,6 +834,10 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "restic não encontrado")
         self.assertContains(response, 'id="restic_repo"')
         self.assertContains(response, 'id="versoes_snapshots"')
+        self.assertContains(response, 'name="per_day"')
+        self.assertContains(response, 'name="first_time"')
+        self.assertContains(response, "2×/dia às 00:05 e 12:05")
+        self.assertContains(response, "Cópias por dia")
         self.assertContains(response, "arquivos_targz, gitea_dump, restic_repo e versoes_snapshots")
         self.assertNotContains(response, "shortcut-grid")
         self.assertNotContains(response, "<h2>Atalhos</h2>")
@@ -832,6 +846,16 @@ class ViewSmokeTests(TestCase):
         self.assertNotContains(response, 'id="arquivos_targz"')
         self.assertNotContains(response, "Gitea")
         self.assertNotContains(response, "Credenciais")
+
+    def test_backups_salva_agenda_de_versoes(self):
+        response = self.client.post(
+            "/backups/versoes/agenda/",
+            {"per_day": "1", "first_time": "03:00"},
+        )
+        self.assertEqual(response.url, "/backups/#versoes_snapshots")
+        self.fake.versoes_schedule_save.assert_called_once_with(
+            per_day="1", first_time="03:00"
+        )
 
     def test_gitea_e_arquivos_ficam_fora_sem_o_recurso(self):
         gitea = self.client.get("/backups/gitea/")

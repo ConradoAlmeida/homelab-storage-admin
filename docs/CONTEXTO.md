@@ -29,7 +29,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A lista do share cita o disco do caminho; um RAID mostra os dois membros.
   A política de snapshot também se configura e se edita pela UI, inclusive em
-  share que nasceu sem ela. Desativar não apaga os snapshots já criados. No
+  share que nasceu sem ela. Desativar não apaga os snapshots já criados. A
+  agenda global (1 a 24 cópias por dia e o primeiro horário) fica em Backups e
+  reescreve o timer systemd; o cron legado do `samba-snapshot.sh` é removido
+  para não duplicar. No
   Btrfs o share nasce subvolume mesmo sem política; ligar o snapshot depois ou
   converter pasta antiga exige confirmação do nome do share. Com o disco do
   Jellyfin montado, o portal também cria share numa pasta dele

@@ -723,6 +723,10 @@ class SharesView(AgentTemplateView):
             context["shares"] = shares
         except AgentError as exc:
             context["agent_error"] = str(exc)
+        try:
+            context["agenda"] = agent.versoes_schedule()
+        except AgentError:
+            context["agenda"] = None
         return context
 
 
@@ -827,6 +831,10 @@ class SnapshotsView(AgentTemplateView):
             }
         except AgentError as exc:
             context["agent_error"] = str(exc)
+        try:
+            context["agenda"] = agent.versoes_schedule()
+        except AgentError:
+            context["agenda"] = None
         return context
 
 
