@@ -33,7 +33,7 @@ VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
 
 ## Admins locais (2026-11-12)
 
-- Storage Admin na VM `ubuntu2604`: **452 passed, 8 skipped** (os skips são
+- Storage Admin na VM `ubuntu2604`: **453 passed, 8 skipped** (os skips são
   laboratório/hardware POSIX).
 - E2E real do agente contra um container Django temporário
   (`moya-admin-e2e`): `ensure` criou `admin`, login local autenticou,

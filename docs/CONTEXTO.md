@@ -8,9 +8,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `b7fceeb` (2026-11-12; containers com todas as portas e admins em tabela) |
-| Último deploy | 12/11/2026, moya (`./deploy.sh`; topo com serviços, admins locais e `DJANGO_ADMIN_MANAGE=1`). O Pi segue no deploy de 04/11 |
-| Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
+| Versão no moya | `783d901` (2026-11-12; contrato de tabelas e toolbar) |
+| Último deploy | 12/11/2026, moya (`./deploy.sh`; tabelas padronizadas, topo com serviços e admins locais). O Pi segue no deploy de 04/11 |
+| Testes | `453 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -122,6 +122,12 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   via uv, sem npm. Fonte em `frontend/src.css`, folha em `static/css/kit.css`.
   Tokens e `@theme` vêm de `static/vendor/moya-ui/tailwind.css` (kit do
   `moya_art_design`); o resto do `src.css` é layout específico.
+- **Contrato de tabelas (kit 1.3.0):** `data-table` é o nome canônico;
+  `file-table` fica só como alias legado. Tabela de coleção usa
+  `table-toolbar` com busca, filtros, contador e Limpar; a ordenação fica no
+  header com `button.th-sort`. Filtro não entra no `<th>`, nenhuma célula corta
+  conteúdo e a última coluna é a de ações. `table-filter.js` aplica o filtro
+  local via `data-table-*`.
   A lista de usuários junta identidade+status e mostra grupos de share em
   faixa; a lógica (`set_groups`, Senha, confirmação) não muda. Sem matriz de
   ACL neste passo. Torrents enfatiza o andamento; envio e API abrem em
