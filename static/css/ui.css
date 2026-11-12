@@ -1910,19 +1910,29 @@ body.brand-moya .side-nav a.active .count {
 }
 .port-chips {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  width: 250px;
-  max-width: 250px;
-  overflow: hidden;
+  width: auto;
+  max-width: 360px;
+  overflow: visible;
 }
 .port-chips .tag {
-  max-width: 112px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
+.containers-table {
+  table-layout: fixed;
+  min-width: 1170px;
+}
+.containers-table th:nth-child(1) { width: 190px; }
+.containers-table th:nth-child(2) { width: 210px; }
+.containers-table th:nth-child(3) { width: 140px; }
+.containers-table th:nth-child(4) { width: 290px; }
+.containers-table th:nth-child(5) { width: 340px; }
+.containers-table td { overflow-wrap: anywhere; }
 .action-menu,
 .restore-details {
   position: relative;

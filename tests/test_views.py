@@ -1849,7 +1849,10 @@ class ViewSmokeTests(TestCase):
                     "restart_count": 0,
                     "project": "gitea",
                     "service": "server",
-                    "ports": ["127.0.0.1:3000->3000/tcp"],
+                    "ports": [
+                        "127.0.0.1:3000->3000/tcp",
+                        "0.0.0.0:222->22/tcp",
+                    ],
                 },
                 {
                     "name": "antigo",
@@ -1875,6 +1878,8 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "gitea")
         self.assertContains(resposta, 'class="count">2<')
         self.assertContains(resposta, "127.0.0.1:3000")
+        self.assertContains(resposta, "0.0.0.0:222")
+        self.assertContains(resposta, "containers-table")
         self.assertContains(resposta, "Parar")
         self.assertContains(resposta, "Reiniciar")
         self.assertContains(resposta, "Iniciar")

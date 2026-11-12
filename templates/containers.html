@@ -28,7 +28,7 @@
       <h2>Containers</h2>
       <span class="muted text-12">{{ overview.containers|length }} container{{ overview.containers|length|pluralize }}</span>
     </div>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap"><table class="file-table containers-table">
       <thead>
         <tr><th>Container</th><th>Imagem</th><th>Estado</th><th>Portas</th><th aria-label="Ações"></th></tr>
       </thead>
@@ -58,8 +58,7 @@
             </td>
             <td>
               <div class="port-chips">
-                {% for porta in item.ports|slice:":2" %}<span class="tag type" title="{{ porta }}">{{ porta }}</span>{% empty %}—{% endfor %}
-                {% if item.ports|length > 2 %}<span class="tag" title="{{ item.ports|join:', ' }}">+{{ item.ports|length|add:"-2" }}</span>{% endif %}
+                {% for porta in item.ports %}<span class="tag type" title="{{ porta }}">{{ porta }}</span>{% empty %}-{% endfor %}
               </div>
             </td>
             <td class="file-actions">
