@@ -22,6 +22,16 @@ _cached_at = 0.0
 _cached_caps: dict | None = None
 
 
+def _asset_version() -> str:
+    """Versao de cache das folhas de estilo, derivada do mtime dos arquivos."""
+    css_dir = settings.BASE_DIR / "static" / "css"
+    try:
+        stamps = [path.stat().st_mtime_ns for path in css_dir.glob("*.css")]
+    except OSError:
+        stamps = []
+    return str(max(stamps)) if stamps else "1"
+
+
 def capacidades_do_host() -> dict:
     """Capacidades do agente, reutilizadas por alguns segundos."""
     global _cached_at, _cached_caps
@@ -47,6 +57,7 @@ def homelab(request):
         "tarefa": bruto,
         "site_name": settings.SITE_NAME,
         "product_name": settings.SITE_NAME,
+        "static_version": _asset_version(),
         "brand_homelab": visual["homelab"],
         "brand_logo": visual["logo"],
         "brand_login_logo": visual["login_logo"],

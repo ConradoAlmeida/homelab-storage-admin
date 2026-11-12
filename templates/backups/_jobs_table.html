@@ -1,4 +1,15 @@
-<div class="table-wrap"><table class="file-table">
+<div class="table-toolbar" data-table-toolbar="#arquivos-jobs-table">
+  <div class="filters">
+    <input class="input table-search" type="search" data-table-search
+           placeholder="Buscar job ou fonte" autocomplete="off"
+           aria-label="Buscar jobs">
+  </div>
+  <div class="page-actions">
+    <span class="muted text-12" data-table-count>{{ overview.jobs|length }} jobs</span>
+    <button class="btn small" type="button" data-table-clear>Limpar</button>
+  </div>
+</div>
+<div class="table-wrap"><table id="arquivos-jobs-table" class="data-table">
   <thead><tr><th>Job</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th aria-label="Ações"></th></tr></thead>
   <tbody>
     {% for item in overview.jobs %}

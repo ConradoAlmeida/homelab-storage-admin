@@ -288,6 +288,10 @@ main > h1,
   background: var(--panel);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .table-wrap table {
   min-width: 760px;
   border: 0;
@@ -1861,6 +1865,7 @@ body.brand-moya .side-nav a.active .count {
 }
 
 /* Ações de tabela: slots fixos e menu que não empurra a linha. */
+.data-table td.file-actions,
 .file-table td.file-actions {
   position: sticky;
   right: 0;
@@ -1868,6 +1873,7 @@ body.brand-moya .side-nav a.active .count {
   min-width: max-content;
   background: var(--panel);
 }
+.data-table tbody tr:hover td.file-actions,
 .file-table tbody tr:hover td.file-actions {
   background: #162033;
 }

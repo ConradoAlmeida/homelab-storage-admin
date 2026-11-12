@@ -56,7 +56,7 @@
         </p>
 
         {% if firewall.rules %}
-          <div class="table-wrap"><table class="file-table">
+          <div class="table-wrap"><table class="data-table">
             <thead><tr><th>#</th><th>Regra</th><th>Para</th><th>Ação</th><th>Origem</th>{% if pode_gerenciar_firewall %}<th aria-label="Ações"></th>{% endif %}</tr></thead>
             <tbody>
               {% for rule in firewall.rules %}
@@ -137,7 +137,7 @@
 
   <section class="section">
     <div class="section-head"><h2>Interfaces</h2></div>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Interface</th><th>Estado</th><th>Endereço</th><th>Velocidade</th><th>MAC</th><th>Sinal</th></tr></thead>
       <tbody>
         {% for item in data.interfaces %}
@@ -159,7 +159,7 @@
   <section class="section">
     <div class="section-head"><h2>Rotas</h2></div>
     {% if data.routes %}
-      <div class="table-wrap"><table class="file-table">
+      <div class="table-wrap"><table class="data-table">
         <thead><tr><th>Destino</th><th>Via</th><th>Interface</th><th>Origem</th><th>Métrica</th></tr></thead>
         <tbody>
           {% for route in data.routes %}
@@ -180,7 +180,7 @@
 
   <section class="section">
     <div class="section-head"><h2>Portas ouvindo</h2></div>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Endereço</th><th>Processo</th><th>Estado</th></tr></thead>
       <tbody>
         {% for item in data.listening %}
@@ -198,7 +198,7 @@
 
   <section class="section">
     <div class="section-head"><h2>Containers publicados</h2></div>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Container</th><th>Portas</th><th>Status</th></tr></thead>
       <tbody>
         {% for item in data.containers %}

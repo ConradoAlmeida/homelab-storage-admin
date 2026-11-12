@@ -147,6 +147,8 @@ a { color: var(--moya-primary); }
 .file-table tbody tr:hover td,
 .table-wrap tbody tr:hover td { background: rgba(58, 215, 234, .06); }
 
+[hidden] { display: none !important; }
+
 /* Botões */
 .btn,
 a.btn,
@@ -403,6 +405,28 @@ textarea::placeholder { color: var(--moya-muted); }
 }
 .filters .form-control,
 .filters .input { max-width: 260px; }
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+.table-toolbar .filters { flex: 1 1 auto; min-width: 0; }
+.table-toolbar .input { height: 32px; }
+.table-toolbar .table-search {
+  min-width: 220px;
+  max-width: 360px;
+  flex: 1 1 240px;
+}
+.table-toolbar .table-filter {
+  width: auto;
+  min-width: 140px;
+  max-width: 220px;
+}
+.table-toolbar .page-actions { margin-left: auto; }
+.table-toolbar [data-table-count] { white-space: nowrap; }
+[data-table-empty] .empty { padding: 12px 0; }
 
 /* Tags e status */
 .tag,

@@ -4,7 +4,7 @@
   {% if search_truncated %}<span class="muted"> · mostrando os primeiros {{ search_results|length }}</span>{% endif %}
 </div>
 {% if search_results %}
-  <div class="table-wrap"><table class="file-table">
+  <div class="table-wrap"><table class="data-table">
     <thead><tr><th>Caminho</th><th>Tipo</th><th>Tamanho</th><th>Modificado</th><th></th></tr></thead>
     <tbody>
       {% for result in search_results %}

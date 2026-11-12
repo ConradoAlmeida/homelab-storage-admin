@@ -15,7 +15,7 @@
     <div class="section-head"><h2>Chaves SSH</h2></div>
     {% if keys %}
       <div class="table-wrap">
-        <table class="file-table">
+        <table class="data-table">
           <thead>
             <tr><th>Usuário</th><th>Fingerprint</th><th>Tipo</th><th>Comentário</th></tr>
           </thead>
@@ -45,7 +45,7 @@
     <div class="card">
       <p>O segredo do token continua na página <a href="{% url 'torrents' %}">Torrents</a>; aqui só o estado e o fingerprint.</p>
       <div class="table-wrap">
-        <table class="file-table">
+        <table class="data-table">
           <tbody>
             <tr><th scope="row">Token configurado</th><td>{% if torrent_token_presente %}<span class="tag ok">sim</span>{% else %}<span class="tag off">não</span>{% endif %}</td></tr>
             <tr><th scope="row">Fingerprint SHA-256 (do token)</th><td class="mono text-12">{% if torrent_fingerprint_sha256 %}{{ torrent_fingerprint_sha256 }}{% else %}—{% endif %}</td></tr>

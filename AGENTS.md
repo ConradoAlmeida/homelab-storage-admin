@@ -74,9 +74,12 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
    propósito; jobs restic ficam `skipped` sem disco externo.
 8. **UI é requisito.** Toda página usa os componentes de `static/css/ui.css`
    (`page-head`, `section-head`, `card`, `alert`, `btn`, `table-wrap`, `tag`,
-   `form-grid`). Componentes novos do kit Tailwind ficam em `frontend/src.css`
-   e compilam para `static/css/kit.css` (versionado). Não coloque utilitário
-   Tailwind no HTML; não crie estilo local para o mesmo papel.
+   `form-grid`). Tabela de coleção usa `table-wrap` + `data-table` e
+   `table-toolbar` com busca/filtros acima; ficha usa `data-table` sem toolbar.
+   Filtro não vai no `<th>`; ordenação usa `button.th-sort`. Componentes novos
+   do kit Tailwind ficam em `frontend/src.css` e compilam para
+   `static/css/kit.css` (versionado). Não coloque utilitário Tailwind no HTML;
+   não crie estilo local para o mesmo papel.
 9. **Nunca comite `.env`, `data/`, `services.ini` real ou segredos.**
 10. **Pi-safe**: recursos que dependem do Credenciais/Gitea não devem gerar
     alerta falso quando o app não existe no host.

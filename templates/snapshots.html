@@ -85,7 +85,18 @@
 
           {% if s.enabled %}
             {% if s.snapshots %}
-              <div class="table-wrap"><table class="file-table">
+              <div class="table-toolbar" data-table-toolbar="#snapshots-{{ s.share|slugify }}">
+                <div class="filters">
+                  <input class="input table-search" type="search" data-table-search
+                         placeholder="Buscar snapshot" autocomplete="off"
+                         aria-label="Buscar snapshots de {{ s.share }}">
+                </div>
+                <div class="page-actions">
+                  <span class="muted text-12" data-table-count>{{ s.snapshots|length }} snapshots</span>
+                  <button class="btn small" type="button" data-table-clear>Limpar</button>
+                </div>
+              </div>
+              <div class="table-wrap"><table id="snapshots-{{ s.share|slugify }}" class="data-table">
                 <thead><tr><th>Snapshot</th><th>Data</th><th aria-label="Ações"></th></tr></thead>
                 <tbody>
                   {% for snap in s.snapshots %}

@@ -100,7 +100,7 @@
       <span class="muted text-12">{{ overview.usb|length }} drive{{ overview.usb|length|pluralize }}</span>
     </div>
     {% if overview.usb %}
-      <div class="table-wrap"><table class="file-table">
+      <div class="table-wrap"><table class="data-table">
         <thead><tr><th>Drive</th><th>Tamanho</th><th>Filesystem</th><th>Montagem</th><th>Livre</th><th aria-label="Ações"></th></tr></thead>
         <tbody>
           {% for disco in overview.usb %}
@@ -207,7 +207,7 @@
       </div>
       <span class="muted text-12">{{ overview.dumps|length }} arquivo{{ overview.dumps|length|pluralize }}</span>
     </div>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th><th aria-label="Ações"></th></tr></thead>
       <tbody id="gitea-dumps-body">
         {% for item in overview.dumps %}

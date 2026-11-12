@@ -135,6 +135,12 @@ def test_templates_have_no_inline_css_or_js():
         assert "onsubmit=" not in text, path
 
 
+def test_css_links_use_automatic_static_version():
+    for name in ("base.html", "base_auth.html"):
+        text = (ROOT / "templates" / name).read_text(encoding="utf-8")
+        assert text.count("?v={{ static_version }}") == 3, name
+
+
 def test_static_assets_exist():
     assert (ROOT / "static" / "css" / "app.css").is_file()
     assert (ROOT / "frontend" / "src.css").is_file()
@@ -149,6 +155,7 @@ def test_static_assets_exist():
         "confirm-actions.js",
         "copy-secret.js",
         "service-tint.js",
+        "table-filter.js",
         "auto-refresh.js",
         "gitea-status.js",
         "disk-wizard.js",

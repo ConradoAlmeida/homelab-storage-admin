@@ -187,7 +187,7 @@
           {% csrf_token %}
           <input type="hidden" name="library" value="{{ biblioteca_organizar.id }}">
           <div class="table-wrap">
-            <table class="file-table">
+            <table class="data-table">
               <thead>
                 <tr>
                   <th scope="col">Organizar</th>
@@ -299,7 +299,7 @@
       <button type="button" class="btn small" data-torrent-clear hidden>Limpar filtros</button>
     </div>
     <div class="table-wrap table-fit" data-torrent-table>
-      <table class="file-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th><button type="button" class="th-sort" data-sort="name">Nome</button></th>

@@ -20,7 +20,18 @@
     </div>
   {% endif %}
   {% if snapshots %}
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-toolbar" data-table-toolbar="#restic-snapshots">
+      <div class="filters">
+        <input class="input table-search" type="search" data-table-search
+               placeholder="Buscar disco, snapshot ou caminho" autocomplete="off"
+               aria-label="Buscar snapshots">
+      </div>
+      <div class="page-actions">
+        <span class="muted text-12" data-table-count>{{ snapshots|length }} snapshots</span>
+        <button class="btn small" type="button" data-table-clear>Limpar</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="restic-snapshots" class="data-table">
       <thead><tr><th>Disco</th><th>Snapshot</th><th>Data</th><th>Arquivos</th><th>Tamanho</th><th>Adicionado</th><th>Fontes</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
         {% for snap in snapshots %}

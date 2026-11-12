@@ -44,7 +44,7 @@
       <span class="muted text-12">{{ detalhe.sources|length }} fonte{{ detalhe.sources|length|pluralize }}</span>
     </div>
     <div class="card">
-      <div class="table-wrap"><table class="file-table">
+      <div class="table-wrap"><table class="data-table">
         <thead><tr><th>Item</th><th>Tipo</th><th>Caminho</th><th>Tamanho</th><th>Estado</th></tr></thead>
         <tbody>
           {% for fonte in detalhe.sources %}
@@ -78,7 +78,7 @@
         o hash é conferido e ele é desmontado. Não desconecte até a mensagem de sucesso.
       </p>
       {% if detalhe.usb %}
-        <div class="table-wrap"><table class="file-table">
+        <div class="table-wrap"><table class="data-table">
           <thead><tr><th>Drive</th><th>Filesystem</th><th>Livre</th><th aria-label="Ações"></th></tr></thead>
           <tbody>
             {% for disco in detalhe.usb %}
@@ -163,7 +163,18 @@
       <span class="muted text-12">{{ detalhe.archives|length }} pacote{{ detalhe.archives|length|pluralize }}</span>
     </div>
     {% if detalhe.archives %}
-      <div class="table-wrap"><table class="file-table">
+      <div class="table-toolbar" data-table-toolbar="#job-archives">
+        <div class="filters">
+          <input class="input table-search" type="search" data-table-search
+                 placeholder="Buscar pacote" autocomplete="off"
+                 aria-label="Buscar pacotes de backup">
+        </div>
+        <div class="page-actions">
+          <span class="muted text-12" data-table-count>{{ detalhe.archives|length }} pacotes</span>
+          <button class="btn small" type="button" data-table-clear>Limpar</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="job-archives" class="data-table">
         <thead><tr><th>Arquivo</th><th>Criado</th><th>Tamanho</th><th>Idade</th><th aria-label="Ações"></th></tr></thead>
         <tbody>
           {% for item in detalhe.archives %}

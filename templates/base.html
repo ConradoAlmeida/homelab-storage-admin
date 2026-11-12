@@ -5,9 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ product_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20261112h">
-  <link rel="stylesheet" href="{% static 'css/ui.css' %}?v=20261112h">
-  <link rel="stylesheet" href="{% static 'css/kit.css' %}?v=20261112h">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ static_version }}">
+  <link rel="stylesheet" href="{% static 'css/ui.css' %}?v={{ static_version }}">
+  <link rel="stylesheet" href="{% static 'css/kit.css' %}?v={{ static_version }}">
   {% include "partials/brand_icons.html" %}
 </head>
 <body{% if not brand_homelab %} class="brand-moya"{% endif %}>
@@ -142,6 +142,7 @@
   </div>
   <script src="{% static 'js/shell.js' %}"></script>
   <script src="{% static 'js/service-tint.js' %}"></script>
+  <script src="{% static 'js/table-filter.js' %}"></script>
   <script src="{% static 'js/confirm-actions.js' %}"></script>
   <script src="{% static 'js/copy-secret.js' %}"></script>
   <script src="{% static 'js/auto-refresh.js' %}"></script>

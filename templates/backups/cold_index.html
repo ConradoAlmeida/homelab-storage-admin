@@ -53,7 +53,7 @@
       <span class="muted text-12">{{ overview.disks|length }} drive{{ overview.disks|length|pluralize }}</span>
     </div>
     {% if overview.disks %}
-      <div class="table-wrap"><table class="file-table">
+      <div class="table-wrap"><table class="data-table">
         <thead><tr><th>Drive</th><th>Modelo / serial</th><th>Tamanho</th><th>FS / label</th><th>Estado</th><th aria-label="Ações"></th></tr></thead>
         <tbody>
           {% for disk in overview.disks %}

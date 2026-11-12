@@ -15,7 +15,18 @@
   Versões encontradas nos snapshots. O acesso é somente leitura.
 </p>
 
-<div class="table-wrap"><table class="file-table">
+<div class="table-toolbar" data-table-toolbar="#history-versions">
+  <div class="filters">
+    <input class="input table-search" type="search" data-table-search
+           placeholder="Buscar versão" autocomplete="off"
+           aria-label="Buscar versões">
+  </div>
+  <div class="page-actions">
+    <span class="muted text-12" data-table-count>{{ versions|length }} versões</span>
+    <button class="btn small" type="button" data-table-clear>Limpar</button>
+  </div>
+</div>
+<div class="table-wrap"><table id="history-versions" class="data-table">
   <thead><tr><th>Versão</th><th>Tamanho</th><th>Modificado</th><th aria-label="Ações"></th></tr></thead>
   <tbody>
     {% if live %}

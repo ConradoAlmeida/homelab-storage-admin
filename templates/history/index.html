@@ -20,7 +20,18 @@
     <p class="muted">{{ agent_error }}</p>
   </div>
 {% elif shares %}
-  <div class="table-wrap"><table class="file-table">
+  <div class="table-toolbar" data-table-toolbar="#history-shares">
+    <div class="filters">
+      <input class="input table-search" type="search" data-table-search
+             placeholder="Buscar share ou caminho" autocomplete="off"
+             aria-label="Buscar shares">
+    </div>
+    <div class="page-actions">
+      <span class="muted text-12" data-table-count>{{ shares|length }} shares</span>
+      <button class="btn small" type="button" data-table-clear>Limpar</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table id="history-shares" class="data-table">
     <thead><tr><th>Share</th><th>Versões</th><th>Última</th><th aria-label="Ações"></th></tr></thead>
     <tbody>
       {% for s in shares %}

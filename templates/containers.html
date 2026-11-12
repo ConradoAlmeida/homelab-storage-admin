@@ -28,7 +28,25 @@
       <h2>Containers</h2>
       <span class="muted text-12">{{ overview.containers|length }} container{{ overview.containers|length|pluralize }}</span>
     </div>
-    <div class="table-wrap"><table class="file-table containers-table">
+    <div class="table-toolbar" data-table-toolbar="#containers-table">
+      <div class="filters">
+        <input class="input table-search" type="search" data-table-search
+               placeholder="Buscar container, imagem ou porta" autocomplete="off"
+               aria-label="Buscar containers">
+        <select class="input table-filter" data-table-filter data-column="2"
+                aria-label="Filtrar por estado">
+          <option value="">Todos os estados</option>
+          <option value="running">running</option>
+          <option value="exited">exited</option>
+          <option value="paused">paused</option>
+        </select>
+      </div>
+      <div class="page-actions">
+        <span class="muted text-12" data-table-count>{{ overview.containers|length }} itens</span>
+        <button class="btn small" type="button" data-table-clear>Limpar</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="containers-table" class="data-table containers-table">
       <thead>
         <tr><th>Container</th><th>Imagem</th><th>Estado</th><th>Portas</th><th aria-label="Ações"></th></tr>
       </thead>

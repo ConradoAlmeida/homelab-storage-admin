@@ -163,7 +163,8 @@ específicas do app. Sem npm: `uv add django-tailwind-cli` e
 | `card` | conteúdo agrupado |
 | `alert` (`danger`, `warn`, `ok`) | avisos e estados |
 | `btn` (`primary`, `danger`, `small`) | ações |
-| `table-wrap` + `table` | listas |
+| `table-wrap` + `data-table` | listas e fichas |
+| `table-toolbar` + `filters` | busca, filtros e contagem acima da lista |
 | `tag` / `badge` | estados |
 | `metric-grid` + `metric` | números |
 | `action-grid` + `action-card` | atalhos grandes |
@@ -175,6 +176,20 @@ específicas do app. Sem npm: `uv add django-tailwind-cli` e
 - Evite classes novas para o mesmo papel; se precisar, promova o componente
   para `frontend/src.css` (kit) ou `ui.css` em vez de estilizar a página.
 - Não há `<style>` nem handlers inline nos templates.
+
+### Contrato de tabelas
+
+- Tabela de **coleção** usa `table-wrap` + `data-table` e uma toolbar acima;
+  tabela de **ficha** (host, config, chaves) usa `data-table` sem toolbar.
+- Filtros de coleção ficam em `.table-toolbar`, nunca dentro de `<th>`.
+  O filtro local usa `data-table-toolbar`, `data-table-search`,
+  `data-table-filter`, `data-table-count` e `data-table-clear`.
+- Ordenação pode ficar no header com `button.th-sort` e `aria-sort`; não use
+  input de filtro no cabeçalho.
+- A última coluna é a de ações, com largura reservada e botões `small`.
+- Nenhuma célula corta conteúdo: quebre linha ou exponha o valor completo em
+  `title`; a tabela larga rola dentro do `table-wrap`.
+- `file-table` é alias legado; telas novas usam `data-table`.
 
 ### Views e frontend
 

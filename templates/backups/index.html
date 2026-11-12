@@ -115,7 +115,7 @@
       <span class="muted text-12">{{ overview.disks|length }} disco{{ overview.disks|length|pluralize }}</span>
     </div>
     <p class="muted text-12 section-note">O wizard só mostra o resumo. A formatação exige senha do app e a frase digitada. Disco com filesystem existente ou já configurado pede confirmação extra.</p>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Backup</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
         {% for disk in overview.disks %}
@@ -187,7 +187,18 @@
       {% endif %}
     </div>
     {% if overview.jobs %}
-      <div class="table-wrap"><table class="file-table">
+      <div class="table-toolbar" data-table-toolbar="#restic-jobs-table">
+        <div class="filters">
+          <input class="input table-search" type="search" data-table-search
+                 placeholder="Buscar job, destino ou fonte" autocomplete="off"
+                 aria-label="Buscar jobs restic">
+        </div>
+        <div class="page-actions">
+          <span class="muted text-12" data-table-count>{{ overview.jobs|length }} jobs</span>
+          <button class="btn small" type="button" data-table-clear>Limpar</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="restic-jobs-table" class="data-table">
         <thead><tr><th>Job</th><th>Destino</th><th>Fontes</th><th>Periodicidade</th><th>Retenção</th><th>Status</th><th>Próximo</th><th aria-label="Ações"></th></tr></thead>
         <tbody>
           {% for job in overview.jobs %}
@@ -241,7 +252,18 @@
     </div>
   {% endif %}
   {% if versoes %}
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-toolbar" data-table-toolbar="#versoes-table">
+      <div class="filters">
+        <input class="input table-search" type="search" data-table-search
+               placeholder="Buscar share" autocomplete="off"
+               aria-label="Buscar shares com snapshot">
+      </div>
+      <div class="page-actions">
+        <span class="muted text-12" data-table-count>{{ versoes|length }} shares</span>
+        <button class="btn small" type="button" data-table-clear>Limpar</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="versoes-table" class="data-table">
       <thead><tr><th>Share</th><th>Estado</th><th>Keep</th><th>Snapshots</th><th>Último</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
         {% for item in versoes %}

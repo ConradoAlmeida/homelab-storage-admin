@@ -20,7 +20,18 @@
   </div>
 {% elif shares %}
   <div data-share-sizes-endpoint="{% url 'share_sizes' %}" hidden></div>
-  <div class="table-wrap"><table>
+  <div class="table-toolbar" data-table-toolbar="#shares-table">
+    <div class="filters">
+      <input class="input table-search" type="search" data-table-search
+             placeholder="Buscar share, caminho ou grupo" autocomplete="off"
+             aria-label="Buscar shares">
+    </div>
+    <div class="page-actions">
+      <span class="muted text-12" data-table-count>{{ shares|length }} shares</span>
+      <button class="btn small" type="button" data-table-clear>Limpar</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table id="shares-table" class="data-table">
     <thead><tr><th>Share</th><th>Caminho</th><th>Snapshot</th><th>Dados</th><th>Snapshots</th><th>Total</th><th>Acesso</th></tr></thead>
     <tbody>
       {% for s in shares %}

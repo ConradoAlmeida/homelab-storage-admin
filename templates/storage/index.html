@@ -26,7 +26,25 @@
         {% if overview.stale %}· <span class="tag">dados vencidos</span>{% endif %}
       </span>
     </div>
-    <div class="table-wrap"><table class="file-table">
+    <div class="table-toolbar" data-table-toolbar="#disks-table">
+      <div class="filters">
+        <input class="input table-search" type="search" data-table-search
+               placeholder="Buscar disco, modelo ou serial" autocomplete="off"
+               aria-label="Buscar discos">
+        <select class="input table-filter" data-table-filter data-column="3"
+                aria-label="Filtrar por estado">
+          <option value="">Todos os estados</option>
+          <option value="active">active</option>
+          <option value="standby">standby</option>
+          <option value="sleeping">sleeping</option>
+        </select>
+      </div>
+      <div class="page-actions">
+        <span class="muted text-12" data-table-count>{{ overview.disks|length }} discos</span>
+        <button class="btn small" type="button" data-table-clear>Limpar</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="disks-table" class="data-table">
       <thead><tr><th>Disco</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Temp.</th><th>SMART</th><th aria-label="Ações"></th></tr></thead>
       <tbody>
         {% for disk in overview.disks %}

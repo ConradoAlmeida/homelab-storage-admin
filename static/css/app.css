@@ -145,7 +145,7 @@ a:hover { color:var(--acc-hover); }
     .crumbs { display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:13px; margin:10px 0 14px; }
     .crumbs .sep { color:var(--muted); }
     .crumbs a { color:var(--acc); }
-    .file-table td, .file-table th { vertical-align:middle; }
+    .data-table td, .data-table th, .file-table td, .file-table th { vertical-align:middle; }
     .file-name { display:flex; align-items:center; gap:9px; min-width:0; }
     .file-name a { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .file-icon { width:18px; height:18px; flex:0 0 18px; color:var(--muted); }
