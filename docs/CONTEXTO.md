@@ -11,7 +11,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 | Versão no moya | `b3549ff` (2026-11-10; uso de cada fatia no dashboard) |
 | Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`; uso por fatia). O Pi segue no deploy de 04/11 |
 | Testes | `405 passed, 8 skipped` no Linux; lab na VM a confirmar |
-| Dashboard | Discos em tabela compacta, detalhe expansível e cards no mobile (2026-11-12) |
+| Dashboard | Resumo em blocos, saúde em tiles, discos/backups/shares condensados e serviços no rodapé (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
@@ -138,9 +138,12 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - **Novo layout de painel de operação** (branch `ui/layout-telas`, merge `76dc5f2`):
   visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
 - Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.
-- Dashboard lista jobs de arquivos e jobs restic em seções separadas.
-  Os tamanhos dos shares chegam depois do HTML, com cache de 3 minutos no
-  agente; a página Shares usa o mesmo caminho.
+- Dashboard resume saúde, volumes, discos, snapshots, backups e shares em
+  blocos; cada bloco leva à seção ou página. Discos abrem o detalhe no próprio
+  card; backups e shares mostram um resumo curto e o link para a página. Os
+  atalhos de serviço ficam no rodapé.
+- O tamanho dos shares é carregado só na página Shares, com cache de 3 minutos
+  no agente.
 - Backups do Gitea e do Credenciais validados com restore de teste.
   O Gitea para pendrive também foi validado manualmente; não retestar sem
   mudança no fluxo de dump/cópia USB.

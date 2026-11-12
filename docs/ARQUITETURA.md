@@ -88,7 +88,7 @@ proxy que já existe no host.
 
 ### Atalhos de serviços (curadoria por host)
 
-O dashboard **não descobre** serviços e **não faz health check**. Ele mostra
+O rodapé **não descobre** serviços e **não faz health check**. Ele mostra
 somente o que estiver no `services.ini` do host, em `DATA_DIR/services.ini`
 (no Pi: `/mnt/nas/apps/homelab-storage-admin/data/services.ini`). O arquivo é
 lido a cada request; editou, aparece sem restart.

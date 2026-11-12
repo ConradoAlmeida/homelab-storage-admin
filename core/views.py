@@ -101,6 +101,9 @@ class DashboardView(AgentTemplateView):
                 "snapshots_summary": {},
                 "raid_status": "-",
                 "health": None,
+                "agenda": None,
+                "volumes_summary": None,
+                "disks_summary": None,
             }
         )
         try:
@@ -115,6 +118,15 @@ class DashboardView(AgentTemplateView):
             return context
 
         volumes = context["volumes"]
+        if volumes:
+            pior = max(
+                volumes, key=lambda item: float(item.get("percent") or 0)
+            )
+            context["volumes_summary"] = {
+                "count": len(volumes),
+                "free_percent": round(100 - float(pior.get("percent") or 0), 1),
+                "mount": pior.get("mount") or "—",
+            }
         for disk in storage.get("disks", []):
             disk["role"] = disk_role(
                 disk,
@@ -175,6 +187,21 @@ class DashboardView(AgentTemplateView):
         elif "[UU]" in mdstat:
             context["raid_status"] = "ok"
         context["storage"] = storage
+        disks = storage.get("disks", [])
+        temperaturas = [
+            disk["smart"]["temperature"]
+            for disk in disks
+            if (disk.get("smart") or {}).get("temperature") is not None
+        ]
+        context["disks_summary"] = {
+            "count": len(disks),
+            "max_temp": max(temperaturas) if temperaturas else None,
+            "failed": sum(
+                1
+                for disk in disks
+                if (disk.get("smart") or {}).get("health") == "FAILED"
+            ),
+        }
         context["backups"] = backups
         context["backup_jobs"] = backup_jobs
         try:
@@ -186,6 +213,10 @@ class DashboardView(AgentTemplateView):
             context["arquivos_dir"] = arquivos.get("dir", "")
         try:
             context["health"] = agent.health_overview()
+        except AgentError:
+            pass
+        try:
+            context["agenda"] = agent.versoes_schedule()
         except AgentError:
             pass
         return context

@@ -287,7 +287,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "data-lv")
         self.assertContains(resposta, "vfat")
         self.assertContains(resposta, "disk-mount-compact")
-        self.assertContains(resposta, 'data-disk-toggle="sda"')
+        self.assertContains(resposta, "disk-card")
         self.assertContains(resposta, "2 partições · 2 montagens")
         self.assertContains(resposta, "disk-parts-subtable")
 
@@ -1435,6 +1435,29 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/")
         self.assertContains(resposta, "Saúde")
         self.assertContains(resposta, "tudo ok")
+        self.assertContains(resposta, "dash-summary")
+        self.assertContains(resposta, "app-footer")
+
+    def test_dashboard_saude_em_blocos(self):
+        self.fake.health_overview.return_value = {
+            "ok": False,
+            "alerts": [
+                {
+                    "level": "warn",
+                    "title": "SMART falhou",
+                    "detail": "sdb",
+                }
+            ],
+        }
+        resposta = self.client.get("/")
+        self.assertContains(resposta, "health-grid")
+        self.assertContains(resposta, "health-tile warn")
+        self.assertContains(resposta, "SMART falhou")
+
+    def test_dashboard_servicos_ficam_no_rodape(self):
+        resposta = self.client.get("/")
+        self.assertContains(resposta, 'class="app-footer"')
+        self.assertContains(resposta, "app-footer-brand")
 
     def test_rede_renderiza(self):
         resposta = self.client.get("/rede/")
@@ -1557,7 +1580,7 @@ class ViewSmokeTests(TestCase):
         self.fake.firewall_add_rule.assert_not_called()
         self.fake.firewall_delete_rule.assert_not_called()
 
-    def test_saude_usa_linha_com_pilula(self):
+    def test_saude_usa_blocos_com_pilula(self):
         self.fake.health_overview.return_value = {
             "alerts": [
                 {"level": "warn", "title": "Disco cheio", "detail": "/mnt em 91%"}
@@ -1568,9 +1591,10 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/")
         self.assertContains(resposta, "Disco cheio")
         self.assertContains(resposta, "/mnt em 91%")
-        self.assertContains(resposta, "health-row")
-        self.assertContains(resposta, "Nível")
-        self.assertNotContains(resposta, "health-list")
+        self.assertContains(resposta, "health-grid")
+        self.assertContains(resposta, "health-tile warn")
+        self.assertContains(resposta, "atenção")
+        self.assertNotContains(resposta, "health-row")
 
     def test_senha_do_usuario_e_so_do_samba(self):
         resposta = self.client.get("/usuarios/senha/?username=ana")
