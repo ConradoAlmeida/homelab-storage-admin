@@ -2225,54 +2225,6 @@ select:focus, textarea:focus {
 }
 
 /* --- Dashboard: resumo e blocos condensados --- */
-.dash-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-.dash-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: inherit;
-  text-decoration: none;
-}
-a.dash-card:hover {
-  border-color: var(--acc);
-  text-decoration: none;
-}
-.dash-card.is-static { cursor: default; }
-.dash-label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dash-value {
-  color: var(--txt);
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.dash-value.ok { color: var(--ok); }
-.dash-value.warn { color: var(--warn); }
-.dash-value.danger { color: var(--err); }
-.dash-value.is-text { font-size: 15px; font-weight: 600; }
-.dash-note {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.dash-note a { color: var(--acc); }
 .dash-split {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -2295,28 +2247,6 @@ a.dash-card:hover {
   font-size: 13px;
 }
 .dash-list li strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* Saúde em blocos */
-.health-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
-}
-.health-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-}
-.health-tile.warn { border-left: 3px solid var(--warn); }
-.health-tile.danger { border-left: 3px solid var(--err); }
-.health-tile.info { border-left: 3px solid var(--acc); }
-.health-tile strong { color: var(--txt); font-size: 13px; }
-.health-tile p { margin: 0; }
 
 /* Discos em cards que abrem o detalhe */
 .disk-board {
@@ -2362,6 +2292,5 @@ a.dash-card:hover {
 .disk-card-body > .btn { align-self: flex-start; }
 
 @media (max-width: 720px) {
-  .dash-summary { grid-template-columns: 1fr 1fr; }
   .disk-board { grid-template-columns: 1fr; }
 }

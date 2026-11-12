@@ -15,49 +15,49 @@
   </div>
 </div>
 
-<div class="dash-summary">
-  <a class="dash-card" href="{% url 'health_index' %}">
-    <span class="dash-label">Saúde</span>
-    <strong class="dash-value {% if health and not health.ok %}warn{% else %}ok{% endif %}">
+<div class="stat-grid">
+  <a class="stat-card" href="{% url 'health_index' %}">
+    <span class="stat-label">Saúde</span>
+    <strong class="stat-value {% if health and not health.ok %}warn{% else %}ok{% endif %}">
       {% if health %}{% if health.ok %}tudo ok{% else %}{{ health.alerts|length }} alerta{{ health.alerts|length|pluralize }}{% endif %}{% else %}—{% endif %}
     </strong>
-    <span class="dash-note">abrir a página de saúde</span>
+    <span class="stat-note">abrir a página de saúde</span>
   </a>
 
-  <div class="dash-card is-static">
-    <span class="dash-label">Volumes</span>
-    <strong class="dash-value">{% if volumes_summary %}{{ volumes_summary.count }}{% else %}0{% endif %}</strong>
-    <span class="dash-note">
+  <div class="stat-card is-static">
+    <span class="stat-label">Volumes</span>
+    <strong class="stat-value">{% if volumes_summary %}{{ volumes_summary.count }}{% else %}0{% endif %}</strong>
+    <span class="stat-note">
       {% if volumes_summary %}menor folga {{ volumes_summary.free_percent }}% em {{ volumes_summary.mount }}{% else %}sem volumes{% endif %}
     </span>
   </div>
 
-  <a class="dash-card" href="{% url 'storage_index' %}">
-    <span class="dash-label">Discos</span>
-    <strong class="dash-value">{{ disks_summary.count|default:0 }}</strong>
-    <span class="dash-note">
+  <a class="stat-card" href="{% url 'storage_index' %}">
+    <span class="stat-label">Discos</span>
+    <strong class="stat-value">{{ disks_summary.count|default:0 }}</strong>
+    <span class="stat-note">
       {% if disks_summary.max_temp %}até {{ disks_summary.max_temp }} °C{% else %}sem leitura SMART{% endif %}{% if disks_summary.failed %} · {{ disks_summary.failed }} FAILED{% endif %}
     </span>
   </a>
 
-  <a class="dash-card" href="{% url 'snapshots' %}">
-    <span class="dash-label">Snapshots</span>
-    <strong class="dash-value">{{ snapshots_summary.count|default:0 }}</strong>
-    <span class="dash-note">{% if agenda %}{{ agenda.label }}{% else %}sem agenda{% endif %}</span>
+  <a class="stat-card" href="{% url 'snapshots' %}">
+    <span class="stat-label">Snapshots</span>
+    <strong class="stat-value">{{ snapshots_summary.count|default:0 }}</strong>
+    <span class="stat-note">{% if agenda %}{{ agenda.label }}{% else %}sem agenda{% endif %}</span>
   </a>
 
   {% if capabilities.restic or capabilities.credenciais_backup %}
-  <a class="dash-card" href="{% url 'backup_index' %}">
-    <span class="dash-label">Backups</span>
-    <strong class="dash-value">{{ backup_jobs|length }} + {{ arquivos_jobs|length }}</strong>
-    <span class="dash-note">restic + arquivos tar.gz</span>
+  <a class="stat-card" href="{% url 'backup_index' %}">
+    <span class="stat-label">Backups</span>
+    <strong class="stat-value">{{ backup_jobs|length }} + {{ arquivos_jobs|length }}</strong>
+    <span class="stat-note">restic + arquivos tar.gz</span>
   </a>
   {% endif %}
 
-  <a class="dash-card" href="{% url 'shares' %}">
-    <span class="dash-label">Shares</span>
-    <strong class="dash-value">{{ shares|length }}</strong>
-    <span class="dash-note">{{ snapshots_summary.enabled|default:0 }} com snapshot ativo</span>
+  <a class="stat-card" href="{% url 'shares' %}">
+    <span class="stat-label">Shares</span>
+    <strong class="stat-value">{{ shares|length }}</strong>
+    <span class="stat-note">{{ snapshots_summary.enabled|default:0 }} com snapshot ativo</span>
   </a>
 </div>
 
@@ -184,8 +184,8 @@
   </div>
   <div class="dash-split">
     {% if capabilities.credenciais_backup %}
-    <article class="dash-card">
-      <span class="dash-label">Backup de arquivos</span>
+    <article class="stat-card">
+      <span class="stat-label">Backup de arquivos</span>
       {% if arquivos_jobs %}
       <ul class="dash-list">
         {% for job in arquivos_jobs|slice:":4" %}
@@ -199,17 +199,17 @@
         {% endfor %}
       </ul>
       {% if arquivos_jobs|length > 4 %}
-      <span class="dash-note">+{{ arquivos_jobs|length|add:"-4" }} job(s)</span>
+      <span class="stat-note">+{{ arquivos_jobs|length|add:"-4" }} job(s)</span>
       {% endif %}
       {% else %}
-      <span class="dash-note">Nenhum job. <a href="{% url 'arquivos_job_new' %}">Criar o primeiro</a>.</span>
+      <span class="stat-note">Nenhum job. <a href="{% url 'arquivos_job_new' %}">Criar o primeiro</a>.</span>
       {% endif %}
     </article>
     {% endif %}
 
     {% if capabilities.restic %}
-    <article class="dash-card">
-      <span class="dash-label">Backups restic</span>
+    <article class="stat-card">
+      <span class="stat-label">Backups restic</span>
       {% if backup_jobs %}
       <ul class="dash-list">
         {% for job in backup_jobs|slice:":4" %}
@@ -224,10 +224,10 @@
         {% endfor %}
       </ul>
       {% if backup_jobs|length > 4 %}
-      <span class="dash-note">+{{ backup_jobs|length|add:"-4" }} job(s)</span>
+      <span class="stat-note">+{{ backup_jobs|length|add:"-4" }} job(s)</span>
       {% endif %}
       {% else %}
-      <span class="dash-note">Nenhum job restic. <a href="{% url 'backup_job_new' %}">Criar o primeiro</a>.</span>
+      <span class="stat-note">Nenhum job restic. <a href="{% url 'backup_job_new' %}">Criar o primeiro</a>.</span>
       {% endif %}
     </article>
     {% endif %}
@@ -257,11 +257,11 @@
   </div>
   <div class="dash-split">
     {% for s in shares %}
-    <a class="dash-card" href="{% url 'shares' %}">
-      <span class="dash-label">{{ s.name }}{% if not s.browseable %} · privado{% endif %}</span>
-      <strong class="dash-value">{{ s.snapshot_count }}</strong>
-      <span class="dash-note">snapshots · keep {{ s.snapshot_keep|default:"—" }}</span>
-      <span class="dash-note">{{ s.disk_label|default:"" }}{% if s.read_only %} · somente leitura{% endif %}</span>
+    <a class="stat-card" href="{% url 'shares' %}">
+      <span class="stat-label">{{ s.name }}{% if not s.browseable %} · privado{% endif %}</span>
+      <strong class="stat-value">{{ s.snapshot_count }}</strong>
+      <span class="stat-note">snapshots · keep {{ s.snapshot_keep|default:"—" }}</span>
+      <span class="stat-note">{{ s.disk_label|default:"" }}{% if s.read_only %} · somente leitura{% endif %}</span>
     </a>
     {% empty %}
     <div class="empty">Nenhum share encontrado.</div>

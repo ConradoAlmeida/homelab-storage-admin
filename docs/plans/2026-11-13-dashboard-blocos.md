@@ -8,12 +8,13 @@ rodapé em vez do meio da página.
 
 ## Decisões
 
-- **Resumo no topo** (`dash-summary`): seis blocos com um número e uma nota
+- **Resumo no topo** (`stat-grid`): seis blocos com um número e uma nota
   curta — saúde, volumes, discos, snapshots, backups e shares. Saúde abre a
   página dedicada; Discos, Snapshots, Backups e Shares abrem a página
   específica. Volumes é só indicador, sem scroll interno.
-- **Página Saúde** (`/saude/`): alertas do agente em tiles e volumes do host.
-  O card de Saúde do dashboard leva para lá; o menu Sistema também.
+- **Página Saúde** (`/saude/`): alertas do agente em tiles (`tile-grid`) e
+  volumes do host. O card de Saúde do dashboard leva para lá; o menu Sistema
+  também.
 - **Discos em cards** (`details.disk-card`): nome, estado, tamanho, temperatura
   e SMART no resumo; ao abrir, partições, montagens e uso. O botão leva para a
   página Discos.

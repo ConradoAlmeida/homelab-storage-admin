@@ -535,6 +535,77 @@ textarea::placeholder { color: var(--moya-muted); }
   margin-bottom: 16px;
 }
 
+/* Indicadores e estados */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--moya-card);
+  border: 1px solid var(--moya-border);
+  border-radius: var(--moya-radius);
+  color: inherit;
+  text-decoration: none;
+}
+a.stat-card:hover {
+  border-color: var(--moya-primary);
+  text-decoration: none;
+}
+.stat-card.is-static { cursor: default; }
+.stat-label {
+  color: var(--moya-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-value {
+  color: var(--moya-text);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.stat-value.ok { color: var(--moya-green); }
+.stat-value.warn { color: var(--moya-warn); }
+.stat-value.danger { color: var(--moya-red); }
+.stat-value.is-text { font-size: 15px; font-weight: 600; }
+.stat-note {
+  color: var(--moya-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.stat-note a { color: var(--moya-primary); }
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--moya-card);
+  border: 1px solid var(--moya-border);
+  border-radius: var(--moya-radius-sm);
+}
+.tile.warn { border-left: 3px solid var(--moya-warn); }
+.tile.danger { border-left: 3px solid var(--moya-red); }
+.tile.info { border-left: 3px solid var(--moya-primary); }
+.tile strong { color: var(--moya-text); font-size: 13px; }
+.tile p { margin: 0; }
+
 /* Pessoas em cards */
 .person-grid {
   display: grid;
@@ -647,4 +718,5 @@ textarea::placeholder { color: var(--moya-muted); }
   .form-grid { grid-template-columns: 1fr; }
   .section-head { align-items: flex-start; }
   .person-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
 }

@@ -1459,12 +1459,12 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/")
         self.assertContains(resposta, "Saúde")
         self.assertContains(resposta, "tudo ok")
-        self.assertContains(resposta, "dash-summary")
+        self.assertContains(resposta, "stat-grid")
         self.assertContains(resposta, "app-footer")
         self.assertContains(resposta, 'href="/saude/"')
         self.assertNotContains(resposta, 'href="#saude"')
         self.assertNotContains(resposta, 'href="#volumes"')
-        self.assertContains(resposta, "dash-card is-static")
+        self.assertContains(resposta, "stat-card is-static")
 
     def test_dashboard_saude_em_blocos(self):
         self.fake.health_overview.return_value = {
@@ -1480,8 +1480,8 @@ class ViewSmokeTests(TestCase):
             ],
         }
         resposta = self.client.get("/saude/")
-        self.assertContains(resposta, "health-grid")
-        self.assertContains(resposta, "health-tile warn")
+        self.assertContains(resposta, "tile-grid")
+        self.assertContains(resposta, "tile warn")
         self.assertContains(resposta, "SMART falhou")
         self.assertContains(resposta, "Atualizar")
 
@@ -1655,8 +1655,8 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/saude/")
         self.assertContains(resposta, "Disco cheio")
         self.assertContains(resposta, "/mnt em 91%")
-        self.assertContains(resposta, "health-grid")
-        self.assertContains(resposta, "health-tile warn")
+        self.assertContains(resposta, "tile-grid")
+        self.assertContains(resposta, "tile warn")
         self.assertContains(resposta, "atenção")
         self.assertNotContains(resposta, "health-row")
 

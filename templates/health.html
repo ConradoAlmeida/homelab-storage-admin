@@ -18,18 +18,18 @@
     <p class="muted">{{ error }}</p>
   </div>
 {% elif health %}
-  <div class="dash-summary">
-    <div class="dash-card is-static">
-      <span class="dash-label">Estado</span>
-      <strong class="dash-value {% if health.ok %}ok{% else %}warn{% endif %}">
+  <div class="stat-grid">
+    <div class="stat-card is-static">
+      <span class="stat-label">Estado</span>
+      <strong class="stat-value {% if health.ok %}ok{% else %}warn{% endif %}">
         {% if health.ok %}tudo ok{% else %}atenção{% endif %}
       </strong>
-      <span class="dash-note">{{ health.alerts|length }} alerta{{ health.alerts|length|pluralize }} · {{ health.volumes|length }} volume{{ health.volumes|length|pluralize }}</span>
+      <span class="stat-note">{{ health.alerts|length }} alerta{{ health.alerts|length|pluralize }} · {{ health.volumes|length }} volume{{ health.volumes|length|pluralize }}</span>
     </div>
-    <div class="dash-card is-static">
-      <span class="dash-label">Última verificação</span>
-      <strong class="dash-value is-text">{{ health.generated_at|default:"—" }}</strong>
-      <span class="dash-note">recarregar a página gera uma nova leitura</span>
+    <div class="stat-card is-static">
+      <span class="stat-label">Última verificação</span>
+      <strong class="stat-value is-text">{{ health.generated_at|default:"—" }}</strong>
+      <span class="stat-note">recarregar a página gera uma nova leitura</span>
     </div>
   </div>
 
@@ -41,9 +41,9 @@
       </span>
     </div>
     {% if health.alerts %}
-    <div class="health-grid">
+    <div class="tile-grid">
       {% for item in health.alerts %}
-      <article class="health-tile {% if item.level == 'red' %}danger{% elif item.level == 'warn' %}warn{% else %}info{% endif %}">
+      <article class="tile {% if item.level == 'red' %}danger{% elif item.level == 'warn' %}warn{% else %}info{% endif %}">
         <span class="status {% if item.level == 'red' %}off{% elif item.level == 'warn' %}warn{% else %}info{% endif %}">
           {% if item.level == 'red' %}crítico{% elif item.level == 'warn' %}atenção{% else %}info{% endif %}
         </span>
