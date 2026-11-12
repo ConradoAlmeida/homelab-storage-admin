@@ -103,6 +103,8 @@ Storage Admin.
   uma única vez na resposta. Não vai para argv, `host.env`, banco do Storage,
   log do agente ou `AuditLog`.
 - A rotação exige digitar o identificador do app e invalida a senha anterior.
+- Criar preserva a senha apenas quando `admin` já é superuser com senha
+  utilizável; se faltar, não for superuser ou estiver sem senha, gera uma nova.
 - Superusers com outro nome (por exemplo `conrado`) não são alterados.
 - `DJANGO_ADMIN_MANAGE=0` no host desliga a página e as ações, mesmo que o
   agente ofereça a operação. `DJANGO_ADMIN_ENABLE=0` desliga no agente.

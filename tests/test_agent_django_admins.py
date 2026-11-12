@@ -135,7 +135,7 @@ def test_ensure_preserva_senha_de_superuser_existente(
     assert not any("get_or_create" in c["args"][-1] for c in chamadas)
 
 
-def test_ensure_promove_usuario_existente_sem_trocar_senha(
+def test_ensure_promove_usuario_existente_com_senha_nova(
     agent_module, monkeypatch
 ):
     status = {
@@ -151,16 +151,16 @@ def test_ensure_promove_usuario_existente_sem_trocar_senha(
         "is_superuser": True,
         "is_staff": True,
         "created": False,
-        "password_set": False,
+        "password_set": True,
         "promoted": True,
     }
     chamadas = _preparar(agent_module, monkeypatch, status=status, mutacao=mutacao)
     dados = agent_module.op_django_admin_ensure("storage")
-    assert dados["password"] == ""
+    assert dados["password"]
     mutantes = [c for c in chamadas if "get_or_create" in c["args"][-1]]
     assert len(mutantes) == 1
-    assert mutantes[0]["input"] == "\n"
-    assert "DJANGO_ADMIN_FORCE=0" in mutantes[0]["args"]
+    assert mutantes[0]["input"].strip() == dados["password"]
+    assert "DJANGO_ADMIN_FORCE=1" in mutantes[0]["args"]
 
 
 def test_rotate_exige_usuario_existente(agent_module, monkeypatch):

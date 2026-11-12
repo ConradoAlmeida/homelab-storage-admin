@@ -6989,7 +6989,11 @@ def op_django_admin_ensure(
 
     senha = ""
     force = False
-    if not atual.get("exists") or not atual.get("usable_password"):
+    if (
+        not atual.get("exists")
+        or not atual.get("usable_password")
+        or not atual.get("is_superuser")
+    ):
         senha = secrets.token_urlsafe(32)
         force = True
     dados = _django_admin_exec(
