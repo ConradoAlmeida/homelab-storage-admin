@@ -2079,3 +2079,28 @@ body.brand-moya .side-nav a.active .count {
   .disk-mount-summary { white-space: normal; }
   .disk-raid-chip { white-space: normal; }
 }
+
+/* --- Serviços systemd: filtros e grupos --- */
+.service-filter {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 170px 170px auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+.service-filter .form-group { margin: 0; }
+.service-filter-actions { display: flex; gap: 8px; align-items: center; }
+.service-group-row td {
+  background: rgba(255, 255, 255, .03);
+  border-top: 1px solid var(--line);
+  padding: 8px 10px;
+}
+.service-group-row strong {
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+@media (max-width: 720px) {
+  .service-filter { grid-template-columns: 1fr; }
+  .service-filter-actions { justify-content: flex-start; }
+}
