@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Saúde - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Saúde</h1>
+    <p class="lead">Alertas do agente para discos, backups, containers, firewall e e-mail. A verificação é feita ao abrir esta página; nada é alterado.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'dashboard' %}">Dashboard</a>
+    <a class="btn primary" href="{% url 'health_index' %}">Atualizar</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ error }}</p>
+  </div>
+{% elif health %}
+  <div class="dash-summary">
+    <div class="dash-card is-static">
+      <span class="dash-label">Estado</span>
+      <strong class="dash-value {% if health.ok %}ok{% else %}warn{% endif %}">
+        {% if health.ok %}tudo ok{% else %}atenção{% endif %}
+      </strong>
+      <span class="dash-note">{{ health.alerts|length }} alerta{{ health.alerts|length|pluralize }} · {{ health.volumes|length }} volume{{ health.volumes|length|pluralize }}</span>
+    </div>
+    <div class="dash-card is-static">
+      <span class="dash-label">Última verificação</span>
+      <strong class="dash-value is-text">{{ health.generated_at|default:"—" }}</strong>
+      <span class="dash-note">recarregar a página gera uma nova leitura</span>
+    </div>
+  </div>
+
+  <section class="section" id="alertas">
+    <div class="section-head">
+      <h2>Alertas</h2>
+      <span class="status {% if health.ok %}ok{% else %}warn{% endif %}">
+        {% if health.ok %}tudo ok{% else %}atenção{% endif %}
+      </span>
+    </div>
+    {% if health.alerts %}
+    <div class="health-grid">
+      {% for item in health.alerts %}
+      <article class="health-tile {% if item.level == 'red' %}danger{% elif item.level == 'warn' %}warn{% else %}info{% endif %}">
+        <span class="status {% if item.level == 'red' %}off{% elif item.level == 'warn' %}warn{% else %}info{% endif %}">
+          {% if item.level == 'red' %}crítico{% elif item.level == 'warn' %}atenção{% else %}info{% endif %}
+        </span>
+        <strong>{{ item.title }}</strong>
+        {% if item.detail %}<p class="muted text-12">{{ item.detail }}</p>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card">
+      <span class="status ok">tudo ok</span>
+      <span class="muted">Nenhum alerta.</span>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="section" id="volumes">
+    <div class="section-head">
+      <h2>Volumes</h2>
+      <div class="page-actions">
+        <span class="muted text-12">{{ health.volumes|length }} volume{{ health.volumes|length|pluralize }}</span>
+        <a class="btn small" href="{% url 'storage_index' %}">Abrir discos</a>
+      </div>
+    </div>
+    <div class="metric-grid">
+      {% for v in health.volumes %}
+        <div class="metric">
+          <span>{{ v.mount }}</span>
+          <strong>{{ v.free|filesizeformat }} livres</strong>
+          <div class="muted text-12">{{ v.used|filesizeformat }} usados de {{ v.total|filesizeformat }} ({{ v.percent }}%)</div>
+          <progress class="bar {% if v.percent >= 90 %}err{% elif v.percent >= 75 %}warn{% endif %}" value="{{ v.percent }}" max="100"></progress>
+        </div>
+      {% empty %}
+        <div class="empty">Nenhum volume retornado.</div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

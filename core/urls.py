@@ -4,6 +4,7 @@ from . import downloads, system_views, views
 
 urlpatterns = [
     path("", views.DashboardView.as_view(), name="dashboard"),
+    path("saude/", views.HealthView.as_view(), name="health_index"),
     path("rede/", views.NetworkView.as_view(), name="network_index"),
     path("sistema/", system_views.SystemHostView.as_view(), name="system_host"),
     path(

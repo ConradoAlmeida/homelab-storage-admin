@@ -212,13 +212,17 @@ class VersoesScheduleSaveView(AgentPostView):
     def post(self, request):
         per_day = (request.POST.get("per_day") or "").strip()
         first_time = (request.POST.get("first_time") or "").strip()
+        destino = (request.POST.get("next") or "").strip()
+        if destino not in {"snapshots", "backup_index"}:
+            destino = "backup_index"
+        ancora = "agenda" if destino == "snapshots" else "versoes_snapshots"
         try:
             agent.versoes_schedule_save(per_day=per_day, first_time=first_time)
         except AgentError as exc:
             messages.error(request, str(exc))
-            return redirect(f"{reverse('backup_index')}#versoes_snapshots")
+            return redirect(f"{reverse(destino)}#{ancora}")
         messages.success(request, "Agenda de versões salva.")
-        return redirect(f"{reverse('backup_index')}#versoes_snapshots")
+        return redirect(f"{reverse(destino)}#{ancora}")
 
 
 class BackupSnapshotsView(AgentTemplateView):

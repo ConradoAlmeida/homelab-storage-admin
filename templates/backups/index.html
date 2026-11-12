@@ -266,33 +266,6 @@
   {% elif not versoes_error %}
     <div class="empty">Nenhum share com política.</div>
   {% endif %}
-  <div class="card">
-    <p class="muted text-12 mb-4">
-      Agenda global dos snapshots de share. Vale para todos os shares com política ativa;
-      o keep de cada share continua na política dele.
-    </p>
-    <p class="muted text-12 mb-4">
-      Agora: <strong>{% if versoes_agenda %}{{ versoes_agenda.label }}{% else %}—{% endif %}</strong>.
-    </p>
-    <form method="post" action="{% url 'versoes_schedule_save' %}">
-      {% csrf_token %}
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="per_day">Cópias por dia</label>
-          <input class="form-control" id="per_day" name="per_day" type="number" min="1" max="24" value="{{ versoes_agenda.per_day|default:2 }}" required>
-          <p class="help">1 a 24. Os horários são distribuídos igualmente a partir do primeiro.</p>
-        </div>
-        <div class="form-group">
-          <label for="first_time">Primeiro horário</label>
-          <input class="form-control" id="first_time" name="first_time" type="time" value="{{ versoes_agenda.first_time|default:'00:05' }}" required>
-          <p class="help">Horários atuais: {% if versoes_agenda %}{{ versoes_agenda.times|join:", " }}{% else %}—{% endif %}.</p>
-        </div>
-        <div class="form-group">
-          <label aria-hidden="true">&nbsp;</label>
-          <button class="btn primary" type="submit">Salvar agenda</button>
-        </div>
-      </div>
-    </form>
-  </div>
+  {% include "partials/snapshot_schedule_form.html" with agenda=versoes_agenda agenda_next="backup_index" %}
 </section>
 {% endblock %}

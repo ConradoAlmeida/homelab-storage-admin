@@ -2266,6 +2266,7 @@ a.dash-card:hover {
 .dash-value.ok { color: var(--ok); }
 .dash-value.warn { color: var(--warn); }
 .dash-value.danger { color: var(--err); }
+.dash-value.is-text { font-size: 15px; font-weight: 600; }
 .dash-note {
   color: var(--muted);
   font-size: 12px;
@@ -2312,6 +2313,8 @@ a.dash-card:hover {
   background: var(--panel);
 }
 .health-tile.warn { border-left: 3px solid var(--warn); }
+.health-tile.danger { border-left: 3px solid var(--err); }
+.health-tile.info { border-left: 3px solid var(--acc); }
 .health-tile strong { color: var(--txt); font-size: 13px; }
 .health-tile p { margin: 0; }
 

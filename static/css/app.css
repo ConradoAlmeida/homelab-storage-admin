@@ -38,6 +38,11 @@ a:hover { color:var(--acc-hover); }
 .user-chip { color:#a8adb8; font-size:12px; padding:4px 2px; border-radius:0; background:transparent; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .workspace { min-width:0; background:var(--bg); display:flex; flex-direction:column; min-height:100vh; }
 .workspace main { flex:1; width:100%; }
+.app-footer { position:fixed; left:220px; right:0; bottom:0; z-index:45; display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:8px 20px; background:rgba(11,18,32,.96); border-top:1px solid var(--line); color:var(--muted); font-size:12px; backdrop-filter:blur(8px); }
+.app-footer-brand { color:var(--muted); font-weight:600; }
+.app-footer-label { color:var(--muted); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+.app-footer-services { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-left:auto; }
+@media (max-width:900px) { .app-footer { left:0; } }
 .app-footer { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:12px 24px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
 .app-footer-brand { color:var(--muted); font-weight:600; }
 .app-footer-services { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-left:auto; }
@@ -328,3 +333,7 @@ details[open] > summary.btn { margin-bottom:8px; }
 @keyframes gitea-spin { to { transform: rotate(360deg); } }
 
 [hidden] { display:none !important; }
+
+/* Rodape fixo: evita que os atalhos de servico fiquem escondidos no fim da pagina. */
+.workspace main { padding-bottom:96px; }
+@media (max-width:900px) { .workspace main { padding-bottom:128px; } }

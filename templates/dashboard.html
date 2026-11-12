@@ -16,13 +16,13 @@
 </div>
 
 <div class="dash-summary">
-  <div class="dash-card is-static">
+  <a class="dash-card" href="{% url 'health_index' %}">
     <span class="dash-label">Saúde</span>
     <strong class="dash-value {% if health and not health.ok %}warn{% else %}ok{% endif %}">
       {% if health %}{% if health.ok %}tudo ok{% else %}{{ health.alerts|length }} alerta{{ health.alerts|length|pluralize }}{% endif %}{% else %}—{% endif %}
     </strong>
-    <span class="dash-note">agente, Samba, discos e backups</span>
-  </div>
+    <span class="dash-note">abrir a página de saúde</span>
+  </a>
 
   <div class="dash-card is-static">
     <span class="dash-label">Volumes</span>
@@ -60,35 +60,6 @@
     <span class="dash-note">{{ snapshots_summary.enabled|default:0 }} com snapshot ativo</span>
   </a>
 </div>
-
-{% if health %}
-<section class="section" id="saude">
-  <div class="section-head">
-    <h2>Saúde</h2>
-    <span class="status {% if health.ok %}ok{% else %}warn{% endif %}">
-      {% if health.ok %}tudo ok{% else %}atenção{% endif %}
-    </span>
-  </div>
-  {% if health.alerts %}
-  <div class="health-grid">
-    {% for item in health.alerts %}
-    <article class="health-tile {% if item.level != 'info' %}warn{% endif %}">
-      <span class="status {% if item.level == 'info' %}info{% else %}warn{% endif %}">
-        {% if item.level == 'info' %}info{% else %}atenção{% endif %}
-      </span>
-      <strong>{{ item.title }}</strong>
-      {% if item.detail %}<p class="muted text-12">{{ item.detail }}</p>{% endif %}
-    </article>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="card">
-    <span class="status ok">tudo ok</span>
-    <span class="muted">Nenhum alerta.</span>
-  </div>
-  {% endif %}
-</section>
-{% endif %}
 
 {% if agent_error %}
   <div class="card border-danger">

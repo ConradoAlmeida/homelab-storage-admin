@@ -857,6 +857,29 @@ class ViewSmokeTests(TestCase):
             per_day="1", first_time="03:00"
         )
 
+    def test_snapshots_mostra_agenda_global(self):
+        self.fake.list_shares.return_value = [
+            {"name": "docs", "path": "/mnt/nas/docs"}
+        ]
+        self.fake.snapshot_usage.return_value = [
+            {"share": "docs", "enabled": True, "keep": 7, "count": 2, "snapshots": []}
+        ]
+        response = self.client.get("/snapshots/")
+        self.assertContains(response, 'id="agenda"')
+        self.assertContains(response, 'name="per_day"')
+        self.assertContains(response, 'name="first_time"')
+        self.assertContains(response, "Agenda global")
+
+    def test_snapshots_salva_agenda_e_volta_para_agenda(self):
+        response = self.client.post(
+            "/backups/versoes/agenda/",
+            {"per_day": "1", "first_time": "03:00", "next": "snapshots"},
+        )
+        self.assertEqual(response.url, "/snapshots/#agenda")
+        self.fake.versoes_schedule_save.assert_called_once_with(
+            per_day="1", first_time="03:00"
+        )
+
     def test_gitea_e_arquivos_ficam_fora_sem_o_recurso(self):
         gitea = self.client.get("/backups/gitea/")
         self.assertRedirects(gitea, "/backups/")
@@ -1437,6 +1460,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "tudo ok")
         self.assertContains(resposta, "dash-summary")
         self.assertContains(resposta, "app-footer")
+        self.assertContains(resposta, 'href="/saude/"')
         self.assertNotContains(resposta, 'href="#saude"')
         self.assertNotContains(resposta, 'href="#volumes"')
         self.assertContains(resposta, "dash-card is-static")
@@ -1444,6 +1468,8 @@ class ViewSmokeTests(TestCase):
     def test_dashboard_saude_em_blocos(self):
         self.fake.health_overview.return_value = {
             "ok": False,
+            "volumes": [],
+            "generated_at": "2026-11-12T10:00:00",
             "alerts": [
                 {
                     "level": "warn",
@@ -1452,15 +1478,49 @@ class ViewSmokeTests(TestCase):
                 }
             ],
         }
-        resposta = self.client.get("/")
+        resposta = self.client.get("/saude/")
         self.assertContains(resposta, "health-grid")
         self.assertContains(resposta, "health-tile warn")
         self.assertContains(resposta, "SMART falhou")
+        self.assertContains(resposta, "Atualizar")
+
+    def test_saude_pagina_mostra_volumes(self):
+        self.fake.health_overview.return_value = {
+            "ok": True,
+            "alerts": [],
+            "generated_at": "2026-11-12T10:00:00",
+            "volumes": [
+                {
+                    "mount": "/mnt/nas",
+                    "total": 1000,
+                    "used": 100,
+                    "free": 900,
+                    "percent": 10,
+                }
+            ],
+        }
+        resposta = self.client.get("/saude/")
+        self.assertContains(resposta, "/mnt/nas")
+        self.assertContains(resposta, "900")
+        self.assertContains(resposta, "Nenhum alerta")
 
     def test_dashboard_servicos_ficam_no_rodape(self):
         resposta = self.client.get("/")
         self.assertContains(resposta, 'class="app-footer"')
         self.assertContains(resposta, "app-footer-brand")
+
+    def test_rodape_mostra_servicos_como_botoes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            services = Path(tmp) / "services.ini"
+            services.write_text(
+                "[gitea]\nname = Gitea\nurl = http://gitea.local\norder = 1\n",
+                encoding="utf-8",
+            )
+            with override_settings(SERVICES_FILE=str(services)):
+                resposta = self.client.get("/")
+        self.assertContains(resposta, "app-footer-services")
+        self.assertContains(resposta, "Gitea")
+        self.assertContains(resposta, 'class="btn small"')
 
     def test_rede_renderiza(self):
         resposta = self.client.get("/rede/")
@@ -1591,7 +1651,7 @@ class ViewSmokeTests(TestCase):
             "volumes": [],
             "ok": False,
         }
-        resposta = self.client.get("/")
+        resposta = self.client.get("/saude/")
         self.assertContains(resposta, "Disco cheio")
         self.assertContains(resposta, "/mnt em 91%")
         self.assertContains(resposta, "health-grid")

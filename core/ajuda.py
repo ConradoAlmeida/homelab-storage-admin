@@ -20,10 +20,9 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Saúde do sistema",
                 "text": (
-                    "Os blocos do topo resumem saúde, volumes, discos, snapshots, "
-                    "backups e shares; cada um leva à seção ou página específica. "
-                    "Os avisos do agente aparecem em blocos menores, com detalhe "
-                    "curto."
+                    "O bloco de Saúde no resumo mostra o estado e abre a página "
+                    "Saúde, com os avisos do agente em blocos. Os demais blocos "
+                    "levam à seção ou página específica."
                 ),
             },
             {
@@ -81,6 +80,36 @@ AJUDA: dict[str, dict[str, Any]] = {
                     "Resume cada share, a contagem de snapshots e a retenção. "
                     "Gerenciar shares abre a página com espaço, acesso e regra "
                     "completa."
+                ),
+            },
+        ],
+    },
+    "health_index": {
+        "title": "Saúde",
+        "summary": (
+            "Alertas do agente para discos, backups, containers, firewall e "
+            "e-mail, com os volumes do host."
+        ),
+        "chapters": [
+            {
+                "title": "Alertas",
+                "text": (
+                    "Cada bloco mostra o nível, o título e o detalhe do aviso. "
+                    "Crítico pede ação; atenção acompanha; info é contexto."
+                ),
+            },
+            {
+                "title": "Volumes",
+                "text": (
+                    "Uso de cada montagem, com barra e espaço livre. Acima de "
+                    "75% o alerta vira atenção; acima de 90%, crítico."
+                ),
+            },
+            {
+                "title": "Atualizar",
+                "text": (
+                    "Recarrega a leitura do agente. Nenhuma ação é executada "
+                    "por esta página."
                 ),
             },
         ],
@@ -704,6 +733,15 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": (
                     "Mostra quantas políticas estão ativas, o total de snapshots "
                     "e o tamanho aproximado."
+                ),
+            },
+            {
+                "title": "Agenda global",
+                "text": (
+                    "Define quantas cópias por dia (1 a 24) e o primeiro horário; "
+                    "os demais são distribuídos igualmente. Vale para todos os "
+                    "shares com política ativa. O mesmo formulário aparece em "
+                    "Backups, no bloco versoes_snapshots."
                 ),
             },
             {
@@ -1429,6 +1467,11 @@ AJUDA: dict[str, dict[str, Any]] = {
 
 
 USE_CASES: dict[str, str] = {
+    "health_index": (
+        "Use depois de um alerta ou antes de uma operação importante. "
+        "Exemplo: confira discos, backups e containers em um só lugar e "
+        "volte ao dashboard pelo botão."
+    ),
     "dashboard": (
         "Use ao abrir o painel ou depois de um alerta para saber, em uma tela, "
         "se discos, serviços, backups e shares estão saudáveis. Exemplo: antes "

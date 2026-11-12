@@ -222,6 +222,19 @@ class DashboardView(AgentTemplateView):
         return context
 
 
+class HealthView(AgentTemplateView):
+    template_name = "health.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({"health": None, "error": None})
+        try:
+            context["health"] = agent.health_overview()
+        except AgentError as exc:
+            context["error"] = str(exc)
+        return context
+
+
 class NetworkView(AgentTemplateView):
     template_name = "network.html"
 

@@ -14,10 +14,10 @@
   na hora.
 - **Manual:** botão “Criar snapshot agora” na tela Snapshots, para shares com
   política ativa.
-- **Agenda global:** em **Backups → versoes_snapshots** você define quantas
-  cópias por dia (1 a 24) e o primeiro horário; os demais horários são
-  distribuídos igualmente. O agente grava a agenda em
-  `snapshot-schedule.json` e reescreve o
+- **Agenda global:** em **Snapshots → Agenda global** (e também em
+  **Backups → versoes_snapshots**) você define quantas cópias por dia (1 a 24) e
+  o primeiro horário; os demais são distribuídos igualmente. O agente grava a
+  agenda em `snapshot-schedule.json` e reescreve o
   `homelab-storage-snapshot.timer` com um `OnCalendar` por horário.
   O cron legado `samba-snapshot.sh` é removido na primeira reconciliação para
   não duplicar snapshots. Um share com política ativa é copiado em cada horário.

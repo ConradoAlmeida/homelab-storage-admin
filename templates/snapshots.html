@@ -31,6 +31,14 @@
     <div class="metric"><span>Tamanho aprox.</span><strong data-snap-total><span class="spinner spinner-inline" role="status" aria-label="Medindo"></span></strong></div>
   </div>
 
+  <section class="section" id="agenda">
+    <div class="section-head">
+      <h2>Agenda global</h2>
+      <span class="muted text-12">vale para todos os shares com política ativa</span>
+    </div>
+    {% include "partials/snapshot_schedule_form.html" with agenda=agenda agenda_next="snapshots" %}
+  </section>
+
   {% for s in shares %}
     <section class="section">
       <details class="card">
