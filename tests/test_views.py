@@ -1863,6 +1863,36 @@ class SystemPagesTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "desconhecido")
 
+    def test_servicos_agrupa_filtra_e_ordena(self):
+        caps = dict(self.fake.host_capabilities.return_value)
+        caps.update({"systemctl": True, "system_manage": True})
+        self.fake.host_capabilities.return_value = caps
+        context_processors._cached_caps = None
+        self.fake.systemd_list_units.return_value = {
+            "units": [
+                {"unit": "a.service", "load": "loaded", "active": "active", "sub": "running"},
+                {"unit": "b.service", "load": "loaded", "active": "failed", "sub": "failed"},
+                {"unit": "c.service", "load": "loaded", "active": "inactive", "sub": "dead"},
+                {"unit": "d.service", "load": "loaded", "active": "activating", "sub": "start"},
+            ]
+        }
+        resposta = self.client.get("/sistema/servicos/")
+        self.assertContains(resposta, "Falhas")
+        self.assertContains(resposta, "Ativos")
+        self.assertContains(resposta, "Inativos")
+        self.assertContains(resposta, "Outros")
+        self.assertContains(resposta, "4 de 4")
+        self.assertContains(resposta, "b.service")
+
+        resposta = self.client.get("/sistema/servicos/", {"estado": "failed"})
+        self.assertContains(resposta, "1 de 4")
+        self.assertContains(resposta, "b.service")
+        self.assertNotContains(resposta, "a.service")
+
+        resposta = self.client.get("/sistema/servicos/", {"busca": "c.service"})
+        self.assertContains(resposta, "c.service")
+        self.assertNotContains(resposta, "a.service")
+
     def test_systemd_unit_recusada(self):
         caps = dict(self.fake.host_capabilities.return_value)
         caps.update({"systemctl": True, "system_manage": True})

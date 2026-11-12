@@ -287,6 +287,25 @@ class ContainerLogsRedirectView(AgentView):
         return redirect(f"{reverse('system_logs')}?{urlencode(q)}")
 
 
+GRUPOS_SERVICOS = (
+    ("failed", "Falhas"),
+    ("active", "Ativos"),
+    ("inactive", "Inativos"),
+    ("other", "Outros"),
+)
+ESTADOS_SERVICOS = {"todos"} | {chave for chave, _nome in GRUPOS_SERVICOS}
+
+
+def _grupo_servico(active: str) -> str:
+    if active == "failed":
+        return "failed"
+    if active == "active":
+        return "active"
+    if active == "inactive":
+        return "inactive"
+    return "other"
+
+
 class SystemServicesView(AgentTemplateView):
     template_name = "system_services.html"
 
@@ -295,6 +314,12 @@ class SystemServicesView(AgentTemplateView):
         context.update(
             {
                 "units": [],
+                "grupos": [],
+                "busca": "",
+                "estado": "todos",
+                "ordem": "unit",
+                "mostrando": 0,
+                "total": 0,
                 "units_error": None,
                 "systemctl_cap": _cap("systemctl"),
                 "pode_agir": _cap("systemctl") and _system_manage_effetivo(),
@@ -305,9 +330,64 @@ class SystemServicesView(AgentTemplateView):
             return context
         try:
             dados = agent.systemd_list_units()
-            context["units"] = dados.get("units") or []
+            units = dados.get("units") or []
         except AgentError as exc:
             context["units_error"] = str(exc)
+            return context
+
+        busca = (self.request.GET.get("busca") or "").strip()
+        estado = (self.request.GET.get("estado") or "todos").strip()
+        ordem = (self.request.GET.get("ordem") or "unit").strip()
+        if estado not in ESTADOS_SERVICOS:
+            estado = "todos"
+        if ordem not in {"unit", "sub"}:
+            ordem = "unit"
+        termo = busca.casefold()
+        filtradas = []
+        for unit in units:
+            texto = " ".join(
+                str(unit.get(chave) or "")
+                for chave in ("unit", "sub", "load")
+            ).casefold()
+            if termo and termo not in texto:
+                continue
+            if estado != "todos" and _grupo_servico(unit.get("active")) != estado:
+                continue
+            filtradas.append(unit)
+
+        grupos = []
+        for chave, nome in GRUPOS_SERVICOS:
+            itens = [
+                unit
+                for unit in filtradas
+                if _grupo_servico(unit.get("active")) == chave
+            ]
+            if not itens:
+                continue
+            if ordem == "sub":
+                itens.sort(
+                    key=lambda unit: (
+                        str(unit.get("sub") or "").casefold(),
+                        str(unit.get("unit") or "").casefold(),
+                    )
+                )
+            else:
+                itens.sort(
+                    key=lambda unit: str(unit.get("unit") or "").casefold()
+                )
+            grupos.append({"chave": chave, "nome": nome, "units": itens})
+
+        context.update(
+            {
+                "units": filtradas,
+                "grupos": grupos,
+                "busca": busca,
+                "estado": estado,
+                "ordem": ordem,
+                "mostrando": len(filtradas),
+                "total": len(units),
+            }
+        )
         return context
 
 
