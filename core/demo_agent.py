@@ -7,7 +7,36 @@ import re
 
 from .agent import AgentClient, AgentError
 
-_VERSOES_AGENDA = {"hora_a": "00:05", "hora_b": "12:05"}
+_VERSOES_AGENDA = {
+    "per_day": 2,
+    "first_time": "00:05",
+    "times": ["00:05", "12:05"],
+    "label": "2x/dia as 00:05 e 12:05",
+}
+
+
+def _demo_snapshot_times(per_day, first_time):
+    total = int(per_day)
+    if total < 1 or total > 24:
+        raise AgentError("Copias por dia deve ficar entre 1 e 24")
+    match = re.match(r"^([01]\d|2[0-3]):([0-5]\d)$", (first_time or "").strip())
+    if not match:
+        raise AgentError("Horario invalido; use HH:MM")
+    inicio = int(match.group(1)) * 60 + int(match.group(2))
+    passo = 1440 / total
+    horarios = []
+    for indice in range(total):
+        minutos = int(round(inicio + indice * passo)) % 1440
+        horarios.append(f"{minutos // 60:02d}:{minutos % 60:02d}")
+    return horarios
+
+
+def _demo_schedule_label(horarios):
+    if len(horarios) == 1:
+        return f"1×/dia às {horarios[0]}"
+    if len(horarios) == 24:
+        return "24×/dia, a cada hora"
+    return f"{len(horarios)}×/dia às " + ", ".join(horarios[:-1]) + f" e {horarios[-1]}"
 
 CAPS = {
     "btrfs": True,
@@ -661,16 +690,21 @@ def _dados(op: str, payload: dict):
     if op == "versoes_schedule":
         return dict(_VERSOES_AGENDA)
     if op == "versoes_schedule_save":
-        hora_a = str(payload.get("hora_a") or "").strip()
-        hora_b = str(payload.get("hora_b") or "").strip()
-        if not re.match(r"^([01]\d|2[0-3]):05$", hora_a) or not re.match(
-            r"^([01]\d|2[0-3]):05$", hora_b
-        ):
-            raise AgentError("Horario invalido; use HH:05 com horas distintas")
-        if hora_a == hora_b:
-            raise AgentError("Os dois horarios precisam ser distintos")
-        _VERSOES_AGENDA["hora_a"] = hora_a
-        _VERSOES_AGENDA["hora_b"] = hora_b
+        per_day = payload.get("per_day")
+        first_time = str(payload.get("first_time") or "").strip()
+        try:
+            total = int(per_day)
+        except (TypeError, ValueError) as exc:
+            raise AgentError("Copias por dia deve ser um numero entre 1 e 24") from exc
+        horarios = _demo_snapshot_times(total, first_time)
+        _VERSOES_AGENDA.update(
+            {
+                "per_day": total,
+                "first_time": first_time,
+                "times": horarios,
+                "label": _demo_schedule_label(horarios),
+            }
+        )
         return dict(_VERSOES_AGENDA)
     if op == "gitea_overview":
         return {"status": {}}

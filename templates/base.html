@@ -5,9 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ product_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20261112">
-  <link rel="stylesheet" href="{% static 'css/ui.css' %}?v=20261112">
-  <link rel="stylesheet" href="{% static 'css/kit.css' %}?v=20261112">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20261112c">
+  <link rel="stylesheet" href="{% static 'css/ui.css' %}?v=20261112c">
+  <link rel="stylesheet" href="{% static 'css/kit.css' %}?v=20261112b">
   {% include "partials/brand_icons.html" %}
 </head>
 <body{% if not brand_homelab %} class="brand-moya"{% endif %}>
@@ -122,6 +122,16 @@
         {% include "partials/task_poll.html" %}
         {% block content %}{% endblock %}
       </main>
+      <footer class="app-footer">
+        <span class="app-footer-brand">{{ product_name }}</span>
+        {% if services %}
+        <nav class="app-footer-services" aria-label="Serviços">
+          {% for service in services %}
+          <a href="{{ service.url }}" target="_blank" rel="noopener noreferrer">{{ service.name }}</a>
+          {% endfor %}
+        </nav>
+        {% endif %}
+      </footer>
     </div>
   </div>
   <script src="{% static 'js/shell.js' %}"></script>

@@ -13,23 +13,25 @@ AJUDA: dict[str, dict[str, Any]] = {
     "dashboard": {
         "title": "Dashboard",
         "summary": (
-            "Visão consolidada do servidor: saúde, serviços, recursos, discos, "
-            "backups e shares."
+            "Visão consolidada do servidor: saúde, serviços no rodapé, recursos, "
+            "discos, backups e shares."
         ),
         "chapters": [
             {
                 "title": "Saúde do sistema",
                 "text": (
-                    "A faixa no topo reúne os avisos coletados pelo agente. "
-                    "Vermelho pede ação imediata; amarelo é atenção; verde "
-                    "indica uma verificação concluída."
+                    "Os blocos do topo resumem saúde, volumes, discos, snapshots, "
+                    "backups e shares; cada um leva à seção ou página específica. "
+                    "Os avisos do agente aparecem em blocos menores, com detalhe "
+                    "curto."
                 ),
             },
             {
-                "title": "Serviços",
+                "title": "Serviços no rodapé",
                 "text": (
-                    "Mostra se os serviços gerenciados estão ativos. Um serviço "
-                    "parado pode explicar shares ou backups indisponíveis."
+                    "Os atalhos dos serviços ficam no rodapé, separados do menu "
+                    "lateral. Um serviço parado pode explicar shares ou backups "
+                    "indisponíveis."
                 ),
             },
             {
@@ -44,17 +46,17 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "title": "Volumes e discos",
                 "bullets": [
                     "Volumes mostram o uso das montagens do host.",
-                    "A tabela de discos aponta modelo, papel e estado SMART.",
-                    "O botão Detalhes abre a página Discos.",
+                    "Cada disco é um card; abrir mostra partições, montagens e uso.",
+                    "Os botões Abrir discos e Detalhes levam à página Discos.",
                 ],
             },
             {
                 "title": "Backup de arquivos",
                 "requires": "credenciais_backup",
                 "text": (
-                    "Jobs locais que geram pacotes em disco. A tabela resume "
-                    "agenda, retenção e o último resultado; Gerenciar jobs abre "
-                    "a lista completa."
+                    "Jobs locais que geram pacotes em disco. O card resume "
+                    "agenda e último resultado; Abrir backups mostra a lista "
+                    "completa."
                 ),
             },
             {
@@ -76,8 +78,9 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Shares",
                 "text": (
-                    "Resume cada share, o espaço usado pelos dados, pelos "
-                    "snapshots e o total."
+                    "Resume cada share, a contagem de snapshots e a retenção. "
+                    "Gerenciar shares abre a página com espaço, acesso e regra "
+                    "completa."
                 ),
             },
         ],
@@ -623,7 +626,8 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "Política de snapshot",
                 "text": (
-                    "keep N é quantos snapshots a política mantém. 'Não "
+                    "A agenda global define quantas cópias por dia e o primeiro "
+                    "horário; cada share só define keep e se está ativo. 'Não "
                     "configurado' significa que o share não tem política de "
                     "versões."
                 ),
@@ -1007,7 +1011,7 @@ AJUDA: dict[str, dict[str, Any]] = {
             {
                 "title": "versoes_snapshots",
                 "text": (
-                    "Dois horários e as cópias de cada share. "
+                    "Agenda global de cópias por dia e o keep de cada share. "
                     "Editar a retenção de um share abre a política de snapshot."
                 ),
             },

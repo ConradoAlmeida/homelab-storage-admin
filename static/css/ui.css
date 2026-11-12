@@ -2223,3 +2223,141 @@ select:focus, textarea:focus {
   border-color: rgba(255, 107, 138, .35);
   background: var(--err-soft);
 }
+
+/* --- Dashboard: resumo e blocos condensados --- */
+.dash-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: inherit;
+  text-decoration: none;
+}
+.dash-card:hover {
+  border-color: var(--acc);
+  text-decoration: none;
+}
+.dash-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-value {
+  color: var(--txt);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.dash-value.ok { color: var(--ok); }
+.dash-value.warn { color: var(--warn); }
+.dash-value.danger { color: var(--err); }
+.dash-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dash-note a { color: var(--acc); }
+.dash-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.dash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  font-size: 13px;
+}
+.dash-list li strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Saúde em blocos */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.health-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.health-tile.warn { border-left: 3px solid var(--warn); }
+.health-tile strong { color: var(--txt); font-size: 13px; }
+.health-tile p { margin: 0; }
+
+/* Discos em cards que abrem o detalhe */
+.disk-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+.disk-card {
+  padding: 0;
+  overflow: hidden;
+}
+.disk-card > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.disk-card > summary::-webkit-details-marker { display: none; }
+.disk-card > summary::marker { content: ""; }
+.disk-card[open] > summary { border-bottom: 1px solid var(--line); }
+.disk-card-chevron {
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform .15s ease;
+}
+.disk-card[open] .disk-card-chevron { transform: rotate(90deg); }
+.disk-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.disk-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.disk-card-body > .btn { align-self: flex-start; }
+
+@media (max-width: 720px) {
+  .dash-summary { grid-template-columns: 1fr 1fr; }
+  .disk-board { grid-template-columns: 1fr; }
+}

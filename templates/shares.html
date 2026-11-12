@@ -32,8 +32,8 @@
           <td class="muted mono text-12">{{ s.path }}{% if s.disk_label %}<div class="text-11">{{ s.disk_label }}</div>{% endif %}</td>
           <td>
             {% if s.snapshot_enabled %}
-              <span class="tag ok">keep {{ s.snapshot_keep }}</span>
-              <div class="muted text-12">{{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
+              <span class="tag ok">{% if agenda %}{{ agenda.label }}{% else %}snapshot ativo{% endif %}</span>
+              <div class="muted text-12">keep {{ s.snapshot_keep }} · {{ s.snapshot_count }} snapshot{{ s.snapshot_count|pluralize }}</div>
             {% else %}
               <span class="tag off">não configurado</span>
             {% endif %}

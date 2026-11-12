@@ -210,10 +210,10 @@ class BackupIndexView(AgentTemplateView):
 
 class VersoesScheduleSaveView(AgentPostView):
     def post(self, request):
-        hora_a = (request.POST.get("hora_a") or "").strip()
-        hora_b = (request.POST.get("hora_b") or "").strip()
+        per_day = (request.POST.get("per_day") or "").strip()
+        first_time = (request.POST.get("first_time") or "").strip()
         try:
-            agent.versoes_schedule_save(hora_a=hora_a, hora_b=hora_b)
+            agent.versoes_schedule_save(per_day=per_day, first_time=first_time)
         except AgentError as exc:
             messages.error(request, str(exc))
             return redirect(f"{reverse('backup_index')}#versoes_snapshots")
