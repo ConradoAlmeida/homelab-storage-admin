@@ -1982,3 +1982,100 @@ body.brand-moya .side-nav a.active .count {
 @media (max-width: 720px) {
   .row-actions.slots { justify-content: start; }
 }
+
+/* --- Discos do dashboard --- */
+.disk-table { table-layout: fixed; }
+.disk-col-expand { width: 34px; }
+.disk-col-papel { width: 88px; }
+.disk-col-estado { width: 104px; }
+.disk-col-smart { width: 96px; }
+.disk-col-mount { width: 310px; }
+.disk-col-actions { width: var(--control-h); }
+.btn.disk-expand-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+}
+.disk-chevron {
+  display: inline-block;
+  transition: transform .15s ease;
+  font-size: 12px;
+  line-height: 1;
+}
+.disk-main-row.is-expanded .disk-chevron,
+.disk-mobile-card.is-expanded .disk-chevron { transform: rotate(90deg); }
+.disk-mount-compact { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.disk-mount-line { display: flex; align-items: center; gap: 6px; min-height: 18px; }
+.disk-mount-summary { white-space: nowrap; }
+.disk-raid-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.disk-mount-bar-block {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.disk-mount-pct { white-space: nowrap; }
+.disk-mount-bar { height: 8px; margin: 0; }
+.disk-detail-row > td { padding: 0; background: rgba(255, 255, 255, .015); border-top: 0; }
+.disk-detail-wrap { padding: 10px 12px 12px 46px; }
+.disk-parts-subtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.disk-parts-subtable th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.disk-parts-subtable td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .04);
+  vertical-align: middle;
+}
+.disk-parts-subtable tr:last-child td { border-bottom: 0; }
+.disk-part-usage-stack { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+.bar-sub { height: 6px; margin: 0; max-width: 120px; }
+.disk-detail-empty { padding: 10px 12px 12px 46px; }
+.disk-mobile-board { display: none; }
+
+@media (max-width: 720px) {
+  .disk-table-wrap { display: none; }
+  .disk-mobile-board { display: grid; gap: 10px; }
+  .disk-mobile-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .disk-mobile-head { display: flex; align-items: center; gap: 8px; }
+  .disk-mobile-id { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .disk-mobile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .disk-mobile-parts {
+    margin-top: 8px;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+  .disk-mobile-part {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .04);
+  }
+  .disk-mobile-part:last-child { border-bottom: 0; }
+  .disk-mobile-part-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .disk-mobile-part .bar-sub { max-width: none; margin-top: 4px; }
+  .disk-mount-summary { white-space: normal; }
+  .disk-raid-chip { white-space: normal; }
+}

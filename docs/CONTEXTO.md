@@ -10,7 +10,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 |---|---|
 | Versão no moya | `b3549ff` (2026-11-10; uso de cada fatia no dashboard) |
 | Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`; uso por fatia). O Pi segue no deploy de 04/11 |
-| Testes | `278 passed` no Linux; lab na VM `5 passed` (2026-11-03) |
+| Testes | `405 passed, 8 skipped` no Linux; lab na VM a confirmar |
+| Dashboard | Discos em tabela compacta, detalhe expansível e cards no mobile (2026-11-12) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |

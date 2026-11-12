@@ -137,6 +137,13 @@ em toda abertura dessas páginas, então o percentual do resync não espera o
 ciclo diário. No dashboard, o uso de cada partição montada é relido na hora
 (`shutil.disk_usage`); a árvore de fatias vem do cache diário.
 
+No dashboard, a tabela de discos é compacta: **Montagem / uso** mostra a
+contagem de partições/montagens (ou o chip RAID `mdN → /mnt/...`) e a barra
+agregada. O chevron expande a sub-tabela com uma linha por partição, incluindo
+a cadeia RAID. Em telas até 720px a tabela vira cards. A barra agregada é a
+soma ponderada das montagens; num disco de sistema com backup quase vazio no
+mesmo PV, o percentual baixo é esperado e o texto `% usado` deixa isso claro.
+
 As métricas de **hardware do Pi** (CPU %, temperatura da CPU, load, RAM e fans)
 têm um endpoint próprio, `/metrics/live/`, consultado a cada 1 s pelo
 frontend. Ele lê apenas `/proc` e `/sys`, não chama `smartctl`/`lsblk`/`df` e

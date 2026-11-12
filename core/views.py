@@ -19,6 +19,7 @@ from .forms import (
     SnapshotPolicyForm,
     UserCreateForm,
 )
+from .disk_table import enrich_disk_rows
 from .hostinfo import anexar_discos, disk_role, volume_for
 from .http import agent_json_error
 from .models import AuditLog
@@ -121,6 +122,12 @@ class DashboardView(AgentTemplateView):
                 settings.BACKUP_ROOT,
                 settings.JELLYFIN_ROOT,
             )
+        enrich_disk_rows(
+            storage.get("disks", []),
+            raid=storage.get("raid"),
+            volumes=volumes,
+            storage_root=settings.STORAGE_ROOT,
+        )
 
         backup_disks = backups.get("disks", [])
         backup_jobs = backups.get("jobs", [])

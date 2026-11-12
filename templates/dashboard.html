@@ -120,58 +120,158 @@
     <h2>Discos</h2>
     <span class="muted text-12">{{ storage.disks|length }} disco{{ storage.disks|length|pluralize }}</span>
   </div>
-  <div class="table-wrap"><table class="file-table">
-    <thead><tr><th>Disco</th><th>Papel</th><th>Modelo / serial</th><th>Tamanho</th><th>Estado</th><th>Temp. / SMART</th><th>Montagem / uso</th><th aria-label="Ações"></th></tr></thead>
-    <tbody>
-      {% for disk in storage.disks %}
-        <tr>
-          <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
-          <td>{{ disk.role }}</td>
-          <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
-          <td>{{ disk.size|default:"—" }}</td>
-          <td>
-            <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
-            {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
-          </td>
-          <td>
-            {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
-            <div>
-              {% if disk.smart.health == 'PASSED' %}<span class="tag ok">PASSED</span>
-              {% elif disk.smart.health == 'FAILED' %}<span class="tag off">FAILED</span>
-              {% else %}<span class="muted">sem SMART</span>{% endif %}
-            </div>
-          </td>
-          <td>
-            {% if disk.parts %}
-              {% for part in disk.parts %}
-                <div class="{% if not forloop.first %}mt-8{% endif %}">
-                  <strong class="mono text-11">{{ part.name }}</strong>
-                  {% if part.fstype %}<span class="muted text-11"> · {{ part.fstype }}</span>{% endif %}
-                  {% if part.size %}<span class="muted text-11"> · {{ part.size }}</span>{% endif %}
-                  {% if part.mounts %}
-                    <div class="muted text-11">{{ part.mounts|join:", " }}</div>
-                  {% elif not part.fstype %}
-                    <div class="muted text-11">sem montagem</div>
-                  {% endif %}
-                  {% for u in part.usages %}
-                    <div class="muted text-11">{{ u.free|filesizeformat }} livres de {{ u.total|filesizeformat }} ({{ u.percent }}%)</div>
-                    <progress class="bar {% if u.percent >= 90 %}err{% elif u.percent >= 75 %}warn{% endif %}" value="{{ u.percent }}" max="100"></progress>
-                  {% endfor %}
+  <div class="table-wrap disk-table-wrap">
+    <table class="file-table disk-table">
+      <thead><tr>
+        <th class="disk-col-expand" aria-label="Expandir"></th>
+        <th class="disk-col-name">Disco</th>
+        <th class="disk-col-papel">Papel</th>
+        <th class="disk-col-model">Modelo / serial</th>
+        <th class="disk-col-size">Tamanho</th>
+        <th class="disk-col-estado">Estado</th>
+        <th class="disk-col-smart">Temp. / SMART</th>
+        <th class="disk-col-mount">Montagem / uso</th>
+        <th class="disk-col-actions" aria-label="Ações"></th>
+      </tr></thead>
+      <tbody>
+        {% for disk in storage.disks %}
+          <tr class="disk-main-row" data-disk-row="{{ disk.name }}">
+            <td class="disk-col-expand">
+              <button type="button" class="btn ghost icon-only disk-expand-btn"
+                      data-disk-toggle="{{ disk.name }}"
+                      aria-expanded="false"
+                      aria-controls="disk-detail-{{ disk.name }}"
+                      title="Mostrar partições e montagens">
+                <span class="disk-chevron" aria-hidden="true">▸</span>
+              </button>
+            </td>
+            <td><strong>{{ disk.name }}</strong><div class="muted mono text-11">{{ disk.path }}</div></td>
+            <td>{{ disk.role }}</td>
+            <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
+            <td>{{ disk.size|default:"—" }}</td>
+            <td>
+              <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
+              {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
+            </td>
+            <td>
+              {% if disk.smart.temperature is not None %}<strong>{{ disk.smart.temperature }} °C</strong>{% else %}<span class="muted">—</span>{% endif %}
+              <div>
+                {% if disk.smart.health == 'PASSED' %}<span class="tag ok">PASSED</span>
+                {% elif disk.smart.health == 'FAILED' %}<span class="tag off">FAILED</span>
+                {% else %}<span class="muted">sem SMART</span>{% endif %}
+              </div>
+            </td>
+            <td class="disk-col-mount">
+              {% if disk.mount_display %}
+                {% include "partials/disk_mount_summary.html" with mount_display=disk.mount_display %}
+              {% elif disk.mounts %}
+                <span class="muted">{{ disk.mounts|join:", " }}</span>
+              {% else %}
+                <span class="muted">sem montagem</span>
+              {% endif %}
+            </td>
+            <td class="file-actions">
+              <div class="row-actions">
+                <a class="btn icon-only primary" href="{% url 'storage_index' %}" title="Detalhes" aria-label="Detalhes de {{ disk.name }}">
+                  {% include "partials/icon.html" with name="open" %}
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr class="disk-detail-row" id="disk-detail-{{ disk.name }}" data-disk-detail="{{ disk.name }}" hidden>
+            <td colspan="9">
+              {% if disk.mount_display.expand_rows %}
+                <div class="disk-detail-wrap">
+                  <table class="disk-parts-subtable">
+                    <thead><tr><th>Partição</th><th>Tipo</th><th>Tamanho</th><th>Montagem / cadeia</th><th>Uso</th></tr></thead>
+                    <tbody>
+                      {% for row in disk.mount_display.expand_rows %}
+                        <tr>
+                          <td><strong class="mono text-11">{{ row.name }}</strong></td>
+                          <td class="muted text-11">{{ row.fstype|default:"—" }}</td>
+                          <td class="muted text-11">{{ row.size|default:"—" }}</td>
+                          <td class="muted text-11">{% if row.chain %}{{ row.chain }}{% else %}{{ row.mountpoint|default:"sem montagem" }}{% endif %}</td>
+                          <td class="disk-part-usage-stack">
+                            {% if row.usage %}
+                              <span class="muted text-11">{{ row.usage.percent }}% · {{ row.usage.free|filesizeformat }} livres</span>
+                              <progress class="bar bar-sub {% if row.usage.percent >= 90 %}err{% elif row.usage.percent >= 75 %}warn{% endif %}" value="{{ row.usage.percent }}" max="100"></progress>
+                            {% else %}
+                              <span class="muted text-11">sem uso</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
                 </div>
-              {% endfor %}
-            {% elif disk.mounts %}
-              <span class="muted">{{ disk.mounts|join:", " }}</span>
-            {% else %}
-              <span class="muted">sem montagem</span>
-            {% endif %}
-          </td>
-          <td class="file-actions"><div class="row-actions"><a class="btn primary" href="{% url 'storage_index' %}">{% include "partials/icon.html" with name="open" %}Detalhes</a></div></td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="8"><div class="empty">Nenhum disco encontrado.</div></td></tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
+              {% else %}
+                <div class="muted text-12 disk-detail-empty">Sem partições para detalhar.</div>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9"><div class="empty">Nenhum disco encontrado.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="disk-mobile-board">
+    {% for disk in storage.disks %}
+      <article class="disk-mobile-card" data-disk-row="{{ disk.name }}">
+        <div class="disk-mobile-head">
+          <button type="button" class="btn ghost icon-only disk-expand-btn"
+                  data-disk-toggle="{{ disk.name }}"
+                  aria-expanded="false"
+                  aria-controls="disk-mobile-detail-{{ disk.name }}"
+                  title="Mostrar partições e montagens">
+            <span class="disk-chevron" aria-hidden="true">▸</span>
+          </button>
+          <div class="disk-mobile-id">
+            <strong>{{ disk.name }}</strong>
+            <span class="muted text-11">{{ disk.model|default:"—" }}</span>
+          </div>
+          <a class="btn icon-only primary" href="{% url 'storage_index' %}" title="Detalhes" aria-label="Detalhes de {{ disk.name }}">
+            {% include "partials/icon.html" with name="open" %}
+          </a>
+        </div>
+        <div class="disk-mobile-meta">
+          <span>{{ disk.size|default:"—" }}</span>
+          <span>{% if disk.smart.temperature is not None %}{{ disk.smart.temperature }} °C{% endif %}{% if disk.smart.health %} · {{ disk.smart.health }}{% endif %}</span>
+          <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
+        </div>
+        {% if disk.mount_display %}
+          {% include "partials/disk_mount_summary.html" with mount_display=disk.mount_display %}
+        {% elif disk.mounts %}
+          <div class="muted text-12">{{ disk.mounts|join:", " }}</div>
+        {% else %}
+          <div class="muted text-12">sem montagem</div>
+        {% endif %}
+        <div class="disk-mobile-parts" id="disk-mobile-detail-{{ disk.name }}" data-disk-detail="{{ disk.name }}" hidden>
+          {% for row in disk.mount_display.expand_rows %}
+            <div class="disk-mobile-part">
+              <div class="disk-mobile-part-line">
+                <strong class="mono text-11">{{ row.name }}</strong>
+                <span class="muted text-11">{{ row.fstype|default:"—" }}</span>
+                <span class="muted text-11">{{ row.size|default:"—" }}</span>
+              </div>
+              <div class="disk-mobile-part-line">
+                <span class="muted text-11">{% if row.chain %}{{ row.chain }}{% else %}{{ row.mountpoint|default:"sem montagem" }}{% endif %}</span>
+                {% if row.usage %}<span class="muted text-11">{{ row.usage.percent }}%</span>{% endif %}
+              </div>
+              {% if row.usage %}
+                <progress class="bar bar-sub {% if row.usage.percent >= 90 %}err{% elif row.usage.percent >= 75 %}warn{% endif %}" value="{{ row.usage.percent }}" max="100"></progress>
+              {% endif %}
+            </div>
+          {% empty %}
+            <div class="muted text-12">Sem partições para detalhar.</div>
+          {% endfor %}
+        </div>
+      </article>
+    {% empty %}
+      <div class="empty">Nenhum disco encontrado.</div>
+    {% endfor %}
+  </div>
 </section>
 
 {% if capabilities.credenciais_backup %}
@@ -298,5 +398,6 @@
 {% endif %}
 <script src="{% static 'js/network-metrics.js' %}" defer></script>
 <script src="{% static 'js/share-sizes.js' %}" defer></script>
+<script src="{% static 'js/disk-table.js' %}" defer></script>
 {% include "partials/live_metrics.html" %}
 {% endblock %}
