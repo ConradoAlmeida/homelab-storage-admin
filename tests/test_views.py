@@ -1193,6 +1193,7 @@ class ViewSmokeTests(TestCase):
         self.assertContains(response, "/metrics/shares/")
         self.assertContains(response, "share-sizes.js")
         self.assertContains(response, "keep 7")
+        self.assertContains(response, "Agenda de snapshots")
         self.fake.list_shares.assert_called_once_with(include_size=False)
         self.fake.snapshot_usage.assert_called_once_with(include_size=False)
 
