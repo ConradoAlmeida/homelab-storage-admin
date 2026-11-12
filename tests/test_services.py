@@ -107,6 +107,9 @@ class ServiceRenderTests(TestCase):
                 response = self.client.get("/")
         self.assertContains(response, "Jellyfin")
         self.assertContains(response, 'href="http://jellyfin.example/"')
+        self.assertContains(response, "top-services")
+        self.assertContains(response, "top-service")
+        self.assertNotContains(response, "app-footer-services")
 
     def test_dashboard_omits_services_when_file_is_missing(self):
         with tempfile.TemporaryDirectory() as directory:

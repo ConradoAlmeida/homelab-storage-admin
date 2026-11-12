@@ -11,7 +11,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 | Versão no moya | `47ce001` (2026-11-12; admins locais dos apps Django) |
 | Último deploy | 12/11/2026, moya (`./deploy.sh` e `install-agent.sh`; `DJANGO_ADMIN_MANAGE=1` no host.env). O Pi segue no deploy de 04/11 |
 | Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
-| Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no rodapé fixo (2026-11-13) |
+| Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
@@ -141,7 +141,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Dashboard resume saúde, volumes, discos, snapshots, backups e shares em
   blocos; cada bloco leva à seção ou página. Discos abrem o detalhe no próprio
   card; backups e shares mostram um resumo curto e o link para a página. Os
-  atalhos de serviço ficam no rodapé.
+  atalhos de serviço ficam no menu `details` do topo; o rodapé só leva o nome
+  do produto. O detalhe do disco abre em largura total e os cards fechados
+  mantêm a mesma altura.
 - O tamanho dos shares é carregado só na página Shares, com cache de 3 minutos
   no agente.
 - Backups do Gitea e do Credenciais validados com restore de teste.

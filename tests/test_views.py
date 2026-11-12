@@ -1505,12 +1505,13 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "900")
         self.assertContains(resposta, "Nenhum alerta")
 
-    def test_dashboard_servicos_ficam_no_rodape(self):
+    def test_dashboard_servicos_ficam_no_topo(self):
         resposta = self.client.get("/")
         self.assertContains(resposta, 'class="app-footer"')
         self.assertContains(resposta, "app-footer-brand")
+        self.assertContains(resposta, "topbar-tools")
 
-    def test_rodape_mostra_servicos_como_botoes(self):
+    def test_topo_mostra_servicos_como_botoes(self):
         with tempfile.TemporaryDirectory() as tmp:
             services = Path(tmp) / "services.ini"
             services.write_text(
@@ -1519,9 +1520,10 @@ class ViewSmokeTests(TestCase):
             )
             with override_settings(SERVICES_FILE=str(services)):
                 resposta = self.client.get("/")
-        self.assertContains(resposta, "app-footer-services")
+        self.assertContains(resposta, "top-services")
+        self.assertContains(resposta, "top-service")
         self.assertContains(resposta, "Gitea")
-        self.assertContains(resposta, 'class="btn small"')
+        self.assertNotContains(resposta, "app-footer-services")
 
     def test_rede_renderiza(self):
         resposta = self.client.get("/rede/")

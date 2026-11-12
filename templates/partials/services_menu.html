@@ -1,0 +1,25 @@
+{% if services %}
+<details class="top-services">
+  <summary class="top-services-toggle" title="Atalhos para os serviços do host">
+    <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+    <span class="top-services-label">Serviços</span>
+    <span class="top-services-count">{{ services|length }}</span>
+  </summary>
+  <div class="top-services-panel">
+    <div class="top-services-grid" role="list">
+      {% for service in services %}
+      <a class="top-service" role="listitem" data-tint="{{ service.color }}"
+         href="{{ service.url }}" target="_blank" rel="noopener noreferrer"
+         title="{{ service.description|default:service.name }}">
+        <span class="top-service-icon" aria-hidden="true">{{ service.name|first }}</span>
+        <span class="top-service-body">
+          <strong>{{ service.name }}</strong>
+          {% if service.description %}<small>{{ service.description }}</small>{% endif %}
+        </span>
+        <span class="top-service-arrow" aria-hidden="true">↗</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</details>
+{% endif %}

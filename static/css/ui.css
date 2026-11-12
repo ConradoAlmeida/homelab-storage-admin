@@ -2019,7 +2019,8 @@ body.brand-moya .side-nav a.active .count {
 .disk-mount-bar { height: 8px; margin: 0; }
 .disk-detail-row > td { padding: 0; background: rgba(255, 255, 255, .015); border-top: 0; }
 .disk-detail-wrap { padding: 10px 12px 12px 46px; }
-.disk-parts-subtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.disk-parts-wrap { overflow-x: auto; }
+.disk-parts-subtable { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 12px; }
 .disk-parts-subtable th {
   text-align: left;
   color: var(--muted);
@@ -2250,13 +2251,21 @@ select:focus, textarea:focus {
 
 /* Discos em cards que abrem o detalhe */
 .disk-board {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 12px;
 }
 .disk-card {
+  flex: 1 1 320px;
+  min-width: 0;
   padding: 0;
   overflow: hidden;
+  align-self: flex-start;
+  margin-top: 0;
+}
+.disk-card[open] {
+  flex-basis: 100%;
 }
 .disk-card > summary {
   display: flex;
@@ -2292,5 +2301,5 @@ select:focus, textarea:focus {
 .disk-card-body > .btn { align-self: flex-start; }
 
 @media (max-width: 720px) {
-  .disk-board { grid-template-columns: 1fr; }
+  .disk-card { flex-basis: 100%; }
 }

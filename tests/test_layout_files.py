@@ -148,6 +148,7 @@ def test_static_assets_exist():
     for name in (
         "confirm-actions.js",
         "copy-secret.js",
+        "service-tint.js",
         "auto-refresh.js",
         "gitea-status.js",
         "disk-wizard.js",

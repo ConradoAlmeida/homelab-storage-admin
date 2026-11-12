@@ -145,27 +145,29 @@
           <span class="muted">sem montagem</span>
         {% endif %}
         {% if disk.mount_display.expand_rows %}
-        <table class="disk-parts-subtable">
-          <thead><tr><th>Partição</th><th>Tipo</th><th>Tamanho</th><th>Montagem / cadeia</th><th>Uso</th></tr></thead>
-          <tbody>
-            {% for row in disk.mount_display.expand_rows %}
-            <tr>
-              <td><strong class="mono text-11">{{ row.name }}</strong></td>
-              <td class="muted text-11">{{ row.fstype|default:"—" }}</td>
-              <td class="muted text-11">{{ row.size|default:"—" }}</td>
-              <td class="muted text-11">{% if row.chain %}{{ row.chain }}{% else %}{{ row.mountpoint|default:"sem montagem" }}{% endif %}</td>
-              <td class="disk-part-usage-stack">
-                {% if row.usage %}
-                  <span class="muted text-11">{{ row.usage.percent }}% · {{ row.usage.free|filesizeformat }} livres</span>
-                  <progress class="bar bar-sub {% if row.usage.percent >= 90 %}err{% elif row.usage.percent >= 75 %}warn{% endif %}" value="{{ row.usage.percent }}" max="100"></progress>
-                {% else %}
-                  <span class="muted text-11">sem uso</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <div class="disk-parts-wrap">
+          <table class="disk-parts-subtable">
+            <thead><tr><th>Partição</th><th>Tipo</th><th>Tamanho</th><th>Montagem / cadeia</th><th>Uso</th></tr></thead>
+            <tbody>
+              {% for row in disk.mount_display.expand_rows %}
+              <tr>
+                <td><strong class="mono text-11">{{ row.name }}</strong></td>
+                <td class="muted text-11">{{ row.fstype|default:"—" }}</td>
+                <td class="muted text-11">{{ row.size|default:"—" }}</td>
+                <td class="muted text-11">{% if row.chain %}{{ row.chain }}{% else %}{{ row.mountpoint|default:"sem montagem" }}{% endif %}</td>
+                <td class="disk-part-usage-stack">
+                  {% if row.usage %}
+                    <span class="muted text-11">{{ row.usage.percent }}% · {{ row.usage.free|filesizeformat }} livres</span>
+                    <progress class="bar bar-sub {% if row.usage.percent >= 90 %}err{% elif row.usage.percent >= 75 %}warn{% endif %}" value="{{ row.usage.percent }}" max="100"></progress>
+                  {% else %}
+                    <span class="muted text-11">sem uso</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
         {% endif %}
         <a class="btn small" href="{% url 'storage_index' %}">Detalhes do disco</a>
       </div>

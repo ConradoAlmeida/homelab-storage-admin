@@ -95,10 +95,12 @@ proxy que já existe no host.
 
 ### Atalhos de serviços (curadoria por host)
 
-O rodapé fixo **não descobre** serviços e **não faz health check**. Ele mostra
-somente o que estiver no `services.ini` do host, em `DATA_DIR/services.ini`
-(no Pi: `/mnt/nas/apps/homelab-storage-admin/data/services.ini`). O arquivo é
-lido a cada request; editou, aparece sem restart.
+O menu de serviços no topo (um `details`) **não descobre** serviços e **não faz
+health check**. Ele mostra somente o que estiver no `services.ini` do host, em
+`DATA_DIR/services.ini` (no Pi:
+`/mnt/nas/apps/homelab-storage-admin/data/services.ini`). O arquivo é lido a
+cada request; editou, aparece sem restart. O rodapé fixo mostra apenas o nome do
+produto.
 
 Use `services.ini.example` como base:
 

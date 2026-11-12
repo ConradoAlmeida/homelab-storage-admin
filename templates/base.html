@@ -125,7 +125,10 @@
       <header class="topbar">
         <button class="menu-toggle" type="button" data-nav-toggle aria-label="Abrir menu">☰</button>
         <span class="topbar-title">{{ product_name }}</span>
-        {% include "partials/page_help.html" %}
+        <div class="topbar-tools">
+          {% include "partials/services_menu.html" %}
+          {% include "partials/page_help.html" %}
+        </div>
       </header>
       <main id="main">
         {% include "partials/messages.html" %}
@@ -134,18 +137,11 @@
       </main>
       <footer class="app-footer">
         <span class="app-footer-brand">{{ product_name }}</span>
-        <span class="app-footer-label">Serviços</span>
-        {% if services %}
-        <nav class="app-footer-services" aria-label="Serviços">
-          {% for service in services %}
-          <a class="btn small" href="{{ service.url }}" target="_blank" rel="noopener noreferrer" title="{{ service.description|default:service.name }}">{{ service.name }}</a>
-          {% endfor %}
-        </nav>
-        {% endif %}
       </footer>
     </div>
   </div>
   <script src="{% static 'js/shell.js' %}"></script>
+  <script src="{% static 'js/service-tint.js' %}"></script>
   <script src="{% static 'js/confirm-actions.js' %}"></script>
   <script src="{% static 'js/copy-secret.js' %}"></script>
   <script src="{% static 'js/auto-refresh.js' %}"></script>
