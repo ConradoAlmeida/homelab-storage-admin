@@ -117,6 +117,25 @@ def _stub_modules_ausentes_no_windows() -> None:
             sys.modules[nome] = modulo
     if not hasattr(socketserver, "ThreadingUnixStreamServer"):
         socketserver.ThreadingUnixStreamServer = socketserver.ThreadingTCPServer
+    for nome in ("fcntl", "termios", "pty"):
+        if nome in sys.modules:
+            continue
+        try:
+            __import__(nome)
+        except (ImportError, AttributeError, OSError):
+            modulo = types.ModuleType(nome)
+            if nome == "fcntl":
+                modulo.LOCK_EX = 2
+                modulo.LOCK_NB = 4
+                modulo.LOCK_UN = 8
+                modulo.flock = lambda *args, **kwargs: None
+                modulo.ioctl = lambda *args, **kwargs: 0
+            elif nome == "termios":
+                modulo.TCSAFLUSH = 2
+                modulo.TIOCSWINSZ = 0x5414
+            elif nome == "pty":
+                modulo.openpty = lambda: (0, 1)
+            sys.modules[nome] = modulo
 
 
 def load_agent(monkeypatch, values: dict[str, str] | None = None):

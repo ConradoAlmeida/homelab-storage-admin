@@ -985,32 +985,31 @@ AJUDA: dict[str, dict[str, Any]] = {
     },
     "backup_index": {
         "title": "Backups",
-        "summary": "Repositórios restic e os atalhos disponíveis neste servidor.",
+        "summary": "Quatro estratégias, cada uma no próprio bloco.",
         "chapters": [
             {
-                "title": "Atalhos",
-                "text": "Levam para snapshots, cópia fria e senha do repositório.",
-            },
-            {
-                "title": "Backup de arquivos",
+                "title": "arquivos_targz",
                 "requires": "credenciais_backup",
-                "text": "O atalho abre os jobs locais de pastas, sem restic.",
+                "text": "Jobs locais em tar.gz, com agenda e retenção.",
             },
             {
-                "title": "Backup do Gitea",
+                "title": "gitea_dump",
                 "requires": "gitea",
-                "text": "O atalho abre o dump do Gitea e a cópia manual para USB.",
+                "text": "Dump do Gitea. A agenda e a cópia USB ficam na página do dump.",
             },
             {
-                "title": "Discos",
+                "title": "restic_repo",
                 "text": (
-                    "Prepara ou reconfigura um disco externo. A formatação exige "
-                    "senha do app e a frase de confirmação."
+                    "Disco, jobs, snapshots, cópia fria e senha do repositório. "
+                    "A formatação do disco exige senha do app e a frase de confirmação."
                 ),
             },
             {
-                "title": "Jobs restic",
-                "text": "Mostra destino, fontes, agenda, retenção, status e próxima execução.",
+                "title": "versoes_snapshots",
+                "text": (
+                    "Dois horários e as cópias de cada share. "
+                    "Editar a retenção de um share abre a política de snapshot."
+                ),
             },
             {
                 "title": "Rodar agora",

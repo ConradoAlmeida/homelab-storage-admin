@@ -7,83 +7,22 @@
   <div>
     <h1>Backups</h1>
     <p class="lead">
-      {% if capabilities.gitea and capabilities.credenciais_backup %}
-      Backups locais, do Gitea e repositórios restic.
-      {% elif capabilities.gitea %}
-      Backup do Gitea e repositórios restic.
-      {% elif capabilities.credenciais_backup %}
-      Backups locais e repositórios restic.
-      {% else %}
-      Repositórios restic.
-      {% endif %}
-      Cada job tem fontes, agenda e retenção próprias;
+      arquivos_targz, gitea_dump, restic_repo e versoes_snapshots. Cada bloco é uma estratégia;
       nada é apagado ao abrir esta página.
     </p>
   </div>
-  <div class="page-actions">
-    <a class="btn primary" href="{% url 'backup_job_new' %}">Novo job restic</a>
-  </div>
 </div>
 
-<section class="section">
-  <div class="section-head"><h2>Atalhos</h2></div>
-  <div class="shortcut-grid">
-    {% if capabilities.credenciais_backup %}
-    <a class="service-card" href="{% url 'arquivos_backup_index' %}">
-      <span class="service-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h6l2 2h8v10H4z"/></svg>
-      </span>
-      <span class="service-body"><strong>Backup de arquivos</strong><small>Pastas do servidor, com agenda e retenção por job.</small></span>
-      <span class="service-arrow">↗</span>
-    </a>
-    {% endif %}
-    {% if capabilities.gitea %}
-    <a class="service-card" href="{% url 'gitea_backup' %}">
-      <span class="service-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h6a4 4 0 0 1 4 4v0"/><path d="M8 18h6a4 4 0 0 0 4-4v0"/></svg>
-      </span>
-      <span class="service-body"><strong>Backup do Gitea</strong><small>Dump dos repositórios e cópia manual para USB.</small></span>
-      <span class="service-arrow">↗</span>
-    </a>
-    {% endif %}
-    <a class="service-card" href="{% url 'backup_snapshots' %}">
-      <span class="service-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg>
-      </span>
-      <span class="service-body"><strong>Snapshots restic</strong><small>Ver, navegar e baixar arquivos dos snapshots.</small></span>
-      <span class="service-arrow">↗</span>
-    </a>
-    <a class="service-card" href="{% url 'cold_index' %}">
-      <span class="service-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 7h2"/></svg>
-      </span>
-      <span class="service-body"><strong>Cópia fria (USB)</strong><small>Cópia do repositório primário para um disco removível.</small></span>
-      <span class="service-arrow">↗</span>
-    </a>
-    <a class="service-card" href="{% url 'backup_credentials' %}">
-      <span class="service-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="14" r="4"/><path d="M11 12l9-7"/><path d="M16 6l3 3"/><path d="M14 8l2 2"/></svg>
-      </span>
-      <span class="service-body"><strong>Senha do repositório</strong><small>Ver e copiar a senha do repositório restic.</small></span>
-      <span class="service-arrow">↗</span>
-    </a>
-    <a class="service-card" href="#discos">
-      <span class="service-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="7" rx="8" ry="3"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
-      </span>
-      <span class="service-body"><strong>Escolher disco</strong><small>Preparar ou reconfigurar um disco externo para backup.</small></span>
-      <span class="service-arrow">↗</span>
-    </a>
-  </div>
-</section>
-
 {% if capabilities.credenciais_backup %}
-<section class="section">
+<section class="section" id="arquivos_targz">
   <div class="section-head">
-    <h2>Backups locais de arquivos</h2>
-    {% if arquivos %}
-      <span class="muted text-12">{{ arquivos.jobs|length }} job{{ arquivos.jobs|length|pluralize }} · destino <span class="mono">{{ arquivos.dir }}</span></span>
-    {% endif %}
+    <h2>arquivos_targz</h2>
+    <div class="row-actions">
+      {% if arquivos %}
+        <span class="muted text-12">{{ arquivos.jobs|length }} job{{ arquivos.jobs|length|pluralize }} · destino <span class="mono">{{ arquivos.dir }}</span></span>
+      {% endif %}
+      <a class="btn" href="{% url 'arquivos_job_new' %}">Novo job</a>
+    </div>
   </div>
   {% if arquivos_error %}
     <div class="card">
@@ -101,39 +40,78 @@
 </section>
 {% endif %}
 
-{% if error %}
-<section class="section">
-  <div class="card border-danger">
-    <strong>Agente indisponível</strong>
-    <p class="muted">{{ error }}</p>
+{% if capabilities.gitea %}
+<section class="section" id="gitea_dump">
+  <div class="section-head">
+    <h2>gitea_dump</h2>
+    <a class="btn" href="{% url 'gitea_backup' %}">Abrir</a>
   </div>
-</section>
-{% elif overview %}
-  {% if not overview.restic or not tem_disco_backup %}
-  <section class="section">
-    {% if not overview.restic %}
-      <div class="alert danger">
-        <strong>restic não encontrado no host.</strong>
-        A preparação de disco vai recusar até instalar o pacote.
-        {% if capabilities.credenciais_backup %}O <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> funciona sem restic.{% endif %}
-      </div>
-    {% endif %}
-    {% if not tem_disco_backup %}
-      <div class="alert">
-        <strong>Nenhum repositório restic configurado.</strong>
-        Conecte um disco externo (USB) e use <strong>Preparar</strong> em Discos.
-        O disco do sistema/dados é recusado de propósito.
-        {% if capabilities.credenciais_backup %}
-        Enquanto isso, o <a href="{% url 'arquivos_backup_index' %}">backup local de arquivos</a> continua ativo.
+  {% if gitea_error %}
+    <div class="card">
+      <strong>Agente indisponível</strong>
+      <p class="muted">{{ gitea_error }}</p>
+    </div>
+  {% elif gitea %}
+    <div class="card">
+      <p class="mb-4">
+        <span class="tag {% if gitea.schedule.enabled %}ok{% else %}off{% endif %}">
+          {% if gitea.schedule.enabled %}agenda ativa{% else %}agenda inativa{% endif %}
+        </span>
+        <span class="muted text-12">· {{ gitea.schedule.label|default:"—" }}</span>
+        {% if gitea.schedule.enabled %}
+          {% if gitea.schedule.next_run_label %}
+            <span class="muted text-12">· próxima {{ gitea.schedule.next_run_label }}</span>
+          {% elif gitea.schedule.next_run %}
+            <span class="muted text-12">· próxima {{ gitea.schedule.next_run }}</span>
+          {% endif %}
         {% endif %}
-      </div>
-    {% endif %}
-  </section>
+      </p>
+      <p class="muted text-12 mb-4">
+        Diretório <span class="mono">{{ gitea.backup_dir }}</span>
+        · {{ gitea.dumps|length }} dump{{ gitea.dumps|length|pluralize }} no servidor
+      </p>
+      <p class="muted text-12">Edite a agenda, dumps e USB na página do Gitea.</p>
+    </div>
   {% endif %}
+</section>
+{% endif %}
 
-  <section class="section" id="discos">
-    <div class="section-head">
-      <h2>Discos</h2>
+<section class="section" id="restic_repo">
+  <div class="section-head">
+    <h2>restic_repo</h2>
+    <div class="row-actions">
+      <a class="btn" href="{% url 'backup_job_new' %}">Novo job</a>
+      <a class="btn" href="{% url 'backup_snapshots' %}">Snapshots</a>
+      <a class="btn" href="{% url 'cold_index' %}">Cópia fria</a>
+      <a class="btn" href="{% url 'backup_credentials' %}">Senha</a>
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="card border-danger">
+      <strong>Agente indisponível</strong>
+      <p class="muted">{{ error }}</p>
+    </div>
+  {% elif overview %}
+    {% if not overview.restic or not tem_disco_backup %}
+      {% if not overview.restic %}
+        <div class="alert danger">
+          <strong>restic não encontrado no host.</strong>
+          A preparação de disco vai recusar até instalar o pacote.
+          {% if capabilities.credenciais_backup %}O bloco <strong>arquivos_targz</strong> funciona sem restic.{% endif %}
+        </div>
+      {% endif %}
+      {% if not tem_disco_backup %}
+        <div class="alert">
+          <strong>Nenhum repositório restic configurado.</strong>
+          Conecte um disco externo (USB) e use <strong>Preparar</strong> em Discos.
+          O disco do sistema/dados é recusado de propósito.
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="section-head" id="discos">
+      <strong>Discos</strong>
       <span class="muted text-12">{{ overview.disks|length }} disco{{ overview.disks|length|pluralize }}</span>
     </div>
     <p class="muted text-12 section-note">O wizard só mostra o resumo. A formatação exige senha do app e a frase digitada. Disco com filesystem existente ou já configurado pede confirmação extra.</p>
@@ -201,11 +179,9 @@
         {% endfor %}
       </tbody>
     </table></div>
-  </section>
 
-  <section class="section">
     <div class="section-head">
-      <h2>Jobs restic</h2>
+      <strong>Jobs restic</strong>
       {% if overview.jobs %}
         <span class="muted text-12">{{ overview.jobs|length }} job{{ overview.jobs|length|pluralize }}</span>
       {% endif %}
@@ -247,6 +223,64 @@
     {% else %}
       <div class="empty">Nenhum job restic ainda. <a href="{% url 'backup_job_new' %}">Criar o primeiro job</a>.</div>
     {% endif %}
-  </section>
-{% endif %}
+  {% endif %}
+</section>
+
+<section class="section" id="versoes_snapshots">
+  <div class="section-head">
+    <h2>versoes_snapshots</h2>
+    <a class="btn" href="{% url 'snapshots' %}">Abrir</a>
+  </div>
+  {% if versoes_error %}
+    <div class="card">
+      <strong>Agente indisponível</strong>
+      <p class="muted">{{ versoes_error }}</p>
+    </div>
+  {% endif %}
+  {% if versoes %}
+    <div class="table-wrap"><table class="file-table">
+      <thead><tr><th>Share</th><th>Estado</th><th>Keep</th><th>Snapshots</th><th aria-label="Ações"></th></tr></thead>
+      <tbody>
+        {% for item in versoes %}
+          <tr>
+            <td><strong>{{ item.share }}</strong></td>
+            <td>
+              {% if item.enabled %}<span class="tag ok">ligado</span>
+              {% else %}<span class="tag off">desligado</span>{% endif %}
+            </td>
+            <td class="muted">{{ item.keep }}</td>
+            <td class="muted">{{ item.count }}</td>
+            <td class="file-actions">
+              <a class="btn" href="{% url 'snapshot_policy_edit' share=item.share %}">Editar</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5"><div class="empty">Nenhum share com política.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% elif not versoes_error %}
+    <div class="empty">Nenhum share com política.</div>
+  {% endif %}
+  <div class="card">
+    <p class="muted text-12 mb-4">Agenda global do script <span class="mono">samba-snapshot.sh</span>. O minuto fica fixo em <strong>05</strong>; o script mantém até <strong>48</strong> cópias por share.</p>
+    <form method="post" action="{% url 'versoes_schedule_save' %}">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="hora_a">Primeiro horário</label>
+          <input class="form-control" id="hora_a" name="hora_a" type="time" value="{{ versoes_agenda.hora_a|default:'00:05' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="hora_b">Segundo horário</label>
+          <input class="form-control" id="hora_b" name="hora_b" type="time" value="{{ versoes_agenda.hora_b|default:'12:05' }}" required>
+        </div>
+        <div class="form-group">
+          <label aria-hidden="true">&nbsp;</label>
+          <button class="btn primary" type="submit">Salvar agenda</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
 {% endblock %}
