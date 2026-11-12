@@ -229,8 +229,8 @@ docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
 - **Não rode o app antigo** `moya-storage-admin` junto com este.
 - **No Pi**, `data` é symlink para `/mnt/nas/apps/homelab-storage-admin/data`;
   num clone novo, recrie o symlink antes de rodar `manage.py` no host.
-- **`CREDENTIALS_MANAGE_USERS=1`** só bloqueia identidade; não confunda com
-  remoção de features.
+- **`CREDENTIALS_MANAGE_USERS=1`** bloqueia toda a seção `/usuarios/`
+  (pessoas e grupos); não confunda com remoção de features de storage.
 - **Senha Samba ≠ senha Linux.** No Pi, a conta criada pela UI não tem senha
   Unix e usa shell `nologin`; a tela define só a credencial Samba. No moya, a
   igualdade com o Credenciais vem de automação externa (push), e troca

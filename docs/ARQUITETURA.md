@@ -219,10 +219,10 @@ entra na rede `moya` e recebe `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN`.
   existindo; o que muda é uma flag explícita por host.
 - `CREDENTIALS_MANAGE_USERS=0` (Pi): todas as funções de usuário/grupo ficam
   disponíveis.
-- `CREDENTIALS_MANAGE_USERS=1` (moyaserver): o Storage Admin bloqueia apenas
-  a sobreposição de identidade — criar usuário, senha, grupos do usuário,
-  ativar/desativar e excluir. A lista de usuários continua; criar/excluir
-  grupos Linux e as operações de servidor continuam disponíveis.
+- `CREDENTIALS_MANAGE_USERS=1` (moyaserver): o Storage Admin bloqueia toda a
+  seção `/usuarios/` — pessoas, senha, ativação, grupos e membership. A
+  criação de share, snapshots, backup, discos e rede continuam disponíveis.
+  Os grupos de share são criados e atribuídos no Credenciais.
 - No moyaserver, a fonte de identidade dos apps e do Samba é o Credenciais.
   Alterações locais feitas no Storage Admin não atualizam o hash do
   Credenciais; para acesso aos apps, use o Credenciais.

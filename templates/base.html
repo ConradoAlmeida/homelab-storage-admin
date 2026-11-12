@@ -28,10 +28,12 @@
           <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 2.2h4.6v4.6H2.2zM9.2 2.2h4.6v4.6H9.2zM2.2 9.2h4.6v4.6H2.2zM9.2 9.2h4.6v4.6H9.2z"/></svg>
           <span>Dashboard</span>
         </a>
+        {% if not credenciais_gerencia_usuarios %}
         <a href="{% url 'users' %}" class="{% if '/usuarios/' in request.path %}active{% endif %}">
           <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5" r="2.1"/><path d="M3.4 13.1c.7-2.1 2.3-3.1 4.6-3.1s3.9 1 4.6 3.1"/></svg>
           <span>Usuários</span>
         </a>
+        {% endif %}
         <p class="nav-section">Dados</p>
         <a href="{% url 'shares' %}" class="{% if '/shares/' in request.path %}active{% endif %}">
           <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 4.4h4.1l1.2 1.4h6.3v6.4H2.2z"/></svg>

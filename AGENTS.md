@@ -57,8 +57,9 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
    o Credenciais. Use flag por host (`CREDENTIALS_MANAGE_USERS`) e gating por
    capability.
 2. **No moya, identidade é do Credenciais.** Com `CREDENTIALS_MANAGE_USERS=1`,
-   o app bloqueia só a sobreposição: criar pessoa, senha, grupos do usuário,
-   ativar/desativar e excluir. Grupos Linux e operações de servidor continuam.
+   o app bloqueia toda a seção `/usuarios/` (pessoas, senha, ativação, grupos
+   e membership). Criar share, snapshots, backup, discos e rede continuam no
+   Storage Admin. No Pi (`CREDENTIALS_MANAGE_USERS=0`), a seção fica completa.
 3. **O container não tem root no host.** Toda operação privilegiada passa pelo
    agente, que só aceita operações da allowlist. Nunca adicione `shell=True`,
    comando livre ou caminho arbitrário.
