@@ -161,7 +161,9 @@ uv run manage.py runserver 0.0.0.0:8000
 
 CSS do kit Tailwind: edite `frontend/src.css` e compile com
 `uv run manage.py tailwind build`. O resultado `static/css/kit.css` entra no
-commit; o container não baixa o CLI no `docker build`.
+commit; o container não baixa o CLI no `docker build`. Tokens e componentes
+compartilhados ficam em `static/vendor/moya-ui/` e são atualizados a partir do
+`moya_art_design` (`scripts/sync-ui.py --apps homelab-storage-admin`).
 
 Para pré-visualizar a UI sem agente nem host (dados fictícios):
 

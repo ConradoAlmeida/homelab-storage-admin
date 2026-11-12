@@ -1,20 +1,7 @@
 @import "tailwindcss/theme" layer(theme);
+@import "../static/vendor/moya-ui/tailwind.css";
 
 @source "../templates/**/*.html";
-
-@theme {
-  --color-canvas: #0b1220;
-  --color-deep: #070d18;
-  --color-panel: #121a2c;
-  --color-line: #243049;
-  --color-ink: #e8eef8;
-  --color-quiet: #8ea0b8;
-  --color-accent: #3ad7ea;
-  --color-ok: #3ee0a0;
-  --color-warn: #f0b429;
-  --color-danger: #ff6b8a;
-  --font-sans: "Segoe UI", "Noto Sans", "Liberation Sans", system-ui, sans-serif;
-}
 
 @layer components {
   .person-id {

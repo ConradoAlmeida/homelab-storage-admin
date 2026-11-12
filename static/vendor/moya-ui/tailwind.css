@@ -1,0 +1,42 @@
+/* Moya UI kit — Tailwind v4
+ *
+ * Uso no app (frontend/src.css):
+ *   @import "tailwindcss/theme" layer(theme);
+ *   @source "../templates/**\/*.html";
+ *   @import "../static/vendor/moya-ui/tailwind.css";
+ *
+ * O `@import "tailwindcss/theme"` fica no app, não aqui, para o kit poder ser
+ * usado por apps sem Tailwind (que carregam tokens.css + components.css).
+ * Não importe o preflight: o kit assume que o app define reset/base.
+ *
+ * As classes de componente continuam sendo o contrato de HTML
+ * (`page-head`, `btn`, `card`, `data-table`, ...). Use utilitários do Tailwind
+ * para compor variações locais, não para redesenhar componente comum.
+ */
+
+@import "./tokens.css" layer(base);
+@import "./components.css" layer(components);
+
+@theme {
+  --color-canvas: var(--moya-bg);
+  --color-deep: var(--moya-bg-deep);
+  --color-panel: var(--moya-card);
+  --color-panel-2: var(--moya-hover);
+  --color-line: var(--moya-border);
+  --color-line-strong: var(--moya-border-strong);
+  --color-ink: var(--moya-text);
+  --color-quiet: var(--moya-muted);
+  --color-accent: var(--moya-primary);
+  --color-accent-hover: var(--moya-primary-hover);
+  --color-ok: var(--moya-green);
+  --color-warn: var(--moya-warn);
+  --color-danger: var(--moya-red);
+
+  --font-sans: var(--moya-font);
+  --font-mono: var(--moya-font-mono);
+
+  --radius-card: var(--moya-radius-card);
+  --radius-panel: var(--moya-radius);
+  --radius-control: var(--moya-radius-sm);
+  --radius-input: var(--moya-radius-input);
+}

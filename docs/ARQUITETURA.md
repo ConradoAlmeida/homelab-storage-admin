@@ -137,9 +137,13 @@ política de snapshot é ativada com confirmação explícita do nome do share.
 
 A consistência visual é requisito, não preferência. Todas as páginas usam os
 mesmos componentes de `static/css/ui.css` (carregado depois de `app.css`).
-O kit Tailwind (`frontend/src.css` → `static/css/kit.css`) entra por último e,
-neste piloto, acrescenta layout da lista de usuários (`person-id`,
-`group-strip`, `table-fit`) e da página Torrents (`torrent-page`). Sem npm: `uv add django-tailwind-cli` e
+O kit Tailwind (`frontend/src.css` → `static/css/kit.css`) entra por último e
+neste piloto acrescenta layout da lista de usuários (`person-id`,
+`group-strip`, `table-fit`) e da página Torrents (`torrent-page`).
+Tokens, `@theme` e componentes compartilhados vêm de
+`static/vendor/moya-ui/` (copiado do `moya_art_design` com `sync-ui.py`);
+`frontend/src.css` importa `vendor/moya-ui/tailwind.css` e mantém só as regras
+específicas do app. Sem npm: `uv add django-tailwind-cli` e
 `uv run manage.py tailwind build`. A folha compilada vai no Git para o
 `collectstatic` do Pi/moya não baixar o CLI.
 

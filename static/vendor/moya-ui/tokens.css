@@ -1,0 +1,83 @@
+/* Moya UI kit — tokens
+ * Base: chrome do moya-storage (app interno mais refinado).
+ * Consumir antes do CSS específico de cada app.
+ */
+:root {
+  /* Núcleo */
+  --moya-bg: #0b1220;
+  --moya-bg-deep: #070d18;
+  --moya-card: #121a2c;
+  --moya-hover: #182438;
+  --moya-text: #e8eef8;
+  --moya-muted: #8ea0b8;
+  --moya-border: #243049;
+  --moya-border-strong: #31425f;
+
+  /* Acentos */
+  --moya-primary: #3ad7ea;
+  --moya-primary-hover: #6ee7f4;
+  --moya-primary-ink: #061321;
+  --moya-primary-soft: rgba(58, 215, 234, .14);
+  --moya-cyan: #3ceef8;
+  --moya-green: #3ee0a0;
+  --moya-red: #ff6b8a;
+  --moya-warn: #f0b429;
+  --moya-purple: #c084fc;
+  --moya-orange: #f0a030;
+
+  /* Forma e ritmo */
+  --moya-radius: 10px;
+  --moya-radius-sm: 8px;
+  --moya-radius-card: 6px;
+  --moya-radius-input: 6px;
+  --moya-control-h: 34px;
+  --moya-pill: 999px;
+  --moya-font: "Segoe UI", "Noto Sans", "Liberation Sans", system-ui, sans-serif;
+  --moya-font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", SFMono-Regular,
+    Menlo, Consolas, monospace;
+  --moya-font-sans: var(--moya-font);
+  --moya-transition: 150ms ease;
+  --moya-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+  --moya-focus: 0 0 0 2px rgba(58, 215, 234, .38);
+
+  /* Aliases de migração (apps antigos) */
+  --bg-dark: var(--moya-bg);
+  --bg-card: var(--moya-card);
+  --bg-hover: var(--moya-hover);
+  --text-primary: var(--moya-text);
+  --text-secondary: var(--moya-muted);
+  --border-color: var(--moya-border);
+  --accent-blue: var(--moya-primary);
+  --accent-cyan: var(--moya-cyan);
+  --accent-green: var(--moya-green);
+  --accent-red: var(--moya-red);
+  --accent-purple: var(--moya-purple);
+  --accent-orange: var(--moya-orange);
+  --radius: var(--moya-radius);
+  --radius-sm: var(--moya-radius-sm);
+
+  --bg: var(--moya-bg);
+  --bg-deep: var(--moya-bg-deep);
+  --panel: var(--moya-card);
+  --panel-2: var(--moya-hover);
+  --txt: var(--moya-text);
+  --muted: var(--moya-muted);
+  --line: var(--moya-border);
+  --line-strong: var(--moya-border-strong);
+  --acc: var(--moya-primary);
+  --acc-hover: var(--moya-primary-hover);
+  --acc-ink: var(--moya-primary-ink);
+  --acc-soft: rgba(58, 215, 234, .14);
+  --ok: var(--moya-green);
+  --ok-soft: rgba(62, 224, 160, .12);
+  --warn: var(--moya-warn);
+  --warn-soft: rgba(240, 180, 41, .14);
+  --err: var(--moya-red);
+  --err-soft: rgba(255, 107, 138, .12);
+  --cyan: var(--moya-cyan);
+  --purple: var(--moya-purple);
+  --radius-pill: var(--moya-pill);
+  --control-h: var(--moya-control-h);
+  --font-sans: var(--moya-font);
+  --shadow: var(--moya-shadow);
+}
