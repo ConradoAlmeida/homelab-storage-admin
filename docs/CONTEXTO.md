@@ -8,8 +8,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `b3549ff` (2026-11-10; uso de cada fatia no dashboard) |
-| Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`; uso por fatia). O Pi segue no deploy de 04/11 |
+| Versão no moya | `8cb2015` (2026-11-12; admins locais dos apps Django) |
+| Último deploy | 12/11/2026, moya (`./deploy.sh` e `install-agent.sh`; `DJANGO_ADMIN_MANAGE=1` no host.env). O Pi segue no deploy de 04/11 |
 | Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no rodapé fixo (2026-11-13) |
 | Container | `homelab-storage-admin` |
@@ -147,7 +147,6 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Backups do Gitea e do Credenciais validados com restore de teste.
   O Gitea para pendrive também foi validado manualmente; não retestar sem
   mudança no fluxo de dump/cópia USB.
-
 - **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
   superuser, cria/rotaciona o superuser `admin` dos apps Django via agente.
   Registry fixa de apps; a senha é gerada no agente, vai por stdin e é

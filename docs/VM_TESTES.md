@@ -31,6 +31,18 @@ VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
 - Gitea dump + pendrive: **validado manualmente** em teste anterior; o fluxo
   nuclear nao mudou desde entao e nao foi repetido aqui por falta do pendrive.
 
+## Admins locais (2026-11-12)
+
+- Storage Admin na VM `ubuntu2604`: **452 passed, 8 skipped** (os skips são
+  laboratório/hardware POSIX).
+- E2E real do agente contra um container Django temporário
+  (`moya-admin-e2e`): `ensure` criou `admin`, login local autenticou,
+  segundo `ensure` preservou a senha, `rotate` gerou outra e o login novo
+  autenticou. O container e o volume temporários foram removidos.
+- No moyaserver: status dos cinco apps, `ensure` idempotente no Process
+  Manager (senha preservada) e auditoria sem o segredo. Nenhuma senha real
+  foi trocada nesse teste.
+
 ## Estrategia de testes
 
 A ordem e esta. Pular a VM so vale na excecao acima.
