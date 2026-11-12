@@ -168,6 +168,10 @@ SYSTEM_MANAGE = os.environ.get("SYSTEM_MANAGE", "1") == "1"
 # Terminal no navegador (segundo socket do agente). 0 oculta a rota e o menu.
 TERMINAL_ENABLE = os.environ.get("TERMINAL_ENABLE", "1") == "1"
 
+# Admins locais (break-glass) dos apps Django do moyaserver, via agente.
+# 0 desliga a pagina e as acoes mesmo que o agente as ofereca.
+DJANGO_ADMIN_MANAGE = os.environ.get("DJANGO_ADMIN_MANAGE", "1") == "1"
+
 # Bearer da API de envio de torrents. Vazio desliga /api/torrents/.
 TORRENT_API_TOKEN = os.environ.get("TORRENT_API_TOKEN", "")
 

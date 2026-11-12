@@ -82,6 +82,10 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
     alerta falso quando o app não existe no host.
 11. **Containers**: só `start`, `stop`, `restart` e logs. Nunca `rm`, `exec`,
     `prune` ou comando livre; o agente valida o nome contra a lista real.
+    A exceção é a operação dedicada `django_admin_*`: ela aceita apenas o slug
+    de uma registry fixa de apps Django e executa somente `manage.py shell`
+    com um trecho constante para criar/rotacionar o superuser local. Nunca
+    aceite container, caminho ou comando vindos do cliente.
 12. **Firewall**: só operações UFW explícitas (`enable`, `disable`, `add`,
     `delete`); nunca comando livre. Preserve SSH e as portas essenciais antes de
     ativar e audite toda ação.

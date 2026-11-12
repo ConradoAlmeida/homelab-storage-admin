@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Senha do admin local - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ resultado.label|default:app }} — admin local</h1>
+    <p class="lead">{{ resultado.message }}</p>
+  </div>
+</div>
+
+{% if resultado.password %}
+<div class="alert warn">
+  <strong>Copie agora. Esta senha não será mostrada de novo.</strong>
+  <p>
+    Usuário <span class="mono">{{ resultado.username }}</span> em
+    <span class="mono">{{ resultado.label|default:app }}</span>.
+    A senha não fica salva no Storage Admin, no log ou no histórico.
+  </p>
+</div>
+
+<section class="card">
+  <div class="section-head">
+    <h2>Senha gerada</h2>
+  </div>
+  <p class="muted text-12">
+    Use esta senha apenas para o login local de emergência. O acesso do dia a
+    dia continua no Credenciais.
+  </p>
+  <div class="row-actions">
+    <input id="admin-password" class="input mono" type="text"
+           value="{{ resultado.password }}" readonly autocomplete="off"
+           spellcheck="false" aria-label="Senha do admin local">
+    <button type="button" class="btn" data-copy-target="admin-password">Copiar</button>
+  </div>
+</section>
+{% else %}
+<div class="alert ok">
+  <strong>Nenhuma senha nova foi gerada.</strong>
+  <p>
+    O superuser <span class="mono">{{ resultado.username }}</span> já existia
+    com senha utilizável; a senha atual foi preservada. Use “Rotacionar senha”
+    se quiser gerar uma nova.
+  </p>
+</div>
+{% endif %}
+
+<div class="page-actions">
+  <a class="btn" href="{% url 'django_admins' %}">Voltar para admins locais</a>
+</div>
+{% endblock %}

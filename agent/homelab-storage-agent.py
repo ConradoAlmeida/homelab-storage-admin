@@ -85,6 +85,44 @@ CREDENCIAIS_TIME = os.environ.get("CREDENCIAIS_TIME", "03:30")
 CREDENCIAIS_RETENTION_DAYS = int(os.environ.get("CREDENCIAIS_RETENTION_DAYS", "30"))
 GITEA_CONTAINER = os.environ.get("GITEA_CONTAINER", "gitea")
 JELLYFIN_CONTAINER = os.environ.get("JELLYFIN_CONTAINER", "jellyfin")
+
+# Admins locais (break-glass) dos apps Django do moyaserver. Allowlist fixa:
+# a UI escolhe o slug; nunca aceita nome de container nem comando do cliente.
+DJANGO_ADMIN_ENABLE = os.environ.get("DJANGO_ADMIN_ENABLE", "1") == "1"
+DJANGO_ADMIN_APPS = {
+    "credenciais": {
+        "label": "Credenciais",
+        "container": os.environ.get(
+            "DJANGO_ADMIN_CONTAINER_CREDENCIAIS", CREDENCIAIS_CONTAINER
+        ),
+    },
+    "storage": {
+        "label": "Storage Admin",
+        "container": os.environ.get(
+            "DJANGO_ADMIN_CONTAINER_STORAGE", "homelab-storage-admin"
+        ),
+    },
+    "datasheets": {
+        "label": "Datasheets",
+        "container": os.environ.get(
+            "DJANGO_ADMIN_CONTAINER_DATASHEETS", "moya-datasheets"
+        ),
+    },
+    "drawings": {
+        "label": "Drawing Manager",
+        "container": os.environ.get(
+            "DJANGO_ADMIN_CONTAINER_DRAWINGS", "moya-drawings"
+        ),
+    },
+    "processos": {
+        "label": "Process Manager",
+        "container": os.environ.get(
+            "DJANGO_ADMIN_CONTAINER_PROCESSOS", "moya-processos"
+        ),
+    },
+}
+DJANGO_ADMIN_USER_RE = re.compile(r"^[A-Za-z0-9_.@+-]{1,150}$")
+DJANGO_ADMIN_MARKER = "__MOYA_DJANGO_ADMIN__"
 GITEA_BACKUP_DIR = os.environ.get("GITEA_BACKUP_DIR", "/var/backups/gitea")
 GITEA_STATUS = os.environ.get("GITEA_STATUS", "/etc/homelab-backup/gitea.json")
 GITEA_SCHEDULE = os.environ.get(
@@ -353,6 +391,13 @@ def host_capabilities() -> dict:
         "systemctl": bool(shutil.which("systemctl")),
         "system_manage": SYSTEM_MANAGE,
         "terminal_enable": TERMINAL_ENABLE,
+        "django_admin": bool(
+            DJANGO_ADMIN_ENABLE
+            and any(
+                _container_exists(app["container"])
+                for app in DJANGO_ADMIN_APPS.values()
+            )
+        ),
     }
 
 
@@ -6709,6 +6754,295 @@ def op_container_logs(name: str = "", tail: int = 200, **_):
     return {"name": nome, "tail": linhas, "logs": texto[-200000:], "runtime": runtime}
 
 
+# --- Admins locais dos apps Django (break-glass) -------------------------
+#
+# Cada app recebe um unico superuser local de emergencia. O cliente informa
+# apenas o slug da registry; o agente decide o container e o comando. A senha
+# e gerada aqui, entregue uma vez ao painel e nunca gravada em log.
+
+_DJANGO_ADMIN_STATUS_CODE = r"""
+import json
+import os
+from django.contrib.auth import get_user_model
+
+U = get_user_model()
+name = os.environ["DJANGO_ADMIN_USER"]
+user = U.objects.filter(username=name).first()
+def iso(value):
+    return value.isoformat() if value else None
+data = {
+    "exists": bool(user),
+    "is_superuser": bool(user and user.is_superuser),
+    "is_staff": bool(user and user.is_staff),
+    "is_active": bool(user and user.is_active),
+    "usable_password": bool(user and user.has_usable_password()),
+    "last_login": iso(user.last_login) if user else None,
+    "date_joined": iso(user.date_joined) if user else None,
+    "superusers": list(
+        U.objects.filter(is_superuser=True).order_by("username").values_list(
+            "username", flat=True
+        )
+    ),
+}
+print("__MOYA_DJANGO_ADMIN__" + json.dumps(data))
+"""
+
+_DJANGO_ADMIN_MUTATE_CODE = r"""
+import json
+import os
+import sys
+from django.contrib.auth import get_user_model
+
+U = get_user_model()
+name = os.environ["DJANGO_ADMIN_USER"]
+email = os.environ.get("DJANGO_ADMIN_EMAIL", "")
+force = os.environ.get("DJANGO_ADMIN_FORCE") == "1"
+password = sys.stdin.readline().rstrip("\n")
+user, created = U.objects.get_or_create(
+    username=name, defaults={"email": email}
+)
+password_set = False
+if force or created or not user.has_usable_password():
+    if not password:
+        raise SystemExit("senha vazia")
+    user.set_password(password)
+    password_set = True
+promoted = not (user.is_superuser and user.is_staff and user.is_active)
+user.is_superuser = True
+user.is_staff = True
+user.is_active = True
+if email and not user.email:
+    user.email = email
+user.save()
+data = {
+    "exists": True,
+    "created": created,
+    "password_set": password_set,
+    "promoted": promoted,
+    "is_superuser": user.is_superuser,
+    "is_staff": user.is_staff,
+    "is_active": user.is_active,
+    "usable_password": user.has_usable_password(),
+    "superusers": list(
+        U.objects.filter(is_superuser=True).order_by("username").values_list(
+            "username", flat=True
+        )
+    ),
+}
+print("__MOYA_DJANGO_ADMIN__" + json.dumps(data))
+"""
+
+
+def _django_admin_app(app: str) -> tuple[str, dict]:
+    if not DJANGO_ADMIN_ENABLE:
+        raise AgentError("Gestao de admins locais desativada neste host.")
+    slug = (app or "").strip().lower()
+    if slug not in DJANGO_ADMIN_APPS:
+        raise AgentError("App Django nao permitido.")
+    return slug, DJANGO_ADMIN_APPS[slug]
+
+
+def _django_admin_username(username: str) -> str:
+    nome = (username or "admin").strip()
+    if not DJANGO_ADMIN_USER_RE.fullmatch(nome):
+        raise AgentError("Nome de usuario invalido para o admin local.")
+    return nome
+
+
+def _django_admin_email(email: str) -> str:
+    valor = (email or "admin@moya.local").strip()
+    if len(valor) > 254 or any(ch in valor for ch in ("\n", "\r", "\0")):
+        raise AgentError("E-mail invalido para o admin local.")
+    return valor
+
+
+def _django_admin_running(slug: str) -> tuple[str, str]:
+    """Runtime e container do app; recusa container fora da registry."""
+    _, config = _django_admin_app(slug)
+    runtime = _runtime_containers()
+    if not runtime:
+        raise AgentError("Docker/Podman nao encontrado no host.")
+    container = str(config["container"])
+    rc, saida, _ = run_optional(
+        [runtime, "inspect", "-f", "{{.State.Running}}", container], timeout=10
+    )
+    if rc != 0:
+        raise AgentError(f"App nao instalado neste host: {config['label']}.")
+    if (saida or "").strip().lower() != "true":
+        raise AgentError(f"Container {container} nao esta rodando.")
+    return runtime, container
+
+
+def _django_admin_exec(
+    slug: str,
+    code: str,
+    *,
+    username: str,
+    email: str = "",
+    password: str = "",
+    force: bool = False,
+    timeout: int = 120,
+) -> dict:
+    runtime, container = _django_admin_running(slug)
+    args = [
+        runtime,
+        "exec",
+        "-i",
+        "-e",
+        f"DJANGO_ADMIN_USER={username}",
+        "-e",
+        f"DJANGO_ADMIN_EMAIL={email}",
+        "-e",
+        f"DJANGO_ADMIN_FORCE={'1' if force else '0'}",
+        container,
+        "/app/.venv/bin/python",
+        "manage.py",
+        "shell",
+        "-c",
+        code,
+    ]
+    # A senha vai por stdin: nao aparece em argv, environment ou log.
+    entrada = (password + "\n") if password else "\n"
+    saida = run(args, input_text=entrada, timeout=timeout)
+    for linha in (saida or "").splitlines():
+        texto = linha.strip()
+        if texto.startswith(DJANGO_ADMIN_MARKER):
+            try:
+                return json.loads(texto[len(DJANGO_ADMIN_MARKER) :])
+            except json.JSONDecodeError as exc:
+                raise AgentError(f"Resposta invalida do app: {exc}") from exc
+    raise AgentError("Resposta invalida do app (marcador ausente).")
+
+
+def _django_admin_base(slug: str, username: str) -> dict:
+    config = DJANGO_ADMIN_APPS[slug]
+    return {
+        "app": slug,
+        "label": config["label"],
+        "container": config["container"],
+        "username": username,
+    }
+
+
+def _django_admin_status_one(slug: str, username: str) -> dict:
+    base = _django_admin_base(slug, username)
+    try:
+        dados = _django_admin_exec(
+            slug,
+            _DJANGO_ADMIN_STATUS_CODE,
+            username=username,
+            timeout=60,
+        )
+    except AgentError as exc:
+        return {
+            **base,
+            "installed": False,
+            "running": False,
+            "exists": False,
+            "error": str(exc),
+        }
+    return {
+        **base,
+        "installed": True,
+        "running": True,
+        "error": "",
+        **dados,
+    }
+
+
+def op_django_admin_status(app: str = "", username: str = "admin", **_):
+    if not DJANGO_ADMIN_ENABLE:
+        return {"enabled": False, "apps": []}
+    nome = _django_admin_username(username)
+    if app:
+        slugs = [_django_admin_app(app)[0]]
+    else:
+        slugs = list(DJANGO_ADMIN_APPS)
+    return {
+        "enabled": True,
+        "apps": [_django_admin_status_one(slug, nome) for slug in slugs],
+    }
+
+
+def op_django_admin_ensure(
+    app: str = "",
+    username: str = "admin",
+    email: str = "admin@moya.local",
+    **_,
+):
+    slug, _config = _django_admin_app(app)
+    nome = _django_admin_username(username)
+    endereco = _django_admin_email(email)
+    atual = _django_admin_status_one(slug, nome)
+    if atual.get("error"):
+        raise AgentError(str(atual["error"]))
+    if atual.get("exists") and atual.get("is_superuser") and atual.get("usable_password"):
+        resultado = {
+            **atual,
+            "created": False,
+            "password_set": False,
+            "password": "",
+            "message": "Superuser local ja existe; senha preservada.",
+        }
+        log(f"DJANGO_ADMIN ensure app={slug} user={nome} created=0 password=hidden")
+        return resultado
+
+    senha = ""
+    force = False
+    if not atual.get("exists") or not atual.get("usable_password"):
+        senha = secrets.token_urlsafe(32)
+        force = True
+    dados = _django_admin_exec(
+        slug,
+        _DJANGO_ADMIN_MUTATE_CODE,
+        username=nome,
+        email=endereco,
+        password=senha,
+        force=force,
+    )
+    log(
+        f"DJANGO_ADMIN ensure app={slug} user={nome} "
+        f"created={int(bool(dados.get('created')))} password=hidden"
+    )
+    return {
+        **_django_admin_base(slug, nome),
+        **dados,
+        "password": senha if dados.get("password_set") else "",
+        "message": (
+            "Superuser local criado."
+            if dados.get("created")
+            else "Superuser local garantido."
+        ),
+    }
+
+
+def op_django_admin_rotate(app: str = "", username: str = "admin", **_):
+    slug, _config = _django_admin_app(app)
+    nome = _django_admin_username(username)
+    atual = _django_admin_status_one(slug, nome)
+    if atual.get("error"):
+        raise AgentError(str(atual["error"]))
+    if not atual.get("exists"):
+        raise AgentError(
+            "Superuser local nao existe; use 'Criar' antes de rotacionar."
+        )
+    senha = secrets.token_urlsafe(32)
+    dados = _django_admin_exec(
+        slug,
+        _DJANGO_ADMIN_MUTATE_CODE,
+        username=nome,
+        password=senha,
+        force=True,
+    )
+    log(f"DJANGO_ADMIN rotate app={slug} user={nome} password=hidden")
+    return {
+        **_django_admin_base(slug, nome),
+        **dados,
+        "password": senha if dados.get("password_set") else "",
+        "message": "Senha do superuser local rotacionada.",
+    }
+
+
 def _friendly_hostname() -> str:
     """Nome amigável do host (produto Django), não o hostname do SO."""
     caminho = Path("/etc/homelab-storage-admin/host.env")
@@ -7565,6 +7899,9 @@ OPS = {
     "containers_overview": op_containers_overview,
     "container_action": op_container_action,
     "container_logs": op_container_logs,
+    "django_admin_status": op_django_admin_status,
+    "django_admin_ensure": op_django_admin_ensure,
+    "django_admin_rotate": op_django_admin_rotate,
     "torrent_overview": op_torrent_overview,
     "library_merge_dir": op_library_merge_dir,
     "health_overview": op_health_overview,

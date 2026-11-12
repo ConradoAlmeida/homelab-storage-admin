@@ -89,6 +89,25 @@ escuta em `0.0.0.0:445`.
 Wi-Fi de terceiro em `192.168.0.0/24` colide com a rota. Use
 `smb://homelab.conradhub.com/` ou o IP `100.x` do Pi.
 
+### Admins locais dos apps Django
+
+No moyaserver, `Sistema → Admins locais` permite criar o superuser local
+`admin` e rotacionar a senha dele nos apps Django (Credenciais, Storage,
+Datasheets, Drawing e Process Manager). A página só abre para um superuser do
+Storage Admin.
+
+- A interface manda só o slug do app. O agente usa uma registry fixa de
+  containers e executa apenas `manage.py shell` com um trecho constante; não
+  aceita container, caminho ou comando do cliente.
+- A senha é gerada no agente, enviada ao container por **stdin** e devolvida
+  uma única vez na resposta. Não vai para argv, `host.env`, banco do Storage,
+  log do agente ou `AuditLog`.
+- A rotação exige digitar o identificador do app e invalida a senha anterior.
+- Superusers com outro nome (por exemplo `conrado`) não são alterados.
+- `DJANGO_ADMIN_MANAGE=0` no host desliga a página e as ações, mesmo que o
+  agente ofereça a operação. `DJANGO_ADMIN_ENABLE=0` desliga no agente.
+- O caminho normal continua sendo o Credenciais/SSO; este admin é break-glass.
+
 ### Checklist de verificação
 
 ```

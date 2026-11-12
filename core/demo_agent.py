@@ -58,7 +58,121 @@ CAPS = {
     "systemctl": True,
     "system_manage": True,
     "terminal_enable": True,
+    "django_admin": True,
 }
+
+_DEMO_DJANGO_APPS = [
+    {
+        "app": "credenciais",
+        "label": "Credenciais",
+        "container": "moya-credenciais",
+        "username": "admin",
+        "installed": True,
+        "running": True,
+        "exists": False,
+        "is_superuser": False,
+        "is_staff": False,
+        "is_active": False,
+        "usable_password": False,
+        "last_login": None,
+        "date_joined": None,
+        "superusers": ["conrado"],
+        "error": "",
+    },
+    {
+        "app": "storage",
+        "label": "Storage Admin",
+        "container": "homelab-storage-admin",
+        "username": "admin",
+        "installed": True,
+        "running": True,
+        "exists": True,
+        "is_superuser": True,
+        "is_staff": True,
+        "is_active": True,
+        "usable_password": True,
+        "last_login": None,
+        "date_joined": None,
+        "superusers": ["admin"],
+        "error": "",
+    },
+    {
+        "app": "datasheets",
+        "label": "Datasheets",
+        "container": "moya-datasheets",
+        "username": "admin",
+        "installed": True,
+        "running": True,
+        "exists": True,
+        "is_superuser": True,
+        "is_staff": True,
+        "is_active": True,
+        "usable_password": True,
+        "last_login": None,
+        "date_joined": None,
+        "superusers": ["admin"],
+        "error": "",
+    },
+    {
+        "app": "drawings",
+        "label": "Drawing Manager",
+        "container": "moya-drawings",
+        "username": "admin",
+        "installed": True,
+        "running": True,
+        "exists": False,
+        "is_superuser": False,
+        "is_staff": False,
+        "is_active": False,
+        "usable_password": False,
+        "last_login": None,
+        "date_joined": None,
+        "superusers": ["conrado"],
+        "error": "",
+    },
+    {
+        "app": "processos",
+        "label": "Process Manager",
+        "container": "moya-processos",
+        "username": "admin",
+        "installed": True,
+        "running": True,
+        "exists": True,
+        "is_superuser": True,
+        "is_staff": True,
+        "is_active": True,
+        "usable_password": True,
+        "last_login": None,
+        "date_joined": None,
+        "superusers": ["admin"],
+        "error": "",
+    },
+]
+
+
+def _demo_django_admin(op: str, payload: dict) -> dict:
+    app = str(payload.get("app") or "")
+    item = next(
+        (candidate for candidate in _DEMO_DJANGO_APPS if candidate["app"] == app),
+        None,
+    )
+    if item is None:
+        raise AgentError("App Django nao permitido.")
+    if op == "django_admin_status":
+        return {"enabled": True, "apps": _DEMO_DJANGO_APPS}
+    return {
+        **item,
+        "exists": True,
+        "is_superuser": True,
+        "is_staff": True,
+        "is_active": True,
+        "usable_password": True,
+        "created": op == "django_admin_ensure" and not item["exists"],
+        "password_set": True,
+        "promoted": False,
+        "password": "demo-senha-admin",
+        "message": "Operacao simulada.",
+    }
 
 DISKS = [
     {
@@ -212,6 +326,8 @@ def _dados(op: str, payload: dict):
         return _demo_status(str(payload.get("task") or ""))
     if op == "host_capabilities":
         return CAPS
+    if op in ("django_admin_status", "django_admin_ensure", "django_admin_rotate"):
+        return _demo_django_admin(op, payload)
     if op == "df":
         return {
             "volumes": [

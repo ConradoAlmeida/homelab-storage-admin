@@ -320,6 +320,39 @@ AJUDA: dict[str, dict[str, Any]] = {
             },
         ],
     },
+    "django_admins": {
+        "title": "Admins locais",
+        "summary": (
+            "Superuser de emergência por app Django: criar e rotacionar a senha "
+            "do usuário admin local."
+        ),
+        "chapters": [
+            {
+                "title": "Somente superuser",
+                "text": (
+                    "A página só abre para superuser local do Storage Admin. O "
+                    "agente aceita apenas os apps da registry fixa e nunca um "
+                    "container ou comando informado pela interface."
+                ),
+            },
+            {
+                "title": "Senha mostrada uma vez",
+                "text": (
+                    "O agente gera a senha, aplica via manage.py no container e "
+                    "devolve só na resposta. Ela não é gravada no banco, no log "
+                    "ou no histórico."
+                ),
+            },
+            {
+                "title": "Criar e rotacionar",
+                "text": (
+                    "Criar garante o superuser admin sem mexer em outros "
+                    "superusers. Rotacionar exige digitar o identificador do "
+                    "app e invalida a senha anterior."
+                ),
+            },
+        ],
+    },
     "containers": {
         "title": "Containers",
         "summary": "Lista e controla os containers Docker ou Podman do servidor.",
@@ -1513,6 +1546,12 @@ USE_CASES: dict[str, str] = {
     "system_terminal": (
         "Use para um shell no host com a senha sudo da conta Linux. "
         "Exemplo: entre com o usuário do Pi, rode o diagnóstico e feche a aba."
+    ),
+    "django_admins": (
+        "Use quando o login normal do Credenciais estiver fora ou quando "
+        "precisar de um superuser local de emergência. Exemplo: crie o admin "
+        "de um app, copie a senha mostrada uma vez e guarde-a; se ela vazar, "
+        "rotacione e a anterior deixa de funcionar."
     ),
     "torrents": (
         "Use para colocar um filme ou episódio na biblioteca do Jellyfin a "

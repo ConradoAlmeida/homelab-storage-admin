@@ -42,6 +42,7 @@ def homelab(request):
         bruto = (request.GET.get("tarefa") or "").strip()
     if not _TAREFA_RE.match(bruto):
         bruto = ""
+    caps = capacidades_do_host()
     return {
         "tarefa": bruto,
         "site_name": settings.SITE_NAME,
@@ -50,12 +51,16 @@ def homelab(request):
         "brand_logo": visual["logo"],
         "brand_login_logo": visual["login_logo"],
         "brand_alt": visual["alt"],
-        "capabilities": capacidades_do_host(),
+        "capabilities": caps,
         "credenciais_gerencia_usuarios": settings.CREDENTIALS_MANAGE_USERS,
         "system_manage": settings.SYSTEM_MANAGE,
         "terminal_menu": bool(
             getattr(settings, "TERMINAL_ENABLE", False)
-            and capacidades_do_host().get("terminal_enable")
+            and caps.get("terminal_enable")
+        ),
+        "django_admin_manage": bool(
+            getattr(settings, "DJANGO_ADMIN_MANAGE", False)
+            and caps.get("django_admin")
         ),
         "login_pelo_credenciais": bool(
             settings.CREDENTIALS_URL and settings.CREDENTIALS_API_TOKEN

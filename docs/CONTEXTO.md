@@ -10,7 +10,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 |---|---|
 | Versão no moya | `b3549ff` (2026-11-10; uso de cada fatia no dashboard) |
 | Último deploy | 10/11/2026, moya (`./deploy.sh` e `install-agent.sh`; uso por fatia). O Pi segue no deploy de 04/11 |
-| Testes | `405 passed, 8 skipped` no Linux; lab na VM a confirmar |
+| Testes | `452 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no rodapé fixo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -147,6 +147,13 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - Backups do Gitea e do Credenciais validados com restore de teste.
   O Gitea para pendrive também foi validado manualmente; não retestar sem
   mudança no fluxo de dump/cópia USB.
+
+- **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
+  superuser, cria/rotaciona o superuser `admin` dos apps Django via agente.
+  Registry fixa de apps; a senha é gerada no agente, vai por stdin e é
+  devolvida uma vez; nada de container ou comando vindo do cliente.
+  Desligável com `DJANGO_ADMIN_MANAGE=0` no host e `DJANGO_ADMIN_ENABLE=0` no
+  agente. Detalhe em [SEGURANCA](SEGURANCA.md#admins-locais-dos-apps-django).
 
 ## Decisões que não devem ser revertidas sem conversa
 

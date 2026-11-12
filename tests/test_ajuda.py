@@ -15,6 +15,7 @@ ROTAS_ESPERADAS = {
     "system_logs",
     "system_services",
     "system_terminal",
+    "django_admins",
     "containers",
     "container_logs",
     "torrents",

@@ -35,6 +35,16 @@ urlpatterns = [
         name="system_terminal_io",
     ),
     path(
+        "sistema/admins/",
+        views.DjangoAdminsView.as_view(),
+        name="django_admins",
+    ),
+    path(
+        "sistema/admins/acao/",
+        views.DjangoAdminActionView.as_view(),
+        name="django_admin_action",
+    ),
+    path(
         "rede/firewall/",
         views.FirewallActionView.as_view(),
         name="firewall_action",

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Admins locais - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Admins locais</h1>
+    <p class="lead">
+      Superuser de emergência (break-glass) em cada app Django. O acesso normal
+      continua sendo o Credenciais; esta página só cria o usuário local
+      <span class="mono">admin</span> e troca a senha dele.
+    </p>
+  </div>
+</div>
+
+{% if manage_disabled %}
+  <div class="alert warn">
+    <strong>Gestão desativada</strong>
+    <p>Defina <code class="mono">DJANGO_ADMIN_MANAGE=1</code> no host para liberar esta página.</p>
+  </div>
+{% elif agent_error %}
+  <div class="card border-danger">
+    <strong>Agente indisponível</strong>
+    <p class="muted">{{ agent_error }}</p>
+  </div>
+{% else %}
+  <div class="alert">
+    <strong>A senha aparece uma única vez.</strong>
+    <p>
+      O agente gera uma senha aleatória, aplica no app e devolve só para esta
+      resposta. Ela não é gravada no banco do Storage, no log nem no histórico.
+      Copie e guarde em local seguro antes de sair da página.
+    </p>
+    <p class="muted text-12">
+      Superusers que já existem com outro nome (por exemplo <span class="mono">conrado</span>)
+      não são alterados. A ação sempre usa o usuário <span class="mono">admin</span>.
+    </p>
+  </div>
+
+  <div class="admin-grid">
+    {% for app in apps %}
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2>{{ app.label }}</h2>
+          <p class="muted text-12 mono">{{ app.container }}</p>
+        </div>
+        <div class="page-actions">
+          <div class="chip-list">
+            {% if app.running %}
+            <span class="tag ok">no ar</span>
+            {% else %}
+            <span class="tag off">indisponível</span>
+            {% endif %}
+            {% if app.exists %}
+            <span class="tag">admin presente</span>
+            {% else %}
+            <span class="tag off">sem admin</span>
+            {% endif %}
+            {% if app.exists and app.is_superuser and app.usable_password %}
+            <span class="tag ok">senha utilizável</span>
+            {% elif app.exists %}
+            <span class="tag off">senha indisponível</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if app.error %}
+      <p class="muted text-12">{{ app.error }}</p>
+      {% else %}
+      <div class="table-wrap">
+        <table class="file-table">
+          <tbody>
+            <tr><th scope="row">Usuário alvo</th><td class="mono">{{ app.username }}</td></tr>
+            <tr>
+              <th scope="row">Superusers atuais</th>
+              <td>
+                <div class="chip-list">
+                  {% for nome in app.superusers %}
+                  <span class="tag">{{ nome }}</span>
+                  {% empty %}
+                  <span class="muted text-12">nenhum</span>
+                  {% endfor %}
+                </div>
+              </td>
+            </tr>
+            {% if app.last_login %}
+            <tr><th scope="row">Último login</th><td class="muted text-12">{{ app.last_login }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <form method="post" action="{% url 'django_admin_action' %}" class="form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="ensure">
+        <input type="hidden" name="app" value="{{ app.app }}">
+        <button class="btn primary" type="submit">
+          {% if app.exists and app.is_superuser and app.usable_password %}Garantir admin{% else %}Criar admin{% endif %}
+        </button>
+      </form>
+
+      {% if app.exists %}
+      <form method="post" action="{% url 'django_admin_action' %}" class="form-grid"
+            data-confirm="Rotacionar a senha de {{ app.username }} em {{ app.label }}? A senha atual deixa de funcionar imediatamente.">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="rotate">
+        <input type="hidden" name="app" value="{{ app.app }}">
+        <label for="confirm-{{ app.app }}" class="text-12">
+          Digite <span class="mono">{{ app.app }}</span> para confirmar a rotação
+        </label>
+        <input id="confirm-{{ app.app }}" class="input" type="text" name="confirmation"
+               autocomplete="off" placeholder="{{ app.app }}" required>
+        <button class="btn danger" type="submit">Rotacionar senha</button>
+      </form>
+      {% endif %}
+      {% endif %}
+    </section>
+    {% empty %}
+    <div class="card"><p class="muted">Nenhum app Django registrado no agente.</p></div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

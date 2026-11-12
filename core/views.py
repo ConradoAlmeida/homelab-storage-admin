@@ -24,7 +24,14 @@ from .hostinfo import anexar_discos, disk_role, volume_for
 from .http import agent_json_error
 from .models import AuditLog
 from .tarefas import com_tarefa, disparo
-from .view_base import AgentFormView, AgentPostView, AgentTemplateView, AgentView
+from .view_base import (
+    AgentFormView,
+    AgentPostView,
+    AgentTemplateView,
+    AgentView,
+    SuperuserPostView,
+    SuperuserTemplateView,
+)
 
 
 def _anexar_discos(itens, chave="path"):
@@ -744,6 +751,73 @@ class GroupDeleteView(AgentPostView):
             _audit(request, "group.delete", name)
             messages.success(request, f"Grupo {name} excluido.")
         return redirect("users")
+
+
+class DjangoAdminsView(SuperuserTemplateView):
+    template_name = "django_admins.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "agent_error": None,
+                "apps": [],
+                "manage_disabled": not settings.DJANGO_ADMIN_MANAGE,
+            }
+        )
+        if not settings.DJANGO_ADMIN_MANAGE:
+            return context
+        try:
+            dados = agent.django_admin_status()
+        except AgentError as exc:
+            context["agent_error"] = str(exc)
+            return context
+        context["apps"] = dados.get("apps", [])
+        return context
+
+
+class DjangoAdminActionView(SuperuserPostView):
+    def post(self, request):
+        if not settings.DJANGO_ADMIN_MANAGE:
+            messages.error(request, "Gestao de admins locais desativada.")
+            return redirect("django_admins")
+        acao = (request.POST.get("acao") or "").strip()
+        app = (request.POST.get("app") or "").strip()
+        if acao not in {"ensure", "rotate"}:
+            messages.error(request, "Acao invalida.")
+            return redirect("django_admins")
+        if acao == "rotate":
+            confirmation = (request.POST.get("confirmation") or "").strip()
+            if confirmation != app:
+                messages.error(
+                    request,
+                    "Para rotacionar a senha, digite o identificador do app "
+                    "para confirmar.",
+                )
+                return redirect("django_admins")
+        try:
+            if acao == "ensure":
+                resultado = agent.django_admin_ensure(app)
+            else:
+                resultado = agent.django_admin_rotate(app)
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            return redirect("django_admins")
+        _audit(
+            request,
+            f"django_admin.{acao}",
+            f"{app}:{resultado.get('username') or 'admin'}",
+            f"created={bool(resultado.get('created'))} "
+            f"password_set={bool(resultado.get('password_set'))}",
+        )
+        resposta = render(
+            request,
+            "django_admin_result.html",
+            {"resultado": resultado, "acao": acao, "app": app},
+        )
+        resposta["Cache-Control"] = "no-store, max-age=0"
+        resposta["Pragma"] = "no-cache"
+        return resposta
 
 
 class SharesView(AgentTemplateView):

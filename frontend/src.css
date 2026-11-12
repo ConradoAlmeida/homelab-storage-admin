@@ -139,4 +139,18 @@
   progress.torrent-meter::-moz-progress-bar {
     background: var(--acc);
   }
+
+  .admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    align-items: start;
+    width: 100%;
+  }
+
+  @media (max-width: 640px) {
+    .admin-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 }

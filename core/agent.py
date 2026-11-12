@@ -421,6 +421,31 @@ class AgentClient:
     def container_logs(self, name, tail=200):
         return self.call("container_logs", timeout=30, name=name, tail=tail)
 
+    def django_admin_status(self, app="", username="admin"):
+        return self.call(
+            "django_admin_status",
+            timeout=180,
+            app=app,
+            username=username,
+        )
+
+    def django_admin_ensure(self, app, username="admin", email="admin@moya.local"):
+        return self.call(
+            "django_admin_ensure",
+            timeout=180,
+            app=app,
+            username=username,
+            email=email,
+        )
+
+    def django_admin_rotate(self, app, username="admin"):
+        return self.call(
+            "django_admin_rotate",
+            timeout=180,
+            app=app,
+            username=username,
+        )
+
     def torrent_overview(self):
         return self.call("torrent_overview", timeout=30)
 

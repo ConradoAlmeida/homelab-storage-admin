@@ -68,6 +68,12 @@
           <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2v1.1M8 12.7v1.1M2.2 8h1.1M12.7 8h1.1M4 4l.8.8M11.2 11.2l.8.8M4 12l.8-.8M11.2 4.8l.8-.8"/><circle cx="8" cy="8" r="2.4"/></svg>
           <span>Configuração</span>
         </a>
+        {% if django_admin_manage and request.user.is_superuser %}
+        <a href="{% url 'django_admins' %}" class="{% if '/sistema/admins/' in request.path %}active{% endif %}">
+          <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.2" cy="8" r="2.2"/><path d="M7.4 8H14M11 8v2.2M13 8v1.6"/></svg>
+          <span>Admins locais</span>
+        </a>
+        {% endif %}
         <a href="{% url 'system_keys' %}" class="{% if request.path == '/sistema/chaves/' %}active{% endif %}">
           <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 8.5 3 11v2h2.5l2.3-2.3"/><circle cx="10" cy="6" r="2.8"/></svg>
           <span>Chaves</span>
