@@ -153,6 +153,8 @@ class BackupIndexView(AgentTemplateView):
     template_name = "backups/index.html"
 
     def get_context_data(self, **kwargs):
+        from core.context_processors import capacidades_do_host
+
         context = super().get_context_data(**kwargs)
         context.update(
             {
@@ -160,6 +162,11 @@ class BackupIndexView(AgentTemplateView):
                 "error": None,
                 "arquivos": None,
                 "arquivos_error": None,
+                "gitea": None,
+                "gitea_error": None,
+                "versoes": [],
+                "versoes_agenda": None,
+                "versoes_error": None,
             }
         )
         try:
@@ -172,14 +179,46 @@ class BackupIndexView(AgentTemplateView):
                 item.get("configured") for item in discs
             )
             context["tem_candidato"] = any(item.get("candidate") for item in discs)
+        caps = capacidades_do_host()
+        if caps.get("credenciais_backup"):
+            try:
+                context["arquivos"] = agent.arquivos_jobs()
+            except AgentError as exc:
+                context["arquivos_error"] = str(exc)
+        if caps.get("gitea"):
+            try:
+                context["gitea"] = agent.gitea_overview()
+            except AgentError as exc:
+                context["gitea_error"] = str(exc)
         try:
-            context["arquivos"] = agent.arquivos_jobs()
+            dados = agent.snapshot_usage(include_size=False)
+            context["versoes"] = dados if isinstance(dados, list) else []
         except AgentError as exc:
-            context["arquivos_error"] = str(exc)
+            context["versoes_error"] = str(exc)
+        try:
+            context["versoes_agenda"] = agent.versoes_schedule()
+        except AgentError as exc:
+            if context["versoes_error"]:
+                context["versoes_error"] = f"{context['versoes_error']}; {exc}"
+            else:
+                context["versoes_error"] = str(exc)
         context["rodando"] = _algum_rodando(
             context.get("overview")
         ) or _algum_rodando(context.get("arquivos"))
         return context
+
+
+class VersoesScheduleSaveView(AgentPostView):
+    def post(self, request):
+        hora_a = (request.POST.get("hora_a") or "").strip()
+        hora_b = (request.POST.get("hora_b") or "").strip()
+        try:
+            agent.versoes_schedule_save(hora_a=hora_a, hora_b=hora_b)
+        except AgentError as exc:
+            messages.error(request, str(exc))
+            return redirect(f"{reverse('backup_index')}#versoes_snapshots")
+        messages.success(request, "Agenda de versões salva.")
+        return redirect(f"{reverse('backup_index')}#versoes_snapshots")
 
 
 class BackupSnapshotsView(AgentTemplateView):

@@ -88,13 +88,22 @@ class GiteaBackupViewTests(TestCase):
             "dir": "/var/backups/moya-credenciais",
             "jobs": [],
         }
+        self.fake.snapshot_usage.return_value = [
+            {
+                "share": "docs",
+                "enabled": True,
+                "keep": 7,
+                "count": 2,
+            }
+        ]
         resposta = self.client.get("/backups/")
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(
-            resposta, "Backups locais, do Gitea e repositórios restic."
-        )
-        self.assertContains(resposta, "Backup do Gitea")
-        self.assertContains(resposta, "Backup de arquivos")
+        self.assertContains(resposta, "arquivos_targz")
+        self.assertContains(resposta, "gitea_dump")
+        self.assertContains(resposta, "restic_repo")
+        self.assertContains(resposta, "versoes_snapshots")
+        self.assertNotContains(resposta, "shortcut-grid")
+        self.assertNotContains(resposta, "<h2>Atalhos</h2>")
         pagina = self.client.get("/backups/gitea/")
         self.assertEqual(pagina.status_code, 200)
 

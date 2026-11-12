@@ -5,6 +5,11 @@ from . import views
 urlpatterns = [
     path("", views.BackupIndexView.as_view(), name="backup_index"),
     path(
+        "versoes/agenda/",
+        views.VersoesScheduleSaveView.as_view(),
+        name="versoes_schedule_save",
+    ),
+    path(
         "snapshots/",
         views.BackupSnapshotsView.as_view(),
         name="backup_snapshots",

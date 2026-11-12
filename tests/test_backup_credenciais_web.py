@@ -197,7 +197,7 @@ class ArquivosJobViewTests(TestCase):
 
     def test_indice_mostra_os_jobs(self):
         resposta = self.client.get("/backups/")
-        self.assertContains(resposta, "Backups locais de arquivos")
+        self.assertContains(resposta, 'id="arquivos_targz"')
         self.assertContains(resposta, "Credenciais")
         self.assertContains(resposta, "Documentos")
         self.assertContains(resposta, "/backups/arquivos/")

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import base64
+import re
 
 from .agent import AgentClient, AgentError
+
+_VERSOES_AGENDA = {"hora_a": "00:05", "hora_b": "12:05"}
 
 CAPS = {
     "btrfs": True,
@@ -655,6 +658,20 @@ def _dados(op: str, payload: dict):
             "config": None,
             "status": {},
         }
+    if op == "versoes_schedule":
+        return dict(_VERSOES_AGENDA)
+    if op == "versoes_schedule_save":
+        hora_a = str(payload.get("hora_a") or "").strip()
+        hora_b = str(payload.get("hora_b") or "").strip()
+        if not re.match(r"^([01]\d|2[0-3]):05$", hora_a) or not re.match(
+            r"^([01]\d|2[0-3]):05$", hora_b
+        ):
+            raise AgentError("Horario invalido; use HH:05 com horas distintas")
+        if hora_a == hora_b:
+            raise AgentError("Os dois horarios precisam ser distintos")
+        _VERSOES_AGENDA["hora_a"] = hora_a
+        _VERSOES_AGENDA["hora_b"] = hora_b
+        return dict(_VERSOES_AGENDA)
     if op == "gitea_overview":
         return {"status": {}}
     if op == "host_info":

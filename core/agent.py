@@ -234,6 +234,17 @@ class AgentClient:
             monthday=monthday,
         )
 
+    def versoes_schedule(self):
+        return self.call("versoes_schedule", timeout=30)
+
+    def versoes_schedule_save(self, hora_a="", hora_b=""):
+        return self.call(
+            "versoes_schedule_save",
+            timeout=30,
+            hora_a=hora_a,
+            hora_b=hora_b,
+        )
+
     def gitea_download(self, archive):
         return self.call("gitea_download", timeout=660, archive=archive)
 

@@ -90,6 +90,14 @@ GITEA_STATUS = os.environ.get("GITEA_STATUS", "/etc/homelab-backup/gitea.json")
 GITEA_SCHEDULE = os.environ.get(
     "GITEA_SCHEDULE", "/etc/homelab-backup/gitea-schedule.json"
 )
+VERSOES_CRON = os.environ.get("VERSOES_CRON", "/etc/cron.d/samba-snapshots")
+VERSOES_SNAPSHOT_SCRIPT = "/usr/local/bin/samba-snapshot.sh"
+VERSOES_CRON_LINE_RE = re.compile(
+    r"^\s*5\s+(\d{1,2}(?:,\d{1,2})*)\s+\*\s+\*\s+\*\s+root\s+"
+    + re.escape(VERSOES_SNAPSHOT_SCRIPT)
+    + r"\s*(?:#.*)?$"
+)
+VERSOES_TIME_RE = re.compile(r"^([01]\d|2[0-3]):05$")
 GITEA_TIMER = "homelab-gitea-backup.timer"
 GITEA_TIMER_UNIT = "homelab-gitea-backup@host.service"
 GITEA_KEEP = int(os.environ.get("GITEA_KEEP", "2"))
@@ -4883,6 +4891,89 @@ def _gitea_backup(target: str = "host") -> dict:
         raise
 
 
+def _versoes_schedule_defaults() -> dict:
+    return {"hora_a": "00:05", "hora_b": "12:05"}
+
+
+def parse_versoes_schedule_line(line: str) -> tuple[int, int] | None:
+    match = VERSOES_CRON_LINE_RE.match((line or "").strip())
+    if not match:
+        return None
+    horas: list[int] = []
+    for item in match.group(1).split(","):
+        item = item.strip()
+        if not item.isdigit():
+            return None
+        hora = int(item)
+        if hora < 0 or hora > 23:
+            return None
+        horas.append(hora)
+    if len(horas) != 2 or horas[0] == horas[1]:
+        return None
+    horas.sort()
+    return horas[0], horas[1]
+
+
+def parse_versoes_schedule_file(text: str) -> dict:
+    for line in (text or "").splitlines():
+        parsed = parse_versoes_schedule_line(line)
+        if parsed:
+            h1, h2 = parsed
+            return {"hora_a": f"{h1:02d}:05", "hora_b": f"{h2:02d}:05"}
+    return _versoes_schedule_defaults()
+
+
+def format_versoes_schedule_cron_line(hora_a: str, hora_b: str) -> str:
+    ha = int(hora_a.split(":")[0])
+    hb = int(hora_b.split(":")[0])
+    if ha > hb:
+        ha, hb = hb, ha
+    return f"5 {ha},{hb} * * * root {VERSOES_SNAPSHOT_SCRIPT}"
+
+
+def format_versoes_schedule_file(hora_a: str, hora_b: str) -> str:
+    linha = format_versoes_schedule_cron_line(hora_a, hora_b)
+    return f"# Snapshots Samba (tiered, minuto 05)\n{linha}\n"
+
+
+def _versoes_schedule_validate_hora(valor: str) -> int:
+    texto = str(valor or "").strip()
+    if not VERSOES_TIME_RE.match(texto):
+        raise AgentError("Horario invalido; use HH:05 com horas distintas")
+    return int(texto.split(":")[0])
+
+
+def op_versoes_schedule(**_):
+    caminho = Path(VERSOES_CRON)
+    if not caminho.is_file():
+        return _versoes_schedule_defaults()
+    try:
+        return parse_versoes_schedule_file(caminho.read_text())
+    except OSError:
+        return _versoes_schedule_defaults()
+
+
+def op_versoes_schedule_save(hora_a="", hora_b="", **_):
+    ha = _versoes_schedule_validate_hora(hora_a)
+    hb = _versoes_schedule_validate_hora(hora_b)
+    if ha == hb:
+        raise AgentError("Os dois horarios precisam ser distintos")
+    ord_a = f"{min(ha, hb):02d}:05"
+    ord_b = f"{max(ha, hb):02d}:05"
+    caminho = Path(VERSOES_CRON)
+    conteudo = format_versoes_schedule_file(ord_a, ord_b)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(conteudo)
+    temporario.replace(caminho)
+    try:
+        os.chmod(caminho, 0o644)
+    except OSError:
+        pass
+    log(f"VERSOES_SCHEDULE_SAVE {ord_a} {ord_b}")
+    return {"hora_a": ord_a, "hora_b": ord_b}
+
+
 def op_gitea_overview(**_):
     rc, saida, _ = run_optional(
         ["docker", "inspect", "-f", "{{.State.Running}}", GITEA_CONTAINER],
@@ -7315,6 +7406,8 @@ OPS = {
     "gitea_overview": op_gitea_overview,
     "gitea_start": op_gitea_start,
     "gitea_schedule_save": op_gitea_schedule_save,
+    "versoes_schedule": op_versoes_schedule,
+    "versoes_schedule_save": op_versoes_schedule_save,
     "gitea_download": op_gitea_download,
     "gitea_restore": op_gitea_restore,
     "backup_job_save": op_backup_job_save,

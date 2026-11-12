@@ -132,8 +132,8 @@ class AjudaTests(SimpleTestCase):
         self.addCleanup(setattr, context_processors, "_cached_caps", None)
         ajuda = ajuda_visivel("backup_index")
         titulos = [capitulo["title"] for capitulo in ajuda["chapters"]]
-        self.assertNotIn("Backup do Gitea", titulos)
-        self.assertNotIn("Backup de arquivos", titulos)
+        self.assertNotIn("gitea_dump", titulos)
+        self.assertNotIn("arquivos_targz", titulos)
         self.assertNotIn("Gitea", ajuda["summary"] + ajuda["use_case"])
 
         context_processors._cached_caps = {
@@ -143,5 +143,5 @@ class AjudaTests(SimpleTestCase):
         }
         ajuda = ajuda_visivel("backup_index")
         titulos = [capitulo["title"] for capitulo in ajuda["chapters"]]
-        self.assertIn("Backup do Gitea", titulos)
-        self.assertIn("Backup de arquivos", titulos)
+        self.assertIn("gitea_dump", titulos)
+        self.assertIn("arquivos_targz", titulos)
