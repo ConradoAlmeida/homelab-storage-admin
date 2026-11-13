@@ -348,7 +348,8 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "text": (
                     "Criar usa o usuário admin e recusa se ele já existir. Trocar "
                     "senha só aparece quando o admin existe. Outros superusers são "
-                    "informativos; troque a senha deles no próprio app. Senhas "
+                    "informativos; gerencie pelo painel admin do Django ou, se a "
+                    "conta for do Credenciais, pela tela do Credenciais. Senhas "
                     "fracas exigem marcar 'Usar senha fraca mesmo assim'."
                 ),
             },

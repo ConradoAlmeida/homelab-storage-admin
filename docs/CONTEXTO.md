@@ -164,8 +164,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   confirmação extra (`validate_password` + `Usar senha fraca mesmo assim`);
   nada de container ou comando vindo do cliente. A página é uma tabela única
   com estado, usuário alvo, superusers e ações alinhadas. Outros superusers
-  são somente informativos; a senha deles é trocada no próprio app para
-  sincronizar Samba, histórico e sessões.
+  são somente informativos; gerencie-os pelo painel admin do Django ou, quando
+  a conta for do Credenciais, pela tela do Credenciais (que sincroniza Samba,
+  histórico e sessões).
   Desligável com `DJANGO_ADMIN_MANAGE=0` no host e `DJANGO_ADMIN_ENABLE=0` no
   agente. Detalhe em [SEGURANCA](SEGURANCA.md#admins-locais-dos-apps-django).
 

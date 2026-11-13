@@ -108,8 +108,9 @@ Admin.
   `weak=True/False`, nunca a senha.
 - A página gerencia apenas o usuário `admin`: criar recusa se ele já existir e
   trocar senha só aparece quando ele existe. Outros superusers são mostrados
-  como informação; a senha deles deve ser trocada no próprio app, que sincroniza
-  Samba, histórico e sessões.
+  como informação; gerencie-os pelo painel admin do Django ou, quando a conta
+  for gerenciada pelo Credenciais, pela tela do Credenciais (que sincroniza
+  Samba, histórico e sessões).
 - Superusers com outro nome (por exemplo `conrado`) não são alterados por esta
   página.
 - `DJANGO_ADMIN_MANAGE=0` no host desliga a página e as ações, mesmo que o
