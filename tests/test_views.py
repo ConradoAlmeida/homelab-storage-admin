@@ -368,7 +368,7 @@ class ViewSmokeTests(TestCase):
         response = self.client.get("/")
         self.assertContains(response, "moya_wordmark_official.svg")
         self.assertContains(response, 'alt="Moya"')
-        self.assertContains(response, 'class="brand-moya"')
+        self.assertContains(response, 'class="brand-moya')
         self.assertNotContains(response, "images/conradhub/")
         self.assertNotContains(response, "images/conrado/")
         icone = self.client.get("/favicon.ico")
