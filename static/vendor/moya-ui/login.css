@@ -1,0 +1,130 @@
+/* Moya UI kit — login
+ * Depende de tokens.css e components.css.
+ * O fundo é o tile 07-circuit embutido: todo app tem a mesma porta de entrada.
+ */
+
+.auth-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+    background-color: var(--moya-bg);
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMzIwIiB2aWV3Qm94PSIwIDAgMzIwIDMyMCI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMzIwIiBmaWxsPSIjMWExZDJiIi8+CjxwYXRoIGQ9Ik0wIDgwSDEwMEwxNDAgMTIwVjI0MEwxODAgMjgwVjMyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWI3YmI4IiBzdHJva2Utb3BhY2l0eT0iLjE0IiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xODAgMFY0MEwyMjAgODBIMzIwIiBmaWxsPSJub25lIiBzdHJva2U9IiM1YjdiYjgiIHN0cm9rZS1vcGFjaXR5PSIuMTQiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTAgMjAwSDYwTDkwIDIzMFYzMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzViN2JiOCIgc3Ryb2tlLW9wYWNpdHk9Ii4xNCIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNOTAgMFYzMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWI3YmI4IiBzdHJva2Utb3BhY2l0eT0iLjE0IiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzLjUiIGZpbGw9IiMxYTFkMmIiIHN0cm9rZT0iIzIyZDNlZSIgc3Ryb2tlLW9wYWNpdHk9Ii40Ii8+PGNpcmNsZSBjeD0iMTQwIiBjeT0iMjQwIiByPSIzLjUiIGZpbGw9IiMxYTFkMmIiIHN0cm9rZT0iIzIyZDNlZSIgc3Ryb2tlLW9wYWNpdHk9Ii40Ii8+PGNpcmNsZSBjeD0iMjIwIiBjeT0iODAiIHI9IjMuNSIgZmlsbD0iIzFhMWQyYiIgc3Ryb2tlPSIjMjJkM2VlIiBzdHJva2Utb3BhY2l0eT0iLjQiLz48Y2lyY2xlIGN4PSI2MCIgY3k9IjIwMCIgcj0iMy41IiBmaWxsPSIjMWExZDJiIiBzdHJva2U9IiMyMmQzZWUiIHN0cm9rZS1vcGFjaXR5PSIuNCIvPjxjaXJjbGUgY3g9IjkwIiBjeT0iMzAiIHI9IjMuNSIgZmlsbD0iIzFhMWQyYiIgc3Ryb2tlPSIjMjJkM2VlIiBzdHJva2Utb3BhY2l0eT0iLjQiLz48Y2lyY2xlIGN4PSIyODAiIGN5PSIyNjAiIHI9IjIiIGZpbGw9IiMyMmQzZWUiIGZpbGwtb3BhY2l0eT0iMC4zIi8+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMiIgZmlsbD0iIzIyZDNlZSIgZmlsbC1vcGFjaXR5PSIwLjMiLz48cGF0aCBkPSJNMjU1IDE3MEgyNjVNMjYwIDE2NVYxNzUiIHN0cm9rZT0iIzIyZDNlZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMjUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K");
+    background-size: 320px;
+    background-repeat: repeat;
+    background-position: center top;
+    color: var(--moya-text);
+    font-family: var(--moya-font);
+    line-height: 1.5;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 460px;
+    padding: 28px;
+    background: var(--moya-card);
+    border: 1px solid var(--moya-border);
+    border-radius: 14px;
+    box-shadow: var(--moya-shadow), 0 0 0 1px var(--moya-primary-soft);
+}
+
+.auth-logo {
+    margin: 0 0 22px;
+    text-align: center;
+}
+
+.auth-logo img {
+    display: inline-block;
+    width: 200px;
+    max-width: 100%;
+    height: auto;
+}
+
+.auth-title {
+    margin: 0 0 6px;
+    color: var(--moya-text);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+}
+
+.auth-lead {
+    margin: 0 0 22px;
+    color: var(--moya-muted);
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.auth-card form {
+    margin: 0;
+}
+
+.auth-card .alert {
+    margin: 0 0 18px;
+}
+
+.auth-card .btn {
+    width: 100%;
+}
+
+.auth-alt {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 13px;
+}
+
+.auth-alt a {
+    color: var(--moya-primary);
+    text-decoration: none;
+}
+
+.auth-alt a:hover {
+    text-decoration: underline;
+}
+
+.auth-foot {
+    margin: 16px 0 0;
+    color: var(--moya-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.auth-code {
+    display: block;
+    margin: 18px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--moya-border);
+    border-radius: var(--moya-radius-sm);
+    background: var(--moya-bg-deep);
+    color: var(--moya-text);
+    font-family: var(--moya-font-mono);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.auth-actions {
+    display: grid;
+    gap: 8px;
+    margin: 16px 0 0;
+}
+
+@media (max-width: 480px) {
+    .auth-body {
+        padding: 16px;
+    }
+
+    .auth-card {
+        padding: 22px;
+    }
+
+    .auth-logo img {
+        width: 170px;
+    }
+}

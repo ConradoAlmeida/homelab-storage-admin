@@ -2,27 +2,37 @@
 {% load static %}
 {% block title %}Entrar - {{ product_name }}{% endblock %}
 {% block content %}
-<div class="card login-box">
-  <img class="brand-logo{% if brand_homelab %} brand-wordmark{% endif %}" src="{% static brand_login_logo %}" {% if brand_homelab %}width="1800" height="650" {% endif %}alt="{{ brand_alt }}">
-  <h1>Entrar</h1>
-  {% if login_pelo_credenciais %}
-  <p class="muted text-12">Use a mesma conta do Credenciais.</p>
-  {% else %}
-  <p class="muted text-12">Use a conta deste servidor.</p>
-  {% endif %}
-  {% if erro %}<p class="errorlist">{{ erro }}</p>{% elif form.errors %}<p class="errorlist">Usuário ou senha inválidos.</p>{% endif %}
-  <form class="stack" method="post">
-    {% csrf_token %}
-    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-    <div class="form-group">
-      <label for="id_username">Usuário</label>
-      <input class="form-control" type="text" name="username" id="id_username" autocomplete="username" autofocus required>
-    </div>
-    <div class="form-group">
-      <label for="id_password">Senha</label>
-      <input class="form-control" type="password" name="password" id="id_password" autocomplete="current-password" required>
-    </div>
-    <button class="btn primary" type="submit">Entrar</button>
-  </form>
+<div class="auth-logo">
+  <img class="brand-logo{% if brand_homelab %} brand-wordmark{% endif %}"
+       src="{% static brand_login_logo %}"
+       {% if brand_homelab %}width="1800" height="650" {% endif %}alt="{{ brand_alt }}">
 </div>
+<h1 class="auth-title">{{ product_name }}</h1>
+<p class="auth-lead">
+  {% if login_pelo_credenciais %}Use a mesma conta do Credenciais.{% else %}Use a conta deste servidor.{% endif %}
+</p>
+{% if erro %}
+<div class="alert danger" role="status">
+  <strong>Não foi possível entrar</strong>
+  <p>{{ erro }}</p>
+</div>
+{% elif form.errors %}
+<div class="alert danger" role="status">
+  <strong>Não foi possível entrar</strong>
+  <p>Usuário ou senha inválidos.</p>
+</div>
+{% endif %}
+<form method="post">
+  {% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <div class="form-group">
+    <label for="id_username">Usuário</label>
+    <input class="input" type="text" name="username" id="id_username" autocomplete="username" autofocus required>
+  </div>
+  <div class="form-group">
+    <label for="id_password">Senha</label>
+    <input class="input" type="password" name="password" id="id_password" autocomplete="current-password" required>
+  </div>
+  <button class="btn primary" type="submit">Entrar</button>
+</form>
 {% endblock %}

@@ -8,10 +8,11 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ static_version }}">
   <link rel="stylesheet" href="{% static 'css/ui.css' %}?v={{ static_version }}">
   <link rel="stylesheet" href="{% static 'css/kit.css' %}?v={{ static_version }}">
+  <link rel="stylesheet" href="{% static 'vendor/moya-ui/login.css' %}?v=20261113e">
   {% include "partials/brand_icons.html" %}
 </head>
 <body class="auth-body">
-  <main id="main" class="auth-main">
+  <main id="main" class="auth-card">
     {% include "partials/messages.html" %}
     {% block content %}{% endblock %}
   </main>
