@@ -251,7 +251,10 @@ docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
 
 ## Armadilhas conhecidas
 
-- **Sem repo restic** não há snapshots restic; a UI mostra “aguardando disco”.
+- **Sem repo restic** não há snapshots restic; a UI mostra "aguardando disco".
+- **Estado do disco `n/d`** não é falha: algumas controladoras USB/RAID não
+  respondem ao `hdparm -C`/`smartctl -n standby`. SMART e temperatura continuam
+  sendo lidos quando disponíveis; a UI não mostra mais `unknown` como status.
 - **Não rode o app antigo** `moya-storage-admin` junto com este.
 - **No Pi**, `data` é symlink para `/mnt/nas/apps/homelab-storage-admin/data`;
   num clone novo, recrie o symlink antes de rodar `manage.py` no host.

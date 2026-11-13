@@ -292,6 +292,26 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "disk-parts-subtable")
         self.assertContains(resposta, "disk-parts-wrap")
 
+    def test_disco_sem_estado_de_energia_nao_mostra_unknown(self):
+        self.fake.storage_overview.return_value = {
+            "disks": [
+                {
+                    "name": "sda",
+                    "path": "/dev/sda",
+                    "size": "2T",
+                    "state": "unknown",
+                    "smart": {"health": "PASSED", "temperature": 30},
+                }
+            ],
+            "raid": {},
+            "btrfs": {},
+            "system": {},
+        }
+        resposta = self.client.get("/")
+        self.assertNotContains(resposta, ">unknown<")
+        discos = self.client.get("/storage/")
+        self.assertContains(discos, "n/d")
+
     def test_dashboard_mostra_resync_do_mdstat(self):
         self.fake.storage_overview.return_value["raid"] = {
             "mdstat": "md0 : active raid1\n      [==>..]  resync = 32.0%",

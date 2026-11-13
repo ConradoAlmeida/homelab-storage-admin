@@ -124,7 +124,9 @@
     <details class="card disk-card">
       <summary>
         <strong>{{ disk.name }}</strong>
+        {% if disk.state and disk.state != 'unknown' %}
         <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
+        {% endif %}
         <span class="muted text-12">{{ disk.size|default:"—" }}</span>
         {% if disk.smart.temperature is not None %}<span class="muted text-12">{{ disk.smart.temperature }} °C</span>{% endif %}
         {% if disk.smart.health == 'PASSED' %}<span class="tag ok">PASSED</span>

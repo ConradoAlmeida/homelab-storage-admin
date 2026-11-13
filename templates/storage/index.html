@@ -53,7 +53,11 @@
             <td>{{ disk.model|default:"—" }}<div class="muted mono text-11">{{ disk.serial|default:"—" }}</div></td>
             <td>{{ disk.size|default:"—" }}</td>
             <td>
+              {% if disk.state == 'unknown' %}
+              <span class="tag muted" title="A controladora/SMART não informa o estado de energia deste disco">n/d</span>
+              {% else %}
               <span class="tag {% if disk.state == 'active/idle' or disk.state == 'active' %}ok{% endif %}">{{ disk.state }}</span>
+              {% endif %}
               {% if disk.state == 'standby' or disk.state == 'sleeping' %}<div class="muted text-11">não acordado</div>{% endif %}
             </td>
             <td>
