@@ -30,8 +30,14 @@
           return !row.hasAttribute("data-table-empty");
         });
         rows.sort(function (a, b) {
-          const left = texto(a.cells[column] && a.cells[column].textContent);
-          const right = texto(b.cells[column] && b.cells[column].textContent);
+          const leftCell = a.cells[column];
+          const rightCell = b.cells[column];
+          const left = texto(
+            leftCell && (leftCell.dataset.sortValue || leftCell.textContent)
+          );
+          const right = texto(
+            rightCell && (rightCell.dataset.sortValue || rightCell.textContent)
+          );
           const result = left.localeCompare(right, "pt-BR", {
             numeric: true,
             sensitivity: "base",

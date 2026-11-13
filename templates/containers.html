@@ -59,7 +59,7 @@
       <tbody>
         {% for item in overview.containers %}
           <tr>
-            <td>
+            <td data-sort-value="{{ item.name }}">
               <strong>{{ item.name }}</strong>
               <div class="muted mono text-11">{{ item.id }}</div>
               {% if item.project or item.service %}
@@ -68,8 +68,8 @@
               </div>
               {% endif %}
             </td>
-            <td class="mono text-12">{{ item.image|default:"—" }}</td>
-            <td>
+            <td class="mono text-12" data-sort-value="{{ item.image }}">{{ item.image|default:"-" }}</td>
+            <td data-sort-value="{{ item.state }}">
               {% if item.running %}
                 <span class="status {% if item.health == 'unhealthy' %}off{% else %}ok{% endif %}">{{ item.state }}</span>
               {% elif item.state == 'paused' %}
@@ -80,7 +80,7 @@
               {% if item.status %}<div class="muted text-11">{{ item.status }}</div>{% endif %}
               {% if item.health and item.health not in item.status %}<div class="muted text-11">health: {{ item.health }}</div>{% endif %}
             </td>
-            <td>
+            <td data-sort-value="{{ item.ports|join:' ' }}">
               <div class="port-chips">
                 {% for porta in item.ports %}<span class="tag type" title="{{ porta }}">{{ porta }}</span>{% empty %}-{% endfor %}
               </div>
