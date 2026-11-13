@@ -95,6 +95,7 @@
   }
 
   function openModal(button) {
+    if (modal.open) return;
     resetForm();
     var action = button.dataset.action || "password";
     var isCreate = action === "create";
