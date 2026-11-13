@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Admins locais - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -40,6 +41,12 @@
       </p>
     </div>
   </div>
+
+  <noscript>
+    <div class="alert warn">
+      Ative o JavaScript para abrir o modal de troca de senha.
+    </div>
+  </noscript>
 
   <section class="section">
     <div class="section-head">
@@ -103,29 +110,18 @@
             <td>
               {% if app.running %}
               <div class="admin-table-actions">
-                <details class="admin-action">
-                  <summary class="btn small primary">{% if app.exists %}Trocar senha{% else %}Criar admin{% endif %}</summary>
-                  <form method="post" action="{% url 'django_admin_action' %}" class="admin-password-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="acao" value="{% if app.exists %}password{% else %}create{% endif %}">
-                    <input type="hidden" name="app" value="{{ app.app }}">
-                    <input type="hidden" name="username" value="admin">
-                    <p class="muted text-12">Usuário <span class="mono">admin</span></p>
-                    <label for="pass-{{ app.app }}">Nova senha</label>
-                    <input id="pass-{{ app.app }}" class="input" type="password"
-                           name="password" autocomplete="new-password" required>
-                    <label for="pass2-{{ app.app }}">Confirmar senha</label>
-                    <input id="pass2-{{ app.app }}" class="input" type="password"
-                           name="password2" autocomplete="new-password" required>
-                    <label class="admin-weak">
-                      <input type="checkbox" name="allow_weak" value="1">
-                      Usar senha fraca mesmo assim
-                    </label>
-                    <button class="btn small primary" type="submit">
-                      {% if app.exists %}Salvar senha{% else %}Criar admin{% endif %}
-                    </button>
-                  </form>
-                </details>
+                <button
+                  type="button"
+                  class="btn small primary"
+                  data-admin-open
+                  data-app="{{ app.app }}"
+                  data-label="{{ app.label }}"
+                  data-container="{{ app.container }}"
+                  data-action="{% if app.exists %}password{% else %}create{% endif %}"
+                  data-last-login="{{ app.last_login|default:'' }}"
+                >
+                  {% if app.exists %}Trocar senha{% else %}Criar admin{% endif %}
+                </button>
               </div>
               {% else %}
               <span class="muted text-12">indisponível</span>
@@ -137,5 +133,65 @@
       </table>
     </div>
   </section>
+
+  <dialog id="django-admin-modal" class="admin-modal" aria-labelledby="django-admin-modal-title">
+    <form method="post" action="{% url 'django_admin_action' %}" class="admin-modal-form" data-admin-form>
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="password" data-admin-acao>
+      <input type="hidden" name="app" value="" data-admin-app>
+      <input type="hidden" name="username" value="admin">
+
+      <div class="admin-modal-head">
+        <div>
+          <h2 id="django-admin-modal-title" data-admin-title>Trocar senha</h2>
+          <p data-admin-subtitle>—</p>
+        </div>
+        <button type="button" class="admin-modal-close" data-admin-close aria-label="Fechar">×</button>
+      </div>
+
+      <div class="admin-modal-target">
+        <span>Usuário alvo <strong class="mono">admin</strong></span>
+        <span class="muted text-12" data-admin-last-login>Último login —</span>
+      </div>
+
+      <div class="form-group">
+        <label for="admin-password">Nova senha</label>
+        <div class="admin-password-wrap">
+          <input id="admin-password" class="input" type="password" name="password"
+                 autocomplete="new-password" minlength="8" required>
+          <button type="button" class="admin-password-toggle" data-admin-toggle
+                  aria-controls="admin-password" aria-pressed="false">Mostrar</button>
+        </div>
+        <div class="admin-strength" data-admin-strength hidden>
+          <div class="admin-strength-bars" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <p class="admin-strength-label" data-admin-strength-label aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="admin-password2">Confirmar senha</label>
+        <div class="admin-password-wrap">
+          <input id="admin-password2" class="input" type="password" name="password2"
+                 autocomplete="new-password" minlength="8" required>
+          <span class="admin-password-match" data-admin-match aria-live="polite" hidden></span>
+        </div>
+      </div>
+
+      <label class="admin-weak">
+        <input type="checkbox" name="allow_weak" value="1">
+        Permitir senha fraca mesmo assim
+      </label>
+
+      <div class="admin-modal-actions">
+        <button type="button" class="btn" data-admin-close>Cancelar</button>
+        <button type="submit" class="btn primary" data-admin-submit>Salvar senha</button>
+      </div>
+    </form>
+  </dialog>
 {% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/django-admins.js' %}" defer></script>
 {% endblock %}

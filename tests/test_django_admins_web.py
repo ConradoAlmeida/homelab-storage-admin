@@ -123,9 +123,15 @@ class DjangoAdminsWebTests(TestCase):
         self.assertContains(resposta, "Credenciais")
         self.assertContains(resposta, "Process Manager")
         self.assertContains(resposta, "Nova senha")
-        self.assertContains(resposta, "Usar senha fraca mesmo assim")
+        self.assertContains(resposta, "Permitir senha fraca mesmo assim")
         self.assertContains(resposta, "Criar admin")
         self.assertContains(resposta, "Trocar senha")
+        self.assertContains(resposta, 'id="django-admin-modal"')
+        self.assertContains(resposta, "data-admin-open")
+        self.assertContains(resposta, "data-admin-toggle")
+        self.assertContains(resposta, "data-admin-form")
+        self.assertContains(resposta, "data-admin-strength")
+        self.assertContains(resposta, "django-admins.js")
         self.assertContains(resposta, "conrado")
         self.agente.django_admin_status.assert_called_once()
 
@@ -137,12 +143,8 @@ class DjangoAdminsWebTests(TestCase):
         self.client.force_login(self.root)
         resposta = self.client.get(reverse("django_admins"))
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(
-            resposta, '<summary class="btn small primary">Criar admin</summary>'
-        )
-        self.assertNotContains(
-            resposta, '<summary class="btn small primary">Trocar senha</summary>'
-        )
+        self.assertContains(resposta, 'data-action="create"')
+        self.assertNotContains(resposta, 'data-action="password"')
         self.assertContains(resposta, "conrado")
 
     def test_create_envia_senha_digitada_sem_auditar_segredo(self):
@@ -197,7 +199,7 @@ class DjangoAdminsWebTests(TestCase):
         )
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "too short")
-        self.assertContains(resposta, "Usar senha fraca mesmo assim")
+        self.assertContains(resposta, "Permitir senha fraca mesmo assim")
         self.assertContains(resposta, "Nada foi criado")
         self.assertFalse(AuditLog.objects.filter(action="django_admin.create").exists())
 

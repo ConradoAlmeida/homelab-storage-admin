@@ -345,47 +345,184 @@
     font-size: 12px;
   }
 
-  .admin-action > summary {
-    list-style: none;
+  .admin-modal {
+    width: min(620px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--txt);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
+    overflow-y: auto;
+  }
+
+  .admin-modal::backdrop {
+    background: rgba(2, 6, 16, 0.74);
+    backdrop-filter: blur(3px);
+  }
+
+  .admin-modal-form {
+    padding: 26px 28px 22px;
+  }
+
+  .admin-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .admin-modal-head h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .admin-modal-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .admin-modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 22px;
+    line-height: 1;
     cursor: pointer;
   }
 
-  .admin-action > summary::-webkit-details-marker { display: none; }
-  .admin-action > summary::marker { content: ""; }
+  .admin-modal-close:hover {
+    background: var(--panel-2);
+    color: var(--txt);
+  }
 
-  .admin-password-form {
+  .admin-modal-target {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 260px;
-    margin-top: 8px;
-    padding: 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+    padding: 10px 12px;
     border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     background: var(--bg-deep);
-  }
-
-  .admin-password-form label {
-    margin: 0;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 12px;
   }
 
-  .admin-password-form .input {
-    height: 30px;
+  .admin-modal-target strong {
+    color: var(--txt);
+  }
+
+  .admin-password-wrap {
+    position: relative;
+  }
+
+  .admin-password-wrap .input {
+    padding-right: 10rem;
+  }
+
+  .admin-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: var(--txt);
     font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .admin-password-toggle:hover {
+    color: var(--acc);
+  }
+
+  .admin-strength {
+    margin-top: 8px;
+  }
+
+  .admin-strength-bars {
+    display: flex;
+    gap: 4px;
+  }
+
+  .admin-strength-bars span {
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line);
+  }
+
+  .admin-strength-bars span.is-on {
+    background: var(--ok);
+  }
+
+  .admin-modal[data-strength="1"] .admin-strength-bars span.is-on { background: var(--err); }
+  .admin-modal[data-strength="2"] .admin-strength-bars span.is-on { background: var(--warn); }
+  .admin-modal[data-strength="3"] .admin-strength-bars span.is-on { background: var(--ok); }
+  .admin-modal[data-strength="4"] .admin-strength-bars span.is-on { background: var(--acc); }
+
+  .admin-strength-label {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+
+  .admin-strength-label[data-level="1"] { color: var(--err); }
+  .admin-strength-label[data-level="2"] { color: var(--warn); }
+  .admin-strength-label[data-level="3"],
+  .admin-strength-label[data-level="4"] { color: var(--ok); }
+
+  .admin-password-match {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    color: var(--ok);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  .admin-password-match.bad {
+    color: var(--err);
+  }
+
+  .admin-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
   }
 
   .admin-weak {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 11px;
+    gap: 8px;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 12px;
   }
 
   .admin-weak input {
     width: auto;
     height: auto;
+    accent-color: var(--acc);
   }
 
   .table-toolbar {

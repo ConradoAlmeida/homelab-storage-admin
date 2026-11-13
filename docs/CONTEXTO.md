@@ -156,8 +156,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 - **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
   superuser, cria o superuser `admin` dos apps Django via agente e troca a
   senha dele quando ele já existe. Registry fixa de apps; a senha é digitada
-  no painel, vai por stdin e não volta na resposta; senha fraca exige
-  confirmação extra (`validate_password` + `Usar senha fraca mesmo assim`);
+  no painel, vai por stdin e não volta na resposta; a troca abre em modal com
+  medidor de força e confirmação; senha fraca exige confirmação extra
+  (`validate_password` + `Permitir senha fraca mesmo assim`);
   nada de container ou comando vindo do cliente. A página é uma tabela única
   com estado, usuário alvo, superusers e ações alinhadas. Outros superusers
   são somente informativos; gerencie-os pelo painel admin do Django ou, quando

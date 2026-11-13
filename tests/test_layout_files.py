@@ -154,6 +154,7 @@ def test_static_assets_exist():
     for name in (
         "confirm-actions.js",
         "copy-secret.js",
+        "django-admins.js",
         "service-tint.js",
         "table-filter.js",
         "table-sort.js",

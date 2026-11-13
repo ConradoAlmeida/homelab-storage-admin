@@ -828,7 +828,7 @@ class DjangoAdminActionView(SuperuserPostView):
                 messages.warning(request, aviso)
             messages.warning(
                 request,
-                "Marque 'Usar senha fraca mesmo assim' e envie de novo.",
+                "Marque 'Permitir senha fraca mesmo assim' e envie de novo.",
             )
             return redirect("django_admins")
 

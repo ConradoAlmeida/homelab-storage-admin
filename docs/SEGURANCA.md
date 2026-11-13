@@ -104,7 +104,7 @@ Admin.
   agente ou `AuditLog`.
 - O app valida a senha com `validate_password` do próprio Django. Se for fraca,
   a ação não é aplicada e a página mostra um erro destacado; o usuário pode
-  marcar `Usar senha fraca mesmo assim` e reenviar. A auditoria registra apenas
+  marcar `Permitir senha fraca mesmo assim` e reenviar. A auditoria registra apenas
   `weak=True/False`, nunca a senha.
 - A página gerencia apenas o usuário `admin`: criar recusa se ele já existir e
   trocar senha só aparece quando ele existe. Outros superusers são mostrados
