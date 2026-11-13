@@ -1526,12 +1526,12 @@ code,
 .alert.warn,
 .alert.ok {
   display: block;
-  padding: 10px 12px;
+  padding: 14px 16px;
   margin: 12px 0;
   border: 1px solid var(--line);
   border-left: 3px solid var(--acc);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--moya-radius-card, 6px);
+  background: var(--panel);
   color: var(--txt);
 }
 
