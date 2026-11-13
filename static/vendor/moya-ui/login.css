@@ -142,3 +142,33 @@
     background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMzIwIiB2aWV3Qm94PSIwIDAgMzIwIDMyMCI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMzIwIiBmaWxsPSIjZjRmN2ZiIi8+CjxwYXRoIGQ9Ik0wIDgwSDEwMEwxNDAgMTIwVjI0MEwxODAgMjgwVjMyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY1ZDhhIiBzdHJva2Utb3BhY2l0eT0iLjE0IiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xODAgMFY0MEwyMjAgODBIMzIwIiBmaWxsPSJub25lIiBzdHJva2U9IiMyZjVkOGEiIHN0cm9rZS1vcGFjaXR5PSIuMTQiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTAgMjAwSDYwTDkwIDIzMFYzMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzJmNWQ4YSIgc3Ryb2tlLW9wYWNpdHk9Ii4xNCIgc3Ryb2tlLXdpZHRoPSIxLjIiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNOTAgMFYzMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmY1ZDhhIiBzdHJva2Utb3BhY2l0eT0iLjE0IiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzLjUiIGZpbGw9IiNmNGY3ZmIiIHN0cm9rZT0iIzBlNzQ5MCIgc3Ryb2tlLW9wYWNpdHk9Ii4zOCIvPjxjaXJjbGUgY3g9IjE0MCIgY3k9IjI0MCIgcj0iMy41IiBmaWxsPSIjZjRmN2ZiIiBzdHJva2U9IiMwZTc0OTAiIHN0cm9rZS1vcGFjaXR5PSIuMzgiLz48Y2lyY2xlIGN4PSIyMjAiIGN5PSI4MCIgcj0iMy41IiBmaWxsPSIjZjRmN2ZiIiBzdHJva2U9IiMwZTc0OTAiIHN0cm9rZS1vcGFjaXR5PSIuMzgiLz48Y2lyY2xlIGN4PSI2MCIgY3k9IjIwMCIgcj0iMy41IiBmaWxsPSIjZjRmN2ZiIiBzdHJva2U9IiMwZTc0OTAiIHN0cm9rZS1vcGFjaXR5PSIuMzgiLz48Y2lyY2xlIGN4PSI5MCIgY3k9IjMwIiByPSIzLjUiIGZpbGw9IiNmNGY3ZmIiIHN0cm9rZT0iIzBlNzQ5MCIgc3Ryb2tlLW9wYWNpdHk9Ii4zOCIvPjxjaXJjbGUgY3g9IjI4MCIgY3k9IjI2MCIgcj0iMiIgZmlsbD0iIzBlNzQ5MCIgZmlsbC1vcGFjaXR5PSIuMjIiLz48Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIyIiBmaWxsPSIjMGU3NDkwIiBmaWxsLW9wYWNpdHk9Ii4yMiIvPjxwYXRoIGQ9Ik0yNTUgMTcwSDI2NU0yNjAgMTY1VjE3NSIgc3Ryb2tlPSIjMGU3NDkwIiBzdHJva2Utb3BhY2l0eT0iLjIyIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiLz4KPC9zdmc+Cg==");
 }
 
+
+/* Login no tema claro: a wordmark oficial continua na versão para fundo escuro,
+ * dentro de um retângulo escuro compacto. */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="blueprint"]):not([data-theme="dark"]) .auth-logo {
+        width: fit-content;
+        margin: 0 auto 22px;
+        padding: 14px 20px;
+        border: 1px solid var(--moya-header-border);
+        border-radius: 10px;
+        background: var(--moya-header-bg);
+    }
+
+    :root:not([data-theme="blueprint"]):not([data-theme="dark"]) .auth-logo img[src*="moya_wordmark_official"] {
+        filter: none;
+    }
+}
+
+[data-theme="light"] .auth-logo {
+    width: fit-content;
+    margin: 0 auto 22px;
+    padding: 14px 20px;
+    border: 1px solid var(--moya-header-border);
+    border-radius: 10px;
+    background: var(--moya-header-bg);
+}
+
+[data-theme="light"] .auth-logo img[src*="moya_wordmark_official"] {
+    filter: none;
+}

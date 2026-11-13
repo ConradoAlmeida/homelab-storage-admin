@@ -25,6 +25,15 @@
   --moya-purple: #c084fc;
   --moya-orange: #f0a030;
 
+  /* Header/menu superior: identidade escura fixa nos dois temas. */
+  --moya-header-bg: #0b1220;
+  --moya-header-bg-deep: #070d18;
+  --moya-header-text: #e8eef8;
+  --moya-header-muted: #8ea0b8;
+  --moya-header-border: #243049;
+  --moya-header-hover: #182438;
+  --moya-header-accent: #3ad7ea;
+
   /* Forma e ritmo */
   --moya-radius: 10px;
   --moya-radius-sm: 8px;
@@ -115,6 +124,14 @@
   --moya-purple: #a78bfa;
   --moya-orange: #f0a030;
   --moya-focus: 0 0 0 2px rgba(74, 158, 255, .38);
+
+  --moya-header-bg: #141722;
+  --moya-header-bg-deep: #0e111a;
+  --moya-header-text: #e6e9ef;
+  --moya-header-muted: #9aa3b5;
+  --moya-header-border: #363a4a;
+  --moya-header-hover: #2e3241;
+  --moya-header-accent: #4a9eff;
 
   --acc-soft: rgba(74, 158, 255, .14);
   --ok-soft: rgba(92, 214, 168, .14);
