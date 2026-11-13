@@ -253,14 +253,17 @@ summary.btn:focus-visible,
 .btn:active,
 .btn-primary:active,
 .btn-danger:active { transform: translateY(1px); }
-.row-actions,
-.file-actions {
+.row-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
-.file-actions { justify-content: flex-end; }
+.file-actions {
+  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
+}
 .row-actions form { margin: 0; }
 .row-actions .btn,
 .file-actions .btn,
