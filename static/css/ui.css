@@ -1934,21 +1934,28 @@ body.brand-moya .side-nav a.active .count {
 }
 .port-chips .tag {
   max-width: none;
+  height: auto;
+  min-height: 22px;
+  padding-top: 2px;
+  padding-bottom: 2px;
   overflow: visible;
   text-overflow: clip;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 .containers-table {
   table-layout: fixed;
-  min-width: 1170px;
+  min-width: 1137px;
 }
-.containers-table th:nth-child(1) { width: 190px; }
-.containers-table th:nth-child(2) { width: 210px; }
-.containers-table th:nth-child(3) { width: 140px; }
+.containers-table th:nth-child(1) { width: 180px; }
+.containers-table th:nth-child(2) { width: 200px; }
+.containers-table th:nth-child(3) { width: 135px; }
 .containers-table th:nth-child(4) { width: 290px; }
-.containers-table th:nth-child(5) { width: 340px; }
+.containers-table th:nth-child(5) { width: 332px; }
 .containers-table th { vertical-align: bottom; }
 .containers-table td { overflow-wrap: anywhere; vertical-align: top; }
+.containers-table td.file-actions { position: static; }
 .action-menu,
 .restore-details {
   position: relative;
