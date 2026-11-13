@@ -331,6 +331,11 @@ button.th-sort[aria-sort="descending"]::after {
   content: " ↓";
 }
 
+button.th-sort[aria-sort="none"]::after {
+  content: " ↕";
+  opacity: .35;
+}
+
 tbody tr:hover td {
   background: rgba(74, 158, 255, 0.06);
 }
