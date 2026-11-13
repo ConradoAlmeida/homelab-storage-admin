@@ -1,17 +1,19 @@
 :root {
-  --bg:#0b1220; --bg-deep:#070d18; --panel:#121a2c; --panel-2:#182438; --line:#243049; --line-strong:#31425f;
-  --txt:#e8eef8; --muted:#8ea0b8;
-  --acc:#3ad7ea; --acc-hover:#6ee7f4; --acc-ink:#04222a; --acc-soft:rgba(58,215,234,.14);
-  --ok:#3ee0a0; --ok-soft:rgba(62,224,160,.12);
-  --warn:#f0b429; --warn-soft:rgba(240,180,41,.14);
-  --err:#ff6b8a; --err-soft:rgba(255,107,138,.12);
-  --cyan:#3ceef8; --purple:#c084fc;
+  --bg:var(--moya-bg); --bg-deep:var(--moya-bg-deep); --panel:var(--moya-card); --panel-2:var(--moya-hover);
+  --line:var(--moya-border); --line-strong:var(--moya-border-strong);
+  --txt:var(--moya-text); --muted:var(--moya-muted);
+  --acc:var(--moya-primary); --acc-hover:var(--moya-primary-hover); --acc-ink:var(--moya-primary-ink);
+  --acc-soft:rgba(58,215,234,.14);
+  --ok:var(--moya-green); --ok-soft:rgba(62,224,160,.12);
+  --warn:var(--moya-warn); --warn-soft:rgba(240,180,41,.14);
+  --err:var(--moya-red); --err-soft:rgba(255,107,138,.12);
+  --cyan:var(--moya-cyan); --purple:var(--moya-purple);
   --shadow:0 16px 40px rgba(0,0,0,.35);
-  --radius:10px; --radius-sm:8px; --radius-pill:999px;
+  --radius:var(--moya-radius); --radius-sm:var(--moya-radius-sm); --radius-pill:var(--moya-pill);
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px;
-  --control-h:34px;
-  --font-sans:"Segoe UI","Noto Sans","Liberation Sans",system-ui,sans-serif;
-  --font-mono:ui-monospace,"Cascadia Code","JetBrains Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --control-h:var(--moya-control-h);
+  --font-sans:var(--moya-font);
+  --font-mono:var(--moya-font-mono);
   --focus:0 0 0 3px rgba(58,215,234,.35);
   --glow:0 0 16px rgba(58,215,234,.28);
 }

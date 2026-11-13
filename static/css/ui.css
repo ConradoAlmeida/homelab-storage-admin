@@ -15,6 +15,9 @@ body.bg-storage {
   --moya-app-background: url("../images/background_storage.svg");
   --moya-app-background-size: 480px;
 }
+body.bg-storage .workspace {
+  background: transparent;
+}
 
 main > h1,
 .page-head h1 {
