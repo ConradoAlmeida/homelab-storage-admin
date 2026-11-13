@@ -156,6 +156,7 @@ def test_static_assets_exist():
         "copy-secret.js",
         "service-tint.js",
         "table-filter.js",
+        "table-sort.js",
         "auto-refresh.js",
         "gitea-status.js",
         "disk-wizard.js",

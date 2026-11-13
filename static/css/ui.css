@@ -319,6 +319,10 @@ button.th-sort {
   cursor: pointer;
 }
 
+button.th-sort:hover {
+  color: var(--acc);
+}
+
 button.th-sort[aria-sort="ascending"]::after {
   content: " ↑";
 }
@@ -1938,7 +1942,8 @@ body.brand-moya .side-nav a.active .count {
 .containers-table th:nth-child(3) { width: 140px; }
 .containers-table th:nth-child(4) { width: 290px; }
 .containers-table th:nth-child(5) { width: 340px; }
-.containers-table td { overflow-wrap: anywhere; }
+.containers-table th { vertical-align: bottom; }
+.containers-table td { overflow-wrap: anywhere; vertical-align: top; }
 .action-menu,
 .restore-details {
   position: relative;

@@ -46,9 +46,15 @@
         <button class="btn small" type="button" data-table-clear>Limpar</button>
       </div>
     </div>
-    <div class="table-wrap"><table id="containers-table" class="data-table containers-table">
+    <div class="table-wrap"><table id="containers-table" class="data-table containers-table" data-table-sortable>
       <thead>
-        <tr><th>Container</th><th>Imagem</th><th>Estado</th><th>Portas</th><th aria-label="Ações"></th></tr>
+        <tr>
+          <th><button type="button" class="th-sort" data-sort="0" aria-sort="none">Container</button></th>
+          <th><button type="button" class="th-sort" data-sort="1" aria-sort="none">Imagem</button></th>
+          <th><button type="button" class="th-sort" data-sort="2" aria-sort="none">Estado</button></th>
+          <th><button type="button" class="th-sort" data-sort="3" aria-sort="none">Portas</button></th>
+          <th>Ações</th>
+        </tr>
       </thead>
       <tbody>
         {% for item in overview.containers %}
