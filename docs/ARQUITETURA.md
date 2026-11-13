@@ -260,7 +260,7 @@ entra na rede `moya` e recebe `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN`.
 - No Pi, sem `CREDENTIALS_URL`, o login é o usuário local deste servidor.
   A tela diz "conta deste servidor". No moyaserver, com URL e token, continua
   "mesma conta do Credenciais".
-- Textos, ajuda e páginas de Gitea e de backup local de arquivos seguem as
+- Textos e páginas de Gitea e de backup local de arquivos seguem as
   capacidades do host. No Pi, sem o container do Gitea e sem o app Credenciais,
   esses blocos não aparecem. No moyaserver, com o container e com
   `CREDENCIAIS_DB`/`CREDENCIAIS_ENV`, o atalho do Gitea, os jobs de arquivos e

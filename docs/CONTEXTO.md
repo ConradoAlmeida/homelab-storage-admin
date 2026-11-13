@@ -113,7 +113,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   parada/reinício pela própria UI.
 - Login pelo Credenciais no moya, com `CREDENTIALS_MANAGE_USERS=1` e
   break-glass local. No Pi, sem `CREDENTIALS_URL`, o login é local.
-- Textos, ajuda e rotas de Gitea, backup local de arquivos e gestão pelo
+- Textos e rotas de Gitea, backup local de arquivos e gestão pelo
   Credenciais só aparecem quando o host tem o recurso. O código continua o
   mesmo nos dois ambientes.
 - Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
@@ -139,10 +139,6 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   resultado do POST. Com `DJANGO_SECURE_COOKIES=1` essa URL abre e não mantém
   sessão; o login que grava sessão é `https://homelab.conradhub.com`
   ([SEGURANCA.md](SEGURANCA.md#cookies-e-https)).
-- **Ajuda contextual** em todas as páginas autenticadas: o botão **Ajuda desta
-  página** no topo abre um painel com um caso de uso (**No dia a dia**) e
-  capítulos por funcionalidade da própria página, usando `<details>` nativo e
-  sem JavaScript.
 - **Novo layout de painel de operação** (branch `ui/layout-telas`, merge `76dc5f2`):
   visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
 - Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.
