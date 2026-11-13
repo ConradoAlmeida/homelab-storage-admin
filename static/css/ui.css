@@ -12,8 +12,13 @@ body {
 }
 
 body.bg-storage {
-  --moya-app-background: url("../images/background_storage.svg");
-  --moya-app-background-size: 480px;
+  --moya-app-background:
+    radial-gradient(1200px 700px at 50% -20%, rgba(74, 158, 255, .22), transparent 65%),
+    radial-gradient(900px 600px at 100% 100%, rgba(63, 193, 201, .10), transparent 70%),
+    linear-gradient(180deg, #1c2130 0%, #181c27 50%, #141722 100%);
+  --moya-app-background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 body.bg-storage .workspace {
   background: transparent;
