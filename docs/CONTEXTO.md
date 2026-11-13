@@ -159,11 +159,13 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   mudança no fluxo de dump/cópia USB.
 - **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
   superuser, cria o superuser `admin` dos apps Django via agente e troca a
-  senha de um superuser existente. Registry fixa de apps; a senha é digitada
+  senha dele quando ele já existe. Registry fixa de apps; a senha é digitada
   no painel, vai por stdin e não volta na resposta; senha fraca exige
   confirmação extra (`validate_password` + `Usar senha fraca mesmo assim`);
   nada de container ou comando vindo do cliente. A página é uma tabela única
-  com estado, usuário alvo, superusers e ações alinhadas.
+  com estado, usuário alvo, superusers e ações alinhadas. Outros superusers
+  são somente informativos; a senha deles é trocada no próprio app para
+  sincronizar Samba, histórico e sessões.
   Desligável com `DJANGO_ADMIN_MANAGE=0` no host e `DJANGO_ADMIN_ENABLE=0` no
   agente. Detalhe em [SEGURANCA](SEGURANCA.md#admins-locais-dos-apps-django).
 

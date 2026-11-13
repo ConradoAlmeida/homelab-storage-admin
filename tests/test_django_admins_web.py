@@ -64,7 +64,7 @@ def fake_agent():
     agente.django_admin_set_password.return_value = {
         "app": "processos",
         "label": "Process Manager",
-        "username": "conrado",
+        "username": "admin",
         "applied": True,
         "created": False,
         "weak": [],
@@ -129,6 +129,22 @@ class DjangoAdminsWebTests(TestCase):
         self.assertContains(resposta, "conrado")
         self.agente.django_admin_status.assert_called_once()
 
+    def test_sem_admin_nao_mostra_trocar_senha(self):
+        self.agente.django_admin_status.return_value = {
+            "enabled": True,
+            "apps": [APPS[0]],
+        }
+        self.client.force_login(self.root)
+        resposta = self.client.get(reverse("django_admins"))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(
+            resposta, '<summary class="btn small primary">Criar admin</summary>'
+        )
+        self.assertNotContains(
+            resposta, '<summary class="btn small primary">Trocar senha</summary>'
+        )
+        self.assertContains(resposta, "conrado")
+
     def test_create_envia_senha_digitada_sem_auditar_segredo(self):
         self.client.force_login(self.root)
         resposta = self.client.post(
@@ -182,6 +198,7 @@ class DjangoAdminsWebTests(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "too short")
         self.assertContains(resposta, "Usar senha fraca mesmo assim")
+        self.assertContains(resposta, "Nada foi criado")
         self.assertFalse(AuditLog.objects.filter(action="django_admin.create").exists())
 
     def test_confirmacao_de_senha_fraca_aplica(self):
@@ -209,7 +226,7 @@ class DjangoAdminsWebTests(TestCase):
         )
         self.assertTrue(AuditLog.objects.filter(action="django_admin.create").exists())
 
-    def test_trocar_senha_de_superuser_existente(self):
+    def test_trocar_senha_do_admin_existente(self):
         self.client.force_login(self.root)
         resposta = self.client.post(
             reverse("django_admin_action"),
@@ -223,10 +240,10 @@ class DjangoAdminsWebTests(TestCase):
         )
         self.assertEqual(resposta.status_code, 302)
         self.agente.django_admin_set_password.assert_called_once_with(
-            "processos", "conrado", "Nova-senha-123", allow_weak=False
+            "processos", "admin", "Nova-senha-123", allow_weak=False
         )
         log = AuditLog.objects.get(action="django_admin.password")
-        self.assertEqual(log.target, "processos:conrado")
+        self.assertEqual(log.target, "processos:admin")
         self.assertNotIn("Nova-senha-123", log.detail)
 
     def test_acao_de_nao_superuser_bloqueada(self):

@@ -324,7 +324,7 @@ AJUDA: dict[str, dict[str, Any]] = {
         "title": "Admins locais",
         "summary": (
             "Superuser de emergência por app Django: criar o usuário admin "
-            "local ou trocar a senha de um superuser existente."
+            "local ou trocar a senha dele."
         ),
         "chapters": [
             {
@@ -347,8 +347,9 @@ AJUDA: dict[str, dict[str, Any]] = {
                 "title": "Criar ou trocar senha",
                 "text": (
                     "Criar usa o usuário admin e recusa se ele já existir. Trocar "
-                    "senha exige escolher um superuser daquele app. Senhas fracas "
-                    "exigem marcar 'Usar senha fraca mesmo assim'."
+                    "senha só aparece quando o admin existe. Outros superusers são "
+                    "informativos; troque a senha deles no próprio app. Senhas "
+                    "fracas exigem marcar 'Usar senha fraca mesmo assim'."
                 ),
             },
         ],
@@ -1550,7 +1551,7 @@ USE_CASES: dict[str, str] = {
     "django_admins": (
         "Use quando o login normal do Credenciais estiver fora ou quando "
         "precisar de um superuser local de emergência. Exemplo: crie o admin "
-        "de um app com uma senha forte; se ela vazar, troque a senha do usuário."
+        "de um app com uma senha forte; se ela vazar, troque a senha dele."
     ),
     "torrents": (
         "Use para colocar um filme ou episódio na biblioteca do Jellyfin a "

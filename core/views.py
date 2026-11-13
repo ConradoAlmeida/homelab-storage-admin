@@ -783,10 +783,10 @@ class DjangoAdminActionView(SuperuserPostView):
             return redirect("django_admins")
         acao = (request.POST.get("acao") or "").strip()
         app = (request.POST.get("app") or "").strip()
-        username = (request.POST.get("username") or "admin").strip()
         senha = request.POST.get("password") or ""
         senha2 = request.POST.get("password2") or ""
         allow_weak = request.POST.get("allow_weak") == "1"
+        alvo = "admin"
 
         if acao not in {"create", "password"}:
             messages.error(request, "Acao invalida.")
@@ -808,7 +808,7 @@ class DjangoAdminActionView(SuperuserPostView):
             else:
                 resultado = agent.django_admin_set_password(
                     app,
-                    username,
+                    alvo,
                     senha,
                     allow_weak=allow_weak,
                 )
@@ -817,6 +817,13 @@ class DjangoAdminActionView(SuperuserPostView):
             return redirect("django_admins")
 
         if not resultado.get("applied"):
+            rotulo = resultado.get("label") or app
+            nada = "Nada foi criado" if acao == "create" else "Nada foi alterado"
+            messages.error(
+                request,
+                f"{rotulo}: {nada}; a senha foi recusada pelos validadores "
+                "do Django.",
+            )
             for aviso in resultado.get("weak") or ["Senha fraca."]:
                 messages.warning(request, aviso)
             messages.warning(
@@ -828,7 +835,7 @@ class DjangoAdminActionView(SuperuserPostView):
         _audit(
             request,
             f"django_admin.{acao}",
-            f"{app}:{resultado.get('username') or username}",
+            f"{app}:{resultado.get('username') or alvo}",
             f"created={bool(resultado.get('created'))} "
             f"weak={bool(resultado.get('weak'))}",
         )
