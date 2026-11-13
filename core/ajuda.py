@@ -323,8 +323,8 @@ AJUDA: dict[str, dict[str, Any]] = {
     "django_admins": {
         "title": "Admins locais",
         "summary": (
-            "Superuser de emergência por app Django: criar e rotacionar a senha "
-            "do usuário admin local."
+            "Superuser de emergência por app Django: criar o usuário admin "
+            "local ou trocar a senha de um superuser existente."
         ),
         "chapters": [
             {
@@ -336,19 +336,19 @@ AJUDA: dict[str, dict[str, Any]] = {
                 ),
             },
             {
-                "title": "Senha mostrada uma vez",
+                "title": "Você define a senha",
                 "text": (
-                    "O agente gera a senha, aplica via manage.py no container e "
-                    "devolve só na resposta. Ela não é gravada no banco, no log "
+                    "A senha é digitada na página e vai ao container por stdin. "
+                    "Ela não volta na resposta e não é gravada no banco, no log "
                     "ou no histórico."
                 ),
             },
             {
-                "title": "Criar e rotacionar",
+                "title": "Criar ou trocar senha",
                 "text": (
-                    "Criar garante o superuser admin sem mexer em outros "
-                    "superusers. Rotacionar exige digitar o identificador do "
-                    "app e invalida a senha anterior."
+                    "Criar usa o usuário admin e recusa se ele já existir. Trocar "
+                    "senha exige escolher um superuser daquele app. Senhas fracas "
+                    "exigem marcar 'Usar senha fraca mesmo assim'."
                 ),
             },
         ],
@@ -1550,8 +1550,7 @@ USE_CASES: dict[str, str] = {
     "django_admins": (
         "Use quando o login normal do Credenciais estiver fora ou quando "
         "precisar de um superuser local de emergência. Exemplo: crie o admin "
-        "de um app, copie a senha mostrada uma vez e guarde-a; se ela vazar, "
-        "rotacione e a anterior deixa de funcionar."
+        "de um app com uma senha forte; se ela vazar, troque a senha do usuário."
     ),
     "torrents": (
         "Use para colocar um filme ou episódio na biblioteca do Jellyfin a "

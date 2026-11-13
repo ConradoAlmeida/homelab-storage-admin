@@ -783,41 +783,66 @@ class DjangoAdminActionView(SuperuserPostView):
             return redirect("django_admins")
         acao = (request.POST.get("acao") or "").strip()
         app = (request.POST.get("app") or "").strip()
-        if acao not in {"ensure", "rotate"}:
+        username = (request.POST.get("username") or "admin").strip()
+        senha = request.POST.get("password") or ""
+        senha2 = request.POST.get("password2") or ""
+        allow_weak = request.POST.get("allow_weak") == "1"
+
+        if acao not in {"create", "password"}:
             messages.error(request, "Acao invalida.")
             return redirect("django_admins")
-        if acao == "rotate":
-            confirmation = (request.POST.get("confirmation") or "").strip()
-            if confirmation != app:
-                messages.error(
-                    request,
-                    "Para rotacionar a senha, digite o identificador do app "
-                    "para confirmar.",
-                )
-                return redirect("django_admins")
+        if not senha:
+            messages.error(request, "Informe a senha.")
+            return redirect("django_admins")
+        if senha != senha2:
+            messages.error(request, "As senhas nao conferem.")
+            return redirect("django_admins")
+
         try:
-            if acao == "ensure":
-                resultado = agent.django_admin_ensure(app)
+            if acao == "create":
+                resultado = agent.django_admin_create(
+                    app,
+                    senha,
+                    allow_weak=allow_weak,
+                )
             else:
-                resultado = agent.django_admin_rotate(app)
+                resultado = agent.django_admin_set_password(
+                    app,
+                    username,
+                    senha,
+                    allow_weak=allow_weak,
+                )
         except AgentError as exc:
             messages.error(request, str(exc))
             return redirect("django_admins")
+
+        if not resultado.get("applied"):
+            for aviso in resultado.get("weak") or ["Senha fraca."]:
+                messages.warning(request, aviso)
+            messages.warning(
+                request,
+                "Marque 'Usar senha fraca mesmo assim' e envie de novo.",
+            )
+            return redirect("django_admins")
+
         _audit(
             request,
             f"django_admin.{acao}",
-            f"{app}:{resultado.get('username') or 'admin'}",
+            f"{app}:{resultado.get('username') or username}",
             f"created={bool(resultado.get('created'))} "
-            f"password_set={bool(resultado.get('password_set'))}",
+            f"weak={bool(resultado.get('weak'))}",
         )
-        resposta = render(
+        if resultado.get("weak"):
+            messages.warning(
+                request,
+                "Senha fraca aplicada com confirmacao.",
+            )
+        messages.success(
             request,
-            "django_admin_result.html",
-            {"resultado": resultado, "acao": acao, "app": app},
+            resultado.get("message")
+            or "Senha atualizada.",
         )
-        resposta["Cache-Control"] = "no-store, max-age=0"
-        resposta["Pragma"] = "no-cache"
-        return resposta
+        return redirect("django_admins")
 
 
 class SharesView(AgentTemplateView):

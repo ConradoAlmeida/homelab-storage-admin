@@ -429,21 +429,34 @@ class AgentClient:
             username=username,
         )
 
-    def django_admin_ensure(self, app, username="admin", email="admin@moya.local"):
+    def django_admin_create(
+        self,
+        app,
+        password,
+        username="admin",
+        email="admin@moya.local",
+        allow_weak=False,
+    ):
         return self.call(
-            "django_admin_ensure",
+            "django_admin_create",
             timeout=180,
             app=app,
+            password=password,
             username=username,
             email=email,
+            allow_weak=allow_weak,
         )
 
-    def django_admin_rotate(self, app, username="admin"):
+    def django_admin_set_password(
+        self, app, username, password, allow_weak=False
+    ):
         return self.call(
-            "django_admin_rotate",
+            "django_admin_set_password",
             timeout=180,
             app=app,
             username=username,
+            password=password,
+            allow_weak=allow_weak,
         )
 
     def torrent_overview(self):

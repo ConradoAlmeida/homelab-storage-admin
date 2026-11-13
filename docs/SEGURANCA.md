@@ -92,20 +92,24 @@ Wi-Fi de terceiro em `192.168.0.0/24` colide com a rota. Use
 ### Admins locais dos apps Django
 
 No moyaserver, `Sistema → Admins locais` permite criar o superuser local
-`admin` e rotacionar a senha dele nos apps Django (Credenciais, Storage,
-Datasheets, Drawing e Process Manager). A página só abre para um superuser do
-Storage Admin.
+`admin` e trocar a senha de um superuser existente nos apps Django (Credenciais,
+Storage, Datasheets, Drawing e Process Manager). A página só abre para um
+superuser do Storage Admin.
 
 - A interface manda só o slug do app. O agente usa uma registry fixa de
   containers e executa apenas `manage.py shell` com um trecho constante; não
   aceita container, caminho ou comando do cliente.
-- A senha é gerada no agente, enviada ao container por **stdin** e devolvida
-  uma única vez na resposta. Não vai para argv, `host.env`, banco do Storage,
-  log do agente ou `AuditLog`.
-- A rotação exige digitar o identificador do app e invalida a senha anterior.
-- Criar preserva a senha apenas quando `admin` já é superuser com senha
-  utilizável; se faltar, não for superuser ou estiver sem senha, gera uma nova.
-- Superusers com outro nome (por exemplo `conrado`) não são alterados.
+- A senha é digitada pelo usuário, enviada ao container por **stdin** e nunca
+  volta na resposta. Não vai para argv, `host.env`, banco do Storage, log do
+  agente ou `AuditLog`.
+- O app valida a senha com `validate_password` do próprio Django. Se for fraca,
+  a ação não é aplicada e a página mostra os avisos; o usuário pode marcar
+  `Usar senha fraca mesmo assim` e reenviar. A auditoria registra apenas
+  `weak=True/False`, nunca a senha.
+- Criar usa sempre o username `admin` e recusa se ele já existir. Trocar senha
+  exige escolher um superuser existente daquele app.
+- Superusers com outro nome (por exemplo `conrado`) não são alterados, a menos
+  que sejam escolhidos explicitamente para troca de senha.
 - `DJANGO_ADMIN_MANAGE=0` no host desliga a página e as ações, mesmo que o
   agente ofereça a operação. `DJANGO_ADMIN_ENABLE=0` desliga no agente.
 - O caminho normal continua sendo o Credenciais/SSO; este admin é break-glass.

@@ -158,10 +158,12 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   O Gitea para pendrive também foi validado manualmente; não retestar sem
   mudança no fluxo de dump/cópia USB.
 - **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
-  superuser, cria/rotaciona o superuser `admin` dos apps Django via agente.
-  Registry fixa de apps; a senha é gerada no agente, vai por stdin e é
-  devolvida uma vez; nada de container ou comando vindo do cliente. A página
-  é uma tabela única com estado, usuário alvo, superusers e ações alinhadas.
+  superuser, cria o superuser `admin` dos apps Django via agente e troca a
+  senha de um superuser existente. Registry fixa de apps; a senha é digitada
+  no painel, vai por stdin e não volta na resposta; senha fraca exige
+  confirmação extra (`validate_password` + `Usar senha fraca mesmo assim`);
+  nada de container ou comando vindo do cliente. A página é uma tabela única
+  com estado, usuário alvo, superusers e ações alinhadas.
   Desligável com `DJANGO_ADMIN_MANAGE=0` no host e `DJANGO_ADMIN_ENABLE=0` no
   agente. Detalhe em [SEGURANCA](SEGURANCA.md#admins-locais-dos-apps-django).
 

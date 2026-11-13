@@ -6794,38 +6794,65 @@ data = {
 print("__MOYA_DJANGO_ADMIN__" + json.dumps(data))
 """
 
-_DJANGO_ADMIN_MUTATE_CODE = r"""
+_DJANGO_ADMIN_PASSWORD_CODE = r"""
 import json
 import os
 import sys
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 U = get_user_model()
 name = os.environ["DJANGO_ADMIN_USER"]
 email = os.environ.get("DJANGO_ADMIN_EMAIL", "")
-force = os.environ.get("DJANGO_ADMIN_FORCE") == "1"
+mode = os.environ.get("DJANGO_ADMIN_MODE", "set")
+allow_weak = os.environ.get("DJANGO_ADMIN_ALLOW_WEAK") == "1"
 password = sys.stdin.readline().rstrip("\n")
-user, created = U.objects.get_or_create(
-    username=name, defaults={"email": email}
-)
-password_set = False
-if force or created or not user.has_usable_password():
-    if not password:
-        raise SystemExit("senha vazia")
+
+
+def emit(data):
+    print("__MOYA_DJANGO_ADMIN__" + json.dumps(data))
+    raise SystemExit(0)
+
+
+if not password:
+    emit({"applied": False, "error": "Informe uma senha."})
+
+user = U.objects.filter(username=name).first()
+if mode == "create" and user:
+    emit({"applied": False, "error": "Usuario admin ja existe; use trocar senha."})
+if mode == "set" and not user:
+    emit({"applied": False, "error": "Usuario nao existe; crie o admin primeiro."})
+if mode == "set" and user and not user.is_superuser:
+    emit({"applied": False, "error": "O usuario nao e superuser."})
+
+candidate = user or U(username=name, email=email)
+weak = []
+try:
+    validate_password(password, user=candidate)
+except ValidationError as exc:
+    weak = list(exc.messages)
+
+if weak and not allow_weak:
+    emit({"applied": False, "weak": weak, "exists": bool(user), "created": False})
+
+if user is None:
+    user = U.objects.create_superuser(username=name, email=email, password=password)
+    created = True
+else:
     user.set_password(password)
-    password_set = True
-promoted = not (user.is_superuser and user.is_staff and user.is_active)
-user.is_superuser = True
-user.is_staff = True
-user.is_active = True
-if email and not user.email:
-    user.email = email
-user.save()
+    user.is_superuser = True
+    user.is_staff = True
+    user.is_active = True
+    if email and not user.email:
+        user.email = email
+    user.save()
+    created = False
+
 data = {
-    "exists": True,
+    "applied": True,
     "created": created,
-    "password_set": password_set,
-    "promoted": promoted,
+    "weak": weak,
     "is_superuser": user.is_superuser,
     "is_staff": user.is_staff,
     "is_active": user.is_active,
@@ -6836,7 +6863,7 @@ data = {
         )
     ),
 }
-print("__MOYA_DJANGO_ADMIN__" + json.dumps(data))
+emit(data)
 """
 
 
@@ -6887,7 +6914,8 @@ def _django_admin_exec(
     username: str,
     email: str = "",
     password: str = "",
-    force: bool = False,
+    mode: str = "set",
+    allow_weak: bool = False,
     timeout: int = 120,
 ) -> dict:
     runtime, container = _django_admin_running(slug)
@@ -6900,7 +6928,9 @@ def _django_admin_exec(
         "-e",
         f"DJANGO_ADMIN_EMAIL={email}",
         "-e",
-        f"DJANGO_ADMIN_FORCE={'1' if force else '0'}",
+        f"DJANGO_ADMIN_MODE={mode}",
+        "-e",
+        f"DJANGO_ADMIN_ALLOW_WEAK={'1' if allow_weak else '0'}",
         container,
         "/app/.venv/bin/python",
         "manage.py",
@@ -6971,10 +7001,12 @@ def op_django_admin_status(app: str = "", username: str = "admin", **_):
     }
 
 
-def op_django_admin_ensure(
+def op_django_admin_create(
     app: str = "",
     username: str = "admin",
     email: str = "admin@moya.local",
+    password: str = "",
+    allow_weak: bool = False,
     **_,
 ):
     slug, _config = _django_admin_app(app)
@@ -6983,74 +7015,68 @@ def op_django_admin_ensure(
     atual = _django_admin_status_one(slug, nome)
     if atual.get("error"):
         raise AgentError(str(atual["error"]))
-    if atual.get("exists") and atual.get("is_superuser") and atual.get("usable_password"):
-        resultado = {
-            **atual,
-            "created": False,
-            "password_set": False,
-            "password": "",
-            "message": "Superuser local ja existe; senha preservada.",
-        }
-        log(f"DJANGO_ADMIN ensure app={slug} user={nome} created=0 password=hidden")
-        return resultado
+    if atual.get("exists"):
+        raise AgentError("Usuario admin ja existe; use trocar senha.")
 
-    senha = ""
-    force = False
-    if (
-        not atual.get("exists")
-        or not atual.get("usable_password")
-        or not atual.get("is_superuser")
-    ):
-        senha = secrets.token_urlsafe(32)
-        force = True
     dados = _django_admin_exec(
         slug,
-        _DJANGO_ADMIN_MUTATE_CODE,
+        _DJANGO_ADMIN_PASSWORD_CODE,
         username=nome,
         email=endereco,
-        password=senha,
-        force=force,
+        password=password,
+        mode="create",
+        allow_weak=allow_weak,
     )
+    if dados.get("error"):
+        raise AgentError(str(dados["error"]))
     log(
-        f"DJANGO_ADMIN ensure app={slug} user={nome} "
-        f"created={int(bool(dados.get('created')))} password=hidden"
+        f"DJANGO_ADMIN create app={slug} user={nome} "
+        f"applied={int(bool(dados.get('applied')))} "
+        f"weak={int(bool(dados.get('weak')))} password=hidden"
     )
     return {
         **_django_admin_base(slug, nome),
         **dados,
-        "password": senha if dados.get("password_set") else "",
-        "message": (
-            "Superuser local criado."
-            if dados.get("created")
-            else "Superuser local garantido."
-        ),
+        "message": "Superuser local criado." if dados.get("applied") else "Senha nao aplicada.",
     }
 
 
-def op_django_admin_rotate(app: str = "", username: str = "admin", **_):
+def op_django_admin_set_password(
+    app: str = "",
+    username: str = "admin",
+    password: str = "",
+    allow_weak: bool = False,
+    **_,
+):
     slug, _config = _django_admin_app(app)
     nome = _django_admin_username(username)
     atual = _django_admin_status_one(slug, nome)
     if atual.get("error"):
         raise AgentError(str(atual["error"]))
     if not atual.get("exists"):
-        raise AgentError(
-            "Superuser local nao existe; use 'Criar' antes de rotacionar."
-        )
-    senha = secrets.token_urlsafe(32)
+        raise AgentError("Usuario nao existe; crie o admin primeiro.")
+    if not atual.get("is_superuser"):
+        raise AgentError("O usuario nao e superuser.")
+
     dados = _django_admin_exec(
         slug,
-        _DJANGO_ADMIN_MUTATE_CODE,
+        _DJANGO_ADMIN_PASSWORD_CODE,
         username=nome,
-        password=senha,
-        force=True,
+        password=password,
+        mode="set",
+        allow_weak=allow_weak,
     )
-    log(f"DJANGO_ADMIN rotate app={slug} user={nome} password=hidden")
+    if dados.get("error"):
+        raise AgentError(str(dados["error"]))
+    log(
+        f"DJANGO_ADMIN password app={slug} user={nome} "
+        f"applied={int(bool(dados.get('applied')))} "
+        f"weak={int(bool(dados.get('weak')))} password=hidden"
+    )
     return {
         **_django_admin_base(slug, nome),
         **dados,
-        "password": senha if dados.get("password_set") else "",
-        "message": "Senha do superuser local rotacionada.",
+        "message": "Senha atualizada." if dados.get("applied") else "Senha nao aplicada.",
     }
 
 
@@ -7911,8 +7937,8 @@ OPS = {
     "container_action": op_container_action,
     "container_logs": op_container_logs,
     "django_admin_status": op_django_admin_status,
-    "django_admin_ensure": op_django_admin_ensure,
-    "django_admin_rotate": op_django_admin_rotate,
+    "django_admin_create": op_django_admin_create,
+    "django_admin_set_password": op_django_admin_set_password,
     "torrent_overview": op_torrent_overview,
     "library_merge_dir": op_library_merge_dir,
     "health_overview": op_health_overview,

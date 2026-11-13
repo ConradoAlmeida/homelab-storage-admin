@@ -33,9 +33,10 @@ Ele só pede operações conhecidas ao agente, que valida cada argumento.
 A exceção de container é `django_admin_*`: só no moyaserver, o agente aceita o
 slug de uma registry fixa (Credenciais, Storage, Datasheets, Drawing e Process
 Manager), valida o usuário e executa `manage.py shell` com um trecho constante
-para criar/rotacionar o superuser local `admin`. O cliente nunca informa
-container, caminho ou comando. A senha é gerada no agente, passa por stdin e
-volta uma única vez ao painel; não entra em argv, log ou banco.
+para criar o superuser local `admin` ou trocar a senha de um superuser
+existente. O cliente nunca informa container, caminho ou comando. A senha é
+digitada no painel, passa por stdin e não volta na resposta; não entra em argv,
+log ou banco.
 
 ### Perfis de host
 

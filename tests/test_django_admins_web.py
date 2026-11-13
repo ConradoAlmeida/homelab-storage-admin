@@ -43,7 +43,7 @@ APPS = [
         "usable_password": True,
         "last_login": None,
         "date_joined": None,
-        "superusers": ["admin"],
+        "superusers": ["admin", "conrado"],
         "error": "",
     },
 ]
@@ -52,23 +52,23 @@ APPS = [
 def fake_agent():
     agente = Mock()
     agente.django_admin_status.return_value = {"enabled": True, "apps": APPS}
-    agente.django_admin_ensure.return_value = {
+    agente.django_admin_create.return_value = {
         "app": "credenciais",
         "label": "Credenciais",
         "username": "admin",
+        "applied": True,
         "created": True,
-        "password_set": True,
-        "password": "senha-unica-123",
+        "weak": [],
         "message": "Superuser local criado.",
     }
-    agente.django_admin_rotate.return_value = {
+    agente.django_admin_set_password.return_value = {
         "app": "processos",
         "label": "Process Manager",
-        "username": "admin",
+        "username": "conrado",
+        "applied": True,
         "created": False,
-        "password_set": True,
-        "password": "senha-rotacionada-456",
-        "message": "Senha do superuser local rotacionada.",
+        "weak": [],
+        "message": "Senha atualizada.",
     }
     agente.host_capabilities.return_value = {
         "django_admin": True,
@@ -122,48 +122,126 @@ class DjangoAdminsWebTests(TestCase):
         self.assertContains(resposta, "Admins locais")
         self.assertContains(resposta, "Credenciais")
         self.assertContains(resposta, "Process Manager")
-        self.assertContains(resposta, "senha utilizável")
+        self.assertContains(resposta, "Nova senha")
+        self.assertContains(resposta, "Usar senha fraca mesmo assim")
+        self.assertContains(resposta, "Criar admin")
+        self.assertContains(resposta, "Trocar senha")
+        self.assertContains(resposta, "conrado")
         self.agente.django_admin_status.assert_called_once()
 
-    def test_ensure_mostra_senha_uma_vez_sem_auditar_o_segredo(self):
+    def test_create_envia_senha_digitada_sem_auditar_segredo(self):
         self.client.force_login(self.root)
         resposta = self.client.post(
             reverse("django_admin_action"),
-            {"acao": "ensure", "app": "credenciais"},
-        )
-        self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "senha-unica-123")
-        self.assertTrue(resposta["Cache-Control"].startswith("no-store"))
-        self.agente.django_admin_ensure.assert_called_once_with("credenciais")
-        log = AuditLog.objects.get(action="django_admin.ensure")
-        self.assertEqual(log.target, "credenciais:admin")
-        self.assertNotIn("senha-unica-123", log.detail)
-
-    def test_rotate_exige_confirmacao_do_app(self):
-        self.client.force_login(self.root)
-        resposta = self.client.post(
-            reverse("django_admin_action"),
-            {"acao": "rotate", "app": "processos"},
+            {
+                "acao": "create",
+                "app": "credenciais",
+                "password": "Senha-forte-123",
+                "password2": "Senha-forte-123",
+            },
         )
         self.assertEqual(resposta.status_code, 302)
-        self.agente.django_admin_rotate.assert_not_called()
+        self.agente.django_admin_create.assert_called_once_with(
+            "credenciais", "Senha-forte-123", allow_weak=False
+        )
+        log = AuditLog.objects.get(action="django_admin.create")
+        self.assertEqual(log.target, "credenciais:admin")
+        self.assertNotIn("Senha-forte-123", log.detail)
 
+    def test_senhas_diferentes_nao_chamam_agente(self):
+        self.client.force_login(self.root)
         resposta = self.client.post(
             reverse("django_admin_action"),
-            {"acao": "rotate", "app": "processos", "confirmation": "processos"},
+            {
+                "acao": "create",
+                "app": "credenciais",
+                "password": "Senha-forte-123",
+                "password2": "outra",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.agente.django_admin_create.assert_not_called()
+
+    def test_senha_fraca_sem_confirmacao_avisa_e_nao_audita(self):
+        self.agente.django_admin_create.return_value = {
+            "applied": False,
+            "created": False,
+            "weak": ["This password is too short."],
+        }
+        self.client.force_login(self.root)
+        resposta = self.client.post(
+            reverse("django_admin_action"),
+            {
+                "acao": "create",
+                "app": "credenciais",
+                "password": "123",
+                "password2": "123",
+            },
+            follow=True,
         )
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "senha-rotacionada-456")
-        self.agente.django_admin_rotate.assert_called_once_with("processos")
+        self.assertContains(resposta, "too short")
+        self.assertContains(resposta, "Usar senha fraca mesmo assim")
+        self.assertFalse(AuditLog.objects.filter(action="django_admin.create").exists())
+
+    def test_confirmacao_de_senha_fraca_aplica(self):
+        self.agente.django_admin_create.return_value = {
+            "applied": True,
+            "created": True,
+            "weak": ["This password is too short."],
+            "username": "admin",
+            "message": "Superuser local criado.",
+        }
+        self.client.force_login(self.root)
+        resposta = self.client.post(
+            reverse("django_admin_action"),
+            {
+                "acao": "create",
+                "app": "credenciais",
+                "password": "123",
+                "password2": "123",
+                "allow_weak": "1",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.agente.django_admin_create.assert_called_once_with(
+            "credenciais", "123", allow_weak=True
+        )
+        self.assertTrue(AuditLog.objects.filter(action="django_admin.create").exists())
+
+    def test_trocar_senha_de_superuser_existente(self):
+        self.client.force_login(self.root)
+        resposta = self.client.post(
+            reverse("django_admin_action"),
+            {
+                "acao": "password",
+                "app": "processos",
+                "username": "conrado",
+                "password": "Nova-senha-123",
+                "password2": "Nova-senha-123",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        self.agente.django_admin_set_password.assert_called_once_with(
+            "processos", "conrado", "Nova-senha-123", allow_weak=False
+        )
+        log = AuditLog.objects.get(action="django_admin.password")
+        self.assertEqual(log.target, "processos:conrado")
+        self.assertNotIn("Nova-senha-123", log.detail)
 
     def test_acao_de_nao_superuser_bloqueada(self):
         self.client.force_login(self.user)
         resposta = self.client.post(
             reverse("django_admin_action"),
-            {"acao": "ensure", "app": "credenciais"},
+            {
+                "acao": "create",
+                "app": "credenciais",
+                "password": "x",
+                "password2": "x",
+            },
         )
         self.assertEqual(resposta.status_code, 403)
-        self.agente.django_admin_ensure.assert_not_called()
+        self.agente.django_admin_create.assert_not_called()
 
     def test_acao_invalida_nao_chama_o_agente(self):
         self.client.force_login(self.root)
@@ -172,8 +250,8 @@ class DjangoAdminsWebTests(TestCase):
             {"acao": "apagar", "app": "credenciais"},
         )
         self.assertEqual(resposta.status_code, 302)
-        self.agente.django_admin_ensure.assert_not_called()
-        self.agente.django_admin_rotate.assert_not_called()
+        self.agente.django_admin_create.assert_not_called()
+        self.agente.django_admin_set_password.assert_not_called()
 
     @override_settings(DJANGO_ADMIN_MANAGE=False)
     def test_flag_desliga_pagina_e_acoes(self):
@@ -185,10 +263,15 @@ class DjangoAdminsWebTests(TestCase):
 
         resposta = self.client.post(
             reverse("django_admin_action"),
-            {"acao": "ensure", "app": "credenciais"},
+            {
+                "acao": "create",
+                "app": "credenciais",
+                "password": "x",
+                "password2": "x",
+            },
         )
         self.assertEqual(resposta.status_code, 302)
-        self.agente.django_admin_ensure.assert_not_called()
+        self.agente.django_admin_create.assert_not_called()
 
     def test_menu_so_aparece_para_superuser(self):
         self.client.force_login(self.root)

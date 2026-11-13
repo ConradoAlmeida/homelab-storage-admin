@@ -349,6 +349,49 @@
     font-size: 12px;
   }
 
+  .admin-action > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .admin-action > summary::-webkit-details-marker { display: none; }
+  .admin-action > summary::marker { content: ""; }
+
+  .admin-password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 260px;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--bg-deep);
+  }
+
+  .admin-password-form label {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .admin-password-form .input {
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .admin-weak {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .admin-weak input {
+    width: auto;
+    height: auto;
+  }
+
   .table-toolbar {
     display: flex;
     align-items: center;

@@ -6,8 +6,8 @@
     <h1>Admins locais</h1>
     <p class="lead">
       Superuser de emergência (break-glass) em cada app Django. O acesso normal
-      continua sendo o Credenciais; esta página só cria o usuário local
-      <span class="mono">admin</span> e troca a senha dele.
+      continua sendo o Credenciais; esta página cria o usuário local
+      <span class="mono">admin</span> e troca a senha de um superuser existente.
     </p>
   </div>
 </div>
@@ -26,17 +26,16 @@
   <div class="callout info">
     <span class="callout-icon">{% include "partials/icon.html" with name="info" %}</span>
     <div class="callout-body">
-      <strong>A senha aparece uma única vez.</strong>
+      <strong>Você define a senha.</strong>
       <p>
-        O agente gera uma senha aleatória, aplica no app e devolve só para esta
-        resposta. Ela não é gravada no banco do Storage, no log nem no histórico.
-        Copie e guarde em local seguro antes de sair da página.
+        A senha é enviada ao app pelo agente e não fica registrada no banco do
+        Storage, no log nem no histórico. Use uma senha forte; se ela for fraca,
+        o app pede uma confirmação extra.
       </p>
       <p class="muted text-12">
         Superusers que já existem com outro nome (por exemplo <span class="mono">conrado</span>)
-        não são alterados. Se <span class="mono">admin</span> já for superuser com
-        senha utilizável, a senha é preservada; nos demais casos, uma nova senha
-        é gerada.
+        não são alterados, a menos que você os escolha em <strong>Trocar senha</strong>.
+        O admin local criado aqui é o usuário <span class="mono">admin</span>.
       </p>
     </div>
   </div>
@@ -103,25 +102,54 @@
             <td>
               {% if app.running %}
               <div class="admin-table-actions">
-                <form method="post" action="{% url 'django_admin_action' %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="acao" value="ensure">
-                  <input type="hidden" name="app" value="{{ app.app }}">
-                  <button class="btn small primary" type="submit">
-                    {% if app.exists and app.is_superuser and app.usable_password %}Garantir admin{% else %}Criar admin{% endif %}
-                  </button>
-                </form>
-                {% if app.exists %}
-                <form method="post" action="{% url 'django_admin_action' %}" class="admin-rotate-inline"
-                      data-confirm="Rotacionar a senha de {{ app.username }} em {{ app.label }}? A senha atual deixa de funcionar imediatamente.">
-                  {% csrf_token %}
-                  <input type="hidden" name="acao" value="rotate">
-                  <input type="hidden" name="app" value="{{ app.app }}">
-                  <input class="input" type="text" name="confirmation" required
-                         autocomplete="off" placeholder="{{ app.app }}"
-                         aria-label="Digite {{ app.app }} para confirmar a rotação">
-                  <button class="btn small danger" type="submit">Rotacionar</button>
-                </form>
+                {% if not app.exists %}
+                <details class="admin-action">
+                  <summary class="btn small primary">Criar admin</summary>
+                  <form method="post" action="{% url 'django_admin_action' %}" class="admin-password-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="create">
+                    <input type="hidden" name="app" value="{{ app.app }}">
+                    <input type="hidden" name="username" value="admin">
+                    <label for="create-pass-{{ app.app }}">Nova senha</label>
+                    <input id="create-pass-{{ app.app }}" class="input" type="password"
+                           name="password" autocomplete="new-password" required>
+                    <label for="create-pass2-{{ app.app }}">Confirmar senha</label>
+                    <input id="create-pass2-{{ app.app }}" class="input" type="password"
+                           name="password2" autocomplete="new-password" required>
+                    <label class="admin-weak">
+                      <input type="checkbox" name="allow_weak" value="1">
+                      Usar senha fraca mesmo assim
+                    </label>
+                    <button class="btn small primary" type="submit">Criar admin</button>
+                  </form>
+                </details>
+                {% endif %}
+                {% if app.superusers %}
+                <details class="admin-action">
+                  <summary class="btn small {% if app.exists %}primary{% endif %}">Trocar senha</summary>
+                  <form method="post" action="{% url 'django_admin_action' %}" class="admin-password-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="password">
+                    <input type="hidden" name="app" value="{{ app.app }}">
+                    <label for="user-{{ app.app }}">Admin</label>
+                    <select id="user-{{ app.app }}" name="username" class="input">
+                      {% for nome in app.superusers %}
+                      <option value="{{ nome }}">{{ nome }}</option>
+                      {% endfor %}
+                    </select>
+                    <label for="set-pass-{{ app.app }}">Nova senha</label>
+                    <input id="set-pass-{{ app.app }}" class="input" type="password"
+                           name="password" autocomplete="new-password" required>
+                    <label for="set-pass2-{{ app.app }}">Confirmar senha</label>
+                    <input id="set-pass2-{{ app.app }}" class="input" type="password"
+                           name="password2" autocomplete="new-password" required>
+                    <label class="admin-weak">
+                      <input type="checkbox" name="allow_weak" value="1">
+                      Usar senha fraca mesmo assim
+                    </label>
+                    <button class="btn small primary" type="submit">Salvar senha</button>
+                  </form>
+                </details>
                 {% endif %}
               </div>
               {% else %}

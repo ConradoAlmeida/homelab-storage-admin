@@ -167,10 +167,9 @@ def _demo_django_admin(op: str, payload: dict) -> dict:
         "is_staff": True,
         "is_active": True,
         "usable_password": True,
-        "created": op == "django_admin_ensure" and not item["exists"],
-        "password_set": True,
-        "promoted": False,
-        "password": "demo-senha-admin",
+        "applied": True,
+        "created": op == "django_admin_create" and not item["exists"],
+        "weak": [],
         "message": "Operacao simulada.",
     }
 
@@ -326,7 +325,7 @@ def _dados(op: str, payload: dict):
         return _demo_status(str(payload.get("task") or ""))
     if op == "host_capabilities":
         return CAPS
-    if op in ("django_admin_status", "django_admin_ensure", "django_admin_rotate"):
+    if op in ("django_admin_status", "django_admin_create", "django_admin_set_password"):
         return _demo_django_admin(op, payload)
     if op == "df":
         return {
