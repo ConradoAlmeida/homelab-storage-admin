@@ -39,6 +39,10 @@
   --moya-transition: 150ms ease;
   --moya-shadow: 0 16px 40px rgba(0, 0, 0, .35);
   --moya-focus: 0 0 0 2px rgba(58, 215, 234, .38);
+  --moya-table-head-bg: rgba(7, 13, 24, .55);
+  --moya-row-hover: rgba(58, 215, 234, .06);
+  --moya-modal-backdrop: rgba(2, 6, 16, .74);
+  --moya-wordmark-filter: none;
 
   /* Fundo por app: o kit define o mecanismo, nao a imagem. */
   --moya-app-background: none;
@@ -116,4 +120,79 @@
   --ok-soft: rgba(92, 214, 168, .14);
   --warn-soft: rgba(232, 180, 76, .14);
   --err-soft: rgba(224, 106, 114, .14);
+}
+
+/* Tema claro automático.
+ * Sem data-theme, o kit segue a preferência do sistema operacional/navegador.
+ * Windows e Linux (GTK/KDE) expõem essa preferência ao Chrome/Firefox/Edge.
+ * Para forçar claro, use data-theme="light"; para o Blueprint, data-theme="blueprint". */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="blueprint"]):not([data-theme="dark"]) {
+    --moya-bg: #f4f7fb;
+    --moya-bg-deep: #e9eef5;
+    --moya-card: #ffffff;
+    --moya-hover: #eef3f9;
+    --moya-text: #0f172a;
+    --moya-muted: #5b6b80;
+    --moya-border: #d6dfea;
+    --moya-border-strong: #b9c7d8;
+
+    --moya-primary: #0e7490;
+    --moya-primary-hover: #0d5f78;
+    --moya-primary-ink: #ffffff;
+    --moya-primary-soft: rgba(14, 116, 144, .12);
+    --moya-cyan: #0891b2;
+    --moya-green: #0f9f6e;
+    --moya-red: #c2415a;
+    --moya-warn: #b45309;
+    --moya-purple: #7c3aed;
+    --moya-orange: #c2410c;
+
+    --moya-shadow: 0 16px 40px rgba(15, 23, 42, .14);
+    --moya-focus: 0 0 0 2px rgba(14, 116, 144, .3);
+    --moya-table-head-bg: rgba(233, 238, 245, .8);
+    --moya-row-hover: rgba(14, 116, 144, .06);
+    --moya-modal-backdrop: rgba(15, 23, 42, .4);
+    --moya-wordmark-filter: brightness(0) saturate(100%);
+
+    --acc-soft: rgba(14, 116, 144, .12);
+    --ok-soft: rgba(15, 159, 110, .12);
+    --warn-soft: rgba(180, 83, 9, .12);
+    --err-soft: rgba(194, 65, 90, .12);
+  }
+}
+
+/* Claro explícito: vence a preferência do sistema. */
+[data-theme="light"] {
+  --moya-bg: #f4f7fb;
+  --moya-bg-deep: #e9eef5;
+  --moya-card: #ffffff;
+  --moya-hover: #eef3f9;
+  --moya-text: #0f172a;
+  --moya-muted: #5b6b80;
+  --moya-border: #d6dfea;
+  --moya-border-strong: #b9c7d8;
+
+  --moya-primary: #0e7490;
+  --moya-primary-hover: #0d5f78;
+  --moya-primary-ink: #ffffff;
+  --moya-primary-soft: rgba(14, 116, 144, .12);
+  --moya-cyan: #0891b2;
+  --moya-green: #0f9f6e;
+  --moya-red: #c2415a;
+  --moya-warn: #b45309;
+  --moya-purple: #7c3aed;
+  --moya-orange: #c2410c;
+
+  --moya-shadow: 0 16px 40px rgba(15, 23, 42, .14);
+  --moya-focus: 0 0 0 2px rgba(14, 116, 144, .3);
+  --moya-table-head-bg: rgba(233, 238, 245, .8);
+  --moya-row-hover: rgba(14, 116, 144, .06);
+  --moya-modal-backdrop: rgba(15, 23, 42, .4);
+  --moya-wordmark-filter: brightness(0) saturate(100%);
+
+  --acc-soft: rgba(14, 116, 144, .12);
+  --ok-soft: rgba(15, 159, 110, .12);
+  --warn-soft: rgba(180, 83, 9, .12);
+  --err-soft: rgba(194, 65, 90, .12);
 }

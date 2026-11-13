@@ -10,12 +10,34 @@
 
 html { color-scheme: dark; }
 
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="blueprint"]):not([data-theme="dark"]) { color-scheme: light; }
+}
+[data-theme="light"] { color-scheme: light; }
+[data-theme="blueprint"],
+[data-theme="dark"] { color-scheme: dark; }
+
 .mono { font-family: var(--moya-font-mono); }
 .muted { color: var(--moya-muted); }
 .text-11 { font-size: 11px; }
 .text-12 { font-size: 12px; }
 
 a { color: var(--moya-primary); }
+
+/* A marca oficial é ciano e some no fundo claro; no tema claro ela vira tinta. */
+img[src*="moya_wordmark_official"] { filter: var(--moya-wordmark-filter); }
+
+/* Os tiles de fundo são desenhados para o escuro. No claro, o app fica em
+ * papel limpo; o login mantém o circuit claro definido em login.css. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="blueprint"]):not([data-theme="dark"]) body:not(.auth-body) {
+    background-image: none !important;
+  }
+}
+[data-theme="light"] body:not(.auth-body),
+body[data-theme="light"]:not(.auth-body) {
+  background-image: none !important;
+}
 
 /* Cabeçalho e agrupamento */
 .page-head,
@@ -129,7 +151,7 @@ a { color: var(--moya-primary); }
   letter-spacing: .04em;
   text-transform: uppercase;
   border-bottom: 1px solid var(--moya-border);
-  background: rgba(7, 13, 24, .55);
+  background: var(--moya-table-head-bg);
 }
 .data-table td,
 .file-table td,
@@ -145,7 +167,7 @@ a { color: var(--moya-primary); }
 .table-wrap tbody tr:last-child td { border-bottom: 0; }
 .data-table tbody tr:hover td,
 .file-table tbody tr:hover td,
-.table-wrap tbody tr:hover td { background: rgba(58, 215, 234, .06); }
+.table-wrap tbody tr:hover td { background: var(--moya-row-hover); }
 
 [hidden] { display: none !important; }
 

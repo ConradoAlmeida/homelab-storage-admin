@@ -321,7 +321,7 @@ td {
 }
 
 th {
-  background: rgba(18, 21, 31, 0.55);
+  background: var(--moya-table-head-bg);
 }
 
 button.th-sort {
@@ -353,7 +353,7 @@ button.th-sort[aria-sort="none"]::after {
 }
 
 tbody tr:hover td {
-  background: rgba(74, 158, 255, 0.06);
+  background: var(--moya-row-hover);
 }
 
 .empty {
@@ -1033,7 +1033,7 @@ summary.btn,
   padding: 0 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--panel);
   color: var(--txt);
   cursor: pointer;
   font: 600 13px/1 var(--font-sans);
@@ -1086,7 +1086,7 @@ a.btn:hover,
 
 .btn.ghost:hover,
 .file-actions .btn.ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--panel-2);
   border-color: transparent;
   color: var(--txt);
 }
@@ -1207,11 +1207,11 @@ th {
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: rgba(4, 10, 20, 0.35);
+  background: var(--moya-table-head-bg);
 }
 
 tbody tr:hover td {
-  background: rgba(58, 215, 234, 0.05);
+  background: var(--moya-row-hover);
 }
 
 .file-name a,
@@ -1310,7 +1310,7 @@ tbody tr:hover td {
   padding: 0 8px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line);
-  background: rgba(7, 13, 24, 0.55);
+  background: var(--bg-deep);
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
@@ -1422,7 +1422,7 @@ code,
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--panel);
 }
 
 .card,
@@ -1924,7 +1924,7 @@ body.brand-moya .side-nav a.active .count {
 }
 .disk-mount-pct { white-space: nowrap; }
 .disk-mount-bar { height: 8px; margin: 0; }
-.disk-detail-row > td { padding: 0; background: rgba(255, 255, 255, .015); border-top: 0; }
+.disk-detail-row > td { padding: 0; background: var(--bg-deep); border-top: 0; }
 .disk-detail-wrap { padding: 10px 12px 12px 46px; }
 .disk-parts-wrap { overflow-x: auto; }
 .disk-parts-subtable { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 12px; }
@@ -1938,7 +1938,7 @@ body.brand-moya .side-nav a.active .count {
 }
 .disk-parts-subtable td {
   padding: 5px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, .04);
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
 .disk-parts-subtable tr:last-child td { border-bottom: 0; }
@@ -1974,7 +1974,7 @@ body.brand-moya .side-nav a.active .count {
   }
   .disk-mobile-part {
     padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, .04);
+    border-bottom: 1px solid var(--line);
   }
   .disk-mobile-part:last-child { border-bottom: 0; }
   .disk-mobile-part-line {
@@ -1999,7 +1999,7 @@ body.brand-moya .side-nav a.active .count {
 .service-filter .form-group { margin: 0; }
 .service-filter-actions { display: flex; gap: 8px; align-items: center; }
 .service-group-row td {
-  background: rgba(255, 255, 255, .03);
+  background: var(--moya-hover);
   border-top: 1px solid var(--line);
   padding: 8px 10px;
 }
