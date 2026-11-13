@@ -40,6 +40,11 @@
   --moya-shadow: 0 16px 40px rgba(0, 0, 0, .35);
   --moya-focus: 0 0 0 2px rgba(58, 215, 234, .38);
 
+  /* Fundo por app: o kit define o mecanismo, nao a imagem. */
+  --moya-app-background: none;
+  --moya-app-background-size: auto;
+  --moya-app-background-position: center top;
+
   /* Aliases de migração (apps antigos) */
   --bg-dark: var(--moya-bg);
   --bg-card: var(--moya-card);
@@ -80,4 +85,35 @@
   --control-h: var(--moya-control-h);
   --font-sans: var(--moya-font);
   --shadow: var(--moya-shadow);
+}
+
+/* Tema Moya Blueprint - engenharia/prancheta.
+ * Aplicar no <body data-theme="blueprint">. O fundo por app continua em
+ * --moya-app-background, definido pelo CSS de cada app. */
+[data-theme="blueprint"] {
+  --moya-bg: #1a1d29;
+  --moya-bg-deep: #141722;
+  --moya-card: #252936;
+  --moya-hover: #2e3241;
+  --moya-text: #e6e9ef;
+  --moya-muted: #9aa3b5;
+  --moya-border: #363a4a;
+  --moya-border-strong: #4a5064;
+
+  --moya-primary: #4a9eff;
+  --moya-primary-hover: #6db1ff;
+  --moya-primary-ink: #08121f;
+  --moya-primary-soft: rgba(74, 158, 255, .14);
+  --moya-cyan: #3fc1c9;
+  --moya-green: #5cd6a8;
+  --moya-red: #e06a72;
+  --moya-warn: #e8b44c;
+  --moya-purple: #a78bfa;
+  --moya-orange: #f0a030;
+  --moya-focus: 0 0 0 2px rgba(74, 158, 255, .38);
+
+  --acc-soft: rgba(74, 158, 255, .14);
+  --ok-soft: rgba(92, 214, 168, .14);
+  --warn-soft: rgba(232, 180, 76, .14);
+  --err-soft: rgba(224, 106, 114, .14);
 }

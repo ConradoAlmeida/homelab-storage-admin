@@ -4,6 +4,18 @@ html {
   color-scheme: dark;
 }
 
+body {
+  background-image: var(--moya-app-background, none);
+  background-size: var(--moya-app-background-size, auto);
+  background-position: var(--moya-app-background-position, center top);
+  background-repeat: repeat;
+}
+
+body.bg-storage {
+  --moya-app-background: url("../images/background_storage.svg");
+  --moya-app-background-size: 480px;
+}
+
 main > h1,
 .page-head h1 {
   font-size: 20px;
