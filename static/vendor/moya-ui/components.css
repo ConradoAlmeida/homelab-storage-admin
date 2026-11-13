@@ -555,6 +555,50 @@ textarea::placeholder { color: var(--moya-muted); }
 .flash-info strong { color: var(--moya-primary); }
 .flash-error,
 .flash-warning { color: var(--moya-red); }
+
+/* Callout: aviso em card, sem faixa lateral. */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--moya-border);
+  border-radius: var(--moya-radius-card);
+  background: var(--moya-card);
+  color: var(--moya-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.callout-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: var(--moya-radius-sm);
+  background: var(--moya-primary-soft);
+  color: var(--moya-primary);
+}
+.callout-icon .ico {
+  width: 16px;
+  height: 16px;
+}
+.callout-body { min-width: 0; }
+.callout-body strong {
+  display: block;
+  color: var(--moya-text);
+  font-weight: 650;
+}
+.callout-body p {
+  margin: 4px 0 0;
+  color: var(--moya-muted);
+}
+.callout.warn { border-color: var(--moya-warn); background: var(--warn-soft); }
+.callout.warn .callout-icon { background: var(--warn-soft); color: var(--moya-warn); }
+.callout.danger { border-color: var(--moya-red); background: var(--err-soft); }
+.callout.danger .callout-icon { background: var(--err-soft); color: var(--moya-red); }
+.callout.ok { border-color: var(--moya-green); background: var(--ok-soft); }
+.callout.ok .callout-icon { background: var(--ok-soft); color: var(--moya-green); }
 .flash-stack {
   display: flex;
   flex-direction: column;

@@ -1529,24 +1529,23 @@ code,
   padding: 14px 16px;
   margin: 12px 0;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--acc);
   border-radius: var(--moya-radius-card, 6px);
   background: var(--panel);
   color: var(--txt);
 }
 
 .alert.danger {
-  border-left-color: var(--err);
+  border-color: var(--err);
   background: var(--err-soft);
 }
 
 .alert.warn {
-  border-left-color: var(--warn);
+  border-color: var(--warn);
   background: var(--warn-soft);
 }
 
 .alert.ok {
-  border-left-color: var(--ok);
+  border-color: var(--ok);
   background: var(--ok-soft);
 }
 

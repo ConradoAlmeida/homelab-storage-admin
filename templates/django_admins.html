@@ -23,19 +23,22 @@
     <p class="muted">{{ agent_error }}</p>
   </div>
 {% else %}
-  <div class="alert">
-    <strong>A senha aparece uma única vez.</strong>
-    <p>
-      O agente gera uma senha aleatória, aplica no app e devolve só para esta
-      resposta. Ela não é gravada no banco do Storage, no log nem no histórico.
-      Copie e guarde em local seguro antes de sair da página.
-    </p>
-    <p class="muted text-12">
-      Superusers que já existem com outro nome (por exemplo <span class="mono">conrado</span>)
-      não são alterados. Se <span class="mono">admin</span> já for superuser com
-      senha utilizável, a senha é preservada; nos demais casos, uma nova senha
-      é gerada.
-    </p>
+  <div class="callout info">
+    <span class="callout-icon">{% include "partials/icon.html" with name="info" %}</span>
+    <div class="callout-body">
+      <strong>A senha aparece uma única vez.</strong>
+      <p>
+        O agente gera uma senha aleatória, aplica no app e devolve só para esta
+        resposta. Ela não é gravada no banco do Storage, no log nem no histórico.
+        Copie e guarde em local seguro antes de sair da página.
+      </p>
+      <p class="muted text-12">
+        Superusers que já existem com outro nome (por exemplo <span class="mono">conrado</span>)
+        não são alterados. Se <span class="mono">admin</span> já for superuser com
+        senha utilizável, a senha é preservada; nos demais casos, uma nova senha
+        é gerada.
+      </p>
+    </div>
   </div>
 
   <section class="section">

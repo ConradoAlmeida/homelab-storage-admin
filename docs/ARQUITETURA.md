@@ -162,6 +162,7 @@ específicas do app. Sem npm: `uv add django-tailwind-cli` e
 | `section` + `section-head` | blocos e subtítulos |
 | `card` | conteúdo agrupado |
 | `alert` (`danger`, `warn`, `ok`) | avisos e estados |
+| `callout` (`info`, `warn`, `danger`, `ok`) | aviso em card, com ícone |
 | `btn` (`primary`, `danger`, `small`) | ações |
 | `table-wrap` + `data-table` | listas e fichas |
 | `table-toolbar` + `filters` | busca, filtros e contagem acima da lista |
