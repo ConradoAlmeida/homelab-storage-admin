@@ -54,10 +54,10 @@ a:hover { color:var(--acc-hover); }
 .topbar { position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:12px; min-height:48px; padding:8px 20px; background:var(--moya-header-bg); border-bottom:1px solid var(--moya-header-border); color:var(--moya-header-text); }
 .topbar-title { color:var(--moya-header-muted); font-size:12px; }
 .menu-toggle { display:none; background:transparent; color:var(--moya-header-text); border:1px solid var(--moya-header-border); border-radius:4px; padding:6px 10px; cursor:pointer; }
-.topbar .top-services-toggle { background:var(--moya-header-hover); border-color:var(--moya-header-border); color:var(--moya-header-muted); }
-.topbar .top-services-toggle:hover,
-.topbar .top-services[open] > .top-services-toggle { color:var(--moya-header-text); border-color:var(--moya-header-accent); }
-.topbar .top-services-toggle .ico { color:var(--moya-header-accent); }
+.moya-app-header .top-services-toggle { background:var(--moya-header-hover); border-color:var(--moya-header-border); color:var(--moya-header-muted); }
+.moya-app-header .top-services-toggle:hover,
+.moya-app-header .top-services[open] > .top-services-toggle { color:var(--moya-header-text); border-color:var(--moya-header-accent); }
+.moya-app-header .top-services-toggle .ico { color:var(--moya-header-accent); }
 .workspace main { max-width:1440px; margin:0 auto; padding:20px 24px 40px; }
 @media (max-width: 900px) {
   .app-shell { grid-template-columns:1fr; }

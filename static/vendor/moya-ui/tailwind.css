@@ -15,6 +15,7 @@
  */
 
 @import "./tokens.css" layer(base);
+@import "./header.css" layer(components);
 @import "./components.css" layer(components);
 
 @theme {

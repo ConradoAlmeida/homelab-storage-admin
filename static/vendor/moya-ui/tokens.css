@@ -34,6 +34,11 @@
   --moya-header-hover: #182438;
   --moya-header-accent: #3ad7ea;
 
+  /* Header padrao do ecossistema */
+  --moya-header-height: 56px;
+  --moya-header-pad-x: 24px;
+  --moya-header-logo-h: 24px;
+
   /* Forma e ritmo */
   --moya-radius: 10px;
   --moya-radius-sm: 8px;

@@ -1,0 +1,263 @@
+/* Moya UI kit - header padrao dos apps. */
+
+/* ==========================================================================
+   App header - identidade escura fixa em todos os temas.
+   Estrutura: marca | navegacao | utilidades. Altura 56px no desktop.
+   ========================================================================== */
+.moya-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  min-height: var(--moya-header-height);
+  padding: 0 var(--moya-header-pad-x);
+  background: var(--moya-header-bg);
+  border-bottom: 1px solid var(--moya-header-border);
+  color: var(--moya-header-text);
+}
+
+.moya-app-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 1280px;
+  min-width: 0;
+  min-height: var(--moya-header-height);
+  margin: 0 auto;
+}
+
+/* Apps com sidebar usam a largura inteira do workspace. */
+.moya-app-header--fluid .moya-app-header__inner { max-width: none; }
+
+.moya-app-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--moya-header-text);
+  text-decoration: none;
+}
+.moya-app-header__brand:hover,
+.moya-app-header__brand:focus-visible {
+  color: var(--moya-header-text);
+  text-decoration: none;
+}
+.moya-app-header__brand:focus-visible { outline: none; box-shadow: var(--moya-focus); border-radius: var(--moya-radius-sm); }
+
+/* O header e sempre escuro: a wordmark oficial fica ciano mesmo no tema claro. */
+.moya-app-header img[src*="moya_wordmark_official"] { filter: none; }
+.moya-app-header__logo {
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  height: var(--moya-header-logo-h);
+}
+.moya-app-header__divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 20px;
+  background: var(--moya-header-border);
+}
+.moya-app-header__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.moya-app-header__name {
+  color: var(--moya-header-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.moya-app-header__subtitle {
+  color: var(--moya-header-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moya-app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-left: 4px;
+}
+
+.moya-app-header__link,
+.moya-app-header__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--moya-radius-sm);
+  background: transparent;
+  color: var(--moya-header-muted);
+  font-family: var(--moya-font);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--moya-transition), border-color var(--moya-transition), color var(--moya-transition);
+}
+.moya-app-header__link:hover,
+.moya-app-header__action:hover {
+  color: var(--moya-header-text);
+  background: var(--moya-header-hover);
+  text-decoration: none;
+}
+.moya-app-header__link.is-active {
+  color: var(--moya-header-accent);
+  background: var(--moya-header-hover);
+}
+.moya-app-header__action {
+  border-color: var(--moya-header-border);
+  font-size: 12px;
+}
+.moya-app-header__action:hover { border-color: var(--moya-header-muted); }
+.moya-app-header__action--accent {
+  color: var(--moya-header-accent);
+  border-color: var(--moya-header-accent);
+}
+.moya-app-header__action--accent:hover { color: var(--moya-header-text); }
+.moya-app-header__action--danger:hover {
+  color: var(--moya-red);
+  border-color: var(--moya-red);
+  background: transparent;
+}
+.moya-app-header__link:focus-visible,
+.moya-app-header__action:focus-visible,
+.moya-app-header__menu-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--moya-focus);
+}
+
+.moya-app-header__utilities {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+.moya-app-header__utilities form { margin: 0; display: inline-flex; }
+.moya-app-header__user {
+  color: var(--moya-header-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Botao hamburguer (menu do header ou da sidebar). */
+.moya-app-header__toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.moya-app-header__menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--moya-header-border);
+  border-radius: var(--moya-radius-sm);
+  background: transparent;
+  color: var(--moya-header-muted);
+  cursor: pointer;
+}
+.moya-app-header__menu-btn::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
+}
+.moya-app-header__menu-btn:hover {
+  color: var(--moya-header-text);
+  border-color: var(--moya-header-muted);
+}
+
+/* Busca opcional no centro do header (Drawing). */
+.moya-app-header .nav-search {
+  flex: 1 1 280px;
+  max-width: 360px;
+  margin: 0 8px;
+}
+
+@media (max-width: 1024px) {
+  .moya-app-header__nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    z-index: 101;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    margin: 0;
+    padding: 8px var(--moya-header-pad-x) 12px;
+    background: var(--moya-header-bg);
+    border-bottom: 1px solid var(--moya-header-border);
+  }
+  .moya-app-header__toggle:checked ~ .moya-app-header__nav { display: flex; }
+  .moya-app-header__link {
+    justify-content: flex-start;
+    height: 36px;
+  }
+  .moya-app-header__menu-btn { display: inline-flex; }
+}
+
+/* Apps sem menu colapsavel (Dash) mantem a navegacao visivel. */
+@media (max-width: 1024px) {
+  .moya-app-header--compact .moya-app-header__nav {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    margin-left: 0;
+    padding: 0;
+    overflow-x: auto;
+    background: transparent;
+    border: 0;
+  }
+  .moya-app-header--compact .moya-app-header__menu-btn { display: none; }
+}
+
+@media (max-width: 720px) {
+  .moya-app-header {
+    --moya-header-height: 52px;
+    --moya-header-pad-x: 16px;
+  }
+  .moya-app-header__subtitle { display: none; }
+  .moya-app-header__user { display: none; }
+  .moya-app-header__utilities .moya-app-header__action:not(.moya-app-header__action--accent):not(.moya-app-header__action--danger):not(.moya-app-header__action--keep) {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .moya-app-header__divider,
+  .moya-app-header__name { display: none; }
+  .moya-app-header__inner { gap: 12px; }
+}
+
+@media print {
+  .moya-app-header { display: none !important; }
+}

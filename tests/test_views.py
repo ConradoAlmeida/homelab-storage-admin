@@ -1532,7 +1532,7 @@ class ViewSmokeTests(TestCase):
         resposta = self.client.get("/")
         self.assertContains(resposta, 'class="app-footer"')
         self.assertContains(resposta, "app-footer-brand")
-        self.assertContains(resposta, "topbar-tools")
+        self.assertContains(resposta, "moya-app-header__utilities")
 
     def test_topo_mostra_servicos_como_botoes(self):
         with tempfile.TemporaryDirectory() as tmp:

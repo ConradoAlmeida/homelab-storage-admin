@@ -14,14 +14,6 @@
   <a class="skip" href="#main">Ir para o conteúdo</a>
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
-      <a class="brand{% if brand_homelab %} brand-homelab{% endif %}" href="{% url 'dashboard' %}">
-        {% if brand_homelab %}
-        <img class="brand-word" src="{% static 'images/conradhub/sidebar-wordmark.png' %}" width="178" height="54" alt="Conrado Homelab">
-        {% else %}
-        <img src="{% static brand_logo %}" alt="{{ brand_alt }}">
-        <span>{{ product_name }}</span>
-        {% endif %}
-      </a>
       <nav class="side-nav" aria-label="Principal">
         <p class="nav-section">Visão geral</p>
         <a href="{% url 'dashboard' %}" class="{% if request.path == '/' %}active{% endif %}">
@@ -112,21 +104,37 @@
         </a>
         {% endif %}
       </nav>
-      <div class="sidebar-foot">
-        {% if request.user.is_staff %}
-        <a class="user-chip" href="{% url 'admin:index' %}" title="Abrir painel Django admin">{{ request.user.username }}</a>
-        {% else %}
-        <span class="user-chip">{{ request.user.username }}</span>
-        {% endif %}
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn small" type="submit">Sair</button></form>
-      </div>
     </aside>
     <div class="workspace">
-      <header class="topbar">
-        <button class="menu-toggle" type="button" data-nav-toggle aria-label="Abrir menu">☰</button>
-        <span class="topbar-title">{{ product_name }}</span>
-        <div class="topbar-tools">
-          {% include "partials/services_menu.html" %}
+      <header class="moya-app-header moya-app-header--fluid">
+        <div class="moya-app-header__inner">
+          <button class="moya-app-header__menu-btn" type="button" data-nav-toggle aria-label="Abrir menu"></button>
+          <a class="moya-app-header__brand" href="{% url 'dashboard' %}">
+            {% if brand_homelab %}
+            <img class="moya-app-header__logo" src="{% static 'images/conradhub/sidebar-wordmark.png' %}" width="178" height="54" alt="Conrado Homelab">
+            {% else %}
+            <img class="moya-app-header__logo" src="{% static brand_logo %}" alt="{{ brand_alt }}">
+            {% endif %}
+            <span class="moya-app-header__divider" aria-hidden="true"></span>
+            <span class="moya-app-header__titles">
+              <span class="moya-app-header__name">{{ product_name }}</span>
+              <span class="moya-app-header__subtitle">Administração do homelab</span>
+            </span>
+          </a>
+          <div class="moya-app-header__utilities">
+            {% if request.user.is_authenticated %}
+            {% if request.user.is_staff %}
+            <a class="moya-app-header__user" href="{% url 'admin:index' %}" title="Abrir painel Django admin">{{ request.user.username }}</a>
+            {% else %}
+            <span class="moya-app-header__user">{{ request.user.username }}</span>
+            {% endif %}
+            {% endif %}
+            {% include "partials/services_menu.html" %}
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button class="moya-app-header__action moya-app-header__action--danger" type="submit">Sair</button>
+            </form>
+          </div>
         </div>
       </header>
       <main id="main">
