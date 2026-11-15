@@ -91,7 +91,8 @@ arquivo e:
 
 Sem `--apply` é dry-run. O bloco marcado `manual` (Jellyfin, regra de
 playback; Pi-hole, redirect) continua escrito à mão no `Caddyfile` e o
-gerador não toca nele. App nova = uma linha no env + `--apply`.
+gerador não toca nele. App nova = uma linha no env + `--apply`. O caminho
+aparece em **Configuração** (`APPS_ENV_PATH` no `host.env`).
 
 **Tailscale, só no Pi.** Nó `homelab`, `100.84.34.25`, MagicDNS
 `homelab.tail1a4ccb.ts.net`. SSH do Tailscale desligado. Chave sem expiração.

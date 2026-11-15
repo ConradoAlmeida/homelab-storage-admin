@@ -161,6 +161,7 @@ class SystemConfigView(AgentView):
             stack_env_path=settings.STACK_ENV_PATH,
             services_ini_host=settings.SERVICES_INI_HOST,
             credenciais_env=settings.CREDENCIAIS_ENV,
+            apps_env=settings.APPS_ENV_PATH,
         )
         ctx["host_error"] = None
         return render(request, self.template_name, ctx)

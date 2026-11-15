@@ -57,6 +57,9 @@ SERVICES_INI_HOST = os.environ.get(
     "SERVICES_INI_HOST", str(DATA_DIR / "services.ini")
 )
 CREDENCIAIS_ENV = os.environ.get("CREDENCIAIS_ENV", "").strip()
+# Fonte da verdade das rotas do Caddy/DNS (scripts/stacks/apps-sync.sh).
+# Vazio no moya: a pagina de configuracao nao mostra o arquivo.
+APPS_ENV_PATH = os.environ.get("APPS_ENV_PATH", "").strip()
 
 INSTALLED_APPS = [
     "django.contrib.admin",

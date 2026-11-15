@@ -284,6 +284,7 @@ No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A ba
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
+| `APPS_ENV_PATH` | `/etc/homelab-storage-admin/apps.env` | fonte das rotas do Caddy/DNS mostrada em Configuração; vazio no moya esconde a linha |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 | `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
 | `TORRENT_API_TOKEN` | vazio | Primeiro token da API, se o banco ainda não tiver um. Depois a página Torrents é quem troca |

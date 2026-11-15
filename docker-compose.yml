@@ -32,6 +32,7 @@ services:
       - STACK_ENV_PATH=${STACK_ENV_PATH:-/opt/stacks/homelab-storage-admin/.env}
       - SERVICES_INI_HOST=${SERVICES_INI_HOST:-${DATA_DIR:-./data}/services.ini}
       - CREDENCIAIS_ENV=${CREDENCIAIS_ENV:-}
+      - APPS_ENV_PATH=${APPS_ENV_PATH:-}
     volumes:
       - "${DATA_DIR:-./data}:/app/data"
       - "${STORAGE_ROOT:-/mnt/nas}:${STORAGE_ROOT:-/mnt/nas}:ro"

@@ -47,6 +47,25 @@ class ConfigLocaisPureTests(TestCase):
         caminhos = [a.caminho for a in ctx["arquivos"]]
         self.assertEqual(len(caminhos), 3)
         self.assertIn("/mnt/nas/apps/homelab-storage-admin/data/services.ini", caminhos)
+        self.assertFalse(ctx["tem_apps_env"])
+
+    def test_arquivos_pi_com_apps_env(self):
+        ctx = contexto_config_locais(
+            ssh_login="conrado@homelab.local",
+            share_owner="conrado",
+            hostname=None,
+            host_env_path="/etc/homelab-storage-admin/host.env",
+            stack_env_path="/opt/stacks/homelab-storage-admin/.env",
+            services_ini_host="/mnt/nas/apps/homelab-storage-admin/data/services.ini",
+            credenciais_env="",
+            apps_env="/etc/homelab-storage-admin/apps.env",
+        )
+        nomes = [a.nome for a in ctx["arquivos"]]
+        self.assertEqual(nomes, ["host.env", ".env", "services.ini", "apps.env"])
+        self.assertTrue(ctx["tem_apps_env"])
+        apps = ctx["arquivos"][-1]
+        self.assertEqual(apps.caminho, "/etc/homelab-storage-admin/apps.env")
+        self.assertIn("apps-sync.sh", apps.vigencia)
 
 
 class SystemConfigViewTests(TestCase):
@@ -68,6 +87,7 @@ class SystemConfigViewTests(TestCase):
         CREDENCIAIS_ENV="",
         SERVICES_INI_HOST="/mnt/nas/apps/homelab-storage-admin/data/services.ini",
         STACK_ENV_PATH="/opt/stacks/homelab-storage-admin/.env",
+        APPS_ENV_PATH="/etc/homelab-storage-admin/apps.env",
     )
     def test_pagina_perfil_pi(self):
         self.fake.host_info.return_value = {"hostname": "homelab"}
@@ -76,6 +96,8 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "ssh conrado@homelab.local")
         self.assertContains(resp, "/etc/homelab-storage-admin/host.env")
         self.assertContains(resp, "/mnt/nas/apps/homelab-storage-admin/data/services.ini")
+        self.assertContains(resp, "/etc/homelab-storage-admin/apps.env")
+        self.assertContains(resp, "apps-sync.sh --apply")
         self.assertNotContains(resp, "moya_credenciais_app")
 
     @override_settings(
@@ -83,6 +105,7 @@ class SystemConfigViewTests(TestCase):
         CREDENCIAIS_ENV="/home/conrado/moya_credenciais_app/.env",
         SERVICES_INI_HOST="/opt/stacks/homelab-storage-admin/data/services.ini",
         STACK_ENV_PATH="/opt/stacks/homelab-storage-admin/.env",
+        APPS_ENV_PATH="",
     )
     def test_pagina_perfil_moya(self):
         self.fake.host_info.return_value = {"hostname": "moya"}
@@ -91,6 +114,8 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "ssh conrado@10.72.60.181")
         self.assertContains(resp, "/opt/stacks/homelab-storage-admin/data/services.ini")
         self.assertContains(resp, "moya_credenciais_app")
+        self.assertNotContains(resp, "apps.env")
+        self.assertNotContains(resp, "apps-sync.sh")
 
     @override_settings(SSH_LOGIN="", SHARE_OWNER="conrado", CREDENCIAIS_ENV="")
     def test_agente_falha_mostra_ssh_owner(self):

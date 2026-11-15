@@ -50,6 +50,9 @@
 <div class="alert">
   Alterações em <span class="mono">host.env</span> e no <span class="mono">.env</span> do stack só valem depois de
   <span class="mono">sudo ./install-agent.sh</span> (quando couber) e <span class="mono">./deploy.sh</span>.
-  O <span class="mono">services.ini</span> vale ao recarregar a página. Não há botão de salvar aqui.
+  O <span class="mono">services.ini</span> vale ao recarregar a página.
+  {% if tem_apps_env %}O <span class="mono">apps.env</span> vale depois de
+  <span class="mono">sudo scripts/stacks/apps-sync.sh --apply</span>.{% endif %}
+  Não há botão de salvar aqui.
 </div>
 {% endblock %}

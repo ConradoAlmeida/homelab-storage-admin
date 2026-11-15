@@ -38,6 +38,7 @@ def arquivos_config(
     stack_env_path: str,
     services_ini_host: str,
     credenciais_env: str,
+    apps_env: str = "",
 ) -> list[ArquivoConfig]:
     itens = [
         ArquivoConfig(
@@ -59,6 +60,16 @@ def arquivos_config(
             vigencia="Ao recarregar a página (dashboard).",
         ),
     ]
+    apps = (apps_env or "").strip()
+    if apps:
+        itens.append(
+            ArquivoConfig(
+                nome="apps.env",
+                caminho=apps,
+                controlo="Rotas do Caddy e DNS do Pi (gera o apps.caddy).",
+                vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
+            )
+        )
     cred = (credenciais_env or "").strip()
     if cred:
         itens.append(
@@ -81,6 +92,7 @@ def contexto_config_locais(
     stack_env_path: str,
     services_ini_host: str,
     credenciais_env: str,
+    apps_env: str = "",
 ) -> dict:
     return {
         "ssh_comando": comando_ssh(
@@ -93,5 +105,7 @@ def contexto_config_locais(
             stack_env_path=stack_env_path,
             services_ini_host=services_ini_host,
             credenciais_env=credenciais_env,
+            apps_env=apps_env,
         ),
+        "tem_apps_env": bool((apps_env or "").strip()),
     }
