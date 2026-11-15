@@ -1,337 +1,135 @@
-# Testes de integracao na VM Ubuntu 26.04
+# Bancada de VM Ubuntu 26.04 (perfis homelab e moya)
 
-Roteiro para validar o ecossistema Moya em uma VM descartavel, com Ubuntu
-Server 26.04 LTS.
+Roteiro para validar o ecossistema Moya em uma VM descartavel com Ubuntu
+Server 26.04. Pytest no clone (Fedora ou CI) cobre contrato e UI; **nao**
+cobre Samba, UFW, restic/Btrfs em disco virtual nem restore server-like. Neste
+desktop a VM e a `linux2024` (`qemu:///system`, x86_64, qcow2 sem backing).
 
-A bancada de testes **inclui** esta VM. Pytest no clone (Windows, Fedora ou
-CI) cobre contrato e UI; **nao** cobre Samba, UFW, restic/Btrfs em disco
-virtual nem restore server-like. No desktop Fedora do Conrado o virt-manager
-tem a VM `linux2024` — use-a. A unica excecao e trabalhar num host **sem**
-libvirt/virt-manager (outro notebook, SSH, CI): ahi declare que o laboratorio
-nao rodou. WSL2 nao serve para Samba/UFW reais.
+A bancada e **obrigatoria** aqui. A unica excecao e trabalhar num host sem
+libvirt/virt-manager (outro notebook, SSH, CI): declare que o laboratorio nao
+rodou. WSL2 nao serve para Samba/UFW reais.
 
-## Resultados da primeira execucao (2026-10-30)
+## Como funciona
 
-VM usada: Ubuntu 26.04.1, 4 vCPU, 7,2 GB RAM, 9,8 GB de disco, IP
-`192.168.122.26` (libvirt `linux2024`).
+Um script no host (`scripts/vm/bench.sh`) e dois no convidado (`perfil-*.sh`,
+`clean.sh`). Cada execucao **comeca e termina no snapshot do perfil**, entao a
+segunda rodada comeca igual a primeira.
 
-- Credenciais: **115 testes OK** dentro da VM.
-- Storage Admin: **201 passed, 5 skips** de laboratorio/hardware
-  (Python 3.12, Linux; no Windows a mesma suite roda 180 e pula os POSIX).
-- E2E de identidade/Samba: **OK** — criacao, ativacao, Samba real, `smbclient`,
-  login, troca de senha, `/api/verificar` com `storage` e exclusao limpa.
-- Mailpit: **OK** — envio SMTP real e mensagem encontrada na API.
-- UFW: **OK** — ativacao, portas essenciais, SSH, bloqueio da ultima regra de
-  SSH e desativacao.
-- Docker: **OK** — `nginx:alpine` com start/stop/restart e logs pelo agente.
-- Laboratório (`tests/lab`): **5 passed** — restic copy/check/restore, mdadm
-  RAID1, Btrfs subvolume/snapshot, share/snapshot do agente e grupo real.
-- Ainda pendente: hardware real de disco/USB de copia fria/SMART/RAID, Graph,
-  login web cruzado e hardware do RPi5.
-- Gitea dump + pendrive: **validado manualmente** em teste anterior; o fluxo
-  nuclear nao mudou desde entao e nao foi repetido aqui por falta do pendrive.
-
-## Admins locais (2026-11-12)
-
-- Storage Admin na VM `ubuntu2604`: **453 passed, 8 skipped** (os skips são
-  laboratório/hardware POSIX).
-- E2E real do agente contra um container Django temporário
-  (`moya-admin-e2e`): `ensure` criou `admin`, login local autenticou,
-  segundo `ensure` preservou a senha, `rotate` gerou outra e o login novo
-  autenticou. O container e o volume temporários foram removidos.
-- No moyaserver: status dos cinco apps, `ensure` idempotente no Process
-  Manager (senha preservada) e auditoria sem o segredo. Nenhuma senha real
-  foi trocada nesse teste.
-
-## Estrategia de testes
-
-A ordem e esta. Pular a VM so vale na excecao acima.
-
-- **Windows/local:** testes unitarios e de contrato, rapidos, com agente mock.
-  Nao exigem host real. **Insuficiente** sozinho para backup/restore, snapshot
-  de share, Samba ou firewall.
-- **VM Ubuntu 26.04 no virt-manager (Fedora):** testes server-like
-  **obrigatorios neste desktop**. Suites dos dois apps, `tests/lab`
-  (`sudo env HOMELAB_LAB=1 ... pytest tests/lab`), E2E de identidade/Samba,
-  Mailpit, UFW, Docker e backups em loop/virtual disk. VM conhecida:
-  `linux2024` (`qemu:///system`).
-- **moyaserver:** apenas smoke read-only (`scripts/vm/smoke-moyaserver.sh`).
-- **WSL2:** nao usar para Samba/UFW; a porta 445 conflita com o Windows e a
-  rede nao representa o host real. As distros WSL de teste foram removidas.
-
-Ajustes descobertos nessa execucao:
-
-- caminhos legados do backup do agente foram isolados no conftest;
-- Mailpit passou a aceitar AUTH no setup;
-- o script de e-mail ganhou a raiz do projeto no `sys.path` e credenciais
-  dummy para o Mailpit;
-- comandos do roteiro passaram de `sudo -E` para `sudo env`.
-
-Para testar restic/backups, aumente o disco da VM; 10 GB e pouco para
-repositorios e pacotes de teste.
-
-## 1. Preparar a VM
-
-Sugestao: 4 vCPU, 4 GB RAM, 40 GB de disco, rede bridgeada ou host-only com IP
-fixo, SSH habilitado.
-
-1. Instale o Ubuntu Server 26.04 e atualize:
-   ```bash
-   sudo apt update && sudo apt full-upgrade -y
-   ```
-2. Tire um snapshot **base-limpo** no hipervisor.
-3. Copie os dois repositorios para `/home/conrado`:
-   - `moya_credenciais_app`
-   - `homelab-storage-admin`
-4. Rode o setup do host:
-   ```bash
-   cd /home/conrado/homelab-storage-admin
-   sudo INSTALL_DOCKER=1 bash scripts/vm/setup-ubuntu-2604.sh
-   ```
-   Ele instala Samba, Mailpit, uv, grupos, share `e2e`, ferramentas de disco e
-   deixa o UFW **inativo**.
-
-## 2. Testes de codigo, sem host real
-
-### Credenciais
-
-```bash
-cd /home/conrado/moya_credenciais_app
-uv sync --frozen
-uv run python manage.py test --verbosity 0
+```
+base-limpo ──preparar homelab──► homelab-pronto ──testar──► volta
+           └─preparar moya────► moya-pronto    ──testar──► volta
 ```
 
-Esperado: **115 testes OK**.
+| Script | Onde roda | Papel |
+|---|---|---|
+| `scripts/vm/bench.sh` | host | revert, start, espera guest agent, ssh, snapshot |
+| `scripts/vm/perfil-homelab.sh` | convidado (root) | `/mnt/nas`, `/mnt/backup`, `host.env`, overlay, agente |
+| `scripts/vm/perfil-moya.sh` | convidado (root) | `/srv/samba`, `/mnt/data`, rede `moya`, `host.env`, agente |
+| `scripts/vm/clean.sh` | convidado (root) | remove so o que o projeto instalou |
 
-### Storage Admin
+`base-limpo` e a origem (so `setup-ubuntu-2604.sh`) e nunca recebe testes.
+Snapshots sao internos: criar, reverter e apagar exigem a VM desligada, e e o
+`bench.sh` que faz isso.
 
-O projeto fixa Django 5.2; use Python 3.12, igual ao container de producao:
-
-```bash
-cd /home/conrado/homelab-storage-admin
-uv python install 3.12
-uv sync --dev --python 3.12 --frozen
-uv run --python 3.12 pytest -q
-```
-
-Esperado: **201 testes passando no Linux** (5 skips de laboratório/hardware).
-No Windows, a mesma suíte roda 180 e pula os testes POSIX.
-
-### Laboratório server-like
+## Primeira vez
 
 ```bash
-cd /home/conrado/homelab-storage-admin
-sudo bash scripts/vm/run-lab-tests.sh
+# 1. no convidado, uma unica vez (cria /etc/homelab-vm-bench)
+sudo INSTALL_DOCKER=1 bash scripts/vm/setup-ubuntu-2604.sh
+
+# 2. no host: VM desligada e o estado limpo vira a origem
+scripts/vm/bench.sh snapshot criar base-limpo
+
+# 3. no host: perfil instalado e congelado
+scripts/vm/bench.sh preparar --perfil homelab
+scripts/vm/bench.sh preparar --perfil moya
 ```
 
-Equivalente a:
+O `preparar` reverte `base-limpo`, clona/reseta o clone do repo
+(`~/homelab-storage-admin`), roda o `perfil-*.sh`, desliga e cria
+`<perfil>-pronto`. Use `--ref <branch|tag|sha>` para testar um commit que nao
+esta em `main` e `--recriar` para atualizar o snapshot do perfil.
+
+## Rodar a bancada
 
 ```bash
-sudo env HOMELAB_LAB=1 /usr/local/bin/uv run --python 3.12 pytest tests/lab -q
+scripts/vm/bench.sh testar --perfil homelab --smoke
+scripts/vm/bench.sh testar --perfil moya --smoke
 ```
 
-Esperado: restic, mdadm RAID1, Btrfs, snapshot do agente, grupo real e o
-timer do dump do Gitea. O timer é criado em `/etc/systemd/system` e apagado
-no final. Esses testes criam loop devices, montam filesystems e apagam tudo
-no final; rode somente na VM descartável, como root.
+O que roda, na ordem:
 
-## 3. Perfil moyaserver
+| Perfil | Etapas |
+|---|---|
+| homelab | `manage.py check`, `pytest -q`, `scripts/vm/run-lab-tests.sh` |
+| moya | `manage.py check`, `pytest -q`, `scripts/vm/run-unit-tests.sh` (Credenciais + Storage) |
+| ambos com `--smoke` | `./deploy.sh` real + 7 rotas HTTP (login, painel, saude, backups, containers, sistema) |
 
-1. Copie o perfil:
-   ```bash
-   sudo mkdir -p /etc/homelab-storage-admin
-   sudo cp host.env.moya.example /etc/homelab-storage-admin/host.env
-   sudo nano /etc/homelab-storage-admin/host.env
-   ```
-   Ajuste para a VM:
-   - `BIND_ADDR=0.0.0.0` (ou o IP da VM)
-   - `CREDENTIALS_URL=http://127.0.0.1:8080`
-   - `CREDENTIALS_APP=storage`
-   - `FIREWALL_SAFE_PORTS` com as portas que a VM usa
-2. Instale os agentes:
-   ```bash
-   cd /home/conrado/homelab-storage-admin
-   sudo ./install-agent.sh
-   systemctl status homelab-storage-agent
+Esperado hoje: **453 passed, 8 skipped** (skips = laboratorio/hardware) e
+**8 lab passed** no homelab; **138 testes do Credenciais** e a mesma suite do
+Storage no moya. O `--smoke` leva alguns minutos por causa do `--build`.
 
-   cd /home/conrado/moya_credenciais_app
-   sudo ./install-agent.sh
-   systemctl status moya-credenciais-agent
-   ```
-3. Suba o Credenciais em modo de teste:
-   ```bash
-   cd /home/conrado/moya_credenciais_app
-   cp .env.example .env
-   # edite DJANGO_SECRET_KEY, AGENTE_SOCKET, SITE_URL, CREDENTIALS_API_TOKEN
-   uv run python manage.py migrate
-   uv run python manage.py setup_servicos
-   uv run python manage.py createsuperuser
-   uv run python manage.py runserver 0.0.0.0:8080
-   ```
-4. Suba o Storage Admin:
-   ```bash
-   cd /home/conrado/homelab-storage-admin
-   cp .env.example .env
-   # CREDENTIALS_URL=http://127.0.0.1:8080
-   # CREDENTIALS_API_TOKEN=<mesmo token>
-   # CREDENTIALS_APP=storage
-   uv run --python 3.12 python manage.py migrate
-   uv run --python 3.12 python manage.py runserver 0.0.0.0:8060
-   ```
-5. Ajuste `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `SITE_URL` para o IP da VM.
-
-## 4. E2E de identidade e Samba
-
-O teste cria um usuario real e apaga no final. Ele recusa o hostname
-`moyaserver`.
+Flags uteis:
 
 ```bash
-cd /home/conrado/moya_credenciais_app
-sudo env \
-  MOYA_E2E=1 \
-  MOYA_E2E_HOST="$(hostname)" \
-  AGENTE_SOCKET=/run/moya-credenciais/agent.sock \
-  DATA_DIR=/home/conrado/e2e-data \
-  /usr/local/bin/uv run python manage.py test contas.e2e_vm.E2EIdentidadeTests -v 2
+--manter    # deixa a VM ligada e NAO reverte (quebra o invariante de proposito)
+--yes       # sem confirmacao interativa (CI, terminal sem tty)
+--perfil    # homelab | moya
 ```
 
-Ele valida:
-
-- criacao sem senha/Samba;
-- link de ativacao;
-- senha e usuario Samba reais;
-- login SMB no share `e2e`;
-- login no Credenciais;
-- troca de senha e recusa da antiga;
-- `/api/verificar` com o app `storage`;
-- exclusao de Linux, Samba e home.
-
-Limpeza de emergencia, somente para o usuario `it-...`:
+Estado e limpeza:
 
 ```bash
-sudo smbpasswd -x it-XXXXXXXXXX
-sudo userdel -r it-XXXXXXXXXX
+scripts/vm/bench.sh snapshot listar
+scripts/vm/bench.sh limpar --perfil homelab   # volta ao snapshot, sem testar
+scripts/vm/bench.sh snapshot apagar moya-pronto
 ```
 
-## 5. E-mail com Mailpit
+## Limpeza guardada
 
-O setup instala o Mailpit em `127.0.0.1:1025` e UI/API em `127.0.0.1:8025`.
+O `clean.sh` so roda com o marker `/etc/homelab-vm-bench` (criado pelo setup).
+Ele remove units, binarios, `/etc/homelab-*`, containers/imagens do projeto,
+sockets e o que os perfis registraram em `/var/lib/homelab-vm-bench/criado`.
+Nunca `docker system prune`, nunca `rm -rf /mnt/*`.
 
 ```bash
-cd /home/conrado/moya_credenciais_app
-sudo env \
-  MOYA_E2E=1 \
-  MOYA_E2E_HOST="$(hostname)" \
-  DATA_DIR=/home/conrado/e2e-data \
-  /usr/local/bin/uv run python scripts/vm/email_mailpit.py
+sudo bash scripts/vm/clean.sh            # dry-run, nao altera nada
+sudo bash scripts/vm/clean.sh --apply    # executa e autoverifica (CLEAN_OK)
 ```
 
-Esperado: `MAILPIT_OK ...` e a configuracao anterior restaurada.
+Ele e a rede de seguranca para reconstruir o `base-limpo`: limpar, conferir
+que nao sobrou nada e recriar o snapshot. Repositorios em `~` nao sao tocados.
 
-## 6. Login cruzado Credenciais -> Storage Admin
+## Fora do bench (manual)
 
-1. No Credenciais, crie uma pessoa com acesso `storage` e ative.
-2. Confirme a API:
-   ```bash
-   curl -s -X POST http://127.0.0.1:8080/api/verificar \
-     -H 'Authorization: Bearer <token>' \
-     -H 'Content-Type: application/json' \
-     -d '{"username":"it-...","password":"..."}'
-   ```
-   A resposta deve conter `"apps": [..., "storage"]`.
-3. Abra `http://<ip-da-vm>:8060/` e entre com a mesma pessoa.
-4. Confirme que uma pessoa sem acesso `storage` recebe a recusa correta.
+- **E2E de identidade/Samba e Mailpit:** ficam no outro repo, em
+  `moya_credenciais_app/docs/E2E_VM.md` (`MOYA_E2E=1`, cria e apaga usuario
+  real, usa o share `e2e`). O perfil moya sobe o app sem token, entao o login e
+  local (break-glass); o E2E do IdP continua la.
+- **Login cruzado Credenciais → Storage:** precisa do stack do Credenciais em
+  `127.0.0.1:8080` e de `CREDENTIALS_URL`/`CREDENTIALS_API_TOKEN` no `host.env`.
+- **UFW:** a VM valida o agente e as regras, nao a topologia do Pi ou do moya.
+  Com a VM ligada (`--manter`), ative pelo painel ou `sudo ufw enable` e
+  mantenha o console aberto; para voltar, `sudo ufw disable` ou reverta o
+  snapshot.
+- **Backups/restic:** anexe um disco virtual secundario (ex.: `/dev/vdb`) e use
+  o wizard do painel; loop devices tambem servem para o repo restic.
+- **Disco curto:** a VM tem 9,8 GB e chega a ~66% de uso. Aumente o disco antes
+  de acumular repos restic.
 
-## 7. UFW real
-
-**Tire um snapshot antes.** Mantenha o console da VM aberto.
-
-1. Verifique o estado:
-   ```bash
-   sudo ufw status verbose
-   sudo ufw show added
-   ```
-2. Confirme que SSH esta liberado:
-   ```bash
-   sudo ufw allow 22/tcp
-   ```
-3. Ative:
-   ```bash
-   sudo ufw --force enable
-   ```
-4. Do Fedora, teste:
-   - SSH na VM;
-   - `http://<ip-da-vm>:8080/`;
-   - `http://<ip-da-vm>:8060/`;
-   - Samba, se estiver testando;
-   - e-mail/Mailpit, se precisar.
-5. Adicione e remova uma regra de teste pela UI do Storage Admin.
-6. Teste a trava da ultima regra de SSH: o agente deve recusar a remocao.
-7. Se perder acesso, pelo console:
-   ```bash
-   sudo ufw disable
-   ```
-8. Reverta o snapshot no fim.
-
-Nao use a VM para concluir que o UFW do Pi ou do moya esta perfeito; ela valida
-o comportamento do agente e das regras, nao a topologia real de cada host.
-
-## 8. Containers
-
-Com `INSTALL_DOCKER=1`:
-
-```bash
-docker run -d --name e2e-web -p 127.0.0.1:18080:80 nginx:alpine
-```
-
-No Storage Admin:
-
-- veja o container em `/containers/`;
-- teste iniciar, parar, reiniciar e logs;
-- confirme a auditoria;
-- remova:
-  ```bash
-  docker rm -f e2e-web
-  ```
-
-## 9. Backups e restic
-
-O ideal e anexar um disco virtual secundario a VM (ex.: `/dev/vdb`) e usar o
-wizard de disco do Storage Admin. Se nao for possivel:
-
-- teste o backup local de arquivos em `/home/conrado`;
-- teste um repositorio restic em um disco virtual/loop;
-- faca um restore de um arquivo;
-- nao valide SMART de disco virtual como se fosse hardware real.
-
-## 10. Perfil homelab/RPi5
-
-1. Reverta para o snapshot `base-limpo`.
-2. Copie `host.env.example` para `/etc/homelab-storage-admin/host.env`.
-3. Ajuste:
-   - `BIND_ADDR=0.0.0.0` ou IP da VM;
-   - `BIND_PORT=8060`;
-   - `COMPOSE_OVERLAY=docker-compose.homelab.yml`;
-   - `FIREWALL_SAFE_PORTS` incluindo `5001/tcp` e `8080/tcp`, se usar Dockge e
-     a web do Pi-hole;
-   - `CREDENTIALS_MANAGE_USERS=0`.
-4. Repita setup, testes do Storage Admin, UFW e containers.
-5. Se quiser, suba Caddy/Pi-hole/Dockge na VM; lembre que a rede e o hardware
-   nao sao os do RPi5.
-
-## 11. O que nao da para validar na VM
+## O que nao da para validar na VM
 
 - SMART real, USB fisico, RAID fisico e falha de disco;
-- hardware/desempenho do RPi5;
-- Graph/Exchange e caixas compartilhadas;
-- rotacao real do Gmail;
+- hardware/desempenho do RPi5 e arm64;
+- Graph/Exchange, caixas compartilhadas e rotacao real do Gmail;
 - carga e disponibilidade de producao.
 
-## 12. Limpeza
+## Emergencia
 
-- Excluir qualquer usuario `it-...` restante.
-- Remover containers de teste.
-- Desmontar discos virtuais.
-- Desativar o UFW se necessario.
-- Reverter snapshots.
-- Nao copiar `.env` de producao para a VM.
+```bash
+sudo smbpasswd -x it-XXXXXXXXXX     # so usuario de teste
+sudo userdel -r it-XXXXXXXXXX
+scripts/vm/bench.sh limpar --perfil homelab   # no host
+```
+
+Nunca copie `.env` de producao para a VM.

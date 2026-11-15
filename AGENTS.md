@@ -31,8 +31,10 @@ Bancada de testes (obrigatória neste desktop Fedora, com virt-manager):
 
 1. `uv run pytest` neste clone — contrato, UI, Pi-safe, moya.
 2. Testes **server-like na VM** do virt-manager, roteiro em
-   `docs/VM_TESTES.md` (`linux2024`, libvirt). Inclui `tests/lab`
-   (restic/Btrfs/RAID/snapshot reais), Samba/UFW e os dois perfis.
+   `docs/VM_TESTES.md` (`linux2024`, libvirt): `scripts/vm/bench.sh testar
+   --perfil homelab|moya --smoke`. Inclui `tests/lab`
+   (restic/Btrfs/RAID/snapshot reais), Samba/UFW e os dois perfis. Cada
+   execução começa e termina no snapshot `<perfil>-pronto`.
 3. Só pule o passo 2 se **não houver virt-manager/libvirt neste host**
    (notebook, SSH em outro PC, CI). Diga isso no resumo. Pytest local
    **não** substitui a VM.

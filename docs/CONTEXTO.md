@@ -1,6 +1,6 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-11**.
+Documento de retomada. Última atualização: **2026-11-15**.
 
 Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
@@ -10,7 +10,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 |---|---|
 | Versão no moya | `783d901` (2026-11-12; contrato de tabelas e toolbar) |
 | Último deploy | 12/11/2026, moya (`./deploy.sh`; tabelas padronizadas, topo com serviços e admins locais). O Pi segue no deploy de 04/11 |
-| Testes | `453 passed, 8 skipped` no Linux (VM); lab na VM a confirmar |
+| Testes | `453 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -212,7 +212,15 @@ Roteiro: [`docs/VM_TESTES.md`](VM_TESTES.md). No desktop Fedora, a bancada
 **precisa** dos testes server-like no virt-manager (`linux2024`). Pytest
 local nao substitui. Sem virt-manager neste host, declare a excecao.
 
-- setup do host: `scripts/vm/setup-ubuntu-2604.sh`
+A bancada virou um ciclo deterministico: `bench.sh` no host reverte o snapshot
+do perfil, roda os testes e devolve a VM ao mesmo snapshot. Snapshots:
+`base-limpo` (origem, so `setup-ubuntu-2604.sh`), `homelab-pronto` e
+`moya-pronto` (2026-11-15, com o agente instalado e o perfil aplicado).
+
+- host: `scripts/vm/bench.sh snapshot|preparar|testar|limpar --perfil ...`
+- perfis (convidado, root): `scripts/vm/perfil-homelab.sh`,
+  `scripts/vm/perfil-moya.sh`
+- limpeza guardada pelo marker `/etc/homelab-vm-bench`: `scripts/vm/clean.sh`
 - suites dos dois apps: `scripts/vm/run-unit-tests.sh`
 - laboratorio: `sudo bash scripts/vm/run-lab-tests.sh`
 - smoke somente leitura: `scripts/vm/smoke-moyaserver.sh`
