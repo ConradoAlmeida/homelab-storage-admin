@@ -16,5 +16,13 @@ jobs:
         run: uv sync --dev --frozen
       - name: Django check
         run: uv run manage.py check
+      - name: Migracoes em dia
+        run: uv run manage.py makemigrations --check --dry-run
+      - name: CSS do kit compilado
+        # frontend/src.css -> static/css/kit.css e versionado; esquecer o build
+        # faz a mudanca de estilo sumir no host sem nenhum aviso.
+        run: |
+          uv run manage.py tailwind build
+          git diff --exit-code -- static/css/kit.css
       - name: Testes
         run: uv run pytest
