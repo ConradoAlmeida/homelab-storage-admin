@@ -37,7 +37,7 @@ dizer o que se edita, o que raramente muda e o que nunca se edita.
 - [x] 4b. "Como aplicar" em passos numerados (git pull → `--apply` →
       `--doctor`), com `--perfil moya` só no moya; componente `steps-list` no
       `frontend/src.css` e `kit.css` recompilado.
-- [ ] 5. Deploy nos dois hosts e conferência autenticada; bancada.
+- [x] 5. Deploy nos dois hosts e conferência autenticada; bancada.
 
 ## Verificação
 
@@ -46,6 +46,20 @@ dizer o que se edita, o que raramente muda e o que nunca se edita.
 - No Pi (quando deployar): mesmo layout, sem a linha do Credenciais.
 - `pytest` verde e bancada com `/sistema/config/` e `/sistema/rotas/` em 200.
 
+## Resultado
+
+- Configuração com quatro blocos: **Rotas, DNS e atalhos** (`apps.env`, com os
+  passos de aplicação), **Perfil e segredos** (`host.env`, `.env`, e o `.env` do
+  Credenciais no moya), **Gerados** (`services.ini` e a lista do portal) e
+  **SSH**.
+- Passos de aplicação, com o comando real por perfil: `git pull` → `--apply` →
+  `--doctor`; `--perfil moya` aparece só no moya (o script assume `pi`).
+- A mesma lista fechou o rodapé de Rotas e atalhos, que agora diz que ler o
+  arquivo não aplica nada.
+- Deployado em `a2d2ea3` no Pi e no moya; conferido autenticado nos dois.
+- `515 passed` e bancada `linux2024` verde nos dois perfis com
+  `/sistema/config/` e `/sistema/rotas/` no smoke.
+
 ## Estado
 
-Implementado em 2026-11-15; falta deploy no moya e bancada.
+Concluído em 2026-11-15.
