@@ -51,7 +51,8 @@ executa() {
     # verificacao final apontar o residuo.
     "$@" || echo "    AVISO: falhou: $*" >&2
   else
-    printf '[dry-run] %s\n' "$*"
+    # stderr: varios chamadores redirecionam o stdout do comando.
+    printf '[dry-run] %s\n' "$*" >&2
   fi
 }
 
@@ -75,8 +76,13 @@ if [[ -z "$IDS" ]]; then
 else
   for id in $IDS; do
     nome=$(docker inspect -f '{{.Name}}' "$id" 2>/dev/null | sed 's|^/||')
+    imagem=$(docker inspect -f '{{.Config.Image}}' "$id" 2>/dev/null || true)
     echo "    container: ${nome:-$id}"
     executa docker rm -f "$id" >/dev/null
+    if [[ -n "$imagem" ]]; then
+      echo "    imagem do container: $imagem"
+      executa docker rmi -f "$imagem" >/dev/null
+    fi
   done
 fi
 if [[ -s /tmp/.clean-proj ]]; then
@@ -231,7 +237,8 @@ checa() {
 }
 checa "sem units homelab-*" bash -c '! ls /etc/systemd/system/homelab-* >/dev/null 2>&1'
 checa "sem binarios homelab-*" bash -c '! ls /usr/local/sbin/homelab-* >/dev/null 2>&1'
-checa "sem /etc/homelab-*" bash -c '! ls -d /etc/homelab-* >/dev/null 2>&1'
+# O marker /etc/homelab-vm-bench e esperado e nao conta como residuo.
+checa "sem /etc/homelab-*" bash -c '! ls -d /etc/homelab-storage-admin /etc/homelab-storage-agent /etc/homelab-backup >/dev/null 2>&1'
 checa "sem sockets do agente" bash -c '! ls /run/homelab-storage-admin/*.sock >/dev/null 2>&1'
 checa "sem containers do projeto" bash -c '! docker ps -a --format "{{.Names}}" | grep -qx "homelab-storage-admin"'
 
