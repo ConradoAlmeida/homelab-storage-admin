@@ -198,6 +198,14 @@ declarada() {
   return 1
 }
 
+declarado_fqdn() {
+  local k
+  for k in "${KEYS[@]}"; do
+    [[ "${FQDN[$k]}" == "$1" ]] && return 0
+  done
+  return 1
+}
+
 e_manual() {
   [[ ",${FLAGS[$1]:-}," == *",manual,"* ]]
 }
@@ -561,6 +569,26 @@ grava_estado() {
   item "estado gravado: $APPS_STATE"
 }
 
+# Entradas exatas no Pi-hole (dns.hosts/custom.list) vencem o wildcard: se o
+# nome saiu do env, a resolucao continua ate alguem remover pela UI.
+relata_dns_exatos() {
+  local nome sobrando=0
+  local escapado=${DOMAIN//./\\.}
+  if ! tem_docker || ! docker exec "$PIHOLE_CONTAINER" true >/dev/null 2>&1; then
+    return 0
+  fi
+  while IFS= read -r nome; do
+    [[ -n "$nome" ]] || continue
+    declarado_fqdn "$nome" && continue
+    item "Pi-hole ainda tem entrada exata para $nome (fora do env); o wildcard cobre, mas a entrada fica"
+    sobrando=1
+  done < <(
+    docker exec "$PIHOLE_CONTAINER" grep -hoE "\"[a-z0-9.-]+\.$escapado\"" \
+      /etc/pihole/pihole.toml 2>/dev/null | tr -d '"' | sort -u
+  )
+  [[ $sobrando -eq 0 ]] || item "remova essas entradas na UI do Pi-hole (Local DNS) se quiser o DNS so pelo env"
+}
+
 # --- Plano ----------------------------------------------------------------
 
 mostra_plano() {
@@ -590,6 +618,7 @@ mostra_plano() {
   fi
   relata_containers
   relata_orfaos
+  relata_dns_exatos
 }
 
 # --- Entrada --------------------------------------------------------------
@@ -646,6 +675,9 @@ fi
 
 secao "estado"
 grava_estado
+
+secao "dns do Pi-hole"
+relata_dns_exatos
 
 secao "resumo"
 item "${#KEYS[@]} apps declaradas e aplicadas"
