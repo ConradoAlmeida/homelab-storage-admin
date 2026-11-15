@@ -975,6 +975,9 @@ checa_caddy() {
   if tem_docker && [[ -n "$(docker ps --format '{{.Names}}' | grep -xF "$CADDY_CONTAINER" || true)" ]]; then
     if caddy_validate; then
       doutor_ok "caddy validate"
+    elif [[ ! -r "$CADDY_TOKEN_FILE" ]] && grep -q '{env\.' "$CADDYFILE"; then
+      # Sem o token a validacao nao prova o bloco TLS; o --apply (root) le.
+      doutor_aviso "validate sem $CADDY_TOKEN_FILE; rode --doctor com sudo para validar o TLS"
     else
       doutor_erro "caddy validate falhou (veja docker logs $CADDY_CONTAINER)"
     fi
@@ -1026,7 +1029,7 @@ checa_dns() {
 }
 
 checa_containers() {
-  local k dir primeiro portas esperada host porta outro
+  local k dir primeiro portas modo_rede host porta outro
   if ! tem_docker; then
     doutor_aviso "docker ausente; checks de container pulados"
     return 0
@@ -1051,8 +1054,11 @@ checa_containers() {
             doutor_erro "$k: nenhum container na pasta $dir (suba com ./deploy.sh)"
           fi
         else
+          modo_rede=$(docker inspect "$primeiro" --format '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)
           portas=$(docker port "$primeiro" 2>/dev/null | sed 's/.*://' | sort -u | tr '\n' ' ')
-          if [[ -z "${portas// /}" ]]; then
+          if [[ "$modo_rede" == "host" ]]; then
+            doutor_ok "$k: $primeiro em host network; upstream ${UPSTREAM[$k]} conferido pela conexao"
+          elif [[ -z "${portas// /}" ]]; then
             doutor_aviso "$k: $primeiro sem porta publicada (host network?); confira o upstream ${UPSTREAM[$k]}"
           elif [[ " $portas " != *" $porta "* ]]; then
             doutor_erro "$k: upstream ${UPSTREAM[$k]} mas $primeiro publica $portas"
