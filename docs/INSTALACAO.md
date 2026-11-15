@@ -60,12 +60,16 @@ sudo scripts/stacks/apps-sync.sh            # dry-run: mostra o plano
 sudo scripts/stacks/apps-sync.sh --apply    # gera apps.caddy + wildcard DNS
 ```
 
-O stack do Caddy precisa montar o arquivo gerado (`compose.yaml` dele, uma vez):
+O stack do Caddy precisa montar a pasta (uma vez, no `compose.yaml` dele), no
+lugar dos mounts de `Caddyfile` e `cloudflare.token`:
 
 ```yaml
 volumes:
-  - ./apps.caddy:/etc/caddy/apps.caddy:ro
+  - ./:/etc/caddy:ro
 ```
+
+A pasta montada evita o problema de o arquivo gerado ainda não existir na
+primeira subida do container.
 
 Sem `--apply` nada é escrito. Depois de remover uma linha do `apps.env`, o
 `--apply` sozinho não para containers nem mexe em pasta: use

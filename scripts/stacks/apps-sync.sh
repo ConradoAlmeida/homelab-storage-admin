@@ -324,8 +324,9 @@ aplica_caddy() {
   # aqui, antes de editar o Caddyfile.
   if ! docker exec "$CADDY_CONTAINER" test -f /etc/caddy/apps.caddy 2>/dev/null; then
     erro "o container $CADDY_CONTAINER nao ve /etc/caddy/apps.caddy.
-    Adicione ao volume do caddy em $CADDY_DIR/compose.yaml:
-      - ./apps.caddy:/etc/caddy/apps.caddy:ro
+    Monte a pasta do Caddy em $CADDY_DIR/compose.yaml, no lugar dos mounts
+    de Caddyfile e cloudflare.token:
+      - ./:/etc/caddy:ro
     Depois: docker compose up -d && sudo $0 --apply"
   fi
 

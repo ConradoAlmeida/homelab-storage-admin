@@ -407,7 +407,7 @@ def test_sem_mount_do_apps_caddy_aborta_antes_do_caddyfile(tmp_path):
         os.environ.pop("STUB_SEM_MOUNT", None)
     assert resultado.returncode == 2
     assert "apps.caddy" in resultado.stderr
-    assert "./apps.caddy:/etc/caddy/apps.caddy:ro" in resultado.stderr
+    assert "./:/etc/caddy:ro" in resultado.stderr
     assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE
 
 
