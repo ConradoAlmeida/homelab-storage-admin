@@ -1,0 +1,16 @@
+# Playback (stream/HLS/download) bloqueado fora da LAN: pelo tunel da
+# Cloudflare (header CF-Connecting-IP) e pelo Tailscale (100.64.0.0/10).
+@bloqueio_tunel {
+	header CF-Connecting-IP *
+	path_regexp (?i).*(/stream(\.[^/]+)?|/master\.m3u8|/hls[0-9]+/|/download)(/|$)
+}
+@bloqueio_tailscale {
+	client_ip 100.64.0.0/10
+	path_regexp (?i).*(/stream(\.[^/]+)?|/master\.m3u8|/hls[0-9]+/|/download)(/|$)
+}
+handle @bloqueio_tunel {
+	respond "Playback fora da LAN" 403
+}
+handle @bloqueio_tailscale {
+	respond "Playback fora da LAN" 403
+}

@@ -52,13 +52,19 @@ sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
 
 ### Apps e rotas (Caddy + DNS)
 
-O Caddy e o Pi-hole do Pi são reconciliados pelo `apps.env`:
+O Caddy e o Pi-hole do Pi são reconciliados pelo `deploy/pi/apps.env`, que é
+versionado no repo (o `host.env` aponta `APPS_ENV_PATH` para ele):
 
 ```bash
-sudo install -m 0644 deploy/pi/apps.env.example /etc/homelab-storage-admin/apps.env
 sudo scripts/stacks/apps-sync.sh            # dry-run: mostra o plano
 sudo scripts/stacks/apps-sync.sh --apply    # gera apps.caddy + wildcard DNS
+scripts/stacks/apps-sync.sh --doctor        # só lê: o que diverge?
+scripts/stacks/apps-sync.sh --descobrir     # só lê: stacks fora do env
 ```
+
+App nova, redirect e bloco especial são linhas no `apps.env` (flags `redir=` e
+`snippet=`, fragmentos em `deploy/pi/snippets/`); nada é editado à mão no
+Caddyfile do host.
 
 O stack do Caddy precisa montar a pasta (uma vez, no `compose.yaml` dele), no
 lugar dos mounts de `Caddyfile` e `cloudflare.token`:
@@ -78,12 +84,13 @@ Sem `--apply` nada é escrito. Depois de remover uma linha do `apps.env`, o
 
 ### Apps e rotas no moya
 
-Mesmo arquivo, mesmo script, com `--perfil moya`:
+Mesmo arquivo, mesmo script, com `--perfil moya`, lendo
+`deploy/moya/apps.env` (também versionado):
 
 ```bash
-sudo install -m 0644 deploy/moya/apps.env.example /etc/homelab-storage-admin/apps.env
 sudo scripts/stacks/apps-sync.sh --perfil moya            # dry-run
-sudo scripts/stacks/apps-sync.sh --perfil moya --apply    # Caddyfile + DNS
+sudo scripts/stacks/apps-sync.sh --perfil moya --apply    # apps.caddy + DNS
+scripts/stacks/apps-sync.sh --perfil moya --doctor
 ```
 
 - O Caddy é compose nativo em `/opt/stacks/caddy` (antes era stack do
@@ -93,8 +100,9 @@ sudo scripts/stacks/apps-sync.sh --perfil moya --apply    # Caddyfile + DNS
   `address=/<nome>/192.168.0.10` por app. `.local` é mDNS: não há wildcard.
 - `--prune-data` move a pasta para `/home/conrado/_removidos/`.
 
-O `host.env` do moya precisa de `APPS_ENV_PATH=/etc/homelab-storage-admin/apps.env`
-para a página Configuração listar o arquivo.
+O `host.env` do moya precisa de
+`APPS_ENV_PATH=/opt/stacks/homelab-storage-admin/deploy/moya/apps.env` para a
+página Configuração listar o arquivo (no Pi, o caminho é o `deploy/pi/apps.env`).
 
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
@@ -304,7 +312,7 @@ No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A ba
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
-| `APPS_ENV_PATH` | `/etc/homelab-storage-admin/apps.env` | fonte das rotas do Caddy/DNS mostrada em Configuração; vazio esconde a linha |
+| `APPS_ENV_PATH` | `deploy/<perfil>/apps.env` no checkout | fonte das rotas do Caddy/DNS mostrada em Configuração; vazio esconde a linha |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 | `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
 | `TORRENT_API_TOKEN` | vazio | Primeiro token da API, se o banco ainda não tiver um. Depois a página Torrents é quem troca |

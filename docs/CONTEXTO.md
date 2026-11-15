@@ -10,7 +10,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 |---|---|
 | Versão no moya | `b285b78` (2026-11-15; Caddy único nos dois hosts) |
 | Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `b285b78`); agente do Pi reinstalado e em sync |
-| Testes | `475 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
+| Testes | `483 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -26,13 +26,16 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   `.lan` saíram. SSH em casa é `conrado@homelab.local`. Sem túnel e sem
   Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
   Ver [REDE](REDE.md#nomes).
-- Rotas do Caddy a partir de `/etc/homelab-storage-admin/apps.env`, nos dois
-  hosts (`scripts/stacks/apps-sync.sh`, `--perfil pi|moya`): dry-run por
-  padrão, `--apply` gera `apps.caddy` + `import` nos dois hosts e o DNS, e os
-  prunes param containers ou movem a pasta da app removida para a quarentena.
-  App nova é uma linha no env. O check de containers usa o rótulo
-  `working_dir`, então o projeto compose pode ter outro nome que a pasta.
-  Ver [REDE](REDE.md#apps-e-rotas-appsenv).
+- Rotas do Caddy a partir de `deploy/<perfil>/apps.env` no repo, nos dois hosts
+  (`scripts/stacks/apps-sync.sh`, `--perfil pi|moya`): dry-run por padrão,
+  `--apply` gera `apps.caddy` + `import` nos dois hosts e o DNS, e os prunes
+  param containers ou movem a pasta da app removida para a quarentena. App nova
+  é uma linha no env, com `redir=` e `snippet=` para os casos especiais
+  (fragmentos versionados em `deploy/<perfil>/snippets/`). `--doctor` aponta o
+  que diverge (Caddy, DNS, containers, portas, pastas) sem escrever, e
+  `--descobrir` sugere a linha de stacks fora do env. O check de containers usa
+  o rótulo `working_dir`, então o projeto compose pode ter outro nome que a
+  pasta. Ver [REDE](REDE.md#apps-e-rotas-appsenv).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A lista do share cita o disco do caminho; um RAID mostra os dois membros.
   A política de snapshot também se configura e se edita pela UI, inclusive em

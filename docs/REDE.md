@@ -77,9 +77,9 @@ modo 600, root, fora do Git. O token só cria o TXT do desafio.
 
 ### Apps e rotas (apps.env)
 
-`/etc/homelab-storage-admin/apps.env` é a fonte da verdade das rotas, uma app
-por linha: `key|fqdn|upstream|dir|flags`. O `scripts/stacks/apps-sync.sh` lê o
-arquivo e:
+`deploy/<perfil>/apps.env` (versionado no repo, apontado por `APPS_ENV_PATH` no
+`host.env`) é a fonte da verdade das rotas, uma app por linha:
+`key|fqdn|upstream|dir|flags`. O `scripts/stacks/apps-sync.sh` lê o arquivo e:
 
 - gera `/opt/stacks/caddy/apps.caddy` (importado pelo `Caddyfile`), valida e
   recarrega o Caddy;
@@ -90,10 +90,18 @@ arquivo e:
   (`/opt/stacks/_removidos` no Pi, `/home/conrado/_removidos` no moya), nunca
   apaga.
 
-Sem `--apply` é dry-run. O bloco marcado `manual` (Jellyfin, regra de
-playback; Pi-hole, redirect) continua escrito à mão no `Caddyfile` e o
-gerador não toca nele. App nova = uma linha no env + `--apply`. O caminho
-aparece em **Configuração** (`APPS_ENV_PATH` no `host.env`).
+Sem `--apply` é dry-run. Casos especiais são flags na própria linha:
+`redir=<destino>` (ou `redir=<origem>-><destino>[@codigo]`) para redirect de
+raiz e `snippet=<nome>` para embutir `deploy/<perfil>/snippets/<nome>.caddy`
+dentro do bloco gerado (a regra de playback do Jellyfin vive ali). `manual`
+continua como escape hatch para bloco escrito à mão. App nova = uma linha no
+env + commit + `--apply`; o caminho aparece em **Configuração**
+(`APPS_ENV_PATH` no `host.env`).
+
+Dois comandos só leem o host e dizem o que fazer: `--doctor` compara env,
+`apps.caddy`, DNS, containers, portas e pastas (sai 1 se houver erro) e
+`--descobrir` sugere a linha para stacks que ficaram fora do env e aponta
+`dir` que não bate com o container. Nada é escrito por eles.
 
 **No moya** (`--perfil moya`) o mesmo arquivo vale; muda o que a rede de lá
 exige:

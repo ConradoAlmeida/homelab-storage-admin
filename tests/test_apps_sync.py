@@ -75,6 +75,13 @@ case "$1" in
         label=com.docker.compose.project=*) projeto=${a##*=} ;;
       esac
     done
+    if [[ -z "$dir" && -z "$projeto" && "$formato" == *Label* ]]; then
+      while IFS='|' read -r d p; do
+        printf 'container-%s	%s	%s
+' "$p" "$p" "$d"
+      done <"${STUB_DIR_PROJETOS:-/dev/null}"
+      exit 0
+    fi
     if [[ -n "$dir" ]]; then
       projeto=$(awk -F'|' -v d="$dir" '$1 == d { print $2 }' \\
         "${STUB_DIR_PROJETOS:-/dev/null}" 2>/dev/null)
@@ -106,6 +113,10 @@ case "$1" in
       cat "$STUB_DNSMASQ_D" 2>/dev/null || echo true
       exit 0
     fi
+    exit 0
+    ;;
+  port)
+    echo "8080/tcp -> 0.0.0.0:8080"
     exit 0
     ;;
   compose)
@@ -467,8 +478,8 @@ moya-weather.local:80 {
 APPS_ENV_MOYA = """\
 # teste moya
 moya-git|moya-git.local|localhost:3000|<git>|
-moya-pihole|moya-pihole.local|localhost:8888|-|manual
-moya-weather|moya-weather.local|10.72.60.202:80|-|manual
+moya-pihole|moya-pihole.local|localhost:8888|-|redir=/admin
+moya-weather|moya-weather.local|10.72.60.202:80|-|
 """
 
 
@@ -570,8 +581,9 @@ def test_moya_dry_run_sem_escrever(tmp_path):
     resultado = sandbox.run()
     assert resultado.returncode == 0, resultado.stderr
     assert "rota: moya-git.local:80 -> localhost:3000" in resultado.stdout
-    assert "manual: moya-pihole.local:80" in resultado.stdout
-    assert "manual: moya-weather.local:80" in resultado.stdout
+    assert "rota: moya-pihole.local:80 -> localhost:8888" in resultado.stdout
+    assert "rota: moya-weather.local:80 -> 10.72.60.202:80" in resultado.stdout
+    assert "manual:" not in resultado.stdout
     # O projeto compose vem do rotulo (dir do gitea -> moya-gitea).
     assert "container ok: moya-git -> container-moya-gitea" in resultado.stdout
     assert "pasta ausente: -" not in resultado.stdout
@@ -587,16 +599,19 @@ def test_moya_apply_gera_apps_caddy_e_dns_por_nome(tmp_path):
 
     apps = sandbox.apps_caddy.read_text(encoding="utf-8")
     assert "moya-git.local:80 {\n\treverse_proxy localhost:3000\n}" in apps
-    assert "moya-pihole" not in apps  # manual fica no Caddyfile
-    assert "moya-weather" not in apps
+    assert (
+        "moya-pihole.local:80 {\n\tredir / /admin 302\n"
+        "\treverse_proxy localhost:8888\n}" in apps
+    )
+    assert "moya-weather.local:80 {\n\treverse_proxy 10.72.60.202:80\n}" in apps
     assert "import cf" not in apps
     assert "\ttls" not in apps
 
     caddyfile = sandbox.caddyfile.read_text(encoding="utf-8")
     assert caddyfile.count("import apps.caddy") == 1
     assert "moya-git.local:80 {" not in caddyfile
-    assert "redir / /admin" in caddyfile
-    assert "reverse_proxy 10.72.60.202:80" in caddyfile
+    assert "moya-pihole.local:80 {" not in caddyfile
+    assert "redir / /admin" not in caddyfile  # agora vem de apps.caddy
     assert "\n\n\n" not in caddyfile  # bloco removido nao deixa vazio
 
     conf = sandbox.dns_conf.read_text(encoding="utf-8")
@@ -609,7 +624,7 @@ def test_moya_apply_gera_apps_caddy_e_dns_por_nome(tmp_path):
     assert "address=/local/" not in conf
 
     estado = sandbox.state.read_text(encoding="utf-8")
-    assert "moya-pihole|moya-pihole.local|localhost:8888|-|manual" in estado
+    assert "moya-pihole|moya-pihole.local|localhost:8888|-|redir=/admin" in estado
     assert f"moya-git|moya-git.local|localhost:3000|{sandbox.dir_git}|" in estado
 
     chamadas = sandbox.chamadas()
@@ -639,16 +654,20 @@ def test_moya_apply_e_idempotente(tmp_path):
     assert sandbox.dns_conf.read_text(encoding="utf-8") == conf_antes
 
 
-def test_moya_dir_sem_manual_e_invalido(tmp_path):
+def test_moya_dir_sem_stack_gera_rota(tmp_path):
     sandbox = SandboxMoya(tmp_path)
-    invalido = tmp_path / "invalido.env"
-    invalido.write_text(
-        "moya-git|moya-git.local|localhost:3000|-|\n", encoding="utf-8"
+    env = tmp_path / "sem-stack.env"
+    env.write_text(
+        "remota|remota.local|10.0.0.9:80|-|\n", encoding="utf-8"
     )
-    resultado = sandbox.run("--apply", env_file=invalido)
-    assert resultado.returncode == 2
-    assert "so vale para app manual" in resultado.stderr
-    assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE_MOYA
+    plano = sandbox.run(env_file=env)
+    assert "rota: remota.local:80 -> 10.0.0.9:80" in plano.stdout
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert (
+        "remota.local:80 {\n\treverse_proxy 10.0.0.9:80\n}"
+        in sandbox.apps_caddy.read_text(encoding="utf-8")
+    )
 
 
 def test_moya_bloco_aninhado_no_caddyfile_aborta(tmp_path):
@@ -663,22 +682,148 @@ def test_moya_bloco_aninhado_no_caddyfile_aborta(tmp_path):
     assert "handle {" in sandbox.caddyfile.read_text(encoding="utf-8")
 
 
-def test_exemplo_do_pi_valida(tmp_path):
+def test_env_do_pi_valida(tmp_path):
     sandbox = Sandbox(tmp_path)
-    exemplo = ROOT / "deploy" / "pi" / "apps.env.example"
+    env = ROOT / "deploy" / "pi" / "apps.env"
     resultado = sandbox.run(
-        env_file=exemplo, env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt"}
+        env_file=env, env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt"}
     )
     assert resultado.returncode == 0, resultado.stderr
-    assert "apps: 4 declaradas, 2 geradas, 2 manuais" in resultado.stdout
+    assert "apps: 4 declaradas, 4 geradas, 0 manuais" in resultado.stdout
+    # O snippet versionado existe ao lado do env e e o unico bloco especial.
+    assert (ROOT / "deploy" / "pi" / "snippets" / "jellyfin.caddy").is_file()
 
 
-def test_exemplo_do_moya_valida(tmp_path):
+def test_env_do_moya_valida(tmp_path):
     sandbox = SandboxMoya(tmp_path)
-    exemplo = ROOT / "deploy" / "moya" / "apps.env.example"
+    env = ROOT / "deploy" / "moya" / "apps.env"
     resultado = sandbox.run(
-        env_file=exemplo,
+        env_file=env,
         env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt /home/conrado"},
     )
     assert resultado.returncode == 0, resultado.stderr
-    assert "apps: 13 declaradas, 11 geradas, 2 manuais" in resultado.stdout
+    assert "apps: 12 declaradas, 12 geradas, 0 manuais" in resultado.stdout
+
+
+def test_redir_com_origem_e_codigo(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "redir.env"
+    env.write_text(
+        "velho|velho.local|localhost:81|-|redir=/antigo->/novo/path@301\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    apps = sandbox.apps_caddy.read_text(encoding="utf-8")
+    assert "redir /antigo /novo/path 301" in apps
+
+
+def test_snippet_embutido_antes_do_proxy(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    snippets = tmp_path / "snippets"
+    snippets.mkdir()
+    (snippets / "bloqueio.caddy").write_text(
+        "@fora {\n\tpath /admin*\n}\nhandle @fora {\n\trespond 403\n}\n",
+        encoding="utf-8",
+    )
+    env = tmp_path / "snippet.env"
+    env.write_text(
+        "app|app.local|localhost:8081|-|snippet=bloqueio\n", encoding="utf-8"
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    apps = sandbox.apps_caddy.read_text(encoding="utf-8")
+    assert "\t@fora {" in apps
+    assert '\t\trespond 403' in apps
+    assert apps.index("@fora") < apps.index("reverse_proxy localhost:8081")
+
+
+def test_snippet_ausente_aborta_sem_escrever(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "sem-snippet.env"
+    env.write_text(
+        "app|app.local|localhost:8081|-|snippet=nao-existe\n", encoding="utf-8"
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 2
+    assert "snippet 'nao-existe' nao encontrado" in resultado.stderr
+    assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE_MOYA
+
+
+def test_redir_invalido_aborta(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "redir-ruim.env"
+    env.write_text(
+        "app|app.local|localhost:8081|-|redir=/ok->sem-barra\n", encoding="utf-8"
+    )
+    resultado = sandbox.run(env_file=env)
+    assert resultado.returncode == 2
+    assert "precisa de origem e destino comecando com /" in resultado.stderr
+
+
+def test_manual_com_redir_aborta(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "conflito.env"
+    env.write_text(
+        "app|app.local|localhost:8081|-|manual,redir=/admin\n", encoding="utf-8"
+    )
+    resultado = sandbox.run(env_file=env)
+    assert resultado.returncode == 2
+    assert "'manual' nao combina com outra flag" in resultado.stderr
+
+
+def test_doctor_limpo_e_aponta_desvio(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "doctor.env"
+    env.write_text(
+        f"app|app.local|localhost:8080|{sandbox.dir_portainer}|\n",
+        encoding="utf-8",
+    )
+    assert sandbox.run("--apply", env_file=env).returncode == 0
+    limpo = sandbox.run("--doctor", env_file=env)
+    assert limpo.returncode == 0, limpo.stdout
+    assert "apps.caddy igual ao renderizado" in limpo.stdout
+    assert "DNS responde" in limpo.stdout
+    assert "nada foi alterado" not in limpo.stdout
+
+    sandbox.apps_caddy.write_text("# fora do renderizado\n", encoding="utf-8")
+    desvio = sandbox.run("--doctor", env_file=env)
+    assert desvio.returncode == 1
+    assert "apps.caddy diferente do renderizado (rode --apply)" in desvio.stdout
+    assert "nada foi alterado" in desvio.stdout
+    # O doctor nao conserta: o arquivo continua como foi deixado.
+    assert sandbox.apps_caddy.read_text(encoding="utf-8") == "# fora do renderizado\n"
+
+
+def test_doctor_avisa_manual_sem_bloco(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "manual.env"
+    env.write_text(
+        "so-manual|so-manual.local|localhost:8081|-|manual\n", encoding="utf-8"
+    )
+    resultado = sandbox.run("--doctor", env_file=env)
+    assert resultado.returncode == 1
+    assert "e manual mas nao tem bloco" in resultado.stdout
+
+
+def test_descobrir_sugere_stack_fora_do_env(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    sandbox.dir_projetos.write_text(
+        f"{sandbox.dir_git}|moya-gitea\n{sandbox.dir_portainer}|portainer\n",
+        encoding="utf-8",
+    )
+    env = tmp_path / "so-git.env"
+    env.write_text(
+        f"moya-git|moya-git.local|localhost:3000|{sandbox.dir_git}|\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run("--descobrir", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    esperado = f"portainer|portainer.local|127.0.0.1:8080|{sandbox.dir_portainer}|"
+    assert esperado in resultado.stdout
+    assert "nada foi escrito" in resultado.stdout
+    # Nao escreve no env nem no Caddy.
+    assert env.read_text(encoding="utf-8") == (
+        f"moya-git|moya-git.local|localhost:3000|{sandbox.dir_git}|\n"
+    )
+    assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE_MOYA

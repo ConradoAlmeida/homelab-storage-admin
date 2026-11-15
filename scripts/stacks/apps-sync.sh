@@ -11,6 +11,8 @@
 #   sudo scripts/stacks/apps-sync.sh --perfil moya --apply
 #   sudo scripts/stacks/apps-sync.sh --apply --prune-containers
 #   sudo scripts/stacks/apps-sync.sh --apply --prune-containers --prune-data
+#   scripts/stacks/apps-sync.sh --doctor             # so le: o que diverge?
+#   scripts/stacks/apps-sync.sh --descobrir          # so le: sugerir apps
 #
 # Perfis:
 #   pi (default)  *.conradhub.com com TLS (DNS-01), Caddy em arquivo separado
@@ -29,11 +31,18 @@ APLICAR=0
 PODAR_CONTAINERS=0
 PODAR_DADOS=0
 YES=0
+DOUTOR=0
+DESCOBRIR=0
+ERROS_DOUTOR=0
+AVISOS_DOUTOR=0
+DNS_EXATOS=0
 
 uso() {
   cat <<'TXT'
 Uso: scripts/stacks/apps-sync.sh [--perfil pi|moya] [--apply]
                                  [--prune-containers] [--prune-data] [--yes]
+       scripts/stacks/apps-sync.sh [--perfil pi|moya] --doctor
+       scripts/stacks/apps-sync.sh [--perfil pi|moya] --descobrir
 
 Sem --apply e dry-run: mostra o plano e nao escreve nada.
   --perfil            pi (default) ou moya: muda caminhos, dominio e DNS
@@ -41,6 +50,8 @@ Sem --apply e dry-run: mostra o plano e nao escreve nada.
   --prune-containers  `docker compose down` (sem -v) nas apps que sairam do env
   --prune-data        move a pasta das apps removidas para a quarentena
   --yes               nao pergunta antes de cada operacao destrutiva
+  --doctor            so le: compara env, Caddy, DNS, containers e pastas
+  --descobrir         so le: sugere linhas para stacks que ficaram fora do env
 
 Os prunes exigem --apply e comparam com o estado da execucao anterior
 (/var/lib/homelab-storage-admin/apps.aplicados). Sem esse arquivo, nada e
@@ -48,7 +59,9 @@ removido: o script so avisa o que saiu do env.
 
 Formato do apps.env:
   key|fqdn|upstream|dir|flags
-`dir` pode ser `-` (sem stack local) quando a app e `manual`.
+`dir` pode ser `-` (sem stack local). Flags: `manual` (bloco a mao no
+Caddyfile), `redir=<destino>` ou `redir=<origem>-><destino>[@codigo]` e
+`snippet=<nome>` (fragmento em <pasta do env>/snippets/<nome>.caddy).
 TXT
 }
 
@@ -76,6 +89,8 @@ while [[ $# -gt 0 ]]; do
     --prune-containers) PODAR_CONTAINERS=1 ;;
     --prune-data) PODAR_DADOS=1 ;;
     --yes) YES=1 ;;
+    --doctor) DOUTOR=1 ;;
+    --descobrir) DESCOBRIR=1 ;;
     --perfil)
       [[ $# -ge 2 ]] || erro "--perfil exige um valor: pi ou moya"
       PERFIL=$2
@@ -114,6 +129,8 @@ esac
 # --- padroes comuns -------------------------------------------------------
 APPS_ENV=${APPS_ENV:-/etc/homelab-storage-admin/apps.env}
 APPS_STATE=${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}
+# Fragmentos de Caddyfile versionados: ficam ao lado do apps.env, no repo.
+SNIPPETS_DIR=${SNIPPETS_DIR:-$(dirname "$APPS_ENV")/snippets}
 STACKS_ROOT=${STACKS_ROOT:-/opt}
 CADDY_CONTAINER=${CADDY_CONTAINER:-caddy}
 PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
@@ -172,6 +189,55 @@ dir_valido() {
   return 1
 }
 
+# `redir=<destino>` (raiz do site) ou `redir=<origem>-><destino>[@codigo]`.
+# A origem padrao e `/` e o codigo padrao e 302 (temporario).
+valida_redir() {
+  local linha=$1 valor=$2 origem destino codigo
+  if [[ -z "$valor" || "$valor" == *" "* ]]; then
+    aviso "$APPS_ENV:$linha: redir vazio ou com espaco ('$valor')"
+    return 1
+  fi
+  if [[ "$valor" == *"->"* ]]; then
+    origem=${valor%%->*}
+    destino=${valor#*->}
+  else
+    origem=/
+    destino=$valor
+  fi
+  codigo=302
+  if [[ "$destino" == *"@"* ]]; then
+    codigo=${destino##*@}
+    destino=${destino%@*}
+  fi
+  if [[ "$origem" != /* || "$destino" != /* ]]; then
+    aviso "$APPS_ENV:$linha: redir '$valor' precisa de origem e destino comecando com /"
+    return 1
+  fi
+  if [[ ! "$codigo" =~ ^3[0-9]{2}$ ]]; then
+    aviso "$APPS_ENV:$linha: redir '$valor' com codigo invalido '$codigo' (use 3xx)"
+    return 1
+  fi
+  return 0
+}
+
+caminho_snippet() {
+  echo "$SNIPPETS_DIR/$1.caddy"
+}
+
+valida_snippet() {
+  local linha=$1 nome=$2 arquivo
+  if [[ ! "$nome" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    aviso "$APPS_ENV:$linha: snippet '$nome' invalido (use [a-z0-9-])"
+    return 1
+  fi
+  arquivo=$(caminho_snippet "$nome")
+  if [[ ! -s "$arquivo" ]]; then
+    aviso "$APPS_ENV:$linha: snippet '$nome' nao encontrado ou vazio: $arquivo"
+    return 1
+  fi
+  return 0
+}
+
 valida() {
   local linhas=0
   local erros=0
@@ -211,21 +277,32 @@ valida() {
       erros=$((erros + 1))
     fi
     if [[ "$dir" == "-" ]]; then
-      [[ ",$flags," == *",manual,"* ]] || {
-        aviso "$APPS_ENV:$linhas: dir '-' so vale para app manual (sem stack local)"
-        erros=$((erros + 1))
-      }
+      # Sem stack local: nao ha container para conferir, a rota e o DNS valem.
+      :
     elif ! dir_valido "$dir"; then
       aviso "$APPS_ENV:$linhas: dir '$dir' fora de: $DIRS_PERMITIDOS"
       erros=$((erros + 1))
     fi
     if [[ -n "$flags" ]]; then
+      if [[ ",$flags," == *",manual,"* && "$flags" != "manual" ]]; then
+        aviso "$APPS_ENV:$linhas: 'manual' nao combina com outra flag ('$flags')"
+        erros=$((erros + 1))
+      fi
       IFS=',' read -r -a campos <<<"$flags"
       for campo in "${campos[@]}"; do
-        [[ "$campo" == "manual" ]] || {
-          aviso "$APPS_ENV:$linhas: flag desconhecida '$campo' (so 'manual')"
-          erros=$((erros + 1))
-        }
+        case "$campo" in
+          manual) ;;
+          redir=*)
+            valida_redir "$linhas" "${campo#redir=}" || erros=$((erros + 1))
+            ;;
+          snippet=*)
+            valida_snippet "$linhas" "${campo#snippet=}" || erros=$((erros + 1))
+            ;;
+          *)
+            aviso "$APPS_ENV:$linhas: flag desconhecida '$campo' (manual, redir=, snippet=)"
+            erros=$((erros + 1))
+            ;;
+        esac
       done
     fi
     for nome in "${KEYS[@]:-}"; do
@@ -290,6 +367,42 @@ e_manual() {
   [[ ",${FLAGS[$1]:-}," == *",manual,"* ]]
 }
 
+# Valor de um flag `nome=valor` da app (vazio quando ausente). Os flags sao
+# separados por virgula, entao o valor nao pode ter virgula.
+flag_da_app() {
+  local k=$1 alvo=$2 campo
+  local -a campos=()
+  IFS=',' read -r -a campos <<<"${FLAGS[$k]:-}"
+  for campo in "${campos[@]}"; do
+    [[ "$campo" == "$alvo="* ]] && printf '%s' "${campo#"$alvo="}"
+  done
+  return 0
+}
+
+# "origem destino codigo" do flag redir, ou vazio.
+redir_da_app() {
+  local valor origem destino codigo
+  valor=$(flag_da_app "$1" redir)
+  [[ -n "$valor" ]] || return 0
+  if [[ "$valor" == *"->"* ]]; then
+    origem=${valor%%->*}
+    destino=${valor#*->}
+  else
+    origem=/
+    destino=$valor
+  fi
+  codigo=302
+  if [[ "$destino" == *"@"* ]]; then
+    codigo=${destino##*@}
+    destino=${destino%@*}
+  fi
+  printf '%s %s %s' "$origem" "$destino" "$codigo"
+}
+
+snippet_da_app() {
+  flag_da_app "$1" snippet
+}
+
 endereco_site() {
   echo "${FQDN[$1]}$CADDY_PORTA"
 }
@@ -322,11 +435,18 @@ projeto_do_dir() {
 # --- Caddy ----------------------------------------------------------------
 
 gera_blocos() {
-  local k
+  local k redir snippet
   for k in "${KEYS[@]}"; do
     e_manual "$k" && continue
     printf '\n%s {\n' "$(endereco_site "$k")"
     [[ -n "$CADDY_TLS" ]] && printf '\t%s\n' "$CADDY_TLS"
+    redir=$(redir_da_app "$k")
+    [[ -z "$redir" ]] || printf '\tredir %s\n' "$redir"
+    snippet=$(snippet_da_app "$k")
+    if [[ -n "$snippet" ]]; then
+      # O fragmento e escrito na coluna zero; um tab preserva a leitura.
+      awk 'NF { print "\t" $0; next } { print "" }' "$(caminho_snippet "$snippet")"
+    fi
     printf '\t%s %s\n}\n' "$CADDY_PROXY" "${UPSTREAM[$k]}"
   done
 }
@@ -459,6 +579,24 @@ aplica_caddy() {
     item "bloco de $endereco saiu do Caddyfile (agora vem de apps.caddy)"
     mudou=1
   done
+
+  # Depois de tirar blocos que passaram a ser gerados, sobram linhas vazias
+  # no topo. Uma linha em branco entre blocos ja basta.
+  if grep -qE '^[[:space:]]*$' "$CADDYFILE"; then
+    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
+    awk 'BEGIN { vazias = 0; impressas = 0 }
+         /^[[:space:]]*$/ { vazias++; if (vazias <= 1 && impressas) print ""; next }
+         { vazias = 0; impressas = 1; print }' "$CADDYFILE" >"$tmp"
+    if cmp -s "$tmp" "$CADDYFILE"; then
+      rm -f "$tmp"
+    else
+      [[ -f "$backup" ]] || cp -p "$CADDYFILE" "$backup"
+      preserva_dono "$tmp" "$CADDYFILE"
+      mv -f "$tmp" "$CADDYFILE"
+      item "linhas em branco extras removidas do Caddyfile"
+      mudou=1
+    fi
+  fi
 
   caddy_validate || erro "caddy validate falhou; Caddyfile e apps.caddy mantidos, sem reload"
   if [[ $mudou -eq 1 ]]; then
@@ -727,6 +865,7 @@ grava_estado() {
 relata_dns_exatos() {
   local nome sobrando=0
   local escapado=${DOMAIN//./\\.}
+  DNS_EXATOS=0
   if ! tem_docker || ! docker exec "$PIHOLE_CONTAINER" true >/dev/null 2>&1; then
     return 0
   fi
@@ -745,6 +884,7 @@ relata_dns_exatos() {
   )
   [[ $sobrando -eq 0 ]] ||
     item "essas entradas sao da UI do Pi-hole (Local DNS); remova a mao se quiser o DNS so pelo env"
+  DNS_EXATOS=$sobrando
 }
 
 # --- Plano ----------------------------------------------------------------
@@ -752,6 +892,7 @@ relata_dns_exatos() {
 mostra_plano() {
   local k removidas=0 geradas=0 manuais=0
   secao "plano (dry-run; use --apply para escrever)"
+  item "env: $APPS_ENV"
   for k in "${KEYS[@]}"; do
     if e_manual "$k"; then
       manuais=$((manuais + 1))
@@ -780,7 +921,261 @@ mostra_plano() {
   relata_dns_exatos
 }
 
+# --- Doctor ---------------------------------------------------------------
+# Somente leitura: compara o declarado com o que esta no host e diz o que
+# corrigir. Nunca escreve no env, no Caddyfile nem no estado.
+
+doutor_erro() { ERROS_DOUTOR=$((ERROS_DOUTOR + 1)); item "erro: $*"; }
+doutor_aviso() { AVISOS_DOUTOR=$((AVISOS_DOUTOR + 1)); item "aviso: $*"; }
+doutor_ok() { item "ok: $*"; }
+
+checa_caddy() {
+  local k tmp nome outros
+  if [[ ! -r "$CADDYFILE" ]]; then
+    doutor_erro "Caddyfile ilegivel: $CADDYFILE"
+    return 0
+  fi
+  if grep -qxF 'import apps.caddy' "$CADDYFILE"; then
+    doutor_ok "$CADDYFILE importa apps.caddy"
+  else
+    doutor_erro "$CADDYFILE nao importa apps.caddy (rode --apply)"
+  fi
+  if grep -q '^# >>> apps-sync' "$CADDYFILE"; then
+    doutor_erro "marcador antigo '# >>> apps-sync' no Caddyfile: apague o trecho, o modo inline nao existe mais"
+  fi
+  for k in "${KEYS[@]}"; do
+    if e_manual "$k"; then
+      nome=${FQDN[$k]//./\\.}
+      grep -qE "^${nome}(:[0-9]+)?[[:space:]]*\{" "$CADDYFILE" ||
+        doutor_erro "$k e manual mas nao tem bloco para ${FQDN[$k]} em $CADDYFILE"
+    else
+      conflito_no_caddyfile "${FQDN[$k]}" "$(endereco_site "$k")" &&
+        ERROS_DOUTOR=$((ERROS_DOUTOR + 1))
+      outros=$(snippet_da_app "$k")
+      [[ -z "$outros" ]] ||
+        { [[ -s "$(caminho_snippet "$outros")" ]] ||
+          doutor_erro "$k: snippet '$outros' ausente em $(caminho_snippet "$outros")"; }
+    fi
+  done
+
+  tmp=$(mktemp)
+  gera_apps >"$tmp"
+  if [[ ! -f "$CADDY_APPS" ]]; then
+    doutor_erro "apps.caddy ausente: $CADDY_APPS (rode --apply)"
+  elif cmp -s "$tmp" "$CADDY_APPS"; then
+    doutor_ok "apps.caddy igual ao renderizado"
+  else
+    doutor_erro "apps.caddy diferente do renderizado (rode --apply)"
+  fi
+  rm -f "$tmp"
+
+  if tem_docker && [[ -n "$(docker ps --format '{{.Names}}' | grep -xF "$CADDY_CONTAINER" || true)" ]]; then
+    if caddy_validate; then
+      doutor_ok "caddy validate"
+    else
+      doutor_erro "caddy validate falhou (veja docker logs $CADDY_CONTAINER)"
+    fi
+  else
+    doutor_aviso "container $CADDY_CONTAINER nao esta rodando; validate pulado"
+  fi
+}
+
+checa_dns() {
+  local k nome valor
+  if [[ ! -r "$DNS_CONF" ]]; then
+    doutor_erro "arquivo de DNS ausente: $DNS_CONF (rode --apply)"
+    return 0
+  fi
+  if [[ "$DNS_MODE" == "wildcard" ]]; then
+    grep -qxF "address=/$DOMAIN/$DNS_IP" "$DNS_CONF" &&
+      doutor_ok "wildcard address=/$DOMAIN/$DNS_IP" ||
+      doutor_erro "falta address=/$DOMAIN/$DNS_IP em $DNS_CONF"
+  else
+    for k in "${KEYS[@]}"; do
+      grep -qxF "address=/${FQDN[$k]}/$DNS_IP" "$DNS_CONF" ||
+        doutor_erro "falta address=/${FQDN[$k]}/$DNS_IP em $DNS_CONF"
+    done
+    while IFS= read -r nome; do
+      [[ -n "$nome" ]] || continue
+      declarado_fqdn "$nome" || doutor_erro "sobrando no arquivo de DNS: $nome (rode --apply)"
+    done < <(sed -n 's#^address=/\([^/]*\)/.*#\1#p' "$DNS_CONF")
+  fi
+
+  if command -v dig >/dev/null 2>&1; then
+    if [[ "$DNS_MODE" == "wildcard" ]]; then
+      nome="sync-1.$DOMAIN"
+    else
+      nome=${FQDN[${KEYS[0]}]}
+    fi
+    valor=$(dig +short +time=2 +tries=1 "$nome" @"$DNS_QUERY_HOST" 2>/dev/null | head -1 || true)
+    if [[ "$valor" == "$DNS_IP" ]]; then
+      doutor_ok "DNS responde $nome -> $DNS_IP"
+    else
+      doutor_erro "DNS nao responde $nome com $DNS_IP (veio '${valor:-vazio}')"
+    fi
+  else
+    doutor_aviso "dig ausente; consulta real ao Pi-hole pulada"
+  fi
+
+  relata_dns_exatos
+  [[ "$DNS_EXATOS" -eq 0 ]] ||
+    doutor_aviso "$DNS_EXATOS entrada(s) exata(s) no Pi-hole fora do env (limpe pela UI)"
+}
+
+checa_containers() {
+  local k dir primeiro portas esperada host porta outro
+  if ! tem_docker; then
+    doutor_aviso "docker ausente; checks de container pulados"
+    return 0
+  fi
+  for k in "${KEYS[@]}"; do
+    dir=${DIR[$k]}
+    host=${UPSTREAM[$k]%%:*}
+    porta=${UPSTREAM[$k]##*:}
+    if [[ "$dir" != "-" ]]; then
+      if [[ ! -d "$dir" ]]; then
+        doutor_erro "$k: pasta declarada e ausente: $dir"
+      else
+        primeiro=$(containers_do_dir "$dir" | head -1 || true)
+        if [[ -z "$primeiro" ]]; then
+          outro=$(docker ps -a \
+            --filter "label=com.docker.compose.project=$(projeto "$dir")" \
+            --format '{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null |
+            grep -vxF "$dir" | head -1 || true)
+          if [[ -n "$outro" ]]; then
+            doutor_erro "$k: container roda em $outro, o env declara $dir (corrija o dir)"
+          else
+            doutor_erro "$k: nenhum container na pasta $dir (suba com ./deploy.sh)"
+          fi
+        else
+          portas=$(docker port "$primeiro" 2>/dev/null | sed 's/.*://' | sort -u | tr '\n' ' ')
+          if [[ -z "${portas// /}" ]]; then
+            doutor_aviso "$k: $primeiro sem porta publicada (host network?); confira o upstream ${UPSTREAM[$k]}"
+          elif [[ " $portas " != *" $porta "* ]]; then
+            doutor_erro "$k: upstream ${UPSTREAM[$k]} mas $primeiro publica $portas"
+          else
+            doutor_ok "$k: upstream ${UPSTREAM[$k]} confere com $primeiro"
+          fi
+        fi
+      fi
+    fi
+    if [[ "$TEST_MODE" == "1" ]]; then
+      item "upstream: check TCP pulado (TEST_MODE=1)"
+    elif timeout 2 bash -c "exec 3<>/dev/tcp/$host/$porta" 2>/dev/null; then
+      doutor_ok "$k: $host:$porta aceita conexao"
+    elif [[ "$host" == "localhost" || "$host" == "127.0.0.1" ]]; then
+      doutor_erro "$k: upstream local $host:$porta recusou conexao"
+    else
+      doutor_aviso "$k: upstream remoto $host:$porta nao respondeu"
+    fi
+  done
+}
+
+checa_pastas() {
+  local k qtd
+  relata_orfaos
+  if [[ -d "$QUARANTINE" ]]; then
+    qtd=$(find "$QUARANTINE" -mindepth 1 -maxdepth 1 | wc -l)
+    if [[ "$qtd" -eq 0 ]]; then
+      doutor_ok "quarentena vazia: $QUARANTINE"
+    else
+      doutor_aviso "quarentena com $qtd item(ns): $QUARANTINE"
+    fi
+  fi
+  while IFS= read -r k; do
+    [[ -n "$k" ]] || continue
+    doutor_erro "app fora do env e ainda no estado: $k (rode --apply para limpar)"
+  done < <(lista_removidas)
+}
+
+doutor() {
+  secao "env"
+  item "arquivo: $APPS_ENV"
+  item "snippets: $SNIPPETS_DIR"
+  item "apps: ${#KEYS[@]} declaradas"
+
+  secao "caddy"
+  checa_caddy
+
+  secao "dns"
+  checa_dns
+
+  secao "containers e upstream"
+  checa_containers
+
+  secao "pastas"
+  checa_pastas
+
+  secao "resumo"
+  item "erros: $ERROS_DOUTOR; avisos: $AVISOS_DOUTOR"
+  [[ $ERROS_DOUTOR -eq 0 ]] || item "nada foi alterado: --apply corrige o que for gerado; o resto pede acao"
+}
+
+# --- Descobrir ------------------------------------------------------------
+# Parte do host, nao do env: sugere linhas para stacks que ficaram de fora e
+# aponta dir divergente. Nunca escreve: revisar e commitar e a aprovacao.
+
+descobrir() {
+  local nome dir porta chave fqdn k declarado outros sugeridas=0
+  local -A vistos=()
+
+  secao "apps declaradas (${#KEYS[@]})"
+  for k in "${KEYS[@]}"; do
+    item "$k ${FQDN[$k]} ${UPSTREAM[$k]} ${DIR[$k]}"
+  done
+
+  if ! tem_docker; then
+    secao "stacks no host"
+    aviso "docker ausente; nada a descobrir"
+    return 0
+  fi
+
+  secao "candidatas: stacks no host fora do env"
+  while IFS=$'\t' read -r nome _ dir; do
+    [[ -n "$dir" && -z "${vistos[$dir]:-}" ]] || continue
+    vistos[$dir]=1
+    declarado=0
+    for k in "${KEYS[@]}"; do
+      [[ "${DIR[$k]}" == "$dir" ]] && declarado=1
+    done
+    [[ $declarado -eq 1 ]] && continue
+    porta=$(docker port "$nome" 2>/dev/null | sed 's/.*://' | sort -u | head -1 || true)
+    if [[ -z "$porta" ]]; then
+      item "sem porta publicada (host network): $dir (container $nome) — informe o upstream"
+      continue
+    fi
+    chave=$(printf '%s' "${dir##*/}" | tr '[:upper:]' '[:lower:]' |
+      sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//')
+    if [[ -z "$chave" ]]; then
+      item "$dir: nao consegui derivar uma key pelo nome da pasta"
+      continue
+    fi
+    fqdn="$chave.$DOMAIN"
+    item "$chave|$fqdn|127.0.0.1:$porta|$dir|"
+    sugeridas=$((sugeridas + 1))
+  done < <(docker ps -a --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.project.working_dir"}}')
+  [[ $sugeridas -gt 0 ]] || item "nenhuma stack fora do env"
+
+  secao "dir divergente (container em outra pasta)"
+  for k in "${KEYS[@]}"; do
+    [[ "${DIR[$k]}" == "-" ]] && continue
+    [[ -z "$(containers_do_dir "${DIR[$k]}" | head -1 || true)" ]] || continue
+    outros=$(docker ps -a \
+      --filter "label=com.docker.compose.project=$(projeto "${DIR[$k]}")" \
+      --format '{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null |
+      grep -vxF "${DIR[$k]}" | head -1 || true)
+    [[ -z "$outros" ]] || item "$k: troque ${DIR[$k]} por $outros"
+  done
+
+  secao "resumo"
+  item "$sugeridas sugestao(oes); nada foi escrito"
+  item "revise e commite $APPS_ENV; depois --apply no host"
+}
+
 # --- Entrada --------------------------------------------------------------
+
+[[ $DOUTOR -eq 1 && $APLICAR -eq 1 ]] && erro "--doctor nao combina com --apply: ele so le"
+[[ $DESCOBRIR -eq 1 && $APLICAR -eq 1 ]] && erro "--descobrir nao combina com --apply: ele so le"
 
 if [[ $PODAR_CONTAINERS -eq 1 || $PODAR_DADOS -eq 1 ]]; then
   [[ $APLICAR -eq 1 ]] || erro "--prune-containers/--prune-data exigem --apply"
@@ -799,6 +1194,17 @@ fi
 
 valida
 le_estado
+
+if [[ $DOUTOR -eq 1 ]]; then
+  doutor
+  [[ $ERROS_DOUTOR -eq 0 ]] || exit 1
+  exit 0
+fi
+
+if [[ $DESCOBRIR -eq 1 ]]; then
+  descobrir
+  exit 0
+fi
 
 if [[ $APLICAR -eq 0 ]]; then
   mostra_plano
@@ -829,5 +1235,11 @@ relata_dns_exatos
 
 secao "resumo"
 item "${#KEYS[@]} apps declaradas e aplicadas"
+commit_env=$(git -C "$(dirname "$APPS_ENV")" rev-parse --short HEAD 2>/dev/null || true)
+if [[ -n "$commit_env" ]]; then
+  item "env: $APPS_ENV (commit $commit_env)"
+else
+  item "env: $APPS_ENV"
+fi
 item "Caddy: ${CADDYFILE}"
 item "DNS: $DNS_CONF"
