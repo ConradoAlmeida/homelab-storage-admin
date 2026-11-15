@@ -8,8 +8,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `b285b78` (2026-11-15; Caddy único nos dois hosts) |
-| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `b285b78`); agente do Pi reinstalado e em sync |
+| Versão no moya | `b35540d` (2026-11-15; env versionado, flags e doctor) |
+| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `b35540d`); só código/docs, agente sem mudança |
 | Testes | `483 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |

@@ -57,16 +57,15 @@ que diverge**, sem bloco escrito à mão no servidor.
 - [x] 1. Mover o env para `deploy/<perfil>/apps.env` nos dois hosts; ajustar
       `APPS_ENV_PATH` no `host.env`, o `deploy.sh` e o caminho mostrado em
       Configuração.
-- [ ] 2. Implementar `redir`, `snippet` e `dir=-` livre; criar os fragmentos
+- [x] 2. Implementar `redir`, `snippet` e `dir=-` livre; criar os fragmentos
       (`snippets/jellyfin.caddy`) e migrar os quatro blocos manuais de hoje
       (Pi-hole do Pi, Jellyfin do Pi, Pi-hole do moya, weather do moya).
-      Código e testes prontos; falta aplicar nos hosts.
 - [x] 3. `--doctor` com os checks acima e saída em seções.
 - [x] 4. `--descobrir` com sugestão de linha + explicação.
 - [x] 5. Testes em `tests/test_apps_sync.py` para renderização das flags,
       snippet ausente, `redir` inválido, `doctor` num ambiente fake e
       `descobrir` com stack não declarada (29 testes).
-- [ ] 6. Aplicar nos dois hosts, bancada de VM nos dois perfis, docs
+- [x] 6. Aplicar nos dois hosts, bancada de VM nos dois perfis, docs
       (`REDE`, `INSTALACAO`, `CONTEXTO`) e plano.
 
 ## Verificação
@@ -79,7 +78,23 @@ que diverge**, sem bloco escrito à mão no servidor.
   plantada como candidata.
 - `--apply` idempotente; 475 testes + bancada verdes nos dois perfis.
 
+## Resultado
+
+- `deploy/{pi,moya}/apps.env` versionados; o script lê `deploy/<perfil>/apps.env`
+  a partir da própria pasta e o `host.env` ficou só com o caminho para a página
+  Configuração. A cópia antiga em `/etc` virou `apps.env.bak-20261115`. O
+  `deploy.sh` não mudou: ele já fazia `git pull`, que é o que atualiza o env.
+- Caddyfile dos dois hosts agora tem só snippets, o bloco `.lan` (Pi) e
+  `import apps.caddy`: Pi-hole, Jellyfin e weather saem de flag.
+- Pi: `pihole` com `redir=/admin/` (302 conferido), `jellyfin` com
+  `snippet=jellyfin` (403 em `/videos/1/stream` com header CF e 200 na página).
+- moya: `pihole` com `redir=/admin` e `weather` com `dir=-` (rota gerada).
+- `--doctor` limpo nos dois (Pi precisa de sudo para o `caddy validate` ver o
+  token; sem sudo ele avisa em vez de errar). `--descobrir` lista as 12 do moya
+  como já declaradas.
+- A pasta `/home/conrado/portainer` foi removida: era a única sobra do serviço
+  apagado e aparecia como app fora do env no estado.
+
 ## Estado
 
-Em andamento (2026-11-15): código, testes e docs prontos; falta aplicar nos
-dois hosts e rodar a bancada.
+Concluído em 2026-11-15; testes e bancada de VM verdes nos dois perfis.
