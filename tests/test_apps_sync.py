@@ -572,7 +572,7 @@ def test_moya_dry_run_sem_escrever(tmp_path):
     assert "rota: moya-git.local:80 -> localhost:3000" in resultado.stdout
     assert "manual: moya-pihole.local:80" in resultado.stdout
     assert "manual: moya-weather.local:80" in resultado.stdout
-    # O projeto compose vem do rotulo (dir /data/compose/3 -> moya-gitea).
+    # O projeto compose vem do rotulo (dir do gitea -> moya-gitea).
     assert "container ok: moya-git -> container-moya-gitea" in resultado.stdout
     assert "pasta ausente: -" not in resultado.stdout
     assert not sandbox.dns_conf.exists()
@@ -678,7 +678,7 @@ def test_exemplo_do_moya_valida(tmp_path):
     exemplo = ROOT / "deploy" / "moya" / "apps.env.example"
     resultado = sandbox.run(
         env_file=exemplo,
-        env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt /home/conrado /data/compose"},
+        env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt /home/conrado"},
     )
     assert resultado.returncode == 0, resultado.stderr
     assert "apps: 13 declaradas, 11 geradas, 2 manuais" in resultado.stdout

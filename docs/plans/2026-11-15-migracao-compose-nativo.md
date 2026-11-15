@@ -35,15 +35,18 @@ Pi. Efeitos: stack reproduzível, sobrevive a reinstalar o Portainer, o
 
 ## Passos
 
-- [ ] 1. Backups em `/home/conrado/backups/2026-11-15-migracao/`: `gitea dump`,
-      `inspect` dos dois containers, `Caddyfile`, tar do volume do Caddy.
-- [ ] 2. `/opt/stacks/caddy`: `compose.yaml` + `Caddyfile` copiado; `stop`/`rm`
-      do container do Portainer; `up -d`; 13 rotas conferidas.
-- [ ] 3. Perfil `moya` passa a `CADDY_MODO=arquivo` (`apps.caddy` + `import`);
-      modo inline removido do script e dos testes.
-- [ ] 4. `/opt/stacks/gitea`: `compose.yaml` com o volume pelo nome;
-      `stop`/`rm`; `up -d`; login, repositórios e `git ls-remote` na 222.
+- [x] 1. Backups em `/home/conrado/backups/2026-11-15-migracao/`: `gitea dump`
+      (3,7 GB, 27 repos, DB SQL), `inspect` dos dois containers, `Caddyfile`,
+      tar do `caddy_data` e os dois `rollback-*.sh`.
+- [x] 2. `/opt/stacks/caddy`: `compose.yaml` + `Caddyfile` copiado; `stop`/`rm`
+      do container do Portainer; `up -d`; 13 rotas em 200/302 e `caddy
+      validate` rc=0.
+- [x] 3. Perfil `moya` em `apps.caddy` + `import` (`b285b78`); modo inline
+      removido do script e dos testes (21 testes de `apps-sync`).
+- [x] 4. `/opt/stacks/gitea`: `compose.yaml` com o volume pelo nome;
+      `stop`/`rm`; `up -d`; API 1.27.3, 27 repos, clone HTTP e SSH na 222.
 - [ ] 5. Portainer parado (container + compose), volume preservado.
+      Pendente: decisão do dono, depois de alguns dias rodando assim.
 - [ ] 6. Docs, plano e deploy; bancada de VM nos dois perfis.
 
 ## Verificação
@@ -54,6 +57,27 @@ Pi. Efeitos: stack reproduzível, sobrevive a reinstalar o Portainer, o
   `flight-controls` presentes, `git ls-remote` na porta 222.
 - Caddyfile e apps.caddy gerados sem bloco manual duplicado.
 
+## Resultado
+
+- Caddy e Gitea rodam de `/opt/stacks/{caddy,gitea}`, com os volumes
+  `moya-caddy_caddy_data`, `moya-caddy_caddy_logs` e
+  `moya-gitea_gitea_data` reaproveitados pelo nome. Nenhum dado mudou de
+  lugar; `compose down` não foi usado com `-v`.
+- `apps.env` do moya: `moya-git` aponta para `/opt/stacks/gitea`. O dry-run
+  não acusa mais pasta ausente nem container fora do compose.
+- Caddyfile final do moya: dois blocos manuais (`moya-pihole`,
+  `moya-weather`) e `import apps.caddy`. Idempotente nas rodadas seguintes,
+  com `apps.caddy sem mudanca` e DNS sem mudança.
+- O Pi (`b285b78`) segue com `apps.caddy sem mudanca` e DNS wildcard
+  confirmado: um só caminho de Caddy nos dois hosts.
+- O `gitea dump` só funciona em `/tmp` (`/data` é root e o processo roda como
+  `git`); os marcadores antigos `# >>> apps-sync` foram removidos à mão do
+  Caddyfile do moya, já que o modo inline não existe mais.
+- Pendente: parar o Portainer (volume `portainer_data` intacto), apagar
+  `moya-admin.local` no Pi-hole do moya e remover sobras (`/home/conrado/caddy`,
+  `/data/compose/*`).
+
 ## Estado
 
-Em andamento (2026-11-15).
+Concluído em 2026-11-15, menos o passo 5 (Portainer), que espera decisão do
+dono. Bancada de VM pendente para o fechamento.
