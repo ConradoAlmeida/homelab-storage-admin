@@ -33,8 +33,8 @@ editar um artefato.
 - [x] 2. `templates/system_config.html`: tag "gerado" e alerta novo.
 - [x] 3. Testes: caminho real do env, flag `gerado`, perfil moya sem a linha do
       env mas com a vigência do `apps-sync`.
-- [ ] 4. Deploy no moya e conferência da página autenticada.
-- [ ] 5. Bancada de VM nos dois perfis.
+- [x] 4. Deploy no moya e conferência da página autenticada (200, com o tag e o path real).
+- [x] 5. Bancada de VM nos dois perfis (`8 lab passed`, smoke 200).
 
 ## Backlog (não entra agora)
 
@@ -55,4 +55,5 @@ editar um artefato.
 
 ## Estado
 
-Iniciado em 2026-11-15; código e testes prontos, falta deploy e bancada.
+Concluído em 2026-11-15 no moya (deploy `e71985b`) e na bancada. Falta o
+`./deploy.sh` no Pi, que é do dono.
