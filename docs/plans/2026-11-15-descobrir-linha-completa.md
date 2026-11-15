@@ -50,7 +50,7 @@ fala com a LAN, não com o loopback).
 - [x] 4b. Guarda contra duplicata: key igual/sufixo de app declarada vira
       "já exposta como X; troque o `-` por <pasta>".
 - [x] 5. Docs (`REDE`, `ROTINAS`, ajuda do script) e este plano.
-- [ ] 6. Bancada nos dois perfis.
+- [x] 6. Bancada nos dois perfis.
 
 ## Verificação
 
@@ -59,6 +59,17 @@ fala com a LAN, não com o loopback).
 - Nada no env, no Caddy ou no DNS muda depois de rodar o comando.
 - `pytest` verde (43 testes do reconciler) e bancada nos dois perfis.
 
+## Resultado
+
+- `--descobrir` imprime a linha pronta: `atalho=` (portal no moya, painel no Pi),
+  `nome=` derivado do fqdn e, só no moya, `icone=`/`grupo=`.
+- Upstream por perfil: `localhost` no moya, `192.168.0.150` no Pi.
+- Porta escolhida por heurística HTTP (53/22 ficam de fora) com aviso das
+  portas publicadas.
+- App já exposta com outro nome (pihole → moya-pihole) não gera linha nova.
+- Conferido ao vivo no moya; 518 testes locais e bancada `linux2024` verde nos
+  dois perfis.
+
 ## Estado
 
-Implementado em 2026-11-15; falta bancada.
+Concluído em 2026-11-15.
