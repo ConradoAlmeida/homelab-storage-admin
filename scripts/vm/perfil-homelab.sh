@@ -61,8 +61,11 @@ install -m 0644 "$REPO/host.env.example" /etc/homelab-storage-admin/host.env
 cat >>/etc/homelab-storage-admin/host.env <<EOF
 
 # ---- ajustes da bancada de VM (gerados por perfil-homelab.sh) ----
+# A VM nao tem os IPs do Pi: ela escuta em todas as interfaces e guarda os
+# dados dentro do clone (o data/ e descartado pelo revert do snapshot).
 BIND_ADDR=0.0.0.0
 DATA_DIR=$REPO/data
+DOWNLOAD_DIR=$REPO/data/downloads
 COMPOSE_OVERLAY=/etc/homelab-storage-admin/overlay-homelab-vm.yml
 JELLYFIN_ROOT=/mnt/jellyfin
 BACKUP_ROOT=/mnt/backup
@@ -82,8 +85,10 @@ YML
 echo "==> .env do clone"
 if [[ ! -f "$REPO/.env" ]]; then
   install -m 0600 "$REPO/.env.example" "$REPO/.env"
-  sed -i "s|^DJANGO_ALLOWED_HOSTS=.*|DJANGO_ALLOWED_HOSTS=$(hostname -I | awk '{print $1}'),127.0.0.1,localhost|" "$REPO/.env"
-  sed -i "s|^DJANGO_CSRF_TRUSTED_ORIGINS=.*|DJANGO_CSRF_TRUSTED_ORIGINS=http://$(hostname -I | awk '{print $1}'):8060|" "$REPO/.env"
+  # A VM pega IP por DHCP: aceitar qualquer Host evita 400 quando o lease
+  # muda, sem tocar no .env do Pi.
+  sed -i "s|^DJANGO_ALLOWED_HOSTS=.*|DJANGO_ALLOWED_HOSTS=*|" "$REPO/.env"
+  sed -i "s|^DJANGO_CSRF_TRUSTED_ORIGINS=.*|DJANGO_CSRF_TRUSTED_ORIGINS=http://$(hostname -I | awk '{print $1}'):8060,http://127.0.0.1:8060,http://localhost:8060|" "$REPO/.env"
   chown "$DONO:$DONO" "$REPO/.env"
   echo "    criado a partir do .env.example"
 else

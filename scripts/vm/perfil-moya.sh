@@ -71,14 +71,19 @@ install -m 0644 "$REPO/host.env.moya.example" /etc/homelab-storage-admin/host.en
 cat >>/etc/homelab-storage-admin/host.env <<EOF
 
 # ---- ajustes da bancada de VM (gerados por perfil-moya.sh) ----
+# Sem proxy local na bancada, o app escuta em todas as interfaces.
+BIND_ADDR=0.0.0.0
 DATA_DIR=$REPO/data
-# Sem o stack do Credenciais nesta bancada: login local, sem desvio de IdP.
-CREDENTIALS_URL=
+# Sem CREDENTIALS_API_TOKEN o login e local (break-glass); nao ha stack do
+# Credenciais nesta VM. O E2E de identidade fica em moya_credenciais_app.
 EOF
 
 echo "==> .env do clone"
 if [[ ! -f "$REPO/.env" ]]; then
   install -m 0600 "$REPO/.env.example" "$REPO/.env"
+  # IP por DHCP na VM: aceitar qualquer Host evita 400 quando o lease muda.
+  sed -i "s|^DJANGO_ALLOWED_HOSTS=.*|DJANGO_ALLOWED_HOSTS=*|" "$REPO/.env"
+  sed -i "s|^DJANGO_CSRF_TRUSTED_ORIGINS=.*|DJANGO_CSRF_TRUSTED_ORIGINS=http://$(hostname -I | awk '{print $1}'):8060,http://127.0.0.1:8060,http://localhost:8060|" "$REPO/.env"
   chown "$DONO:$DONO" "$REPO/.env"
   echo "    criado a partir do .env.example"
 else
