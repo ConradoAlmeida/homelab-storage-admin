@@ -23,7 +23,14 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 echo "==> git pull --ff-only origin main"
+# Bash le o script por offset: se o pull troca o deploy.sh no meio, o resto da
+# execucao pode sair do lugar. Reexecuta uma vez com a versao recem-baixada.
+DEPLOY_ANTES="$(cksum <"$0")"
 git pull --ff-only origin main
+if [[ "$(cksum <"$0")" != "$DEPLOY_ANTES" && "${DEPLOY_REEXECUTADO:-}" != "1" ]]; then
+  echo "==> deploy.sh mudou no pull; reiniciando com a versao nova"
+  DEPLOY_REEXECUTADO=1 exec "$0" "$@"
+fi
 
 HOST_ENV=/etc/homelab-storage-admin/host.env
 if [[ ! -f "$HOST_ENV" ]]; then

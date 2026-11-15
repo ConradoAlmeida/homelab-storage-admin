@@ -131,6 +131,14 @@ def test_deploy_confere_app_viva():
     assert "exit 1" not in text.split("==> rotas, DNS e atalhos")[1]
 
 
+def test_deploy_relanca_quando_o_pull_muda_o_proprio_script():
+    text = read("deploy.sh")
+    # Bash le por offset: sem re-exec o deploy que atualiza a si mesmo roda o
+    # tail antigo (ou lixo) no lugar das linhas novas.
+    assert 'DEPLOY_ANTES="$(cksum <"$0")"' in text
+    assert 'DEPLOY_REEXECUTADO=1 exec "$0" "$@"' in text
+
+
 def test_deploy_cobra_o_apply_do_env():
     text = read("deploy.sh")
     # env mais novo que o estado do --apply vira aviso com o comando do perfil.

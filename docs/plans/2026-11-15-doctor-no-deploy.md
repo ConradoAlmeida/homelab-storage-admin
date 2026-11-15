@@ -36,6 +36,9 @@ deploy.
       para o exit code do doctor não derrubar o deploy.
 - [x] 3. Teste de layout garantindo que o doctor entrou e que não há `exit 1`
       depois dele.
+- [x] 3b. Re-exec depois do pull quando o `deploy.sh` mudou: bash lê o script
+      por offset e o deploy que se atualiza roda o tail antigo (aconteceu na
+      primeira execução com o doctor).
 - [ ] 4. Deploy nos dois hosts e conferência da seção nova.
 - [ ] 5. Docs e bancada.
 
