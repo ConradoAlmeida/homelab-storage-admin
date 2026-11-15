@@ -144,7 +144,9 @@ rodar_smoke() {
     return 1
   }
   for rota in /login/ / /saude/ /backups/ /containers/ /sistema/ /sistema/servicos/; do
-    code=$(guest "curl -s -o /dev/null -w '%{http_code}' $base$rota")
+    # -L: as rotas internas redirecionam para o login sem sessao; o que importa
+    # e nao haver 5xx e o login render.
+    code=$(guest "curl -s -L -o /dev/null -w '%{http_code}' $base$rota")
     echo "    $rota -> $code"
     [[ "$code" == "200" ]] || falhou=1
   done
