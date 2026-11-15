@@ -58,14 +58,18 @@ class ConfigLocaisPureTests(TestCase):
             stack_env_path="/opt/stacks/homelab-storage-admin/.env",
             services_ini_host="/mnt/nas/apps/homelab-storage-admin/data/services.ini",
             credenciais_env="",
-            apps_env="/etc/homelab-storage-admin/apps.env",
+            apps_env="/opt/stacks/homelab-storage-admin/deploy/pi/apps.env",
         )
         nomes = [a.nome for a in ctx["arquivos"]]
         self.assertEqual(nomes, ["host.env", ".env", "services.ini", "apps.env"])
         self.assertTrue(ctx["tem_apps_env"])
         apps = ctx["arquivos"][-1]
-        self.assertEqual(apps.caminho, "/etc/homelab-storage-admin/apps.env")
+        self.assertEqual(
+            apps.caminho, "/opt/stacks/homelab-storage-admin/deploy/pi/apps.env"
+        )
         self.assertIn("apps-sync.sh", apps.vigencia)
+        gerados = [a.nome for a in ctx["arquivos"] if a.gerado]
+        self.assertEqual(gerados, ["services.ini"])
 
 
 class SystemConfigViewTests(TestCase):
@@ -87,7 +91,7 @@ class SystemConfigViewTests(TestCase):
         CREDENCIAIS_ENV="",
         SERVICES_INI_HOST="/mnt/nas/apps/homelab-storage-admin/data/services.ini",
         STACK_ENV_PATH="/opt/stacks/homelab-storage-admin/.env",
-        APPS_ENV_PATH="/etc/homelab-storage-admin/apps.env",
+        APPS_ENV_PATH="/opt/stacks/homelab-storage-admin/deploy/pi/apps.env",
     )
     def test_pagina_perfil_pi(self):
         self.fake.host_info.return_value = {"hostname": "homelab"}
@@ -96,8 +100,9 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "ssh conrado@homelab.local")
         self.assertContains(resp, "/etc/homelab-storage-admin/host.env")
         self.assertContains(resp, "/mnt/nas/apps/homelab-storage-admin/data/services.ini")
-        self.assertContains(resp, "/etc/homelab-storage-admin/apps.env")
+        self.assertContains(resp, "/opt/stacks/homelab-storage-admin/deploy/pi/apps.env")
         self.assertContains(resp, "apps-sync.sh --apply")
+        self.assertContains(resp, "gerado")
         self.assertNotContains(resp, "moya_credenciais_app")
 
     @override_settings(
@@ -114,8 +119,10 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "ssh conrado@10.72.60.181")
         self.assertContains(resp, "/opt/stacks/homelab-storage-admin/data/services.ini")
         self.assertContains(resp, "moya_credenciais_app")
-        self.assertNotContains(resp, "apps.env")
-        self.assertNotContains(resp, "apps-sync.sh")
+        # Sem APPS_ENV_PATH nao ha linha do env, mas o services.ini continua
+        # sendo gerado pelo apps-sync.
+        self.assertNotContains(resp, "deploy/moya/apps.env")
+        self.assertContains(resp, "apps-sync.sh --apply")
 
     @override_settings(SSH_LOGIN="", SHARE_OWNER="conrado", CREDENCIAIS_ENV="")
     def test_agente_falha_mostra_ssh_owner(self):

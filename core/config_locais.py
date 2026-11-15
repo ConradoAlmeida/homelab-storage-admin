@@ -14,6 +14,8 @@ class ArquivoConfig:
     caminho: str
     controlo: str
     vigencia: str
+    # Gerado pelo apps-sync: editar no host se perde na proxima execucao.
+    gerado: bool = False
 
 
 def comando_ssh(
@@ -56,8 +58,9 @@ def arquivos_config(
         ArquivoConfig(
             nome="services.ini",
             caminho=services_ini_host,
-            controlo="Atalhos da home do painel.",
-            vigencia="Ao recarregar a página (dashboard).",
+            controlo="Atalhos do botão Serviços, gerados do apps.env.",
+            vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
+            gerado=True,
         ),
     ]
     apps = (apps_env or "").strip()
@@ -66,7 +69,7 @@ def arquivos_config(
             ArquivoConfig(
                 nome="apps.env",
                 caminho=apps,
-                controlo="Rotas do Caddy e DNS do Pi (gera o apps.caddy).",
+                controlo="Rotas do Caddy, DNS e atalhos do painel/portal.",
                 vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
             )
         )
