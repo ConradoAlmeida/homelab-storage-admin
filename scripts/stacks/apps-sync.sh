@@ -1415,14 +1415,16 @@ descobrir() {
   done
 
   secao "resumo"
-  item "$sugeridas sugestao(oes); nada foi escrito"
-  if [[ $sugeridas -gt 0 ]]; then
+  if [[ $sugeridas -eq 0 ]]; then
+    item "nenhuma linha nova; nada foi escrito"
+  else
+    item "$sugeridas linha(s) sugerida(s); nada foi escrito"
     item "atalho=painel|portal|painel+portal|nao decide onde aparece; sem atalho a app tem so rota e DNS"
     if [[ -n "$PORTAL_INI" ]]; then
       item "grupo=services|infrastructure|tools e a secao do portal (o painel ignora)"
     fi
+    item "revise e commite $APPS_ENV; depois --apply no host"
   fi
-  item "revise e commite $APPS_ENV; depois --apply no host"
 }
 
 # --- Entrada --------------------------------------------------------------
