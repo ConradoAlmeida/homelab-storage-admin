@@ -33,9 +33,10 @@ vhost órfão do Caddy no Pi, para que docs e config descrevam só o que existe.
 - [x] 2. `uv run pytest` no clone local: 453 passed, 8 skipped.
 - [x] 3. Bench na VM com o commit novo, snapshots recriados:
       homelab 453+8 lab e moya 138+453, 7 rotas 200 nos dois.
-- [ ] 4. Pi (sudo do dono): tirar `cockpit.*.lan` do `Caddyfile`, recarregar
-      o Caddy, remover `/etc/motd.d/cockpit` e instalar o motd novo, e rodar
-      `install-agent.sh` (o commit mexeu num comentário do agente).
+- [x] 4. Pi (2026-11-15): `cockpit.*.lan` saiu do `Caddyfile` (backup
+      `Caddyfile.bak-20261115-135858`) e o Caddy recarregou;
+      `/etc/motd.d/cockpit` virou `/etc/motd.d/homelab-storage`; o
+      `install-agent.sh` rodou e os 4 binários estão em sync.
 - [x] 5. Deploy do Pi e do moya no HEAD (`6571c7a`); `services.ini` do Pi
       sem o comentário do cockpit; agente do moya reinstalado.
 
@@ -45,10 +46,11 @@ vhost órfão do Caddy no Pi, para que docs e config descrevam só o que existe.
 - `pytest` 453/8 e bench homelab/moya verdes.
 - Card do Cockpit ausente no dashboard do Pi (o bloco `[cockpit]` já tinha
   saído do `services.ini` real).
-- Pendente no Pi até o passo 4: `cockpit.*.lan` no `Caddyfile`,
-  `/etc/motd.d/cockpit` e o comentário antigo no agente instalado (o
-  `deploy.sh` avisa "agente diferente" só por causa disso).
+- No Pi, `curl http://cockpit.homelab.lan/` dá 308 (sem vhost o Caddy manda
+  para HTTPS) e `https://cockpit.conradhub.com` não completa o TLS; o nome
+  continua sem entrada no Pi-hole.
+- `./deploy.sh` no Pi já sai sem o aviso "agente diferente".
 
 ## Estado
 
-Repo e hosts em `6571c7a`. Falta só o bloco que exige `sudo` no Pi.
+Concluído em 2026-11-15: repo, Pi e moya sem referência ao Cockpit.

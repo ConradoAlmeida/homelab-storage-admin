@@ -193,28 +193,28 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
    [plano](plans/2026-11-04-tunnel-tailscale.md), [REDE](REDE.md),
    [SEGURANCA](SEGURANCA.md).
 2. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
-   Junto: `sudo ./install-agent.sh` (comentário divergente) e o bloco do
-   `apps-sync` abaixo.
-3. **Reconciler de apps no Pi** (`scripts/stacks/apps-sync.sh`): pronto e
-   testado em sandbox, dry-run validado. Falta o `sudo` do dono para montar
-   `apps.caddy` no stack do Caddy, instalar o `apps.env` e rodar `--apply`.
-3. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
+   Agente do Pi reinstalado em 15/11 (4 binários em sync).
+3. **Reconciler de apps no Pi** (`scripts/stacks/apps-sync.sh`): concluído em
+   2026-11-15. Pasta do Caddy montada (`- ./:/etc/caddy:ro`), `apps.env`
+   instalado, `--apply` aplicado e segunda execução sem mudança. Wildcard
+   confirmado; homelab 302, dockge 200, pihole 302, jellyfin 302.
+4. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
    já existem no painel; restore restic também. Hardware real de disco/USB
    de cópia fria continua o limite para o teste físico.
-4. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
+5. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
    O alerta "Firewall inativo" continua real até a ativação.
-5. **Gitea**: o dump no servidor pode ser agendado pelo admin; continuam
+6. **Gitea**: o dump no servidor pode ser agendado pelo admin; continuam
    pendentes a cópia USB automática (não fazer) e apagar os arquivos USB
    antigos inválidos.
-6. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
+7. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
-7. **RAID1 no moya** (2026-11-10): `/dev/md0` ext4 com os dois WD Red Plus
+8. **RAID1 no moya** (2026-11-10): `/dev/md0` ext4 com os dois WD Red Plus
    de 4 TB, montado em `/mnt/data` (Veronte, Production, datasheets). O Seagate
    de 2 TB continua com o sistema; o `data-lv` foi para `/mnt/backup` e o
    backup do Samba aponta para lá. O resync inicial ainda corria no corte.
    A árvore antiga permanece em `/mnt/backup` até esse resync terminar; não é
    uma segunda política de backup. Retenção e restic não mudaram.
-8. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+9. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
 
 ## Testes em VM
 
