@@ -45,8 +45,19 @@ class ConfigLocaisPureTests(TestCase):
             credenciais_env="",
         )
         caminhos = [a.caminho for a in ctx["arquivos"]]
-        self.assertEqual(len(caminhos), 3)
-        self.assertIn("/mnt/nas/apps/homelab-storage-admin/data/services.ini", caminhos)
+        self.assertEqual(
+            caminhos,
+            [
+                "/etc/homelab-storage-admin/host.env",
+                "/opt/stacks/homelab-storage-admin/.env",
+            ],
+        )
+        # O gerado nao se mistura com o que se edita.
+        self.assertEqual(
+            [a.caminho for a in ctx["gerados"]],
+            ["/mnt/nas/apps/homelab-storage-admin/data/services.ini"],
+        )
+        self.assertIsNone(ctx["apps_env"])
         self.assertFalse(ctx["tem_apps_env"])
 
     def test_arquivos_pi_com_apps_env(self):
@@ -60,16 +71,32 @@ class ConfigLocaisPureTests(TestCase):
             credenciais_env="",
             apps_env="/opt/stacks/homelab-storage-admin/deploy/pi/apps.env",
         )
-        nomes = [a.nome for a in ctx["arquivos"]]
-        self.assertEqual(nomes, ["host.env", ".env", "services.ini", "apps.env"])
+        self.assertEqual([a.nome for a in ctx["arquivos"]], ["host.env", ".env"])
+        self.assertEqual([a.nome for a in ctx["gerados"]], ["services.ini"])
         self.assertTrue(ctx["tem_apps_env"])
-        apps = ctx["arquivos"][-1]
+        apps = ctx["apps_env"]
         self.assertEqual(
             apps.caminho, "/opt/stacks/homelab-storage-admin/deploy/pi/apps.env"
         )
         self.assertIn("apps-sync.sh", apps.vigencia)
-        gerados = [a.nome for a in ctx["arquivos"] if a.gerado]
-        self.assertEqual(gerados, ["services.ini"])
+        self.assertIn("atalho", apps.controlo)
+
+    def test_moya_sem_apps_env_nao_tem_principal(self):
+        ctx = contexto_config_locais(
+            ssh_login="",
+            share_owner="conrado",
+            hostname="moya",
+            host_env_path="/etc/homelab-storage-admin/host.env",
+            stack_env_path="/opt/stacks/homelab-storage-admin/.env",
+            services_ini_host="/opt/stacks/homelab-storage-admin/data/services.ini",
+            credenciais_env="/home/conrado/moya_credenciais_app/.env",
+        )
+        self.assertIsNone(ctx["apps_env"])
+        # O .env do Credenciais continua na lista dos raros.
+        self.assertEqual(
+            [a.nome for a in ctx["arquivos"]],
+            ["host.env", ".env", ".env (Credenciais)"],
+        )
 
 
 class SystemConfigViewTests(TestCase):
@@ -102,7 +129,9 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "/mnt/nas/apps/homelab-storage-admin/data/services.ini")
         self.assertContains(resp, "/opt/stacks/homelab-storage-admin/deploy/pi/apps.env")
         self.assertContains(resp, "apps-sync.sh --apply")
-        self.assertContains(resp, "gerado")
+        self.assertContains(resp, "Rotas, DNS e atalhos")
+        self.assertContains(resp, "Gerados")
+        self.assertContains(resp, "Ver rotas e atalhos")
         self.assertNotContains(resp, "moya_credenciais_app")
 
     @override_settings(
@@ -119,10 +148,11 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "ssh conrado@10.72.60.181")
         self.assertContains(resp, "/opt/stacks/homelab-storage-admin/data/services.ini")
         self.assertContains(resp, "moya_credenciais_app")
-        # Sem APPS_ENV_PATH nao ha linha do env, mas o services.ini continua
-        # sendo gerado pelo apps-sync.
+        # Sem APPS_ENV_PATH nao ha bloco principal; o services.ini continua
+        # listado como gerado.
         self.assertNotContains(resp, "deploy/moya/apps.env")
-        self.assertContains(resp, "apps-sync.sh --apply")
+        self.assertContains(resp, "Sem <span class=\"mono\">apps.env</span>")
+        self.assertContains(resp, "Gerados")
 
     @override_settings(SSH_LOGIN="", SHARE_OWNER="conrado", CREDENCIAIS_ENV="")
     def test_agente_falha_mostra_ssh_owner(self):

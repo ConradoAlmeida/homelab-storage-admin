@@ -5,23 +5,25 @@ não oferece some com explicação (sem erro 500).
 
 ## Configuração (`/sistema/config/`)
 
-Somente leitura: comando **SSH** em destaque (`SSH_LOGIN` no `host.env`, ou
-`SHARE_OWNER` + hostname do agente) e tabela com caminhos absolutos no host:
+Somente leitura, organizada por **frequência de mudança**, não por arquivo:
 
-- `/etc/homelab-storage-admin/host.env` — perfil (prefixos, overlay, `SSH_LOGIN`).
-- `/opt/stacks/homelab-storage-admin/.env` — segredo Django do painel.
-- `services.ini` no `DATA_DIR` do host — no Pi
-  `/mnt/nas/apps/homelab-storage-admin/data/services.ini`; no moya
-  `/opt/stacks/homelab-storage-admin/data/services.ini` (atalhos da home,
-  gerados do `deploy/<perfil>/apps.env`).
-- No moyaserver, com `CREDENCIAIS_ENV` definido: caminho do `.env` do Credenciais
-  (ex.: `/home/conrado/moya_credenciais_app/.env`). No Pi essa linha não aparece.
+1. **Rotas, DNS e atalhos** — `deploy/<perfil>/apps.env`: o único arquivo do
+   dia a dia. Um cartão com o caminho no host, o que controla e quando vale
+   (`sudo scripts/stacks/apps-sync.sh --apply`), com link para
+   [Rotas e atalhos](#rotas-e-atalhos-sistemarotas). Sem `APPS_ENV_PATH`
+   definido, o cartão vira aviso.
+2. **Perfil e segredos** — `host.env` (perfil: portas `BIND_*`, prefixos,
+   `SSH_LOGIN`, overlay do Compose) e o `.env` do stack (segredo do Django);
+   no moyaserver, também o `.env` do Credenciais quando `CREDENCIAIS_ENV` está
+   definido. Mudam raramente e valem após `install-agent.sh` e `deploy.sh`.
+3. **Gerados** — `services.ini` do `DATA_DIR` (atalhos do painel) e, no moya,
+   o `apps-portal.ini` do portal. São artefatos do `apps-sync`: editar no host
+   se perde na próxima execução (na primeira vez ele guarda `.bak-<data>`).
+4. Comando **SSH** (`SSH_LOGIN`, ou `SHARE_OWNER` + hostname do agente).
 
-O Compose repassa `SSH_LOGIN`, `SERVICES_INI_HOST`, `STACK_ENV_PATH` e
-`CREDENCIAIS_ENV` para o Django sem expor `/app/data` na UI. Não há botão de
-salvar; `host.env` e `.env` do stack valem após `install-agent.sh` e `deploy.sh`;
-`services.ini` (gerado pelo `apps-sync`) vale ao recarregar o painel; a
-curadoria é `atalho=` no env, não edição no host.
+Não há botão de salvar. O Compose repassa `SSH_LOGIN`, `SERVICES_INI_HOST`,
+`STACK_ENV_PATH`, `CREDENCIAIS_ENV` e `APPS_ENV_PATH` para o Django sem expor
+`/app/data` na UI.
 
 ## Rotas e atalhos (`/sistema/rotas/`)
 

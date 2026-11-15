@@ -4,22 +4,53 @@
 <div class="page-head">
   <div>
     <h1>Configuração</h1>
-    <p class="lead">Onde ficam os arquivos de perfil e segredos no host. Esta página não grava nada.</p>
+    <p class="lead">
+      Um arquivo para o dia a dia; dois para perfil e segredo; o resto é gerado.
+      Esta página não grava nada.
+    </p>
   </div>
 </div>
 
 <section class="section">
   <div class="section-head">
-    <h2>SSH</h2>
+    <h2>Rotas, DNS e atalhos</h2>
+    <span class="muted text-12">o único editável no dia a dia</span>
   </div>
-  <div class="card">
-    <pre class="mono">{{ ssh_comando }}</pre>
-  </div>
+  {% if apps_env %}
+    <div class="card">
+      <div class="table-wrap">
+        <table class="data-table">
+          <tbody>
+            <tr>
+              <th scope="row">{{ apps_env.nome }}</th>
+              <td class="mono">{{ apps_env.caminho }}</td>
+            </tr>
+            <tr>
+              <th scope="row">O que controla</th>
+              <td>{{ apps_env.controlo }}</td>
+            </tr>
+            <tr>
+              <th scope="row">Quando vale</th>
+              <td>{{ apps_env.vigencia }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p><a class="btn small" href="{% url 'system_rotas' %}">Ver rotas e atalhos</a></p>
+    </div>
+  {% else %}
+    <div class="alert">
+      <strong>Sem <span class="mono">apps.env</span> neste host.</strong>
+      Defina <span class="mono">APPS_ENV_PATH</span> no <span class="mono">host.env</span> para
+      editar rotas e atalhos em um arquivo só.
+    </div>
+  {% endif %}
 </section>
 
 <section class="section">
   <div class="section-head">
-    <h2>Arquivos no host</h2>
+    <h2>Perfil e segredos</h2>
+    <span class="muted text-12">raramente mudam</span>
   </div>
   <div class="card">
     <div class="table-wrap">
@@ -35,7 +66,7 @@
         <tbody>
           {% for arq in arquivos %}
           <tr>
-            <th scope="row">{{ arq.nome }}{% if arq.gerado %} <span class="tag">gerado</span>{% endif %}</th>
+            <th scope="row">{{ arq.nome }}</th>
             <td class="mono">{{ arq.caminho }}</td>
             <td>{{ arq.controlo }}</td>
             <td>{{ arq.vigencia }}</td>
@@ -47,14 +78,55 @@
   </div>
 </section>
 
+<section class="section">
+  <div class="section-head">
+    <h2>Gerados</h2>
+    <span class="muted text-12">não edite no host</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Arquivo</th>
+            <th scope="col">Caminho</th>
+            <th scope="col">Origem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for arq in gerados %}
+          <tr>
+            <th scope="row">{{ arq.nome }}</th>
+            <td class="mono">{{ arq.caminho }}</td>
+            <td>{{ arq.origem }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted text-12">
+      O <span class="mono">apps-sync --apply</span> reescreve estes arquivos: editar no host se perde
+      na próxima execução (na primeira vez ele guarda uma cópia <span class="mono">.bak-&lt;data&gt;</span>).
+      {% if tem_apps_env %}No moya, a lista do portal (<span class="mono">apps-portal.ini</span>) segue a
+      mesma regra.{% endif %}
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <h2>SSH</h2>
+  </div>
+  <div class="card">
+    <pre class="mono">{{ ssh_comando }}</pre>
+  </div>
+</section>
+
 <div class="alert">
   Alterações em <span class="mono">host.env</span> e no <span class="mono">.env</span> do stack só valem depois de
   <span class="mono">sudo ./install-agent.sh</span> (quando couber) e <span class="mono">./deploy.sh</span>.
-  {% if tem_apps_env %}O <span class="mono">apps.env</span> (rotas, DNS e atalhos) vale depois de
+  {% if tem_apps_env %}O <span class="mono">apps.env</span> vale depois de
   <span class="mono">sudo scripts/stacks/apps-sync.sh --apply</span>.{% endif %}
-  O <span class="mono">services.ini</span> e a lista do portal são <strong>gerados</strong> daí:
-  editar no host se perde na próxima execução.
-  Veja o que está declarado em <a href="{% url 'system_rotas' %}">Rotas e atalhos</a>.
   Não há botão de salvar aqui.
 </div>
 {% endblock %}

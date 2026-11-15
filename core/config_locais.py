@@ -1,4 +1,10 @@
-"""Caminhos de configuração no host e comando SSH para exibição."""
+"""Caminhos de configuração no host e comando SSH para exibição.
+
+A página Configuração separa o que se edita do que é artefato: o ``apps.env``
+é o único arquivo do dia a dia (rotas, DNS e atalhos); ``host.env`` e o ``.env``
+do stack mudam raramente; ``services.ini`` e a lista do portal são gerados pelo
+``apps-sync`` e não se editam no host.
+"""
 
 from __future__ import annotations
 
@@ -14,8 +20,13 @@ class ArquivoConfig:
     caminho: str
     controlo: str
     vigencia: str
-    # Gerado pelo apps-sync: editar no host se perde na proxima execucao.
-    gerado: bool = False
+
+
+@dataclass(frozen=True)
+class ArquivoGerado:
+    nome: str
+    caminho: str
+    origem: str
 
 
 def comando_ssh(
@@ -41,12 +52,25 @@ def arquivos_config(
     services_ini_host: str,
     credenciais_env: str,
     apps_env: str = "",
-) -> list[ArquivoConfig]:
-    itens = [
+) -> dict:
+    """``apps_env`` (editavel), ``arquivos`` (raros) e ``gerados`` (artefatos)."""
+    apps = (apps_env or "").strip()
+    principal = (
+        ArquivoConfig(
+            nome="apps.env",
+            caminho=apps,
+            controlo="Rotas do Caddy, DNS e atalhos do painel e do portal.",
+            vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
+        )
+        if apps
+        else None
+    )
+
+    raros = [
         ArquivoConfig(
             nome="host.env",
             caminho=host_env_path or HOST_ENV_PADRAO,
-            controlo="Perfil do host (prefixos, SSH, overlay do Compose).",
+            controlo="Perfil do host (portas, prefixos, SSH, overlay do Compose).",
             vigencia="Após sudo ./install-agent.sh e ./deploy.sh.",
         ),
         ArquivoConfig(
@@ -55,27 +79,10 @@ def arquivos_config(
             controlo="Segredo do Django (SECRET_KEY e flags do app).",
             vigencia="Após ./deploy.sh.",
         ),
-        ArquivoConfig(
-            nome="services.ini",
-            caminho=services_ini_host,
-            controlo="Atalhos do botão Serviços, gerados do apps.env.",
-            vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
-            gerado=True,
-        ),
     ]
-    apps = (apps_env or "").strip()
-    if apps:
-        itens.append(
-            ArquivoConfig(
-                nome="apps.env",
-                caminho=apps,
-                controlo="Rotas do Caddy, DNS e atalhos do painel/portal.",
-                vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
-            )
-        )
     cred = (credenciais_env or "").strip()
     if cred:
-        itens.append(
+        raros.append(
             ArquivoConfig(
                 nome=".env (Credenciais)",
                 caminho=cred,
@@ -83,7 +90,15 @@ def arquivos_config(
                 vigencia="Após alterar o ficheiro e reiniciar o Credenciais.",
             )
         )
-    return itens
+
+    gerados = [
+        ArquivoGerado(
+            nome="services.ini",
+            caminho=services_ini_host,
+            origem="Atalhos do botão Serviços, gerados das flags atalho=painel.",
+        ),
+    ]
+    return {"apps_env": principal, "arquivos": raros, "gerados": gerados}
 
 
 def contexto_config_locais(
@@ -97,18 +112,19 @@ def contexto_config_locais(
     credenciais_env: str,
     apps_env: str = "",
 ) -> dict:
+    caminhos = arquivos_config(
+        host_env_path=host_env_path,
+        stack_env_path=stack_env_path,
+        services_ini_host=services_ini_host,
+        credenciais_env=credenciais_env,
+        apps_env=apps_env,
+    )
     return {
         "ssh_comando": comando_ssh(
             ssh_login=ssh_login,
             share_owner=share_owner,
             hostname=hostname,
         ),
-        "arquivos": arquivos_config(
-            host_env_path=host_env_path,
-            stack_env_path=stack_env_path,
-            services_ini_host=services_ini_host,
-            credenciais_env=credenciais_env,
-            apps_env=apps_env,
-        ),
-        "tem_apps_env": bool((apps_env or "").strip()),
+        **caminhos,
+        "tem_apps_env": caminhos["apps_env"] is not None,
     }
