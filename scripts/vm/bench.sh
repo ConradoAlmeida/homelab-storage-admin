@@ -183,7 +183,7 @@ case "$ACAO" in
     existe_snapshot "$BASE" || erro "snapshot $BASE nao existe; rode setup-ubuntu-2604.sh e crie o base-limpo"
     confirma "reverter $VM para $BASE (descarta o estado atual)"
     desliga
-    v snapshot-revert "$VM" --snapshot "$BASE" >/dev/null
+    v snapshot-revert "$VM" "$BASE" >/dev/null
     liga_ou_falha
     IP=$(espera_guest)
     echo "==> $VM em $IP; preparando perfil $PERFIL"
@@ -208,7 +208,7 @@ case "$ACAO" in
     existe_snapshot "$ALVO" || erro "snapshot $ALVO nao existe; rode: preparar --perfil $PERFIL"
     confirma "reverter $VM para $ALVO"
     desliga
-    v snapshot-revert "$VM" --snapshot "$ALVO" >/dev/null
+    v snapshot-revert "$VM" "$ALVO" >/dev/null
     liga_ou_falha
     IP=$(espera_guest)
     echo "==> $VM em $IP; testando perfil $PERFIL"
@@ -243,7 +243,7 @@ case "$ACAO" in
       exit "$FALHOU"
     fi
     desliga
-    v snapshot-revert "$VM" --snapshot "$ALVO" >/dev/null
+    v snapshot-revert "$VM" "$ALVO" >/dev/null
     echo "==> $VM devolvida ao snapshot $ALVO"
     exit "$FALHOU"
     ;;
@@ -254,7 +254,7 @@ case "$ACAO" in
     existe_snapshot "$ALVO" || erro "snapshot $ALVO nao existe"
     confirma "reverter $VM para $ALVO (descarta o estado atual)"
     desliga
-    v snapshot-revert "$VM" --snapshot "$ALVO" >/dev/null
+    v snapshot-revert "$VM" "$ALVO" >/dev/null
     echo "==> $VM no estado inicial ($ALVO)"
     ;;
 
