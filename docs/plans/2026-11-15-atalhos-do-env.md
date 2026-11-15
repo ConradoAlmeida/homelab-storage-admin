@@ -62,8 +62,8 @@ que o portal do moya consome.
       divergência e flags inválidas.
 - [x] 6. Portal (`moya_portal_interno`): `app.py` lê a INI, template itera,
       CSS por variável, compose monta o estado read-only, testes do projeto.
-- [ ] 7. Aplicar nos dois hosts, conferir painel e portal, `--doctor` limpo.
-- [ ] 8. Bancada de VM nos dois perfis; docs (`REDE`, `SISTEMA`, `ROTINAS`,
+- [x] 7. Aplicar nos dois hosts, conferir painel e portal, `--doctor` limpo.
+- [x] 8. Bancada de VM nos dois perfis; docs (`REDE`, `SISTEMA`, `ROTINAS`,
       `INSTALACAO`, `CONTEXTO`) e este plano.
 
 ## Verificação
@@ -78,7 +78,24 @@ que o portal do moya consome.
 - `pytest` verde (inclui os testes do portal) e bancada `linux2024` nos dois
   perfis.
 
+## Resultado
+
+- `apps.env` é o único arquivo editado: `atalho=`, `nome=`, `descricao=`,
+  `cor=`, `icone=` e `grupo=` geram `DATA_DIR/services.ini` (painel) e
+  `/var/lib/homelab-storage-admin/apps-portal.ini` (moya).
+- Pi: 3 atalhos (Dockge, Pi-hole, Jellyfin), dono `conrado:conrado` preservado;
+  o `services.ini` antigo virou `.bak-20261115-174637`.
+- moya: 2 no painel (SharePoint Management, Credenciais) e 11 no portal;
+  `.bak-20261115-174606` guardado. O card do Portainer saiu junto.
+- Portal commitado (`b02d0d2`, `6f7627e` no Gitea do moya) e recriado com o
+  estado montado read-only; a página mostra Services (3), Infrastructure (2),
+  Tools (6) e o "Moya AI — coming soon".
+- `--doctor` 0 erros/0 avisos nos dois; segunda execução diz "sem mudanca" nos
+  dois artefatos.
+- `services.ini.example` e o docstring de `core/services.py` deixam de dizer
+  "copie e edite"; agora documentam o formato gerado.
+
 ## Estado
 
-Em andamento (2026-11-15): código, testes, envs e docs prontos; falta aplicar
-nos hosts e rodar a bancada.
+Concluído em 2026-11-15: aplicado nos dois hosts e bancada `linux2024` verde
+nos dois perfis (`495 passed`, `8 lab passed`, smoke 200 nas 7 rotas).

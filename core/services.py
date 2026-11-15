@@ -1,7 +1,8 @@
 """Atalhos de serviços configurados por host.
 
-O app não descobre nem sonda serviços. Ele apenas renderiza os atalhos que o
-operador escolheu em ``services.ini`` (por exemplo, Jellyfin, Dockge, Gitea).
+O app não descobre nem sonda serviços. Ele apenas renderiza os atalhos de
+``services.ini``, gerado pelo ``scripts/stacks/apps-sync.sh`` a partir das
+flags ``atalho=`` do ``deploy/<perfil>/apps.env`` (Jellyfin, Dockge, Gitea).
 """
 from __future__ import annotations
 

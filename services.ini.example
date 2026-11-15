@@ -1,7 +1,10 @@
-# Atalhos exibidos no dashboard. Copie para o DATA_DIR do host como
-# services.ini e edite a lista. Servico sem url valida nao aparece.
+# Formato do services.ini gerado pelo apps-sync a partir do apps.env.
+# No host o arquivo e gerado (atalho=painel); este exemplo serve de
+# referencia e para um host que nao use o apps-sync. Servico sem url
+# valida nao aparece.
 #
-# Campos: name, description, url, icon, color, order.
+# Campos: name, description, url, icon, color, order, group.
+# `group` so o portal do moya usa (services, infrastructure, tools).
 # Icones conhecidos: jellyfin, dockge, pihole; outros usam o icone
 # generico. Nao ha descoberta nem health check.
 # URLs https://*.conradhub.com. Sem DNS público: em casa o Pi-hole,
