@@ -1,9 +1,8 @@
 # Rotinas do dia a dia
 
-O que é **dado** mora no host; o que é **código** mora no repo. Rota e DNS vêm
-de `deploy/<perfil>/apps.env` (versionado); atalhos vêm de `services.ini`
-(host) e do portal (projeto separado). Nenhum desses passos pede edição de
-`Caddyfile` à mão.
+**Um arquivo por host**: `deploy/<perfil>/apps.env`. Dele saem a rota no Caddy,
+o DNS, o botão Serviços do painel e, no moya, os cards do portal. Nada de
+editar `apps.caddy`, `services.ini` ou HTML do portal à mão.
 
 Atalhos usados abaixo:
 
@@ -12,6 +11,8 @@ Atalhos usados abaixo:
 | Repo | `/opt/stacks/homelab-storage-admin` | idem |
 | Env | `deploy/pi/apps.env` | `deploy/moya/apps.env` |
 | Dados (`DATA_DIR`) | `/mnt/nas/apps/homelab-storage-admin/data` | `/opt/stacks/homelab-storage-admin/data` |
+| `services.ini` (gerado) | `DATA_DIR/services.ini` | `DATA_DIR/services.ini` |
+| Lista do portal (gerada) | — | `/var/lib/homelab-storage-admin/apps-portal.ini` |
 | Quarentena | `/opt/stacks/_removidos` | `/home/conrado/_removidos` |
 | Nomes | `*.conradhub.com` (wildcard) | `*.local` (uma entrada por nome) |
 
@@ -25,22 +26,19 @@ Atalhos usados abaixo:
 
    ```
    key|fqdn|upstream|dir|flags
-   minha-app|minha-app.conradhub.com|192.168.0.150:8097|/opt/stacks/minha-app|
+   minha-app|minha-app.conradhub.com|192.168.0.150:8097|/opt/stacks/minha-app|atalho=painel,nome=Minha App,descricao=Resumo curto,cor=#38bdf8
    ```
 
-   `upstream` é a porta publicada; `dir` é a pasta do compose. Flags
-   opcionais: `redir=/admin/`, `snippet=<nome>`, `dir=-` (app noutro host).
+   `upstream` é a porta publicada; `dir` é a pasta do compose. Sem `atalho=` a
+   app tem rota e DNS, mas não aparece no painel nem no portal.
 3. **Commit + push** e, no host, `git pull` +
    `sudo bash scripts/stacks/apps-sync.sh [--perfil moya] --apply`.
-   Isso gera `apps.caddy`, grava/recarrega o DNS (no moya o Pi-hole reinicia)
-   e valida a configuração. No Pi o DNS é wildcard: nada a fazer.
-4. **Atalhos** (opcionais, independentes da rota):
-   - painel: seção em `DATA_DIR/services.ini` (ver rotina 3);
-   - portal do moya: card em
-     `/home/conrado/moya_portal_interno/templates/portal/index.html`.
-5. **Conferir**: `--doctor`, e uma rota de verdade:
+   Isso gera `apps.caddy`, o DNS e os atalhos, e valida a configuração. No Pi o
+   DNS é wildcard: nada a fazer.
+4. **Conferir**: `--doctor`, e uma rota de verdade:
    `curl -skI --resolve minha-app.conradhub.com:443:127.0.0.1 https://minha-app.conradhub.com/`
    (no moya: `curl -s -o /dev/null -w '%{http_code}' -H 'Host: minha-app.local' http://127.0.0.1/`).
+   O card novo aparece ao recarregar o painel (e o portal, no moya).
 
 Firewall só entra se a porta for acessada fora do Caddy: no Pi, UFW pela
 página Rede; no moya não há UFW.
@@ -52,24 +50,33 @@ página Rede; no moya não há UFW.
    → para os containers com `docker compose down` (sem `-v`).
 3. `--prune-data` (junto com o passo 2) → move a pasta para a quarentena,
    nunca apaga. Revise e apague depois.
-4. Tire o atalho do `services.ini` e do portal.
-5. Volume nomeado: o script **não** apaga. Veja `docker volume ls` e decida
-   (no Portainer, por exemplo, o volume só saiu depois de dias).
+4. Os atalhos somem sozinhos: a próxima execução reescreve `services.ini` e a
+   lista do portal sem a app.
+5. Volume nomeado: o script **não** apaga. Veja `docker volume ls` e decida.
 6. `--doctor` deve sair sem erro; o estado (`apps.aplicados`) deixa de citar a app.
 
-## 3. Só os links do botão Serviços
+## 3. Atalhos (painel e portal)
 
-- Arquivo: `DATA_DIR/services.ini` (paths na tabela acima). É dado do host,
-  fora do Git; vale ao recarregar a página, sem deploy.
-- Cada seção é um card: `name`, `description`, `url`, `icon`, `color`,
-  `order`. URL sem `http(s)` é ignorada (com log). Ícones prontos: `jellyfin`,
-  `dockge`, `pihole`; o resto usa o genérico.
-- Editável como `conrado` (o arquivo é dele); use `sudo` se o dono mudar.
-- **Portal do moya** é outro projeto (Flask): os cards estão no HTML
-  `templates/portal/index.html`; aplicar com
-  `docker compose up -d --build` em `/home/conrado/moya_portal_interno`.
-- Se quiser histórico, copie o `services.ini` para o repo e versione — hoje ele
-  não é versionado.
+Tudo é flag na linha da app:
+
+| Flag | Para quê |
+|---|---|
+| `atalho=painel` | botão Serviços do Storage Admin |
+| `atalho=portal` | card no portal do moya |
+| `atalho=painel+portal` | os dois |
+| `atalho=nao` (ou ausente) | rota e DNS, sem atalho |
+| `nome=`, `descricao=` | texto exibido (sem vírgula) |
+| `cor=#rrggbb`, `icone=<slug>` | cor da borda e ícone (portal; sem SVG cai na inicial) |
+| `grupo=services\|infrastructure\|tools` | seção do portal |
+
+Ordem = ordem das linhas no env. Mudou a flag? Commit, `git pull`,
+`--apply` (só reescreve o que mudou) e recarregue a página. O `apps-sync`
+preserva dono e permissão do arquivo; se ele não tinha o cabeçalho de gerado,
+guarda `services.ini.bak-<data>` antes de assumir.
+
+Link para algo que **não** é app daqui (outro host, site externo): declare uma
+linha com `dir=-` e o `upstream` do destino; ela ganha rota, DNS e atalho como
+qualquer outra (`moya-weather` é assim).
 
 ## 4. Atualizar o código do Storage Admin
 
@@ -103,6 +110,7 @@ página Rede; no moya não há UFW.
 | Share/snapshot | Shares/Snapshots (os dois hosts); política e agenda em Backups |
 | Firewall | Rede → UFW (Pi), preservando SSH; auditar depois |
 | DNS do moya | nunca editar Local DNS do Pi-hole; o arquivo gerado manda |
+| Portal do moya | cards vêm do env; mudou o código do portal, `docker compose up -d --build` em `/home/conrado/moya_portal_interno` |
 | Reinstalar/trocar host | `sudo ./install-agent.sh` + `host.env` + `./deploy.sh` (docs/INSTALACAO.md) |
 | Verificação semanal | `pytest`, `--doctor` nos dois, `docker compose ps`, `/saude/` |
 

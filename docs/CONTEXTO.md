@@ -31,7 +31,10 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   `--apply` gera `apps.caddy` + `import` nos dois hosts e o DNS, e os prunes
   param containers ou movem a pasta da app removida para a quarentena. App nova
   é uma linha no env, com `redir=` e `snippet=` para os casos especiais
-  (fragmentos versionados em `deploy/<perfil>/snippets/`). `--doctor` aponta o
+  (fragmentos versionados em `deploy/<perfil>/snippets/`) e `atalho=` para os
+  atalhos do painel e do portal, gerados em `DATA_DIR/services.ini` e em
+  `/var/lib/homelab-storage-admin/apps-portal.ini` (o portal do moya lê essa
+  lista; ninguém edita HTML nem INI à mão). `--doctor` aponta o
   que diverge (Caddy, DNS, containers, portas, pastas) sem escrever, e
   `--descobrir` sugere a linha de stacks fora do env. O check de containers usa
   o rótulo `working_dir`, então o projeto compose pode ter outro nome que a

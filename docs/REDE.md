@@ -84,6 +84,8 @@ modo 600, root, fora do Git. O token só cria o TXT do desafio.
 - gera `/opt/stacks/caddy/apps.caddy` (importado pelo `Caddyfile`), valida e
   recarrega o Caddy;
 - garante o wildcard de DNS no Pi-hole;
+- gera os atalhos: `DATA_DIR/services.ini` (botão Serviços do painel) e, no
+  moya, `/var/lib/homelab-storage-admin/apps-portal.ini` (cards do portal);
 - compara o declarado com os containers e pastas do host;
 - aponta quem saiu do env; `--prune-containers` para os containers e
   `--prune-data` move a pasta para a quarentena
@@ -97,6 +99,13 @@ dentro do bloco gerado (a regra de playback do Jellyfin vive ali). `manual`
 continua como escape hatch para bloco escrito à mão. App nova = uma linha no
 env + commit + `--apply`; o caminho aparece em **Configuração**
 (`APPS_ENV_PATH` no `host.env`).
+
+Atalho é flag, não arquivo à mão: `atalho=painel`, `atalho=portal` ou
+`atalho=painel+portal` (sem a flag a app tem rota e DNS, mas não aparece em
+lugar nenhum), com `nome=`, `descricao=`, `cor=#rrggbb`, `icone=<slug>` e
+`grupo=` (seção do portal). O `services.ini` do host e a lista do portal são
+artefatos gerados — editá-los à mão é perdido na próxima execução (o script
+guarda um `.bak-<data>` na primeira vez).
 
 Dois comandos só leem o host e dizem o que fazer: `--doctor` compara env,
 `apps.caddy`, DNS, containers, portas e pastas (sai 1 se houver erro) e

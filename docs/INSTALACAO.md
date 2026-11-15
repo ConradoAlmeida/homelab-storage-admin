@@ -145,11 +145,12 @@ Vale para Pi e moya. A ordem importa:
    ```
    O `deploy.sh` exige `host.env`, lê `COMPOSE_OVERLAY` e aborta se o overlay
    não existir.
-4. **Atalhos** (opcional, sem restart):
+4. **Atalhos** (opcional, sem restart): saem do `deploy/<perfil>/apps.env`
+   (`atalho=painel`), não de um arquivo copiado à mão.
    ```bash
-   cp services.ini.example data/services.ini
-   # edite data/services.ini
+   sudo scripts/stacks/apps-sync.sh --apply   # gera Caddy, DNS e services.ini
    ```
+   `services.ini.example` fica só como referência do formato da INI gerada.
 5. **Smoke**:
    ```bash
    sudo systemctl is-active homelab-storage-agent

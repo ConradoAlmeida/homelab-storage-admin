@@ -75,10 +75,6 @@ cd /opt/stacks/homelab-storage-admin
 cp .env.example .env
 chmod 600 .env
 # edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF do moya
-mkdir -p data
-if [ ! -f data/services.ini ]; then
-  cp services.ini.example data/services.ini   # edite a lista de atalhos
-fi
 sudo env HOST_ENV_PROFILE=moya ./install-agent.sh
 ./deploy.sh
 ```
@@ -93,16 +89,19 @@ proxy que já existe no host.
 > antigos foram preservados em `/home/conrado/documents/moya-storage-admin` e
 > em backup; o agente antigo está desabilitado. Não rode os dois ao mesmo tempo.
 
-### Atalhos de serviços (curadoria por host)
+### Atalhos de serviços (gerados do `apps.env`)
 
 O menu de serviços no topo (um `details`) **não descobre** serviços e **não faz
-health check**. Ele mostra somente o que estiver no `services.ini` do host, em
+health check**. Ele mostra o que estiver no `services.ini` do host, em
 `DATA_DIR/services.ini` (no Pi:
-`/mnt/nas/apps/homelab-storage-admin/data/services.ini`). O arquivo é lido a
-cada request; editou, aparece sem restart. O rodapé fixo mostra apenas o nome do
-produto.
+`/mnt/nas/apps/homelab-storage-admin/data/services.ini`), lido a cada request.
 
-Use `services.ini.example` como base:
+O arquivo é **gerado** pelo `scripts/stacks/apps-sync.sh` a partir das flags de
+apresentação do `deploy/<perfil>/apps.env` (`atalho=painel`, `nome=`,
+`descricao=`, `cor=`, `icone=`, `grupo=`). Não edite o `services.ini` do host:
+a próxima execução sobrescreve (na primeira vez ele guarda um `.bak-<data>`).
+`services.ini.example` documenta o formato da INI e serve para um host sem
+apps-sync:
 
 ```ini
 [jellyfin]

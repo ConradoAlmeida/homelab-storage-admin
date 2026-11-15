@@ -62,6 +62,11 @@ Formato do apps.env:
 `dir` pode ser `-` (sem stack local). Flags: `manual` (bloco a mao no
 Caddyfile), `redir=<destino>` ou `redir=<origem>-><destino>[@codigo]` e
 `snippet=<nome>` (fragmento em <pasta do env>/snippets/<nome>.caddy).
+Atalhos (opcionais, separados por virgula, sem virgula no texto):
+  atalho=painel|portal|painel+portal|nao   (ausente = sem atalho)
+  nome=, descricao=, cor=#rrggbb, icone=<slug>, grupo=<secao do portal>
+O painel do Storage Admin e o portal do moya leem a INI gerada daqui:
+nada de editar services.ini ou HTML do portal.
 TXT
 }
 
@@ -105,9 +110,15 @@ done
 # --- perfil do host -------------------------------------------------------
 # O perfil muda so o que difere entre os hosts; variavel ja no ambiente vence.
 case "${PERFIL:-pi}" in
-  pi) PERFIL=pi ;;
+  pi)
+    PERFIL=pi
+    SCHEME=${SCHEME:-https}
+    DATA_DIR=${DATA_DIR:-/mnt/nas/apps/homelab-storage-admin/data}
+    ;;
   moya)
     PERFIL=moya
+    SCHEME=${SCHEME:-http}
+    DATA_DIR=${DATA_DIR:-/opt/stacks/homelab-storage-admin/data}
     CADDY_DIR=${CADDY_DIR:-/opt/stacks/caddy}
     CADDY_CONTAINER=${CADDY_CONTAINER:-moya-caddy}
     PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
@@ -122,6 +133,7 @@ case "${PERFIL:-pi}" in
     QUARANTINE=${QUARANTINE:-/home/conrado/_removidos}
     DNS_CONF=${DNS_CONF:-/home/conrado/pihole/etc-dnsmasq.d/10-apps-local.conf}
     SCAN_ROOTS=${SCAN_ROOTS:-/opt /home/conrado}
+    PORTAL_INI=${PORTAL_INI-/var/lib/homelab-storage-admin/apps-portal.ini}
     ;;
   *) erro "--perfil invalido: $PERFIL (use pi ou moya)" ;;
 esac
@@ -155,6 +167,12 @@ PIHOLE_DIR=${PIHOLE_DIR:-$STACKS_ROOT/stacks/pihole}
 DNS_CONF=${DNS_CONF:-$PIHOLE_DIR/etc-dnsmasq.d/10-$DOMAIN-wildcard.conf}
 QUARANTINE=${QUARANTINE:-$STACKS_ROOT/stacks/_removidos}
 TEST_MODE=${TEST_MODE:-0}
+
+# Atalhos gerados a partir do env. O painel le INI do DATA_DIR (settings
+# SERVICES_FILE) e o portal do moya le a mesma INI de uma pasta montada
+# read-only. Vazio desliga a geracao.
+SERVICES_INI=${SERVICES_INI-${DATA_DIR:+$DATA_DIR/services.ini}}
+PORTAL_INI=${PORTAL_INI-}
 
 # Pastas que o reconciler nunca move: derrubar o proxy ou o DNS no meio da
 # operacao deixaria a casa sem rede.
@@ -244,8 +262,9 @@ valida_snippet() {
 valida() {
   local linhas=0
   local erros=0
-  local linha key fqdn upstream dir flags campo nome
+  local linha key fqdn upstream dir flags campo nome flag_nome
   local -a campos
+  local -A vistos=()
 
   [[ -r "$APPS_ENV" ]] || erro "nao consigo ler $APPS_ENV (esperado deploy/$PERFIL/apps.env no checkout)"
   [[ "$DOMAIN" =~ ^[a-z0-9.-]+$ ]] || erro "dominio invalido: $DOMAIN"
@@ -265,7 +284,8 @@ valida() {
     fi
     key=${campos[0]} fqdn=${campos[1]} upstream=${campos[2]} dir=${campos[3]} flags=${campos[4]}
     key=${key// /} fqdn=${fqdn// /} upstream=${upstream// /} dir=${dir// /}
-    flags=${flags// /}
+    # As flags carregam texto (nome=, descricao=) com espaco: so as bordas saem.
+    flags=$(trim "$flags")
 
     if [[ ! "$key" =~ ^[a-z0-9][a-z0-9-]*$ || ${#key} -gt 40 ]]; then
       aviso "$APPS_ENV:$linhas: key invalida '$key' (use [a-z0-9-], ate 40)"
@@ -292,7 +312,16 @@ valida() {
         erros=$((erros + 1))
       fi
       IFS=',' read -r -a campos <<<"$flags"
+      vistos=()
       for campo in "${campos[@]}"; do
+        campo=$(trim "$campo")
+        [[ -n "$campo" ]] || { aviso "$APPS_ENV:$linhas: flag vazia em '$flags'"; erros=$((erros + 1)); continue; }
+        flag_nome=${campo%%=*}
+        if [[ -n "${vistos[$flag_nome]:-}" ]]; then
+          aviso "$APPS_ENV:$linhas: flag '$flag_nome' repetida"
+          erros=$((erros + 1))
+        fi
+        vistos[$flag_nome]=1
         case "$campo" in
           manual) ;;
           redir=*)
@@ -301,8 +330,34 @@ valida() {
           snippet=*)
             valida_snippet "$linhas" "${campo#snippet=}" || erros=$((erros + 1))
             ;;
+          atalho=*)
+            case "${campo#atalho=}" in
+              painel|portal|painel+portal|nao) ;;
+              *)
+                aviso "$APPS_ENV:$linhas: atalho '${campo#atalho=}' invalido (painel, portal, painel+portal, nao)"
+                erros=$((erros + 1))
+                ;;
+            esac
+            ;;
+          nome=*)
+            [[ -n "$(trim "${campo#nome=}")" ]] ||
+              { aviso "$APPS_ENV:$linhas: nome= vazio"; erros=$((erros + 1)); }
+            ;;
+          descricao=*) ;;
+          cor=*)
+            [[ "${campo#cor=}" =~ ^#[0-9a-fA-F]{6}$ ]] ||
+              { aviso "$APPS_ENV:$linhas: cor '${campo#cor=}' invalida (use #rrggbb)"; erros=$((erros + 1)); }
+            ;;
+          icone=*)
+            [[ "${campo#icone=}" =~ ^[a-z0-9][a-z0-9-]*$ ]] ||
+              { aviso "$APPS_ENV:$linhas: icone '${campo#icone=}' invalido (use [a-z0-9-])"; erros=$((erros + 1)); }
+            ;;
+          grupo=*)
+            [[ "${campo#grupo=}" =~ ^[a-z][a-z0-9-]*$ ]] ||
+              { aviso "$APPS_ENV:$linhas: grupo '${campo#grupo=}' invalido (use [a-z0-9-])"; erros=$((erros + 1)); }
+            ;;
           *)
-            aviso "$APPS_ENV:$linhas: flag desconhecida '$campo' (manual, redir=, snippet=)"
+            aviso "$APPS_ENV:$linhas: flag desconhecida '$campo' (manual, redir=, snippet=, atalho=, nome=, descricao=, cor=, icone=, grupo=)"
             erros=$((erros + 1))
             ;;
         esac
@@ -404,6 +459,100 @@ redir_da_app() {
 
 snippet_da_app() {
   flag_da_app "$1" snippet
+}
+
+# --- Atalhos (painel e portal) --------------------------------------------
+# O env declara a apresentacao; o script gera a INI que o painel ja sabe ler.
+# Sem `atalho=` a app tem rota e DNS, mas nao aparece em lugar nenhum.
+
+trim() {
+  local v=$1
+  v=${v#"${v%%[![:space:]]*}"}
+  v=${v%"${v##*[![:space:]]}"}
+  printf '%s' "$v"
+}
+
+# atalho=painel | portal | painel+portal | nao (ausente = nenhum)
+atalho_inclui() {
+  local valor
+  valor=$(flag_da_app "$1" atalho)
+  case "$2:${valor:-nao}" in
+    painel:painel|painel:painel+portal|portal:portal|portal:painel+portal) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+nome_da_app() {
+  local n
+  n=$(flag_da_app "$1" nome)
+  if [[ -z "$n" ]]; then
+    n=${FQDN[$1]%%.*}
+    n=${n//-/ }
+    n="${n^}"
+  fi
+  printf '%s' "$n"
+}
+
+descricao_da_app() { flag_da_app "$1" descricao; }
+cor_da_app() { local c; c=$(flag_da_app "$1" cor); printf '%s' "${c:-#38bdf8}"; }
+icone_da_app() { local i; i=$(flag_da_app "$1" icone); printf '%s' "${i:-generic}"; }
+# Secao do portal (services, infrastructure, tools ...); o painel ignora.
+grupo_da_app() { local g; g=$(flag_da_app "$1" grupo); printf '%s' "${g:-services}"; }
+url_da_app() { printf '%s://%s' "$SCHEME" "${FQDN[$1]}"; }
+
+render_atalhos() {
+  local tipo=$1 k ordem=10 nome descricao
+  printf '# Gerado por scripts/stacks/apps-sync.sh a partir de %s.\n' "$(basename "$APPS_ENV")"
+  printf '# Nao edite: a proxima execucao sobrescreve. A fonte da verdade e o apps.env.\n'
+  for k in "${KEYS[@]}"; do
+    atalho_inclui "$k" "$tipo" || continue
+    nome=$(nome_da_app "$k")
+    descricao=$(descricao_da_app "$k")
+    printf '\n[%s]\n' "$k"
+    printf 'name = %s\n' "$nome"
+    [[ -z "$descricao" ]] || printf 'description = %s\n' "$descricao"
+    printf 'url = %s\nicon = %s\ncolor = %s\norder = %s\ngroup = %s\n' \
+      "$(url_da_app "$k")" "$(icone_da_app "$k")" "$(cor_da_app "$k")" "$ordem" \
+      "$(grupo_da_app "$k")"
+    ordem=$((ordem + 10))
+  done
+}
+
+escreve_atalhos() {
+  local tipo=$1 destino=$2 tmp backup pasta
+  [[ -n "$destino" ]] || return 0
+  pasta=$(dirname "$destino")
+  if [[ ! -d "$pasta" ]]; then
+    aviso "atalhos ($tipo): $pasta nao existe; $destino nao gerado"
+    return 0
+  fi
+  tmp=$(mktemp "$pasta/.atalhos.XXXXXX")
+  render_atalhos "$tipo" >"$tmp"
+  if [[ -f "$destino" ]] && cmp -s "$tmp" "$destino"; then
+    rm -f "$tmp"
+    item "atalhos ($tipo) sem mudanca: $destino"
+    return 0
+  fi
+  if [[ -e "$destino" && ! -f "$destino" ]]; then
+    rm -f "$tmp"
+    aviso "atalhos ($tipo): $destino existe e nao e arquivo; nada foi escrito"
+    return 0
+  fi
+  if [[ -f "$destino" ]] &&
+    ! head -1 "$destino" | grep -qF 'Gerado por scripts/stacks/apps-sync.sh'; then
+    # Arquivo escrito a mao: guarda antes de assumir; a curadoria agora e flag.
+    backup="$destino.bak-$(date +%Y%m%d-%H%M%S)"
+    cp -p "$destino" "$backup"
+    aviso "atalhos ($tipo): $destino nao era gerado; copia em $backup"
+  fi
+  preserva_dono "$tmp" "$destino"
+  mv -f "$tmp" "$destino"
+  item "atalhos ($tipo) atualizados: $destino"
+}
+
+aplica_atalhos() {
+  escreve_atalhos painel "$SERVICES_INI"
+  escreve_atalhos portal "$PORTAL_INI"
 }
 
 endereco_site() {
@@ -908,6 +1057,7 @@ mostra_plano() {
       item "pasta ausente: ${DIR[$k]} (a rota ainda pode ser gerada)"
   done
   item "apps: ${#KEYS[@]} declaradas, $geradas geradas, $manuais manuais"
+  mostra_atalhos_plano
 
   if [[ ${#ANT_KEYS[@]} -eq 0 ]]; then
     item "sem estado anterior em $APPS_STATE: nenhuma remocao sera feita nesta execucao"
@@ -922,6 +1072,22 @@ mostra_plano() {
   relata_containers
   relata_orfaos
   relata_dns_exatos
+}
+
+mostra_atalhos_plano() {
+  local k painel=0 portal=0
+  for k in "${KEYS[@]}"; do
+    if atalho_inclui "$k" painel; then
+      painel=$((painel + 1))
+      item "atalho painel: $(nome_da_app "$k") -> $(url_da_app "$k")"
+    fi
+    atalho_inclui "$k" portal && portal=$((portal + 1))
+  done
+  if [[ -n "$PORTAL_INI" ]]; then
+    item "atalhos: $painel no painel, $portal no portal"
+  else
+    item "atalhos: $painel no painel (este perfil nao tem portal)"
+  fi
 }
 
 # --- Doctor ---------------------------------------------------------------
@@ -1080,6 +1246,28 @@ checa_containers() {
   done
 }
 
+checa_atalhos() {
+  local tipo destino tmp
+  for tipo in painel portal; do
+    if [[ "$tipo" == "portal" ]]; then destino=$PORTAL_INI; else destino=$SERVICES_INI; fi
+    [[ -n "$destino" ]] || continue
+    if [[ ! -d "$(dirname "$destino")" ]]; then
+      doutor_aviso "atalhos ($tipo): $(dirname "$destino") nao existe; nada e gerado"
+      continue
+    fi
+    tmp=$(mktemp)
+    render_atalhos "$tipo" >"$tmp"
+    if [[ ! -f "$destino" ]]; then
+      doutor_erro "atalhos ($tipo) ausente: $destino (rode --apply)"
+    elif cmp -s "$tmp" "$destino"; then
+      doutor_ok "atalhos ($tipo) iguais ao renderizado"
+    else
+      doutor_erro "atalhos ($tipo) diferente do renderizado: $destino (rode --apply)"
+    fi
+    rm -f "$tmp"
+  done
+}
+
 checa_pastas() {
   local k qtd
   relata_orfaos
@@ -1108,6 +1296,9 @@ doutor() {
 
   secao "dns"
   checa_dns
+
+  secao "atalhos"
+  checa_atalhos
 
   secao "containers e upstream"
   checa_containers
@@ -1225,6 +1416,9 @@ aplica_caddy
 
 secao "dns"
 aplica_dns
+
+secao "atalhos"
+aplica_atalhos
 
 if [[ $PODAR_CONTAINERS -eq 1 ]]; then
   secao "containers fora do env"

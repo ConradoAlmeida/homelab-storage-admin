@@ -167,6 +167,8 @@ class Sandbox:
         self.dir_dockge = self.stacks / "dockge"
         self.dir_jellyfin = self.stacks / "stacks" / "jellyfin"
         self.dir_pihole = self.stacks / "stacks" / "pihole"
+        self.services_ini = tmp_path / "data" / "services.ini"
+        self.portal_ini = tmp_path / "state" / "apps-portal.ini"
 
         for caminho in (
             self.caddy_dir,
@@ -175,6 +177,8 @@ class Sandbox:
             self.dir_dockge,
             self.dir_jellyfin,
             (tmp_path / "var"),
+            self.services_ini.parent,
+            self.portal_ini.parent,
             self.bin,
         ):
             caminho.mkdir(parents=True, exist_ok=True)
@@ -213,6 +217,8 @@ class Sandbox:
             "CADDY_APPS": str(self.apps_caddy),
             "DNS_CONF": str(self.dns_conf),
             "QUARANTINE": str(self.quarantine),
+            "SERVICES_INI": str(self.services_ini),
+            "PORTAL_INI": "",
             "STUB_LOG": str(self.log),
             "STUB_PROJETOS": str(self.projetos),
             "STUB_DIR_PROJETOS": str(self.dir_projetos),
@@ -506,6 +512,8 @@ class SandboxMoya:
         self.bin = tmp_path / "bin"
         self.dir_git = self.root / "data" / "compose" / "3"
         self.dir_portainer = self.fake_home / "portainer"
+        self.services_ini = tmp_path / "data" / "services.ini"
+        self.portal_ini = tmp_path / "state" / "apps-portal.ini"
 
         for caminho in (
             self.caddy_dir,
@@ -513,6 +521,8 @@ class SandboxMoya:
             self.dir_git,
             self.dir_portainer,
             (tmp_path / "var"),
+            self.services_ini.parent,
+            self.portal_ini.parent,
             self.bin,
         ):
             caminho.mkdir(parents=True, exist_ok=True)
@@ -552,6 +562,8 @@ class SandboxMoya:
             "DNS_CONF": str(self.dns_conf),
             "PIHOLE_DIR": str(self.pihole_dir),
             "QUARANTINE": str(self.quarantine),
+            "SERVICES_INI": str(self.services_ini),
+            "PORTAL_INI": str(self.portal_ini),
             "DIRS_PERMITIDOS": (
                 f"{self.root}/opt/stacks {self.root}/opt {self.fake_home} "
                 f"{self.root}/data/compose"
@@ -690,6 +702,7 @@ def test_env_do_pi_valida(tmp_path):
     )
     assert resultado.returncode == 0, resultado.stderr
     assert "apps: 4 declaradas, 4 geradas, 0 manuais" in resultado.stdout
+    assert "atalhos: 3 no painel (este perfil nao tem portal)" in resultado.stdout
     # O snippet versionado existe ao lado do env e e o unico bloco especial.
     assert (ROOT / "deploy" / "pi" / "snippets" / "jellyfin.caddy").is_file()
 
@@ -703,6 +716,7 @@ def test_env_do_moya_valida(tmp_path):
     )
     assert resultado.returncode == 0, resultado.stderr
     assert "apps: 12 declaradas, 12 geradas, 0 manuais" in resultado.stdout
+    assert "atalhos: 2 no painel, 11 no portal" in resultado.stdout
 
 
 def test_redir_com_origem_e_codigo(tmp_path):
@@ -827,3 +841,222 @@ def test_descobrir_sugere_stack_fora_do_env(tmp_path):
         f"moya-git|moya-git.local|localhost:3000|{sandbox.dir_git}|\n"
     )
     assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE_MOYA
+
+
+def test_atalho_painel_gera_services_ini(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "app|app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=painel,nome=Minha App,"
+        "descricao=Teste local,cor=#123456,icone=app\n"
+        "sem-atalho|sem-atalho.conradhub.com|192.168.0.150:8098|"
+        f"{sandbox.dir_homelab}|\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+
+    ini = sandbox.services_ini.read_text(encoding="utf-8")
+    assert ini.startswith("# Gerado por scripts/stacks/apps-sync.sh")
+    assert "[app]" in ini
+    assert "name = Minha App" in ini
+    assert "description = Teste local" in ini
+    assert "url = https://app.conradhub.com" in ini
+    assert "icon = app" in ini
+    assert "color = #123456" in ini
+    assert "order = 10" in ini
+    assert "[sem-atalho]" not in ini  # sem atalho: rota e DNS, sem card
+
+    # O painel le o arquivo com o parser de sempre (core/services.py).
+    from core.services import load_services
+
+    servicos = load_services(sandbox.services_ini)
+    assert [(s.key, s.name, s.url) for s in servicos] == [
+        ("app", "Minha App", "https://app.conradhub.com")
+    ]
+
+
+def test_atalho_sem_nome_deriva_do_fqdn(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "minha-app|minha-app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=painel\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    ini = sandbox.services_ini.read_text(encoding="utf-8")
+    assert "name = Minha app" in ini
+    assert "description" not in ini
+    assert "icon = generic" in ini
+    assert "color = #38bdf8" in ini
+
+
+def test_portal_so_no_perfil_moya(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        f"moya-git|moya-git.local|localhost:3000|{sandbox.dir_git}|"
+        "atalho=portal,nome=Gitea,cor=#4a9eff\n"
+        "moya-weather|moya-weather.local|10.72.60.202:80|-|atalho=portal\n"
+        "moya-versoes|moya-versoes.local|localhost:8070|-|"
+        "atalho=painel+portal,nome=SharePoint\n"
+        "moya-portal|moya-portal.local|localhost:8020|-|\n",
+        encoding="utf-8",
+    )
+    assert not sandbox.portal_ini.exists()  # nada gerado antes do --apply
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+
+    ini = sandbox.portal_ini.read_text(encoding="utf-8")
+    assert "[moya-git]" in ini
+    assert "url = http://moya-git.local" in ini
+    assert "[moya-weather]" in ini
+    assert "[moya-versoes]" in ini
+    # O portal nao aponta para si mesmo.
+    assert "[moya-portal]" not in ini
+
+    painel = sandbox.services_ini.read_text(encoding="utf-8")
+    assert "[moya-versoes]" in painel
+    assert "[moya-git]" not in painel
+
+
+def test_atalho_painel_no_perfil_pi_nao_cria_portal(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "app|app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=painel+portal\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert "[app]" in sandbox.services_ini.read_text(encoding="utf-8")
+    assert not sandbox.portal_ini.exists()
+
+
+def test_atalho_preserva_arquivo_manual_com_backup(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    antigo = "[meu]\nname = Antigo\nurl = https://antigo.conradhub.com\n"
+    sandbox.services_ini.write_text(antigo, encoding="utf-8")
+
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "app|app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=painel,nome=App\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run("--apply", env_file=env)
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert "nao era gerado" in resultado.stderr
+
+    backups = list(sandbox.services_ini.parent.glob("services.ini.bak-*"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == antigo
+    assert "[app]" in sandbox.services_ini.read_text(encoding="utf-8")
+
+
+def test_atalho_idempotente(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    assert sandbox.run("--apply").returncode == 0
+    resultado = sandbox.run("--apply")
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert "atalhos (portal) sem mudanca" in resultado.stdout
+
+
+def test_doctor_acusa_atalhos_editados_a_mao(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    assert sandbox.run("--apply").returncode == 0
+    limpo = sandbox.run("--doctor")
+    assert "atalhos (portal) iguais ao renderizado" in limpo.stdout
+
+    with sandbox.portal_ini.open("a", encoding="utf-8") as arquivo:
+        arquivo.write("\n[manual]\nname = Manual\nurl = http://x.local\n")
+    sujo = sandbox.run("--doctor")
+    assert sujo.returncode == 1
+    assert "atalhos (portal) diferente do renderizado" in sujo.stdout
+    # O doctor nao conserta.
+    assert "[manual]" in sandbox.portal_ini.read_text(encoding="utf-8")
+
+
+def test_atalho_invalido_aborta(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "app|app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=menu\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run(env_file=env)
+    assert resultado.returncode == 2
+    assert "atalho 'menu' invalido" in resultado.stderr
+
+
+def test_cor_invalida_aborta(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "app|app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=painel,cor=azul\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run(env_file=env)
+    assert resultado.returncode == 2
+    assert "cor 'azul' invalida" in resultado.stderr
+
+
+def test_flag_repetida_aborta(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    env = tmp_path / "atalho.env"
+    env.write_text(
+        "app|app.conradhub.com|192.168.0.150:8097|"
+        f"{sandbox.dir_dockge}|atalho=painel,atalho=portal\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run(env_file=env)
+    assert resultado.returncode == 2
+    assert "flag 'atalho' repetida" in resultado.stderr
+
+
+def test_env_do_pi_gera_os_atalhos_do_painel(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    # Host ja migrado: o Jellyfin deixou de ser bloco manual no Caddyfile.
+    sandbox.caddyfile.write_text(CADDYFILE.split("jellyfin.conradhub.com {")[0],
+                                 encoding="utf-8")
+    env = ROOT / "deploy" / "pi" / "apps.env"
+    resultado = sandbox.run(
+        "--apply", env_file=env, env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt"}
+    )
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    secoes = [
+        linha
+        for linha in sandbox.services_ini.read_text(encoding="utf-8").splitlines()
+        if linha.startswith("[")
+    ]
+    assert secoes == ["[dockge]", "[pihole]", "[jellyfin]"]
+    assert not sandbox.portal_ini.exists()
+
+
+def test_env_do_moya_gera_painel_e_portal(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    env = ROOT / "deploy" / "moya" / "apps.env"
+    resultado = sandbox.run(
+        "--apply",
+        env_file=env,
+        env_extra={"DIRS_PERMITIDOS": "/opt/stacks /opt /home/conrado"},
+    )
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+
+    painel = sandbox.services_ini.read_text(encoding="utf-8")
+    assert [l for l in painel.splitlines() if l.startswith("[")] == [
+        "[moya-versoes]",
+        "[moya-credenciais]",
+    ]
+    portal = sandbox.portal_ini.read_text(encoding="utf-8")
+    secoes = [l for l in portal.splitlines() if l.startswith("[")]
+    assert len(secoes) == 11
+    assert "[moya-portal]" not in secoes
+    assert "group = infrastructure" in portal
+    assert "group = tools" in portal
