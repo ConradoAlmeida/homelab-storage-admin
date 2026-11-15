@@ -86,13 +86,29 @@ arquivo e:
 - garante o wildcard de DNS no Pi-hole;
 - compara o declarado com os containers e pastas do host;
 - aponta quem saiu do env; `--prune-containers` para os containers e
-  `--prune-data` move a pasta para `/opt/stacks/_removidos/<key>-<data>`.
-  Nada é apagado.
+  `--prune-data` move a pasta para a quarentena
+  (`/opt/stacks/_removidos` no Pi, `/home/conrado/_removidos` no moya), nunca
+  apaga.
 
 Sem `--apply` é dry-run. O bloco marcado `manual` (Jellyfin, regra de
 playback; Pi-hole, redirect) continua escrito à mão no `Caddyfile` e o
 gerador não toca nele. App nova = uma linha no env + `--apply`. O caminho
 aparece em **Configuração** (`APPS_ENV_PATH` no `host.env`).
+
+**No moya** (`--perfil moya`) o mesmo arquivo vale; muda o que a rede de lá
+exige:
+
+| | Pi | moya |
+|---|---|---|
+| Nomes | `*.conradhub.com` com TLS | `*.local:80`, HTTP |
+| Caddy | `apps.caddy` importado | região gerada no `Caddyfile` |
+| DNS | wildcard `address=/conradhub.com/<ip>` | uma entrada por nome em `etc-dnsmasq.d/10-apps-local.conf` |
+
+`.local` é reservado para mDNS: sem wildcard, cada app ganha a própria
+entrada. O `Caddyfile` fica em `/home/conrado/caddy` e o container do Caddy é
+do Portainer (não há compose no host), então o script reescreve o arquivo e
+recarrega — não recria o container. `dir` pode ser `-` para app sem stack
+local (`moya-weather`, noutra máquina).
 
 **Tailscale, só no Pi.** Nó `homelab`, `100.84.34.25`, MagicDNS
 `homelab.tail1a4ccb.ts.net`. SSH do Tailscale desligado. Chave sem expiração.

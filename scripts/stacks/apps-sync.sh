@@ -1,59 +1,42 @@
 #!/usr/bin/env bash
-# Reconciler do Caddy e do DNS do Pi a partir do apps.env.
+# Reconciler do Caddy e do DNS a partir do apps.env.
 #
 # O apps.env e a fonte da verdade: cada linha declara uma app exposta pelo
 # Caddy. O script compara o declarado com o que esta aplicado (estado em
 # /var/lib/homelab-storage-admin/apps.aplicados), gera as rotas, garante o
-# wildcard de DNS e aponta o drift de containers e pastas.
+# DNS no Pi-hole e aponta o drift de containers e pastas.
 #
-#   scripts/stacks/apps-sync.sh                  # dry-run: mostra o plano
-#   sudo scripts/stacks/apps-sync.sh --apply     # gera Caddy + DNS
+#   scripts/stacks/apps-sync.sh                      # dry-run: mostra o plano
+#   sudo scripts/stacks/apps-sync.sh --apply         # gera Caddy + DNS
+#   sudo scripts/stacks/apps-sync.sh --perfil moya --apply
 #   sudo scripts/stacks/apps-sync.sh --apply --prune-containers
 #   sudo scripts/stacks/apps-sync.sh --apply --prune-containers --prune-data
 #
+# Perfis:
+#   pi (default)  *.conradhub.com com TLS (DNS-01), Caddy em arquivo separado
+#                 (apps.caddy importado pelo Caddyfile) e wildcard no Pi-hole.
+#   moya          *.local em HTTP:80, Caddy gerado inline no Caddyfile e
+#                 entrada de DNS por nome (`.local` e mDNS: sem wildcard).
+#
 # `--prune-containers` roda `docker compose down` (sem -v) so para quem saiu do
-# env. `--prune-data` move a pasta para /opt/stacks/_removidos/<key>-<data>,
-# nunca apaga. Sem estado anterior nada e removido, so avisado.
+# env. `--prune-data` move a pasta para a quarentena, nunca apaga. Sem estado
+# anterior nada e removido, so avisado.
 set -euo pipefail
 
-APPS_ENV=${APPS_ENV:-/etc/homelab-storage-admin/apps.env}
-APPS_STATE=${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}
-STACKS_ROOT=${STACKS_ROOT:-/opt}
-CADDY_CONTAINER=${CADDY_CONTAINER:-caddy}
-PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
-DOMAIN=${DOMAIN:-conradhub.com}
-DNS_IP=${DNS_IP:-192.168.0.150}
-DNS_QUERY_HOST=${DNS_QUERY_HOST:-127.0.0.1}
-
-CADDY_DIR=${CADDY_DIR:-$STACKS_ROOT/stacks/caddy}
-CADDYFILE=${CADDYFILE:-$CADDY_DIR/Caddyfile}
-CADDY_APPS=${CADDY_APPS:-$CADDY_DIR/apps.caddy}
-CADDY_TOKEN_FILE=${CADDY_TOKEN_FILE:-$CADDY_DIR/cloudflare.token}
-DNS_CONF=${DNS_CONF:-$STACKS_ROOT/stacks/pihole/etc-dnsmasq.d/10-$DOMAIN-wildcard.conf}
-QUARANTINE=${QUARANTINE:-$STACKS_ROOT/stacks/_removidos}
-TEST_MODE=${TEST_MODE:-0}
-
-# Pastas que o reconciler nunca move: derrubar o proxy ou o DNS no meio da
-# operacao deixaria a casa sem rede.
-PROTEGIDOS=("$STACKS_ROOT/stacks/caddy" "$STACKS_ROOT/stacks/pihole")
-
+PERFIL=""
 APLICAR=0
 PODAR_CONTAINERS=0
 PODAR_DADOS=0
 YES=0
 
-declare -A FQDN=() UPSTREAM=() DIR=() FLAGS=()
-declare -A ANT_FQDN=() ANT_UPSTREAM=() ANT_DIR=() ANT_FLAGS=()
-KEYS=()
-ANT_KEYS=()
-
 uso() {
   cat <<'TXT'
-Uso: scripts/stacks/apps-sync.sh [--apply] [--prune-containers] [--prune-data] [--yes]
+Uso: scripts/stacks/apps-sync.sh [--perfil pi|moya] [--apply]
+                                 [--prune-containers] [--prune-data] [--yes]
 
 Sem --apply e dry-run: mostra o plano e nao escreve nada.
-  --apply             gera /opt/stacks/caddy/apps.caddy, recarrega o Caddy e
-                      garante o wildcard *.conradhub.com no Pi-hole
+  --perfil            pi (default) ou moya: muda caminhos, dominio e DNS
+  --apply             gera as rotas, recarrega o Caddy e garante o DNS
   --prune-containers  `docker compose down` (sem -v) nas apps que sairam do env
   --prune-data        move a pasta das apps removidas para a quarentena
   --yes               nao pergunta antes de cada operacao destrutiva
@@ -64,22 +47,13 @@ removido: o script so avisa o que saiu do env.
 
 Formato do apps.env:
   key|fqdn|upstream|dir|flags
+`dir` pode ser `-` (sem stack local) quando a app e `manual`.
 TXT
 }
 
 erro() {
   echo "ERRO: $*" >&2
   exit 2
-}
-
-# `read -a` come o campo vazio no fim da linha; o env usa `...|` para "sem
-# flags", entao o delimitador final precisa ser reposto antes do split.
-split_linha() {
-  local linha=$1 delims=${1//[^|]/}
-  IFS='|' read -r -a CAMPOS <<<"$linha"
-  while [[ ${#CAMPOS[@]} -lt $(( ${#delims} + 1 )) ]]; do
-    CAMPOS+=("")
-  done
 }
 
 aviso() {
@@ -95,13 +69,108 @@ item() {
   echo "    $*"
 }
 
-add_key() {
-  local k=$1
-  local existente
-  for existente in "${KEYS[@]:-}"; do
-    [[ "$existente" == "$k" ]] && erro "key repetida no $APPS_ENV: $k"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apply) APLICAR=1 ;;
+    --prune-containers) PODAR_CONTAINERS=1 ;;
+    --prune-data) PODAR_DADOS=1 ;;
+    --yes) YES=1 ;;
+    --perfil)
+      [[ $# -ge 2 ]] || erro "--perfil exige um valor: pi ou moya"
+      PERFIL=$2
+      shift
+      ;;
+    -h|--help) uso; exit 0 ;;
+    *) erro "argumento desconhecido: $1 (veja --help)" ;;
+  esac
+  shift
+done
+
+# --- perfil do host -------------------------------------------------------
+# O perfil muda so o que difere entre os hosts; variavel ja no ambiente vence.
+case "${PERFIL:-pi}" in
+  pi) PERFIL=pi ;;
+  moya)
+    PERFIL=moya
+    CADDY_DIR=${CADDY_DIR:-/home/conrado/caddy}
+    CADDY_CONTAINER=${CADDY_CONTAINER:-moya-caddy}
+    PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
+    DOMAIN=${DOMAIN:-local}
+    DNS_IP=${DNS_IP:-192.168.0.10}
+    DNS_MODE=${DNS_MODE:-nome}
+    CADDY_MODO=${CADDY_MODO:-inline}
+    CADDY_PORTA=${CADDY_PORTA-:80}
+    CADDY_TLS=${CADDY_TLS-}
+    CADDY_PROXY=${CADDY_PROXY:-reverse_proxy}
+    DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-/opt/stacks /opt /home/conrado /data/compose}
+    PIHOLE_DIR=${PIHOLE_DIR:-/home/conrado/pihole}
+    QUARANTINE=${QUARANTINE:-/home/conrado/_removidos}
+    DNS_CONF=${DNS_CONF:-/home/conrado/pihole/etc-dnsmasq.d/10-apps-local.conf}
+    SCAN_ROOTS=${SCAN_ROOTS:-/opt /home/conrado}
+    ;;
+  *) erro "--perfil invalido: $PERFIL (use pi ou moya)" ;;
+esac
+
+# --- padroes comuns -------------------------------------------------------
+APPS_ENV=${APPS_ENV:-/etc/homelab-storage-admin/apps.env}
+APPS_STATE=${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}
+STACKS_ROOT=${STACKS_ROOT:-/opt}
+CADDY_CONTAINER=${CADDY_CONTAINER:-caddy}
+PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
+DOMAIN=${DOMAIN:-conradhub.com}
+DNS_IP=${DNS_IP:-192.168.0.150}
+DNS_MODE=${DNS_MODE:-wildcard}
+DNS_QUERY_HOST=${DNS_QUERY_HOST:-127.0.0.1}
+CADDY_MODO=${CADDY_MODO:-arquivo}
+CADDY_PORTA=${CADDY_PORTA-}
+CADDY_TLS=${CADDY_TLS-import cf}
+CADDY_PROXY=${CADDY_PROXY:-import proxy}
+DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-$STACKS_ROOT/stacks $STACKS_ROOT}
+SCAN_ROOTS=${SCAN_ROOTS:-$STACKS_ROOT}
+
+CADDY_DIR=${CADDY_DIR:-$STACKS_ROOT/stacks/caddy}
+CADDYFILE=${CADDYFILE:-$CADDY_DIR/Caddyfile}
+CADDY_APPS=${CADDY_APPS:-$CADDY_DIR/apps.caddy}
+CADDY_TOKEN_FILE=${CADDY_TOKEN_FILE:-$CADDY_DIR/cloudflare.token}
+PIHOLE_DIR=${PIHOLE_DIR:-$STACKS_ROOT/stacks/pihole}
+DNS_CONF=${DNS_CONF:-$PIHOLE_DIR/etc-dnsmasq.d/10-$DOMAIN-wildcard.conf}
+QUARANTINE=${QUARANTINE:-$STACKS_ROOT/stacks/_removidos}
+TEST_MODE=${TEST_MODE:-0}
+
+# Pastas que o reconciler nunca move: derrubar o proxy ou o DNS no meio da
+# operacao deixaria a casa sem rede.
+PROTEGIDOS=("$CADDY_DIR" "$PIHOLE_DIR")
+
+case "$DNS_MODE" in
+  wildcard|nome) ;;
+  *) erro "DNS_MODE invalido: $DNS_MODE (use wildcard ou nome)" ;;
+esac
+
+declare -A FQDN=() UPSTREAM=() DIR=() FLAGS=()
+declare -A ANT_FQDN=() ANT_UPSTREAM=() ANT_DIR=() ANT_FLAGS=()
+KEYS=()
+ANT_KEYS=()
+
+# `read -a` come o campo vazio no fim da linha; o env usa `...|` para "sem
+# flags", entao o contador de delimitadores define quantos campos repor.
+split_linha() {
+  local linha=$1 delims=${1//[^|]/}
+  IFS='|' read -r -a CAMPOS <<<"$linha"
+  while [[ ${#CAMPOS[@]} -lt $(( ${#delims} + 1 )) ]]; do
+    CAMPOS+=("")
   done
-  KEYS+=("$k")
+}
+
+dir_valido() {
+  local d=$1 raiz base
+  [[ "$d" == /* ]] || return 1
+  [[ "$d" != *..* ]] || return 1
+  for raiz in $DIRS_PERMITIDOS; do
+    [[ "$d" == "$raiz"/* ]] || continue
+    base=${d##*/}
+    [[ "$base" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] && return 0
+  done
+  return 1
 }
 
 valida() {
@@ -111,7 +180,7 @@ valida() {
   local -a campos
 
   [[ -r "$APPS_ENV" ]] || erro "nao consigo ler $APPS_ENV"
-  [[ -d "$STACKS_ROOT" ]] || erro "STACKS_ROOT nao existe: $STACKS_ROOT"
+  [[ "$DOMAIN" =~ ^[a-z0-9.-]+$ ]] || erro "dominio invalido: $DOMAIN"
 
   while IFS= read -r linha || [[ -n "$linha" ]]; do
     linhas=$((linhas + 1))
@@ -142,8 +211,13 @@ valida() {
       aviso "$APPS_ENV:$linhas: upstream '$upstream' invalido (host:porta)"
       erros=$((erros + 1))
     fi
-    if [[ ! "$dir" =~ ^$STACKS_ROOT(/stacks)?/[a-z0-9][a-z0-9-]*$ ]]; then
-      aviso "$APPS_ENV:$linhas: dir '$dir' fora de $STACKS_ROOT/<nome> ou $STACKS_ROOT/stacks/<nome>"
+    if [[ "$dir" == "-" ]]; then
+      [[ ",$flags," == *",manual,"* ]] || {
+        aviso "$APPS_ENV:$linhas: dir '-' so vale para app manual (sem stack local)"
+        erros=$((erros + 1))
+      }
+    elif ! dir_valido "$dir"; then
+      aviso "$APPS_ENV:$linhas: dir '$dir' fora de: $DIRS_PERMITIDOS"
       erros=$((erros + 1))
     fi
     if [[ -n "$flags" ]]; then
@@ -162,7 +236,10 @@ valida() {
       [[ -n "$nome" && "${FQDN[$nome]:-}" == "$fqdn" ]] && { aviso "$APPS_ENV:$linhas: fqdn repetido '$fqdn'"; erros=$((erros + 1)); }
     done
     for nome in "${KEYS[@]:-}"; do
-      [[ -n "$nome" && "${DIR[$nome]:-}" == "$dir" ]] && { aviso "$APPS_ENV:$linhas: dir repetido '$dir'"; erros=$((erros + 1)); }
+      # `-` significa "sem stack local": varias apps manuais sem pasta podem
+      # conviver, mas duas apps na mesma pasta nao.
+      [[ "$dir" != "-" && -n "$nome" && "${DIR[$nome]:-}" == "$dir" ]] &&
+        { aviso "$APPS_ENV:$linhas: dir repetido '$dir'"; erros=$((erros + 1)); }
     done
 
     KEYS+=("$key")
@@ -210,6 +287,10 @@ e_manual() {
   [[ ",${FLAGS[$1]:-}," == *",manual,"* ]]
 }
 
+endereco_site() {
+  echo "${FQDN[$1]}$CADDY_PORTA"
+}
+
 projeto() {
   basename "$1"
 }
@@ -218,39 +299,53 @@ tem_docker() {
   command -v docker >/dev/null 2>&1
 }
 
-containers_do_projeto() {
-  docker ps -a --filter "label=com.docker.compose.project=$1" --format '{{.Names}}' 2>/dev/null || true
+# O nome do projeto compose nem sempre e o da pasta (Portainer, stacks com
+# maiuscula): o rotulo guarda o diretorio real. A pasta declara o dono, o
+# rotulo confirma.
+containers_do_dir() {
+  docker ps -a \
+    --filter "label=com.docker.compose.project.working_dir=$1" \
+    --format '{{.Names}}' 2>/dev/null || true
+}
+
+projeto_do_dir() {
+  local projeto
+  projeto=$(docker ps -a \
+    --filter "label=com.docker.compose.project.working_dir=$1" \
+    --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null | head -1 || true)
+  echo "${projeto:-$(projeto "$1")}"
 }
 
 # --- Caddy ----------------------------------------------------------------
 
-gera_apps() {
+gera_blocos() {
   local k
+  for k in "${KEYS[@]}"; do
+    e_manual "$k" && continue
+    printf '\n%s {\n' "$(endereco_site "$k")"
+    [[ -n "$CADDY_TLS" ]] && printf '\t%s\n' "$CADDY_TLS"
+    printf '\t%s %s\n}\n' "$CADDY_PROXY" "${UPSTREAM[$k]}"
+  done
+}
+
+gera_apps() {
   cat <<TXT
 # Gerado por scripts/stacks/apps-sync.sh. A fonte da verdade e $APPS_ENV.
 # Nao edite este arquivo: ele e reescrito na proxima execucao.
 TXT
-  for k in "${KEYS[@]}"; do
-    e_manual "$k" && continue
-    cat <<TXT
-
-${FQDN[$k]} {
-	import cf
-	import proxy ${UPSTREAM[$k]}
-}
-TXT
-  done
+  gera_blocos
 }
 
 conflito_no_caddyfile() {
-  local fqdn=$1 linha n conteudo corpo
+  local fqdn=$1 endereco=$2 linha n conteudo corpo
   local -a linhas=()
   mapfile -t linhas < <(grep -nF "$fqdn" "$CADDYFILE" 2>/dev/null | cut -d: -f1 || true)
   for n in "${linhas[@]:-}"; do
     [[ -n "$n" ]] || continue
     conteudo=$(sed -n "${n}p" "$CADDYFILE")
     conteudo=${conteudo%$'\r'}
-    if [[ "$conteudo" != "$fqdn {" && "$conteudo" != "$fqdn{" ]]; then
+    if [[ "$conteudo" != "$fqdn {" && "$conteudo" != "$fqdn{" &&
+          "$conteudo" != "$endereco {" && "$conteudo" != "$endereco{" ]]; then
       item "conflito: $CADDYFILE:$n ja cita $fqdn de forma que o gerador nao sabe remover:"
       item "  $conteudo"
       return 0
@@ -266,18 +361,11 @@ conflito_no_caddyfile() {
   return 1
 }
 
-garante_import() {
-  # Le o Caddyfile do stdin e devolve com o import no fim: os snippets (cf,
-  # proxy) ja estao definidos acima, entao a ordem e segura.
-  cat
-  printf '\nimport apps.caddy\n'
-}
-
-# Remove um bloco de host simples (cabecalho `fqdn {`, corpo sem chaves
+# Remove um bloco de host simples (cabecalho `endereco {`, corpo sem chaves
 # aninhadas, fecha em `}` na coluna 0). Recusa qualquer estrutura diferente.
 remove_bloco() {
-  local arquivo=$1 fqdn=$2 escapado
-  escapado=$(printf '%s' "$fqdn" | sed 's/\./[.]/g')
+  local arquivo=$1 endereco=$2 escapado
+  escapado=$(printf '%s' "$endereco" | sed 's/\./[.]/g')
   awk -v alvo="^$escapado[ \t]*[{][ \t]*$" '
     pula == 1 {
       if ($0 ~ /^[ \t]*[{]/) { erro = 1 }
@@ -290,8 +378,59 @@ remove_bloco() {
   ' "$arquivo"
 }
 
+MARCA_INICIO='# >>> apps-sync (gerado; nao edite)'
+MARCA_FIM='# <<< apps-sync'
+
+remove_regiao_inline() {
+  awk -v ini="$MARCA_INICIO" -v fim="$MARCA_FIM" '
+    $0 == ini { dentro = 1; next }
+    $0 == fim { dentro = 0; next }
+    !dentro { print }
+  ' "$1" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
+}
+
+# Caddyfile inteiro com a regiao gerada no fim, sem os blocos manuais que
+# duplicam uma app gerada (primeira migracao).
+caddyfile_inline() {
+  local t1 t2 k endereco
+  t1=$(mktemp)
+  t2=$(mktemp)
+  remove_regiao_inline "$CADDYFILE" >"$t1"
+  cp "$t1" "$t2"
+  for k in "${KEYS[@]}"; do
+    e_manual "$k" && continue
+    endereco=$(endereco_site "$k")
+    if grep -qxF "$endereco {" "$t2"; then
+      if ! remove_bloco "$t2" "$endereco" >"$t1"; then
+        rm -f "$t1" "$t2"
+        erro "o bloco de $endereco no Caddyfile tem chaves aninhadas; remova a mao e rode de novo"
+      fi
+      mv -f "$t1" "$t2"
+      t1=$(mktemp)
+    fi
+  done
+  # Sem blocos gerados no inicio do arquivo, a primeira linha pode sobrar vazia.
+  sed '/./,$!d' "$t2"
+  printf '\n%s\n' "$MARCA_INICIO"
+  gera_blocos
+  printf '%s\n' "$MARCA_FIM"
+  rm -f "$t1" "$t2"
+}
+
+# O arquivo e reescrito como root. Mantem dono e modo do original para o
+# operador seguir editando sem sudo (moya) e o Pi continuar em 644.
+preserva_dono() {
+  local novo=$1 referencia=$2
+  if [[ -f "$referencia" ]]; then
+    chmod --reference="$referencia" "$novo" 2>/dev/null || chmod 0644 "$novo"
+    chown --reference="$referencia" "$novo" 2>/dev/null || true
+  else
+    chmod 0644 "$novo"
+  fi
+}
+
 aplica_caddy() {
-  local k tmp backup mudou=0 fqdn
+  local k tmp backup mudou=0 endereco
   local -a geradas=()
   local conflitos=0
 
@@ -301,62 +440,76 @@ aplica_caddy() {
 
   for k in "${KEYS[@]}"; do
     e_manual "$k" && continue
-    fqdn=${FQDN[$k]}
-    geradas+=("$fqdn")
-    conflito_no_caddyfile "$fqdn" && conflitos=$((conflitos + 1))
+    endereco=$(endereco_site "$k")
+    geradas+=("$endereco")
+    conflito_no_caddyfile "${FQDN[$k]}" "$endereco" && conflitos=$((conflitos + 1))
   done
   [[ $conflitos -eq 0 ]] || erro "resolva os conflitos acima no Caddyfile e rode de novo; nada foi alterado"
 
-  tmp=$(mktemp "$CADDY_DIR/.apps.caddy.XXXXXX")
-  gera_apps >"$tmp"
-  if [[ -f "$CADDY_APPS" ]] && cmp -s "$tmp" "$CADDY_APPS"; then
-    rm -f "$tmp"
-    item "apps.caddy sem mudanca"
-  else
-    chmod 0644 "$tmp"
-    mv -f "$tmp" "$CADDY_APPS"
-    item "apps.caddy atualizado: $CADDY_APPS"
-    mudou=1
-  fi
+  backup="$CADDYFILE.bak-$(date +%Y%m%d-%H%M%S)"
 
-  # O Caddyfile importa apps.caddy de dentro do container. Se o bind mount
-  # nao existe, o import falha e o Caddy antigo continua no ar: melhor parar
-  # aqui, antes de editar o Caddyfile.
-  if ! docker exec "$CADDY_CONTAINER" test -f /etc/caddy/apps.caddy 2>/dev/null; then
-    erro "o container $CADDY_CONTAINER nao ve /etc/caddy/apps.caddy.
+  if [[ "$CADDY_MODO" == "inline" ]]; then
+    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
+    caddyfile_inline >"$tmp"
+    if cmp -s "$tmp" "$CADDYFILE"; then
+      rm -f "$tmp"
+      item "regiao apps-sync sem mudanca"
+    else
+      cp -p "$CADDYFILE" "$backup"
+      preserva_dono "$tmp" "$CADDYFILE"
+      mv -f "$tmp" "$CADDYFILE"
+      item "regiao apps-sync atualizada no Caddyfile (backup: $(basename "$backup"))"
+      mudou=1
+    fi
+  else
+    tmp=$(mktemp "$CADDY_DIR/.apps.caddy.XXXXXX")
+    gera_apps >"$tmp"
+    if [[ -f "$CADDY_APPS" ]] && cmp -s "$tmp" "$CADDY_APPS"; then
+      rm -f "$tmp"
+      item "apps.caddy sem mudanca"
+    else
+      preserva_dono "$tmp" "$CADDY_APPS"
+      mv -f "$tmp" "$CADDY_APPS"
+      item "apps.caddy atualizado: $CADDY_APPS"
+      mudou=1
+    fi
+
+    # O Caddyfile importa apps.caddy de dentro do container. Se o bind mount
+    # nao existe, o import falha e o Caddy antigo continua no ar: melhor parar
+    # aqui, antes de editar o Caddyfile.
+    if ! docker exec "$CADDY_CONTAINER" test -f /etc/caddy/apps.caddy 2>/dev/null; then
+      erro "o container $CADDY_CONTAINER nao ve /etc/caddy/apps.caddy.
     Monte a pasta do Caddy em $CADDY_DIR/compose.yaml, no lugar dos mounts
     de Caddyfile e cloudflare.token:
       - ./:/etc/caddy:ro
     Depois: docker compose up -d && sudo $0 --apply"
-  fi
-
-  # Um backup so, antes de qualquer edicao no Caddyfile desta execucao.
-  backup="$CADDYFILE.bak-$(date +%Y%m%d-%H%M%S)"
-
-  if ! grep -qxF 'import apps.caddy' "$CADDYFILE"; then
-    cp -p "$CADDYFILE" "$backup"
-    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
-    garante_import <"$CADDYFILE" >"$tmp"
-    chmod 0644 "$tmp"
-    mv -f "$tmp" "$CADDYFILE"
-    item "import apps.caddy adicionado ao Caddyfile (backup: $(basename "$backup"))"
-    mudou=1
-  fi
-
-  for fqdn in "${geradas[@]:-}"; do
-    [[ -n "$fqdn" ]] || continue
-    grep -qxF "$fqdn {" "$CADDYFILE" || continue
-    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
-    if ! remove_bloco "$CADDYFILE" "$fqdn" >"$tmp"; then
-      rm -f "$tmp"
-      erro "o bloco de $fqdn no Caddyfile tem chaves aninhadas; remova a mao e rode de novo"
     fi
-    [[ -f "$backup" ]] || cp -p "$CADDYFILE" "$backup"
-    chmod 0644 "$tmp"
-    mv -f "$tmp" "$CADDYFILE"
-    item "bloco de $fqdn saiu do Caddyfile (agora vem de apps.caddy)"
-    mudou=1
-  done
+
+    if ! grep -qxF 'import apps.caddy' "$CADDYFILE"; then
+      cp -p "$CADDYFILE" "$backup"
+      tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
+      garante_import <"$CADDYFILE" >"$tmp"
+      preserva_dono "$tmp" "$CADDYFILE"
+      mv -f "$tmp" "$CADDYFILE"
+      item "import apps.caddy adicionado ao Caddyfile (backup: $(basename "$backup"))"
+      mudou=1
+    fi
+
+    for endereco in "${geradas[@]:-}"; do
+      [[ -n "$endereco" ]] || continue
+      grep -qxF "$endereco {" "$CADDYFILE" || continue
+      tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
+      if ! remove_bloco "$CADDYFILE" "$endereco" >"$tmp"; then
+        rm -f "$tmp"
+        erro "o bloco de $endereco no Caddyfile tem chaves aninhadas; remova a mao e rode de novo"
+      fi
+      [[ -f "$backup" ]] || cp -p "$CADDYFILE" "$backup"
+      preserva_dono "$tmp" "$CADDYFILE"
+      mv -f "$tmp" "$CADDYFILE"
+      item "bloco de $endereco saiu do Caddyfile (agora vem de apps.caddy)"
+      mudou=1
+    done
+  fi
 
   caddy_validate || erro "caddy validate falhou; Caddyfile e apps.caddy mantidos, sem reload"
   if [[ $mudou -eq 1 ]]; then
@@ -374,6 +527,13 @@ aplica_caddy() {
   done
 }
 
+garante_import() {
+  # Le o Caddyfile do stdin e devolve com o import no fim: os snippets (cf,
+  # proxy) ja estao definidos acima, entao a ordem e segura.
+  cat
+  printf '\nimport apps.caddy\n'
+}
+
 caddy_validate() {
   local token=""
   if [[ -r "$CADDY_TOKEN_FILE" ]]; then
@@ -382,11 +542,13 @@ caddy_validate() {
   if [[ -n "$token" ]]; then
     docker exec -e "CLOUDFLARE_API_TOKEN=$token" "$CADDY_CONTAINER" \
       caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
-  else
-    aviso "sem $CADDY_TOKEN_FILE; validando sem o token da Cloudflare"
-    docker exec "$CADDY_CONTAINER" \
-      caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
+    return
   fi
+  if grep -q '{env\.' "$CADDYFILE"; then
+    aviso "sem $CADDY_TOKEN_FILE; validando sem o token da Cloudflare"
+  fi
+  docker exec "$CADDY_CONTAINER" \
+    caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
 }
 
 caddy_reload() {
@@ -396,23 +558,39 @@ caddy_reload() {
 
 # --- DNS ------------------------------------------------------------------
 
+gera_dns() {
+  local k
+  cat <<TXT
+# Gerado por scripts/stacks/apps-sync.sh. Nao edite: ele e reescrito.
+TXT
+  if [[ "$DNS_MODE" == "wildcard" ]]; then
+    cat <<TXT
+# Qualquer nome em *.$DOMAIN responde com o Pi; nao ha entrada por app.
+# Entradas exatas no Pi-hole (custom.list) continuam valendo.
+address=/$DOMAIN/$DNS_IP
+TXT
+  else
+    cat <<TXT
+# Uma entrada por app declarada: $DOMAIN e mDNS, entao sem wildcard.
+TXT
+    for k in "${KEYS[@]}"; do
+      echo "address=/${FQDN[$k]}/$DNS_IP"
+    done
+  fi
+}
+
 aplica_dns() {
   local tmp atual=0
   mkdir -p "$(dirname "$DNS_CONF")"
-  tmp=$(mktemp "$(dirname "$DNS_CONF")/.wildcard.XXXXXX")
-  cat >"$tmp" <<TXT
-# Gerado por scripts/stacks/apps-sync.sh. Qualquer nome em *.$DOMAIN
-# responde com o Pi; nao ha entrada por app. Entradas exatas no Pi-hole
-# (custom.list) continuam valendo e tem precedencia.
-address=/$DOMAIN/$DNS_IP
-TXT
+  tmp=$(mktemp "$(dirname "$DNS_CONF")/.dns.XXXXXX")
+  gera_dns >"$tmp"
   if [[ -f "$DNS_CONF" ]] && cmp -s "$tmp" "$DNS_CONF"; then
     rm -f "$tmp"
-    item "wildcard DNS sem mudanca: $DNS_CONF"
+    item "DNS sem mudanca: $DNS_CONF"
   else
     chmod 0644 "$tmp"
     mv -f "$tmp" "$DNS_CONF"
-    item "wildcard DNS gravado: $DNS_CONF"
+    item "DNS gravado: $DNS_CONF"
     atual=1
   fi
 
@@ -428,16 +606,32 @@ TXT
     item "Pi-hole reiniciado para ler $DNS_CONF"
   fi
 
-  local tentativa valor
+  confirma_dns
+}
+
+confirma_dns() {
+  local tentativa alvo valor k
+  local -a alvos=()
+  if [[ "$DNS_MODE" == "wildcard" ]]; then
+    alvos=("sync-1.$DOMAIN")
+  else
+    for k in "${KEYS[@]}"; do
+      alvos+=("${FQDN[$k]}")
+    done
+  fi
   for tentativa in $(seq 1 20); do
-    valor=$(dig +short +time=2 +tries=1 "sync-$tentativa.$DOMAIN" @"$DNS_QUERY_HOST" 2>/dev/null | head -1 || true)
-    if [[ "$valor" == "$DNS_IP" ]]; then
-      item "wildcard confirmado: *.$DOMAIN -> $DNS_IP"
+    local faltou=""
+    for alvo in "${alvos[@]}"; do
+      valor=$(dig +short +time=2 +tries=1 "$alvo" @"$DNS_QUERY_HOST" 2>/dev/null | head -1 || true)
+      [[ "$valor" == "$DNS_IP" ]] || faltou=$alvo
+    done
+    if [[ -z "$faltou" ]]; then
+      item "DNS confirmado: ${#alvos[@]} nome(s) -> $DNS_IP"
       return 0
     fi
     sleep 1
   done
-  erro "o Pi-hole nao respondeu *.$DOMAIN com $DNS_IP; confira $DNS_CONF e misc.etc_dnsmasq_d"
+  erro "o Pi-hole nao respondeu $faltou com $DNS_IP; confira $DNS_CONF e misc.etc_dnsmasq_d"
 }
 
 # --- Containers e pastas --------------------------------------------------
@@ -456,9 +650,10 @@ relata_containers() {
     return 0
   fi
   for k in "${KEYS[@]}"; do
-    projeto_nome=$(projeto "${DIR[$k]}")
-    presentes=$(containers_do_projeto "$projeto_nome" | paste -sd, -)
+    [[ "${DIR[$k]}" == "-" ]] && continue
+    presentes=$(containers_do_dir "${DIR[$k]}" | paste -sd, -)
     if [[ -z "$presentes" ]]; then
+      projeto_nome=$(projeto "${DIR[$k]}")
       item "container ausente: $k (projeto compose '$projeto_nome', dir ${DIR[$k]})"
       ausentes=$((ausentes + 1))
     else
@@ -469,29 +664,33 @@ relata_containers() {
 }
 
 relata_orfaos() {
-  local arquivo pasta declarado k
+  local arquivo pasta declarado k raiz
   local -A vistos=()
-  while IFS= read -r arquivo; do
-    pasta=$(dirname "$arquivo")
-    [[ -n "${vistos[$pasta]:-}" ]] && continue
-    vistos[$pasta]=1
-    [[ "$pasta" == "$CADDY_DIR" ]] && continue
-    [[ "$pasta" == "$QUARANTINE" || "$pasta" == "$QUARANTINE"/* ]] && continue
-    declarado=0
-    for k in "${KEYS[@]}"; do
-      [[ "${DIR[$k]}" == "$pasta" ]] && declarado=1
-    done
-    [[ $declarado -eq 1 ]] && continue
-    item "stack fora do env (nao sera tocada): $pasta"
-  done < <(find "$STACKS_ROOT" -maxdepth 3 \( -name 'compose.yaml' -o -name 'compose.yml' -o -name 'docker-compose.yml' -o -name 'docker-compose.yaml' \) 2>/dev/null | sort)
+  for raiz in $SCAN_ROOTS; do
+    [[ -d "$raiz" ]] || continue
+    while IFS= read -r arquivo; do
+      pasta=$(dirname "$arquivo")
+      [[ -n "${vistos[$pasta]:-}" ]] && continue
+      vistos[$pasta]=1
+      [[ "$pasta" == "$CADDY_DIR" || "$pasta" == "$PIHOLE_DIR" ]] && continue
+      [[ "$pasta" == "$QUARANTINE" || "$pasta" == "$QUARANTINE"/* ]] && continue
+      declarado=0
+      for k in "${KEYS[@]}"; do
+        [[ "${DIR[$k]}" == "$pasta" ]] && declarado=1
+      done
+      [[ $declarado -eq 1 ]] && continue
+      item "stack fora do env (nao sera tocada): $pasta"
+    done < <(find "$raiz" -maxdepth 3 \( -name 'compose.yaml' -o -name 'compose.yml' -o -name 'docker-compose.yml' -o -name 'docker-compose.yaml' \) 2>/dev/null | sort)
+  done
 }
 
 poda_containers() {
   local k projeto_nome presente
   while IFS= read -r k; do
     [[ -n "$k" ]] || continue
-    projeto_nome=$(projeto "${ANT_DIR[$k]}")
-    presente=$(containers_do_projeto "$projeto_nome" | paste -sd, -)
+    [[ "${ANT_DIR[$k]}" == "-" ]] && continue
+    projeto_nome=$(projeto_do_dir "${ANT_DIR[$k]}")
+    presente=$(containers_do_dir "${ANT_DIR[$k]}" | paste -sd, -)
     if [[ -z "$presente" ]]; then
       item "containers de $k ja estao parados"
       continue
@@ -519,7 +718,7 @@ poda_dados() {
   while IFS= read -r k; do
     [[ -n "$k" ]] || continue
     dir=${ANT_DIR[$k]}
-    [[ -n "$dir" && -d "$dir" ]] || continue
+    [[ "$dir" != "-" && -n "$dir" && -d "$dir" ]] || continue
     if protegida "$dir"; then
       aviso "$dir e caminho de infraestrutura; mover para quarentena exige acao manual"
       continue
@@ -559,8 +758,8 @@ grava_estado() {
     while IFS= read -r k; do
       [[ -n "$k" ]] || continue
       dir=${ANT_DIR[$k]}
-      if [[ -n "$dir" && -d "$dir" ]] ||
-         { tem_docker && [[ -n "$(containers_do_projeto "$(projeto "$dir")")" ]]; }; then
+      if [[ "$dir" != "-" ]] && { [[ -n "$dir" && -d "$dir" ]] ||
+         { tem_docker && [[ -n "$(containers_do_dir "$dir")" ]]; }; }; then
         echo "$k|${ANT_FQDN[$k]}|${ANT_UPSTREAM[$k]}|$dir|${ANT_FLAGS[$k]}"
       fi
     done < <(lista_removidas)
@@ -570,8 +769,9 @@ grava_estado() {
   item "estado gravado: $APPS_STATE"
 }
 
-# Entradas exatas no Pi-hole (dns.hosts/custom.list) vencem o wildcard: se o
-# nome saiu do env, a resolucao continua ate alguem remover pela UI.
+# Entradas exatas no Pi-hole (Local DNS) vencem o DNS gerado: se o nome nao
+# esta no env, a resolucao continua la ate alguem remover pela UI. O script
+# nao edita esse arquivo: o Pi-hole o reescreve.
 relata_dns_exatos() {
   local nome sobrando=0
   local escapado=${DOMAIN//./\\.}
@@ -581,13 +781,18 @@ relata_dns_exatos() {
   while IFS= read -r nome; do
     [[ -n "$nome" ]] || continue
     declarado_fqdn "$nome" && continue
-    item "Pi-hole ainda tem entrada exata para $nome (fora do env); o wildcard cobre, mas a entrada fica"
+    item "Pi-hole ainda tem entrada exata para $nome (fora do env)"
     sobrando=1
   done < <(
-    docker exec "$PIHOLE_CONTAINER" grep -hoE "\"[^\"]*\.$escapado\"" \
-      /etc/pihole/pihole.toml 2>/dev/null | tr -d '"' | awk '{print $NF}' | sort -u
+    {
+      docker exec "$PIHOLE_CONTAINER" grep -hoE "\"[^\"]*\.$escapado\"" \
+        /etc/pihole/pihole.toml 2>/dev/null | tr -d '"' | awk '{print $NF}'
+      docker exec "$PIHOLE_CONTAINER" cat /etc/pihole/hosts/custom.list 2>/dev/null |
+        awk '{print $2}'
+    } | grep -E "\.$escapado$" | sort -u
   )
-  [[ $sobrando -eq 0 ]] || item "remova essas entradas na UI do Pi-hole (Local DNS) se quiser o DNS so pelo env"
+  [[ $sobrando -eq 0 ]] ||
+    item "essas entradas sao da UI do Pi-hole (Local DNS); remova a mao se quiser o DNS so pelo env"
 }
 
 # --- Plano ----------------------------------------------------------------
@@ -598,12 +803,13 @@ mostra_plano() {
   for k in "${KEYS[@]}"; do
     if e_manual "$k"; then
       manuais=$((manuais + 1))
-      item "manual: ${FQDN[$k]} (bloco escrito a mao no Caddyfile; upstream ${UPSTREAM[$k]})"
+      item "manual: $(endereco_site "$k") (bloco escrito a mao no Caddyfile; upstream ${UPSTREAM[$k]})"
     else
       geradas=$((geradas + 1))
-      item "rota: ${FQDN[$k]} -> ${UPSTREAM[$k]}"
+      item "rota: $(endereco_site "$k") -> ${UPSTREAM[$k]}"
     fi
-    [[ -d "${DIR[$k]}" ]] || item "pasta ausente: ${DIR[$k]} (a rota ainda pode ser gerada)"
+    [[ "${DIR[$k]}" == "-" || -d "${DIR[$k]}" ]] ||
+      item "pasta ausente: ${DIR[$k]} (a rota ainda pode ser gerada)"
   done
   item "apps: ${#KEYS[@]} declaradas, $geradas geradas, $manuais manuais"
 
@@ -624,17 +830,6 @@ mostra_plano() {
 
 # --- Entrada --------------------------------------------------------------
 
-for arg in "$@"; do
-  case "$arg" in
-    --apply) APLICAR=1 ;;
-    --prune-containers) PODAR_CONTAINERS=1 ;;
-    --prune-data) PODAR_DADOS=1 ;;
-    --yes) YES=1 ;;
-    -h|--help) uso; exit 0 ;;
-    *) erro "argumento desconhecido: $arg (veja --help)" ;;
-  esac
-done
-
 if [[ $PODAR_CONTAINERS -eq 1 || $PODAR_DADOS -eq 1 ]]; then
   [[ $APLICAR -eq 1 ]] || erro "--prune-containers/--prune-data exigem --apply"
 fi
@@ -644,7 +839,7 @@ fi
 
 if [[ $APLICAR -eq 1 ]]; then
   if [[ $EUID -ne 0 && "$TEST_MODE" != "1" ]]; then
-    erro "--apply precisa de root (sudo): escreve em $STACKS_ROOT e em $APPS_STATE"
+    erro "--apply precisa de root (sudo): escreve em $CADDY_DIR e em $APPS_STATE"
   fi
   tem_docker || erro "--apply precisa do docker no PATH"
   command -v dig >/dev/null 2>&1 || erro "--apply precisa do dig para confirmar o DNS"
@@ -682,5 +877,5 @@ relata_dns_exatos
 
 secao "resumo"
 item "${#KEYS[@]} apps declaradas e aplicadas"
-item "Caddy: $CADDY_APPS"
+item "Caddy: ${CADDYFILE}"
 item "DNS: $DNS_CONF"

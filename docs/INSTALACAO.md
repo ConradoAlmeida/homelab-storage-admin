@@ -76,6 +76,26 @@ Sem `--apply` nada é escrito. Depois de remover uma linha do `apps.env`, o
 `--prune-containers` e `--prune-data` (quarentena em
 `/opt/stacks/_removidos/`).
 
+### Apps e rotas no moya
+
+Mesmo arquivo, mesmo script, com `--perfil moya`:
+
+```bash
+sudo install -m 0644 deploy/moya/apps.env.example /etc/homelab-storage-admin/apps.env
+sudo scripts/stacks/apps-sync.sh --perfil moya            # dry-run
+sudo scripts/stacks/apps-sync.sh --perfil moya --apply    # Caddyfile + DNS
+```
+
+- O gerador escreve no fim de `/home/conrado/caddy/Caddyfile`, entre
+  `# >>> apps-sync` e `# <<< apps-sync`, e recarrega o container. O stack do
+  Caddy é do Portainer (não há compose no host), então nada é recriado.
+- O DNS vai para `etc-dnsmasq.d/10-apps-local.conf`, uma linha
+  `address=/<nome>/192.168.0.10` por app. `.local` é mDNS: não há wildcard.
+- `--prune-data` move a pasta para `/home/conrado/_removidos/`.
+
+O `host.env` do moya precisa de `APPS_ENV_PATH=/etc/homelab-storage-admin/apps.env`
+para a página Configuração listar o arquivo.
+
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
 rode antes `sudo ./install-agent.sh`. Ele também exige o `.env` do clone
@@ -284,7 +304,7 @@ No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A ba
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
-| `APPS_ENV_PATH` | `/etc/homelab-storage-admin/apps.env` | fonte das rotas do Caddy/DNS mostrada em Configuração; vazio no moya esconde a linha |
+| `APPS_ENV_PATH` | `/etc/homelab-storage-admin/apps.env` | fonte das rotas do Caddy/DNS mostrada em Configuração; vazio esconde a linha |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 | `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
 | `TORRENT_API_TOKEN` | vazio | Primeiro token da API, se o banco ainda não tiver um. Depois a página Torrents é quem troca |
