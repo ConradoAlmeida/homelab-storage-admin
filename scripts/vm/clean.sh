@@ -106,6 +106,13 @@ for proj in "${PROJETOS[@]:-}"; do
   done
 done
 
+# Rede externa criada pelo perfil moya (o stack real do Credenciais e de outro
+# repo e nao roda nesta bancada).
+if command -v docker >/dev/null 2>&1 && docker network inspect moya >/dev/null 2>&1; then
+  echo "    rede: moya"
+  executa docker network rm moya >/dev/null
+fi
+
 # ------------------------------------------------------------------ systemd
 
 UNITS=(
