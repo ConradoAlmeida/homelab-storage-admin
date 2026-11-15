@@ -144,7 +144,9 @@ Vale para Pi e moya. A ordem importa:
    ./deploy.sh
    ```
    O `deploy.sh` exige `host.env`, lê `COMPOSE_OVERLAY` e aborta se o overlay
-   não existir.
+   não existir. Ele termina conferindo `/login/` no endereço de `BIND_ADDR`:
+   sem resposta em 90 s, sai 1 com o comando de `logs`. Se o `apps.env` for
+   mais novo que o estado do `--apply`, avisa e mostra o comando do perfil.
 4. **Atalhos** (opcional, sem restart): saem do `deploy/<perfil>/apps.env`
    (`atalho=painel`), não de um arquivo copiado à mão.
    ```bash

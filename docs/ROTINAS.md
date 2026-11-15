@@ -90,7 +90,10 @@ qualquer outra (`moya-weather` é assim).
 3. Commit + push (`main` protegido; o check `test` precisa passar).
 4. No host: `cd /opt/stacks/homelab-storage-admin && ./deploy.sh`
    — `git pull` + build + recreate. Migrações rodam no entrypoint; no Pi o
-   deploy avisa quando precisa de `sudo` (config do qBittorrent).
+   deploy avisa quando precisa de `sudo` (config do qBittorrent). O script só
+   termina com `OK: …/login/ -> 200` quando o app responde (até 90 s); sem
+   resposta ele sai 1 e imprime o comando de `logs`. Se o pull mexeu no
+   `apps.env` e o `--apply` não rodou, ele avisa com o comando pronto.
 5. Se `agent/` mudou: `sudo ./install-agent.sh` (o deploy avisa; ele não instala).
 6. Confira `/saude/`, `/sistema/logs/` e a página alterada. Mudança em caminho
    crítico pede bancada de VM (`docs/VM_TESTES.md`).

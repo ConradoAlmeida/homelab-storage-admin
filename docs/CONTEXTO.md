@@ -38,7 +38,8 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   (`/sistema/rotas/`) mostra o declarado no env e o que o último `--apply`
   aplicou, sem escrever nada. `--doctor` aponta o
   que diverge (Caddy, DNS, containers, portas, pastas) sem escrever, e
-  `--descobrir` sugere a linha de stacks fora do env. O check de containers usa
+  `--descobrir` sugere a linha pronta de stacks fora do env (com `atalho=`,
+  upstream do perfil e a porta web entre as publicadas). O check de containers usa
   o rótulo `working_dir`, então o projeto compose pode ter outro nome que a
   pasta. Ver [REDE](REDE.md#apps-e-rotas-appsenv).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
@@ -262,7 +263,7 @@ git push origin feat/credenciais-login:main
 ```bash
 # no servidor (Pi ou moya)
 cd /opt/stacks/homelab-storage-admin
-./deploy.sh
+./deploy.sh   # termina em OK: …/login/ -> 200; avisa se o apps.env espera --apply
 
 # se agent/ mudou
 sudo ./install-agent.sh
