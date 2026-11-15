@@ -50,11 +50,13 @@ nome e para o certificado Let's Encrypt (DNS-01). `homelab`, `dockge`,
 `jellyfin` e `pihole` não têm A nem CNAME público. `dig @1.1.1.1`
 volta vazio. A Cloudflare não resolve a navegação.
 
-Em casa o Pi-hole escuta em todas as interfaces e responde esses quatro nomes
-com `192.168.0.150`. Fora de casa só o Tailscale. No 5G o app manda só
-`conradhub.com` para `100.84.34.25`; o Pi-hole responde; o tráfego a
-`192.168.0.150` volta pela rota. Sem Tailscale e fora da LAN, o nome não
-resolve.
+Em casa o Pi-hole escuta em todas as interfaces e responde qualquer nome em
+`conradhub.com` com `192.168.0.150` por um wildcard
+(`address=/conradhub.com/192.168.0.150` em
+`/opt/stacks/pihole/etc-dnsmasq.d/`). Não existe entrada de DNS por app. Fora
+de casa só o Tailscale. No 5G o app manda só `conradhub.com` para
+`100.84.34.25`; o Pi-hole responde; o tráfego a `192.168.0.150` volta pela
+rota. Sem Tailscale e fora da LAN, o nome não resolve.
 
 | Uso | Endereço |
 |---|---|
@@ -72,6 +74,24 @@ HTTPS termina no Caddy do Pi, imagem `homelab-caddy:2` (caddy +
 `caddy-dns/cloudflare`), stack `/opt/stacks/caddy`, network host. O token de
 API (Zone DNS Edit, só a zona) fica em `/opt/stacks/caddy/cloudflare.token`,
 modo 600, root, fora do Git. O token só cria o TXT do desafio.
+
+### Apps e rotas (apps.env)
+
+`/etc/homelab-storage-admin/apps.env` é a fonte da verdade das rotas, uma app
+por linha: `key|fqdn|upstream|dir|flags`. O `scripts/stacks/apps-sync.sh` lê o
+arquivo e:
+
+- gera `/opt/stacks/caddy/apps.caddy` (importado pelo `Caddyfile`), valida e
+  recarrega o Caddy;
+- garante o wildcard de DNS no Pi-hole;
+- compara o declarado com os containers e pastas do host;
+- aponta quem saiu do env; `--prune-containers` para os containers e
+  `--prune-data` move a pasta para `/opt/stacks/_removidos/<key>-<data>`.
+  Nada é apagado.
+
+Sem `--apply` é dry-run. O bloco marcado `manual` (Jellyfin, regra de
+playback; Pi-hole, redirect) continua escrito à mão no `Caddyfile` e o
+gerador não toca nele. App nova = uma linha no env + `--apply`.
 
 **Tailscale, só no Pi.** Nó `homelab`, `100.84.34.25`, MagicDNS
 `homelab.tail1a4ccb.ts.net`. SSH do Tailscale desligado. Chave sem expiração.

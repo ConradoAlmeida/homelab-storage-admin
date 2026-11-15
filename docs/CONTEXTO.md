@@ -8,9 +8,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `783d901` (2026-11-12; contrato de tabelas e toolbar) |
-| Último deploy | 12/11/2026, moya (`./deploy.sh`; tabelas padronizadas, topo com serviços e admins locais). O Pi segue no deploy de 04/11 |
-| Testes | `453 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
+| Versão no moya | `6571c7a` (2026-11-15; Cockpit removido do repo e dos hosts) |
+| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `6571c7a`). O agente do Pi ainda difere num comentário até o `install-agent.sh` do dono |
+| Testes | `466 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -26,6 +26,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   `.lan` saíram. SSH em casa é `conrado@homelab.local`. Sem túnel e sem
   Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
   Ver [REDE](REDE.md#nomes).
+- Rotas do Caddy a partir de `/etc/homelab-storage-admin/apps.env`
+  (`scripts/stacks/apps-sync.sh`): dry-run por padrão, `--apply` gera
+  `apps.caddy` e o wildcard DNS, e os prunes param containers ou movem a pasta
+  da app removida para `/opt/stacks/_removidos/`. App nova é uma linha no env.
+  Ver [REDE](REDE.md#apps-e-rotas-appsenv).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A lista do share cita o disco do caminho; um RAID mostra os dois membros.
   A política de snapshot também se configura e se edita pela UI, inclusive em
@@ -188,6 +193,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
    [plano](plans/2026-11-04-tunnel-tailscale.md), [REDE](REDE.md),
    [SEGURANCA](SEGURANCA.md).
 2. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
+   Junto: `sudo ./install-agent.sh` (comentário divergente) e o bloco do
+   `apps-sync` abaixo.
+3. **Reconciler de apps no Pi** (`scripts/stacks/apps-sync.sh`): pronto e
+   testado em sandbox, dry-run validado. Falta o `sudo` do dono para montar
+   `apps.caddy` no stack do Caddy, instalar o `apps.env` e rodar `--apply`.
 3. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
    já existem no painel; restore restic também. Hardware real de disco/USB
    de cópia fria continua o limite para o teste físico.

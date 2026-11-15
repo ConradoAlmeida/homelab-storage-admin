@@ -50,6 +50,28 @@ sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
 ./deploy.sh               # usa host.env + COMPOSE_OVERLAY
 ```
 
+### Apps e rotas (Caddy + DNS)
+
+O Caddy e o Pi-hole do Pi são reconciliados pelo `apps.env`:
+
+```bash
+sudo install -m 0644 deploy/pi/apps.env.example /etc/homelab-storage-admin/apps.env
+sudo scripts/stacks/apps-sync.sh            # dry-run: mostra o plano
+sudo scripts/stacks/apps-sync.sh --apply    # gera apps.caddy + wildcard DNS
+```
+
+O stack do Caddy precisa montar o arquivo gerado (`compose.yaml` dele, uma vez):
+
+```yaml
+volumes:
+  - ./apps.caddy:/etc/caddy/apps.caddy:ro
+```
+
+Sem `--apply` nada é escrito. Depois de remover uma linha do `apps.env`, o
+`--apply` sozinho não para containers nem mexe em pasta: use
+`--prune-containers` e `--prune-data` (quarentena em
+`/opt/stacks/_removidos/`).
+
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
 rode antes `sudo ./install-agent.sh`. Ele também exige o `.env` do clone
