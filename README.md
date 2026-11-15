@@ -117,6 +117,7 @@ Detalhes: [Arquitetura](docs/ARQUITETURA.md#perfis-de-host).
 | Documento | Conteúdo |
 |---|---|
 | [Instalação e deploy](docs/INSTALACAO.md) | Pré-requisitos, deploy, checklist, rollback, boot, dev local e `.env` |
+| [Rotinas do dia a dia](docs/ROTINAS.md) | Adicionar/remover app, atalhos, deploy de código e rotinas extras |
 | [Arquitetura e código](docs/ARQUITETURA.md) | Container/agente, perfis de host, Btrfs, estrutura, UI e Credenciais |
 | [Snapshots, discos e Samba](docs/ARMAZENAMENTO.md) | Snapshots, Jellyfin, histórico, SMART e shares |
 | [Backups](docs/BACKUPS.md) | Disco de backup, jobs restic, backup local, cópia fria e Gitea |
