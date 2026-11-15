@@ -112,6 +112,22 @@ fi
 echo "==> UFW (instalado, NAO ativado)"
 ufw status || true
 
+# Marca a maquina como bancada descartavel. O clean.sh recusa rodar sem isto,
+# porque ele apaga units, binarios e diretorios do projeto.
+echo "==> Marcador da bancada"
+install -d -m 0700 /var/lib/homelab-vm-bench
+if [[ ! -f /var/lib/homelab-vm-bench/smb.conf.bench ]]; then
+    # Baseline que o clean.sh restaura (inclui o share e2e criado acima).
+    install -m 0644 /etc/samba/smb.conf /var/lib/homelab-vm-bench/smb.conf.bench
+fi
+{
+    echo "bancada de VM do homelab-storage-admin"
+    echo "criada em $(date -Iseconds)"
+    echo "host $(hostname)"
+} >/etc/homelab-vm-bench
+chmod 0644 /etc/homelab-vm-bench
+echo "    /etc/homelab-vm-bench e /var/lib/homelab-vm-bench"
+
 echo
 echo "==> Pronto."
 echo "Samba:   systemctl status smbd"
