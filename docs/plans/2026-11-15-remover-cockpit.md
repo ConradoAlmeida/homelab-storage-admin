@@ -28,23 +28,27 @@ vhost órfão do Caddy no Pi, para que docs e config descrevam só o que existe.
 
 ## Passos
 
-- [ ] 1. Limpar as referências no repo e ajustar os dois testes.
-- [ ] 2. `uv run pytest` no clone local.
-- [ ] 3. Bench na VM (perfil homelab) depois do commit.
-- [ ] 4. Pi: remover `cockpit.*.lan` do `Caddyfile`, recarregar o Caddy e
-      trocar o `/etc/motd.d/cockpit`.
-- [ ] 5. Deploy do Pi e do moya no HEAD (comentário do `services.ini` do Pi
-      incluído).
+- [x] 1. Limpar as referências no repo e ajustar os dois testes
+      (`6571c7a`, zero ocorrências fora de `docs/plans/`).
+- [x] 2. `uv run pytest` no clone local: 453 passed, 8 skipped.
+- [x] 3. Bench na VM com o commit novo, snapshots recriados:
+      homelab 453+8 lab e moya 138+453, 7 rotas 200 nos dois.
+- [ ] 4. Pi (sudo do dono): tirar `cockpit.*.lan` do `Caddyfile`, recarregar
+      o Caddy, remover `/etc/motd.d/cockpit` e instalar o motd novo, e rodar
+      `install-agent.sh` (o commit mexeu num comentário do agente).
+- [x] 5. Deploy do Pi e do moya no HEAD (`6571c7a`); `services.ini` do Pi
+      sem o comentário do cockpit; agente do moya reinstalado.
 
 ## Verificação
 
-- `grep -ri cockpit` no repo não devolve referência a serviço (só o comentário
-  do agente sobre `udisksd`).
-- `pytest` 453/8 e bench homelab verdes.
-- `dig +short cockpit.conradhub.com @192.168.0.150` vazio; `curl` no vhost
-  antigo responde 410 como os outros nomes `.lan` removidos.
-- Card do Cockpit ausente no dashboard do Pi.
+- `grep -ri cockpit` no repo: zero fora de `docs/plans/`.
+- `pytest` 453/8 e bench homelab/moya verdes.
+- Card do Cockpit ausente no dashboard do Pi (o bloco `[cockpit]` já tinha
+  saído do `services.ini` real).
+- Pendente no Pi até o passo 4: `cockpit.*.lan` no `Caddyfile`,
+  `/etc/motd.d/cockpit` e o comentário antigo no agente instalado (o
+  `deploy.sh` avisa "agente diferente" só por causa disso).
 
 ## Estado
 
-Autorizado em 2026-11-15 ("prioridade é código limpo").
+Repo e hosts em `6571c7a`. Falta só o bloco que exige `sudo` no Pi.
