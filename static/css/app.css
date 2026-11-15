@@ -205,7 +205,6 @@ a:hover { color:var(--acc-hover); }
     .service-arrow { margin-left:auto; color:var(--muted); font-size:13px; opacity:.45; }
     .service-card:hover .service-arrow { color:var(--tint); opacity:.9; }
     .service-card.jellyfin { --tint:#a78bfa; }
-    .service-card.cockpit { --tint:#2dd4bf; }
     .service-card.dockge { --tint:#fbbf24; }
     .service-card.pihole { --tint:#fb7185; }
     .dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:start; }

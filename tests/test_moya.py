@@ -35,5 +35,5 @@ def test_readme_documents_profiles_and_neighbors():
     assert "host.env" in text
     assert "docker-compose.homelab.yml" in text
     assert "docker-compose.moya.yml" in text
-    assert "Cockpit" in text
+    assert "Jellyfin" in text
     assert "Pi-hole" in text

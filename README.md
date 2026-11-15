@@ -109,7 +109,7 @@ Ele só pede operações conhecidas ao agente, que valida cada argumento.
 O mesmo código atende o Pi, o moyaserver e um Ubuntu+Samba. O perfil fica em
 `/etc/homelab-storage-admin/host.env`; os overlays são
 `docker-compose.homelab.yml` (Pi) e `docker-compose.moya.yml` (moya). O app
-**não** gerencia Cockpit, Pi-hole, Caddy, DNS nem o Jellyfin — são vizinhos.
+**não** gerencia Pi-hole, Caddy, DNS nem o Jellyfin — são vizinhos.
 Detalhes: [Arquitetura](docs/ARQUITETURA.md#perfis-de-host).
 
 ## Documentação

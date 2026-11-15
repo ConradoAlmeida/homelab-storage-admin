@@ -2,7 +2,7 @@
 # services.ini e edite a lista. Servico sem url valida nao aparece.
 #
 # Campos: name, description, url, icon, color, order.
-# Icones conhecidos: jellyfin, cockpit, dockge, pihole; outros usam o icone
+# Icones conhecidos: jellyfin, dockge, pihole; outros usam o icone
 # generico. Nao ha descoberta nem health check.
 # URLs https://*.conradhub.com. Sem DNS público: em casa o Pi-hole,
 # fora só com Tailscale. pihole.conradhub.com só nesses dois casos.
@@ -14,14 +14,6 @@ url = https://jellyfin.conradhub.com
 icon = jellyfin
 color = #a78bfa
 order = 10
-
-[cockpit]
-name = Cockpit
-description = Host · sistema e logs
-url = https://cockpit.conradhub.com
-icon = cockpit
-color = #2dd4bf
-order = 20
 
 [dockge]
 name = Dockge

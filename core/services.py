@@ -1,7 +1,7 @@
 """Atalhos de serviços configurados por host.
 
 O app não descobre nem sonda serviços. Ele apenas renderiza os atalhos que o
-operador escolheu em ``services.ini`` (por exemplo, Jellyfin, Cockpit, Gitea).
+operador escolheu em ``services.ini`` (por exemplo, Jellyfin, Dockge, Gitea).
 """
 from __future__ import annotations
 

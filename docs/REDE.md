@@ -46,11 +46,11 @@ publicar em `127.0.0.1` e deixar o Caddy expor.
 ### Nomes
 
 O domínio `conradhub.com` (zona na Cloudflare, NS cameron/hera) existe para o
-nome e para o certificado Let's Encrypt (DNS-01). `homelab`, `cockpit`,
-`dockge`, `jellyfin` e `pihole` não têm A nem CNAME público. `dig @1.1.1.1`
+nome e para o certificado Let's Encrypt (DNS-01). `homelab`, `dockge`,
+`jellyfin` e `pihole` não têm A nem CNAME público. `dig @1.1.1.1`
 volta vazio. A Cloudflare não resolve a navegação.
 
-Em casa o Pi-hole escuta em todas as interfaces e responde esses cinco nomes
+Em casa o Pi-hole escuta em todas as interfaces e responde esses quatro nomes
 com `192.168.0.150`. Fora de casa só o Tailscale. No 5G o app manda só
 `conradhub.com` para `100.84.34.25`; o Pi-hole responde; o tráfego a
 `192.168.0.150` volta pela rota. Sem Tailscale e fora da LAN, o nome não
@@ -59,7 +59,6 @@ resolve.
 | Uso | Endereço |
 |---|---|
 | Painel | `https://homelab.conradhub.com` |
-| Cockpit | `https://cockpit.conradhub.com` |
 | Dockge | `https://dockge.conradhub.com` |
 | Jellyfin | `https://jellyfin.conradhub.com` |
 | Pi-hole (só em casa ou com Tailscale) | `https://pihole.conradhub.com` |

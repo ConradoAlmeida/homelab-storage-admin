@@ -74,7 +74,6 @@ def test_example_has_current_pi_services():
     services = load_services(ROOT / "services.ini.example")
     assert [service.key for service in services] == [
         "jellyfin",
-        "cockpit",
         "dockge",
         "pihole",
     ]

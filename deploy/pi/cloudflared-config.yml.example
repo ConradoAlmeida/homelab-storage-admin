@@ -13,11 +13,6 @@ ingress:
     originRequest:
       connectTimeout: 10s
       noTLSVerify: true
-  - hostname: cockpit.conradhub.com
-    service: https://192.168.0.150
-    originRequest:
-      connectTimeout: 10s
-      noTLSVerify: true
   - hostname: dockge.conradhub.com
     service: https://192.168.0.150
     originRequest:

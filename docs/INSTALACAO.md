@@ -150,7 +150,7 @@ terceiros (Pi-hole/Dockge/Caddy), que estão fora do escopo do app.
 O banner de login do Pi também fica versionado:
 
 ```bash
-sudo install -m 0644 deploy/pi/motd /etc/motd.d/cockpit
+sudo install -m 0644 deploy/pi/motd /etc/motd.d/homelab-storage
 ```
 
 ### Desenvolvimento local (uv)

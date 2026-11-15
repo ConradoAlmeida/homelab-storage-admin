@@ -7259,8 +7259,8 @@ def op_journal(
             raise AgentError("Periodo invalido")
         argv.extend(["-p", p, "-S", _journal_since(per)])
     elif f == "storage":
-        # Duas fontes em OU: o identificador udisksd (o unit do apt/Cockpit
-        # nao filtra sozinho) e o kernel de Btrfs/md/RAID.
+        # Duas fontes em OU: o identificador udisksd (o filtro por unit nao
+        # basta) e o kernel de Btrfs/md/RAID.
         linhas_storage = _journal_linhas(
             ["-t", "udisksd", "-S", "24 hours ago"], n
         )

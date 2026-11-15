@@ -60,7 +60,7 @@ No perfil do Pi, o exemplo também inclui `5001/tcp` (Dockge) e `8080/tcp`
 
 O agente detecta `btrfs`, `restic`, `smartctl`, `hdparm`, `mdadm`, fans e o
 filesystem do `STORAGE_ROOT`. A UI esconde abas/botões quando o recurso não
-existe; nada deve virar erro 500. O app **não gerencia** Cockpit, Pi-hole,
+existe; nada deve virar erro 500. O app **não gerencia** Pi-hole,
 Caddy, DNS, a configuração do Jellyfin ou o data-root do Docker. No Pi o
 navegador usa `https://homelab.conradhub.com`; o Caddy (`homelab-caddy:2`,
 `/opt/stacks/caddy`) termina o TLS. Fora de casa só o Tailscale. Detalhe em
@@ -115,7 +115,7 @@ order = 10
 ```
 
 - `url` precisa ser `http://` ou `https://`; inválida é ignorada.
-- `icon`: `jellyfin`, `cockpit`, `dockge`, `pihole` ou `generic`.
+- `icon`: `jellyfin`, `dockge`, `pihole` ou `generic`.
 - `color`: hexadecimal `#rrggbb`; inválida cai no azul padrão.
 - `order`: inteiro; menor aparece primeiro.
 - Sem arquivo ou arquivo vazio: nenhum card é exibido.
