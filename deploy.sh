@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Atualiza o Homelab Storage Admin no rpi5 a partir do GitHub.
 # Uso (no Pi): ./deploy.sh
+# Termina conferindo /login/ e rodando o apps-sync --doctor. Se o proprio
+# deploy.sh mudar no pull, reexecuta uma vez para nao rodar o tail antigo.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
