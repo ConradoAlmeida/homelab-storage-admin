@@ -127,7 +127,10 @@ case "${PERFIL:-pi}" in
 esac
 
 # --- padroes comuns -------------------------------------------------------
-APPS_ENV=${APPS_ENV:-/etc/homelab-storage-admin/apps.env}
+# O env vive no repo, ao lado deste script: a fonte da verdade e versionada e
+# o deploy.sh (git pull) a mantem no mesmo commit do codigo.
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+APPS_ENV=${APPS_ENV:-$REPO_ROOT/deploy/$PERFIL/apps.env}
 APPS_STATE=${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}
 # Fragmentos de Caddyfile versionados: ficam ao lado do apps.env, no repo.
 SNIPPETS_DIR=${SNIPPETS_DIR:-$(dirname "$APPS_ENV")/snippets}
@@ -244,7 +247,7 @@ valida() {
   local linha key fqdn upstream dir flags campo nome
   local -a campos
 
-  [[ -r "$APPS_ENV" ]] || erro "nao consigo ler $APPS_ENV"
+  [[ -r "$APPS_ENV" ]] || erro "nao consigo ler $APPS_ENV (esperado deploy/$PERFIL/apps.env no checkout)"
   [[ "$DOMAIN" =~ ^[a-z0-9.-]+$ ]] || erro "dominio invalido: $DOMAIN"
 
   while IFS= read -r linha || [[ -n "$linha" ]]; do

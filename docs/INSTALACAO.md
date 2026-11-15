@@ -53,7 +53,7 @@ sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
 ### Apps e rotas (Caddy + DNS)
 
 O Caddy e o Pi-hole do Pi são reconciliados pelo `deploy/pi/apps.env`, que é
-versionado no repo (o `host.env` aponta `APPS_ENV_PATH` para ele):
+versionado no repo e lido pelo próprio script:
 
 ```bash
 sudo scripts/stacks/apps-sync.sh            # dry-run: mostra o plano
@@ -100,9 +100,10 @@ scripts/stacks/apps-sync.sh --perfil moya --doctor
   `address=/<nome>/192.168.0.10` por app. `.local` é mDNS: não há wildcard.
 - `--prune-data` move a pasta para `/home/conrado/_removidos/`.
 
-O `host.env` do moya precisa de
-`APPS_ENV_PATH=/opt/stacks/homelab-storage-admin/deploy/moya/apps.env` para a
-página Configuração listar o arquivo (no Pi, o caminho é o `deploy/pi/apps.env`).
+O script lê `deploy/moya/apps.env` do checkout. Para a página Configuração
+listar o arquivo, o `host.env` do moya leva
+`APPS_ENV_PATH=/opt/stacks/homelab-storage-admin/deploy/moya/apps.env` (no Pi,
+o caminho equivalente é `deploy/pi/apps.env`).
 
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
