@@ -81,7 +81,7 @@ confirma() {
 }
 
 existe_snapshot() {
-  v snapshot-list --name "$VM" 2>/dev/null | grep -qx "$1"
+  v snapshot-list "$VM" --name 2>/dev/null | grep -qx "$1"
 }
 
 liga_ou_falha() {
