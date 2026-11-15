@@ -114,8 +114,9 @@ que nao sobrou nada e recriar o snapshot. Repositorios em `~` nao sao tocados.
   snapshot.
 - **Backups/restic:** anexe um disco virtual secundario (ex.: `/dev/vdb`) e use
   o wizard do painel; loop devices tambem servem para o repo restic.
-- **Disco curto:** a VM tem 9,8 GB e chega a ~66% de uso. Aumente o disco antes
-  de acumular repos restic.
+- **Disco:** 18 GB com ~11 GB livres (crescido em 2026-11-15); ainda cabe um
+  repo restic de teste. Crescer de novo exige apagar os snapshots, porque o
+  snapshot interno guarda o tamanho do disco.
 
 ## O que nao da para validar na VM
 

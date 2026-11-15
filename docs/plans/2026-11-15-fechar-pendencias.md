@@ -58,3 +58,20 @@ removido; clone local em `main`, limpo, com o rascunho do Cockpit em
 O `host.env` dos dois hosts não tem algumas chaves dos exemplos
 (`SYSTEM_MANAGE`, `FIREWALL_MANAGE`, `TERMINAL_ENABLE`, `SSH_LOGIN`…), mas os
 defaults do `settings.py` já são `1`: nenhum comportamento mudou.
+
+## Continuação (mesmo dia)
+
+- **CI obrigatório em PR:** `main` passou a exigir o check `test` (GitHub
+  Actions, `strict: false`). Push direto continua passando, mas o GitHub
+  registra "bypassed rule violations" no push — é o admin usando o bypass.
+- **Disco da VM:** 9,8 GB → 18 GB de filesystem (`pvresize` + `lvextend` +
+  `resize2fs`). Os três snapshots foram apagados antes, porque o snapshot
+  interno guarda o tamanho do disco, e recriados depois (`base-limpo`,
+  `homelab-pronto`, `moya-pronto`) com 11 GB livres.
+- **Bug encontrado na limpeza:** o `perfil-moya.sh` registrava no manifesto
+  `/srv/samba` e `/mnt/data`, que vêm do `setup-ubuntu-2604.sh`, e o
+  `clean.sh` apagava os dois (o `base-limpo` perdia o share `e2e`). Corrigido
+  em `20d5753`: só entra no manifesto o que o perfil criou.
+- **Cockpit:** não está instalado nem rodando em nenhum host (sem pacote, sem
+  `cockpit.socket`, porta 9090 fechada). No Pi sobra só `cockpit.*.lan` na
+  lista de nomes que respondem 410. O rascunho dos docs continua em `stash@{0}`.
