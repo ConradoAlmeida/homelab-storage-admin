@@ -48,9 +48,14 @@ for caminho in /mnt/nas /mnt/jellyfin /mnt/backup; do
     echo "    ja montado, preservado: $caminho"
     continue
   fi
-  mkdir -p "$caminho"
-  registra "$caminho"
-  echo "    diretorio: $caminho"
+  if [[ -d "$caminho" ]]; then
+    # Veio da base: nao entra no manifesto, senao o clean.sh apaga.
+    echo "    ja existe, preservado: $caminho"
+  else
+    mkdir -p "$caminho"
+    registra "$caminho"
+    echo "    diretorio: $caminho"
+  fi
 done
 mkdir -p /mnt/nas/apps /mnt/jellyfin/.incomplete
 chown -R "$DONO:$DONO" /mnt/nas /mnt/jellyfin /mnt/backup

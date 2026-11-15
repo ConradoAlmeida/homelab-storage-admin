@@ -48,11 +48,17 @@ for caminho in /srv/samba /mnt/data; do
     echo "    ja montado, preservado: $caminho"
     continue
   fi
-  mkdir -p "$caminho"
-  registra "$caminho"
-  echo "    diretorio: $caminho"
+  if [[ -d "$caminho" ]]; then
+    # Veio da base: nao entra no manifesto, senao o clean.sh apaga.
+    echo "    ja existe, preservado: $caminho"
+  else
+    mkdir -p "$caminho"
+    registra "$caminho"
+    echo "    diretorio: $caminho"
+  fi
 done
 mkdir -p /mnt/data/backups /var/backups/moya-credenciais
+registra /mnt/data/backups
 registra /var/backups/moya-credenciais
 chown -R "$DONO:$DONO" /mnt/data
 chmod 0700 /var/backups/moya-credenciais
