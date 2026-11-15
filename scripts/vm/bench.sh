@@ -142,11 +142,20 @@ prepara_guest() {
 
 rodar_smoke() {
   local base="http://$IP:8060"
-  local falhou=0
+  local falhou=0 code
   guest "cd $REPO_DIR && ./deploy.sh >/tmp/deploy-vm.log 2>&1" || {
     guest "tail -20 /tmp/deploy-vm.log" || true
     return 1
   }
+  # O deploy.sh sobe o container e sai; migracoes ainda rodam por alguns
+  # segundos. Esperar a primeira resposta evita 000 por pressa.
+  for _ in $(seq 1 45); do
+    code=$(guest "curl -s -o /dev/null -w '%{http_code}' $base/login/" 2>/dev/null || true)
+    [[ "$code" == "200" || "$code" == "302" ]] && break
+    sleep 2
+  done
+  echo "    login respondeu: ${code:-sem resposta}"
+  [[ "$code" == "200" || "$code" == "302" ]] || falhou=1
   for rota in /login/ / /saude/ /backups/ /containers/ /sistema/ /sistema/servicos/; do
     # -L: as rotas internas redirecionam para o login sem sessao; o que importa
     # e nao haver 5xx e o login render.
