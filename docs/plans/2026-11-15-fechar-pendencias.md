@@ -36,7 +36,7 @@ Versionar os planos que ficaram só no disco, destravar o clone local e levar
       não tem as ops `django_admin*`; `sudo` no Pi pede senha).
 - [x] 4. moya: `./deploy.sh` — todas as rotas 200, `/usuarios/` 404
       (seção bloqueada por `CREDENTIALS_MANAGE_USERS=1`), agente sem aviso.
-- [ ] 5. Remover o worktree temporário e fechar.
+- [x] 5. Remover o worktree temporário e fechar.
 
 ## Verificação
 
@@ -49,7 +49,12 @@ Versionar os planos que ficaram só no disco, destravar o clone local e levar
 ## Estado
 
 2026-11-15: deploys feitos, sem migrações e sem downtime além do recreate.
-Falta só o `sudo ./install-agent.sh` no Pi (dono) e apagar o worktree.
+O dono rodou `sudo ./install-agent.sh` no Pi: os quatro binários e as units
+ficaram idênticos ao repo, o aviso do `deploy.sh` desapareceu e o binário
+instalado passou a ter as ops `django_admin*` (32 ocorrências). Worktree
+removido; clone local em `main`, limpo, com o rascunho do Cockpit em
+`stash@{0}`.
+
 O `host.env` dos dois hosts não tem algumas chaves dos exemplos
 (`SYSTEM_MANAGE`, `FIREWALL_MANAGE`, `TERMINAL_ENABLE`, `SSH_LOGIN`…), mas os
 defaults do `settings.py` já são `1`: nenhum comportamento mudou.
