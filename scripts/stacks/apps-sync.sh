@@ -277,11 +277,11 @@ garante_import() {
 # aninhadas, fecha em `}` na coluna 0). Recusa qualquer estrutura diferente.
 remove_bloco() {
   local arquivo=$1 fqdn=$2 escapado
-  escapado=$(printf '%s' "$fqdn" | sed 's/\./\\./g')
-  awk -v alvo="^$escapado[ \t]*\\{[ \t]*$" '
+  escapado=$(printf '%s' "$fqdn" | sed 's/\./[.]/g')
+  awk -v alvo="^$escapado[ \t]*[{][ \t]*$" '
     pula == 1 {
-      if ($0 ~ /^[ \t]*\{/) { erro = 1 }
-      if ($0 ~ /^\}[ \t]*$/) { pula = 0; next }
+      if ($0 ~ /^[ \t]*[{]/) { erro = 1 }
+      if ($0 ~ /^[}][ \t]*$/) { pula = 0; next }
       next
     }
     $0 ~ alvo { pula = 1; next }
