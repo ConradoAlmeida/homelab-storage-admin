@@ -253,7 +253,11 @@ valida() {
 le_estado() {
   local linha key fqdn upstream dir flags
   local -a campos
-  [[ -r "$APPS_STATE" ]] || return 0
+  [[ -e "$APPS_STATE" ]] || return 0
+  if [[ ! -r "$APPS_STATE" ]]; then
+    aviso "$APPS_STATE existe mas nao esta legivel; sem sudo o plano nao ve o estado"
+    return 0
+  fi
   while IFS= read -r linha || [[ -n "$linha" ]]; do
     linha=${linha%$'\r'}
     [[ -z "${linha// /}" ]] && continue
@@ -748,7 +752,10 @@ confirma() {
 
 grava_estado() {
   local k dir tmp
+  # O dry-run roda sem sudo e precisa ler o estado: nada aqui e segredo
+  # (key/fqdn/upstream/dir), mas a pasta criada pelo root pode nascer 0700.
   mkdir -p "$(dirname "$APPS_STATE")"
+  chmod 0755 "$(dirname "$APPS_STATE")" 2>/dev/null || true
   tmp=$(mktemp "$(dirname "$APPS_STATE")/.apps.XXXXXX")
   {
     echo "# Gerado por scripts/stacks/apps-sync.sh em $(date '+%Y-%m-%d %H:%M:%S')."
