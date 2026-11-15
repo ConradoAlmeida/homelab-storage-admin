@@ -4,6 +4,9 @@ data/
 /data
 staticfiles/
 .env
+# Backups datados do --apply e das migracoes (inclusive copia do .env, que tem
+# segredo): nunca entram no Git.
+*.bak-*
 *.sqlite3
 .venv/
 .pytest_cache/
