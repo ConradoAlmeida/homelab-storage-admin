@@ -120,6 +120,7 @@ qualquer outra (`moya-weather` é assim).
 | DNS do moya | nunca editar Local DNS do Pi-hole; o arquivo gerado manda |
 | Portal do moya | cards vêm do env; mudou o código do portal, `docker compose up -d --build` em `/home/conrado/moya_portal_interno` |
 | Reinstalar/trocar host | `sudo ./install-agent.sh` + `host.env` + `./deploy.sh` (docs/INSTALACAO.md) |
+| Limpar backups datados | `*.bak-*` são cópias de uma vez: `apps.env` volta do git e `services.ini` do `--apply`, então podem sair. `host.env.bak-*` é a única cópia da config anterior — guarde a última |
 | Ver o que está declarado | Sistema → Rotas e atalhos (rota, atalho, grupo e se está aplicado) |
 | Verificação semanal | `pytest`, `--doctor` nos dois, `docker compose ps`, `/saude/` |
 
