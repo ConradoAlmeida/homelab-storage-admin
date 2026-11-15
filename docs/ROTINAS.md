@@ -22,7 +22,10 @@ Atalhos usados abaixo:
    com `compose.yaml`, e **porta publicada** no host:
    `- "127.0.0.1:8097:8000"` (moya) ou `- "192.168.0.150:8097:8000"` (Pi).
    Suba com `docker compose up -d`.
-2. **Linha no env** do perfil, no repo:
+2. **Linha no env** do perfil, no repo. Se a stack já está no ar,
+   `bash scripts/stacks/apps-sync.sh [--perfil moya] --descobrir` imprime a
+   linha pronta (rota, upstream, `atalho=`, `icone=`/`grupo=` no moya); revise
+   o `atalho=` e cole:
 
    ```
    key|fqdn|upstream|dir|flags

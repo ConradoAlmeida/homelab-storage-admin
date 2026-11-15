@@ -116,7 +116,11 @@ case "$1" in
     exit 0
     ;;
   port)
-    echo "8080/tcp -> 0.0.0.0:8080"
+    if [[ -n "${STUB_PORTAS:-}" ]]; then
+      tr ',' '\n' <<<"$STUB_PORTAS" | sed 's/^/x\/tcp -> 0.0.0.0:/'
+    else
+      echo "8080/tcp -> 0.0.0.0:8080"
+    fi
     exit 0
     ;;
   compose)
@@ -833,14 +837,39 @@ def test_descobrir_sugere_stack_fora_do_env(tmp_path):
     )
     resultado = sandbox.run("--descobrir", env_file=env)
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
-    esperado = f"portainer|portainer.local|127.0.0.1:8080|{sandbox.dir_portainer}|"
+    # Moya: upstream no localhost (os compose publicam em 127.0.0.1), card no
+    # portal, icone derivado da key e grupo no default.
+    esperado = (
+        f"portainer|portainer.local|localhost:8080|{sandbox.dir_portainer}|"
+        "atalho=portal,nome=Portainer,icone=portainer,grupo=services"
+    )
     assert esperado in resultado.stdout
+    assert "atalho=painel|portal|painel+portal|nao" in resultado.stdout
     assert "nada foi escrito" in resultado.stdout
     # Nao escreve no env nem no Caddy.
     assert env.read_text(encoding="utf-8") == (
         f"moya-git|moya-git.local|localhost:3000|{sandbox.dir_git}|\n"
     )
     assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE_MOYA
+
+
+def test_descobrir_no_pi_sugere_painel_e_upstream_da_lan(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    novo = sandbox.stacks / "stacks" / "portainer"
+    novo.mkdir()
+    sandbox.dir_projetos.write_text(f"{novo}|portainer\n", encoding="utf-8")
+    sandbox.projetos.write_text(
+        sandbox.projetos.read_text(encoding="utf-8") + "portainer\n", encoding="utf-8"
+    )
+    resultado = sandbox.run("--descobrir")
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    esperado = (
+        f"portainer|portainer.conradhub.com|192.168.0.150:8080|{novo}|"
+        "atalho=painel,nome=Portainer"
+    )
+    assert esperado in resultado.stdout
+    # Sem portal no perfil, nada de grupo/icone na sugestao.
+    assert "grupo=" not in resultado.stdout
 
 
 def test_atalho_painel_gera_services_ini(tmp_path):
@@ -1060,3 +1089,16 @@ def test_env_do_moya_gera_painel_e_portal(tmp_path):
     assert "[moya-portal]" not in secoes
     assert "group = infrastructure" in portal
     assert "group = tools" in portal
+
+
+def test_descobrir_prefere_porta_web_entre_varias(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    sandbox.dir_projetos.write_text(f"{sandbox.dir_portainer}|portainer\n", encoding="utf-8")
+    resultado = sandbox.run("--descobrir", env_extra={"STUB_PORTAS": "53,8888,22"})
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    # 53 (DNS) e 22 (SSH) nao sao a web da app.
+    assert (
+        f"portainer|portainer.local|localhost:8888|{sandbox.dir_portainer}|" in resultado.stdout
+    )
+    assert "55" not in resultado.stdout  # nada de somar portas
+    assert "sugeri 8888" in resultado.stdout

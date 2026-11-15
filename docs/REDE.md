@@ -109,8 +109,12 @@ guarda um `.bak-<data>` na primeira vez).
 
 Dois comandos só leem o host e dizem o que fazer: `--doctor` compara env,
 `apps.caddy`, DNS, containers, portas e pastas (sai 1 se houver erro) e
-`--descobrir` sugere a linha para stacks que ficaram fora do env e aponta
-`dir` que não bate com o container. Nada é escrito por eles.
+`--descobrir` imprime a linha pronta — com `atalho=`, `nome=`, e `icone=`/
+`grupo=` no moya — para stacks que ficaram fora do env, além de apontar `dir`
+que não bate com o container. A sugestão usa o upstream do perfil
+(`192.168.0.150` no Pi, `localhost` no moya) e, quando o container publica mais
+de uma porta, prefere a que parece HTTP (53, 22 e afins ficam de fora) e diz
+qual escolheu. Nada é escrito por eles.
 
 **No moya** (`--perfil moya`) o mesmo arquivo vale; muda o que a rede de lá
 exige:

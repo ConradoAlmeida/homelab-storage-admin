@@ -51,7 +51,7 @@ Sem --apply e dry-run: mostra o plano e nao escreve nada.
   --prune-data        move a pasta das apps removidas para a quarentena
   --yes               nao pergunta antes de cada operacao destrutiva
   --doctor            so le: compara env, Caddy, DNS, containers e pastas
-  --descobrir         so le: sugere linhas para stacks que ficaram fora do env
+  --descobrir         so le: sugere a linha (com atalho=) de stacks fora do env
 
 Os prunes exigem --apply e comparam com o estado da execucao anterior
 (/var/lib/homelab-storage-admin/apps.aplicados). Sem esse arquivo, nada e
@@ -158,6 +158,13 @@ CADDY_TLS=${CADDY_TLS-import cf}
 CADDY_PROXY=${CADDY_PROXY:-import proxy}
 DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-$STACKS_ROOT/stacks $STACKS_ROOT}
 SCAN_ROOTS=${SCAN_ROOTS:-$STACKS_ROOT}
+
+# Upstream sugerido para uma app descoberta: o Caddy do Pi fala com a interface
+# da LAN; o do moya com o localhost (os compose publicam em 127.0.0.1).
+case "$PERFIL" in
+  pi) UPSTREAM_HOST=${UPSTREAM_HOST:-$DNS_IP} ;;
+  moya) UPSTREAM_HOST=${UPSTREAM_HOST:-localhost} ;;
+esac
 
 CADDY_DIR=${CADDY_DIR:-$STACKS_ROOT/stacks/caddy}
 CADDYFILE=${CADDYFILE:-$CADDY_DIR/Caddyfile}
@@ -482,14 +489,16 @@ atalho_inclui() {
   esac
 }
 
+nome_de_fqdn() {
+  local n=${1%%.*}
+  n=${n//-/ }
+  printf '%s' "${n^}"
+}
+
 nome_da_app() {
   local n
   n=$(flag_da_app "$1" nome)
-  if [[ -z "$n" ]]; then
-    n=${FQDN[$1]%%.*}
-    n=${n//-/ }
-    n="${n^}"
-  fi
+  [[ -n "$n" ]] || n=$(nome_de_fqdn "${FQDN[$1]}")
   printf '%s' "$n"
 }
 
@@ -1316,7 +1325,7 @@ doutor() {
 # aponta dir divergente. Nunca escreve: revisar e commitar e a aprovacao.
 
 descobrir() {
-  local nome dir porta chave fqdn k declarado outros sugeridas=0
+  local nome dir porta portas chave fqdn k declarado outros flags sugeridas=0
   local -A vistos=()
 
   secao "apps declaradas (${#KEYS[@]})"
@@ -1339,11 +1348,22 @@ descobrir() {
       [[ "${DIR[$k]}" == "$dir" ]] && declarado=1
     done
     [[ $declarado -eq 1 ]] && continue
-    porta=$(docker port "$nome" 2>/dev/null | sed 's/.*://' | sort -u | head -1 || true)
-    if [[ -z "$porta" ]]; then
+    portas=$(docker port "$nome" 2>/dev/null | sed 's/.*://' | sort -un || true)
+    if [[ -z "$portas" ]]; then
       item "sem porta publicada (host network): $dir (container $nome) — informe o upstream"
       continue
     fi
+    # Porta 53, 22 ou 5432 costumam ser publicadas junto com a web: prefiro as
+    # que parecem HTTP e, entre as demais, a primeira acima de 1024.
+    porta=""
+    for cand in 443 80 8080 8000 3000 5000 9000; do
+      if grep -qx "$cand" <<<"$portas"; then
+        porta=$cand
+        break
+      fi
+    done
+    [[ -n "$porta" ]] || porta=$(awk '$1 >= 1024 { print; exit }' <<<"$portas")
+    [[ -n "$porta" ]] || porta=$(head -1 <<<"$portas")
     chave=$(printf '%s' "${dir##*/}" | tr '[:upper:]' '[:lower:]' |
       sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//')
     if [[ -z "$chave" ]]; then
@@ -1351,7 +1371,18 @@ descobrir() {
       continue
     fi
     fqdn="$chave.$DOMAIN"
-    item "$chave|$fqdn|127.0.0.1:$porta|$dir|"
+    # A sugestao ja vem com atalho: no moya o portal e o hub do host, no Pi o
+    # painel e o unico consumidor. `grupo=` e `icone=` so o portal usa; a key
+    # vira o slug do icone e, sem SVG, o portal cai na inicial.
+    if [[ -n "$PORTAL_INI" ]]; then
+      flags="atalho=portal,nome=$(nome_de_fqdn "$fqdn"),icone=$chave,grupo=services"
+    else
+      flags="atalho=painel,nome=$(nome_de_fqdn "$fqdn")"
+    fi
+    item "$chave|$fqdn|$UPSTREAM_HOST:$porta|$dir|$flags"
+    if [[ $(wc -l <<<"$portas") -gt 1 ]]; then
+      item "  $nome publica $(tr '\n' ' ' <<<"$portas")— sugeri $porta; ajuste se a web for outra"
+    fi
     sugeridas=$((sugeridas + 1))
   done < <(docker ps -a --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.project.working_dir"}}')
   [[ $sugeridas -gt 0 ]] || item "nenhuma stack fora do env"
@@ -1369,6 +1400,12 @@ descobrir() {
 
   secao "resumo"
   item "$sugeridas sugestao(oes); nada foi escrito"
+  if [[ $sugeridas -gt 0 ]]; then
+    item "atalho=painel|portal|painel+portal|nao decide onde aparece; sem atalho a app tem so rota e DNS"
+    if [[ -n "$PORTAL_INI" ]]; then
+      item "grupo=services|infrastructure|tools e a secao do portal (o painel ignora)"
+    fi
+  fi
   item "revise e commite $APPS_ENV; depois --apply no host"
 }
 
