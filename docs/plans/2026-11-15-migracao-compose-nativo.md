@@ -45,8 +45,9 @@ Pi. Efeitos: stack reproduzível, sobrevive a reinstalar o Portainer, o
       removido do script e dos testes (21 testes de `apps-sync`).
 - [x] 4. `/opt/stacks/gitea`: `compose.yaml` com o volume pelo nome;
       `stop`/`rm`; `up -d`; API 1.27.3, 27 repos, clone HTTP e SSH na 222.
-- [ ] 5. Portainer parado (container + compose), volume preservado.
-      Pendente: decisão do dono, depois de alguns dias rodando assim.
+- [x] 5. Portainer parado e removido; `moya-portainer` saiu do `apps.env`
+      (12 apps) e o volume `portainer_data` foi apagado por decisão do dono,
+      já que os compose antigos de Caddy/Gitea estão nos backups.
 - [x] 6. Docs, plano e deploy; bancada de VM nos dois perfis.
 
 ## Verificação
@@ -73,12 +74,13 @@ Pi. Efeitos: stack reproduzível, sobrevive a reinstalar o Portainer, o
 - O `gitea dump` só funciona em `/tmp` (`/data` é root e o processo roda como
   `git`); os marcadores antigos `# >>> apps-sync` foram removidos à mão do
   Caddyfile do moya, já que o modo inline não existe mais.
-- Pendente: parar o Portainer (volume `portainer_data` intacto), apagar
-  `moya-admin.local` no Pi-hole do moya e remover sobras (`/home/conrado/caddy`,
-  `/data/compose/*`).
+- Pi-hole do moya: `dns.hosts` do `pihole.toml` zerado (12 cópias antigas +
+  `moya-admin.local` e `moya-portainer.local`); os 12 nomes seguem resolvendo
+  pelo arquivo gerado e o dry-run não avisa mais de entrada fora do env.
+- Sobras removidas: `/home/conrado/caddy` e `/data/compose/12`. Ficou
+  `/data/compose/13/data`, que é bind mount de dados do datalogger.
 
 ## Estado
 
-Concluído em 2026-11-15, menos o passo 5 (Portainer), que espera decisão do
-dono. Bancada de VM: `homelab` e `moya` verdes (`475 passed, 8 skipped`, `8 lab
+Concluído em 2026-11-15. Bancada de VM: `homelab` e `moya` verdes (`475 passed, 8 skipped`, `8 lab
 passed` no homelab, smoke 200 nas 7 rotas dos dois perfis).

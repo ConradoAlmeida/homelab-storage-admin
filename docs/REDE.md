@@ -110,6 +110,12 @@ montada, `apps.caddy` importado); o moya só não tem TLS porque não há
 certificado possível para `.local`. `dir` pode ser `-` para app sem stack
 local (`moya-weather`, noutra máquina).
 
+No moya o Local DNS do Pi-hole (`dns.hosts` no `pihole.toml`) fica **vazio**:
+os nomes vêm só do arquivo gerado, para o `apps.env` ser a única fonte. O
+Portainer foi removido do moya; as 12 apps rodam de `compose.yaml` no host e
+nada depende dele. `/data/compose/13/data` é dado do datalogger (bind mount) e
+não é sobra de stack.
+
 **Tailscale, só no Pi.** Nó `homelab`, `100.84.34.25`, MagicDNS
 `homelab.tail1a4ccb.ts.net`. SSH do Tailscale desligado. Chave sem expiração.
 Rota `192.168.0.0/24` aprovada. Split DNS: `conradhub.com` → `100.84.34.25`,

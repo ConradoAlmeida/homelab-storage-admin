@@ -14,7 +14,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
-| moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` |
+| moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local`; 12 apps em compose no host, sem Portainer |
 | Perfil | `/etc/homelab-storage-admin/host.env` |
 | Agente | `homelab-storage-agent` (systemd, root, socket Unix) |
 | Repositório | `https://github.com/ConradoAlmeida/homelab-storage-admin.git` |
