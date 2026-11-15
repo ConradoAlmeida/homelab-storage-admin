@@ -85,7 +85,7 @@ qualquer outra (`moya-weather` é assim).
 
 1. No desktop: `uv run manage.py check`, `uv run pytest` e, se mexeu em
    `frontend/src.css`, `uv run manage.py tailwind build` (o `kit.css` é
-   versionado).
+   versionado; o CI compila e compara, então esquecer o build reprova).
 2. Atualize o doc da área e `docs/CONTEXTO.md` no mesmo commit.
 3. Commit + push (`main` protegido; o check `test` precisa passar).
 4. No host: `cd /opt/stacks/homelab-storage-admin && ./deploy.sh`

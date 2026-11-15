@@ -33,13 +33,13 @@ CSS não aparece) e modelo alterado sem migração (a coluna nunca é criada).
 
 ## Passos
 
-- [ ] 1. `deploy.sh`: health check com retry em `/login/`, falhando o deploy.
-- [ ] 2. `deploy.sh`: aviso `apps.env` pendente (env mais novo que o estado) com
+- [x] 1. `deploy.sh`: health check com retry em `/login/`, falhando o deploy.
+- [x] 2. `deploy.sh`: aviso `apps.env` pendente (env mais novo que o estado) com
       o comando `--apply` do perfil.
-- [ ] 3. CI: `kit.css` recompilado e migrações em dia.
-- [ ] 4. Testes de layout/CI para os três guardas.
-- [ ] 5. Docs (`ROTINAS`, `INSTALACAO`) e `CONTEXTO`.
-- [ ] 6. Deploy nos dois hosts, conferindo as mensagens; bancada nos dois perfis.
+- [x] 3. CI: `kit.css` recompilado e migrações em dia.
+- [x] 4. Testes de layout/CI para os três guardas.
+- [x] 5. Docs (`ROTINAS`, `INSTALACAO`) e `CONTEXTO`.
+- [x] 6. Deploy nos dois hosts, conferindo as mensagens; bancada nos dois perfis.
 
 ## Verificação
 
@@ -50,6 +50,19 @@ CSS não aparece) e modelo alterado sem migração (a coluna nunca é criada).
   makemigrations --check` falha se faltar migração.
 - `pytest` verde e bancada `linux2024` verde nos dois perfis.
 
+## Resultado
+
+- `deploy.sh` termina com `OK: <url>/login/ -> 200` depois de esperar o
+  entrypoint; sem resposta, sai 1 com o comando de `logs`. Conferido nos dois
+  hosts (Pi em `192.168.0.150:8060`, moya em `127.0.0.1:8060`).
+- Aviso do `apps.env` pendente com o comando do perfil; depois do `--apply` o
+  aviso some (0 ocorrências no deploy seguinte do moya; mtime conferido no Pi).
+- CI: `Migracoes em dia` e `CSS do kit compilado` no run de `788bfe1`, ambos
+  verdes; sem recompilar o `src.css`, o `git diff --exit-code` reprova (testado
+  localmente, rc=1).
+- `521 passed` local e bancada `linux2024` verde nos dois perfis, com o smoke
+  passando pelo `deploy.sh` novo (`login respondeu: 200`).
+
 ## Estado
 
-Em andamento em 2026-11-15.
+Concluído em 2026-11-15.
