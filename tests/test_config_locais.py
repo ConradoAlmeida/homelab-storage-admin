@@ -7,8 +7,32 @@ from django.test import Client, TestCase, override_settings
 
 import core.context_processors as context_processors
 import core.system_views as system_views_module
-from core.config_locais import comando_ssh, contexto_config_locais
+from core.config_locais import (
+    comando_ssh,
+    comandos_do_env,
+    contexto_config_locais,
+    perfil_do_env,
+)
 from tests.test_views import fake_agent
+
+
+class ComandosDoEnvTests(TestCase):
+    def test_perfil_do_caminho(self):
+        self.assertEqual(perfil_do_env("/opt/x/deploy/moya/apps.env"), "moya")
+        self.assertEqual(perfil_do_env("/opt/x/deploy/pi/apps.env"), "pi")
+        self.assertEqual(perfil_do_env(""), "")
+        self.assertEqual(perfil_do_env("/etc/homelab-storage-admin/apps.env"), "")
+
+    def test_flag_perfil_so_onde_o_script_precisa(self):
+        # apps-sync assume `pi`: no moya o flag e obrigatorio.
+        self.assertEqual(
+            comandos_do_env("/opt/x/deploy/moya/apps.env")["comando_apply"],
+            "sudo bash scripts/stacks/apps-sync.sh --perfil moya --apply",
+        )
+        self.assertEqual(
+            comandos_do_env("/opt/x/deploy/pi/apps.env")["comando_apply"],
+            "sudo bash scripts/stacks/apps-sync.sh --apply",
+        )
 
 
 class ConfigLocaisPureTests(TestCase):
@@ -78,7 +102,7 @@ class ConfigLocaisPureTests(TestCase):
         self.assertEqual(
             apps.caminho, "/opt/stacks/homelab-storage-admin/deploy/pi/apps.env"
         )
-        self.assertIn("apps-sync.sh", apps.vigencia)
+        self.assertIn("apps-sync --apply", apps.vigencia)
         self.assertIn("atalho", apps.controlo)
 
     def test_moya_sem_apps_env_nao_tem_principal(self):
@@ -130,6 +154,12 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "/opt/stacks/homelab-storage-admin/deploy/pi/apps.env")
         self.assertContains(resp, "apps-sync.sh --apply")
         self.assertContains(resp, "Rotas, DNS e atalhos")
+        self.assertContains(resp, "Como aplicar")
+        self.assertContains(resp, "git pull")
+        self.assertContains(resp, "apps-sync.sh --apply")
+        self.assertContains(resp, "apps-sync.sh --doctor")
+        # No Pi o script nao precisa de --perfil.
+        self.assertNotContains(resp, "--perfil moya")
         self.assertContains(resp, "Gerados")
         self.assertContains(resp, "Ver rotas e atalhos")
         self.assertNotContains(resp, "moya_credenciais_app")
@@ -153,6 +183,20 @@ class SystemConfigViewTests(TestCase):
         self.assertNotContains(resp, "deploy/moya/apps.env")
         self.assertContains(resp, "Sem <span class=\"mono\">apps.env</span>")
         self.assertContains(resp, "Gerados")
+
+    @override_settings(
+        SSH_LOGIN="conrado@10.72.60.181",
+        CREDENCIAIS_ENV="",
+        SERVICES_INI_HOST="/opt/stacks/homelab-storage-admin/data/services.ini",
+        STACK_ENV_PATH="/opt/stacks/homelab-storage-admin/.env",
+        APPS_ENV_PATH="/opt/stacks/homelab-storage-admin/deploy/moya/apps.env",
+    )
+    def test_pagina_moya_mostra_o_flag_perfil(self):
+        resp = self.client.get("/sistema/config/")
+        self.assertEqual(resp.status_code, 200)
+        # No moya o script precisa do flag: a tela mostra o comando que funciona.
+        self.assertContains(resp, "apps-sync.sh --perfil moya --apply")
+        self.assertContains(resp, "apps-sync.sh --perfil moya --doctor")
 
     @override_settings(SSH_LOGIN="", SHARE_OWNER="conrado", CREDENCIAIS_ENV="")
     def test_agente_falha_mostra_ssh_owner(self):

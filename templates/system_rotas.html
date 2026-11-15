@@ -201,11 +201,15 @@
   {% endif %}
 
   <div class="alert">
-    Para aplicar uma mudança no host:
-    <span class="mono">sudo bash scripts/stacks/apps-sync.sh [--perfil moya] --apply</span>
-    (dry-run sem <span class="mono">--apply</span>). As rotas usam
-    <span class="mono">{{ esquema }}</span> neste host; o DNS e o Caddy ficam fora desta página,
-    no <span class="mono">--doctor</span>.
+    <strong>Como aplicar uma mudança no env.</strong>
+    <ol class="steps-list">
+      <li>Edite o <span class="mono">{{ env_caminho }}</span> no repositório (commit e push).</li>
+      <li>No host: <span class="mono">cd /opt/stacks/homelab-storage-admin &amp;&amp; git pull</span>.</li>
+      <li><span class="mono">{{ comando_apply }}</span> — sem <span class="mono">--apply</span> não escreve nada.</li>
+      <li><span class="mono">{{ comando_doctor }}</span> para checar Caddy, DNS e atalhos.</li>
+    </ol>
+    Esta página lê o arquivo: mudar o env aqui não aplica nada. As rotas usam
+    <span class="mono">{{ esquema }}</span> neste host.
   </div>
 {% endif %}
 {% endblock %}

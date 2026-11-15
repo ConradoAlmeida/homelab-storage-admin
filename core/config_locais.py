@@ -9,6 +9,7 @@ do stack mudam raramente; ``services.ini`` e a lista do portal são gerados pelo
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 HOST_ENV_PADRAO = "/etc/homelab-storage-admin/host.env"
 STACK_ENV_PADRAO = "/opt/stacks/homelab-storage-admin/.env"
@@ -45,6 +46,28 @@ def comando_ssh(
     return f"ssh {owner}"
 
 
+def perfil_do_env(apps_env: str) -> str:
+    """``.../deploy/moya/apps.env`` -> ``moya``; vazio quando nao da para saber."""
+    pai = Path((apps_env or "").strip()).parent.name
+    return pai if pai in ("pi", "moya") else ""
+
+
+def comandos_do_env(apps_env: str) -> dict[str, str]:
+    """Comandos reais do host, com `--perfil` so quando o script exige.
+
+    O `apps-sync` assume o perfil `pi`; no moya o flag e obrigatorio, e a tela
+    mostra exatamente o que deve ser colado no terminal.
+    """
+    # O script assume `pi`; so o moya precisa do flag.
+    perfil = perfil_do_env(apps_env)
+    flag = " --perfil moya" if perfil == "moya" else ""
+    base = "sudo bash scripts/stacks/apps-sync.sh"
+    return {
+        "comando_apply": f"{base}{flag} --apply",
+        "comando_doctor": f"{base}{flag} --doctor",
+    }
+
+
 def arquivos_config(
     *,
     host_env_path: str,
@@ -60,7 +83,7 @@ def arquivos_config(
             nome="apps.env",
             caminho=apps,
             controlo="Rotas do Caddy, DNS e atalhos do painel e do portal.",
-            vigencia="Após sudo scripts/stacks/apps-sync.sh --apply.",
+            vigencia="Depois de git pull no host e do apps-sync --apply.",
         )
         if apps
         else None
@@ -98,7 +121,12 @@ def arquivos_config(
             origem="Atalhos do botão Serviços, gerados das flags atalho=painel.",
         ),
     ]
-    return {"apps_env": principal, "arquivos": raros, "gerados": gerados}
+    return {
+        "apps_env": principal,
+        "arquivos": raros,
+        "gerados": gerados,
+        **comandos_do_env(apps),
+    }
 
 
 def contexto_config_locais(

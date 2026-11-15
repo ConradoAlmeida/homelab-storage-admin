@@ -34,7 +34,10 @@ dizer o que se edita, o que raramente muda e o que nunca se edita.
 - [x] 3. Testes: Pi com e sem env, `gerados` separado, moya com Credenciais,
       página sem `APPS_ENV_PATH`.
 - [x] 4. Docs (`SISTEMA`) e este plano.
-- [ ] 5. Deploy no moya e conferência autenticada; bancada nos dois perfis.
+- [x] 4b. "Como aplicar" em passos numerados (git pull → `--apply` →
+      `--doctor`), com `--perfil moya` só no moya; componente `steps-list` no
+      `frontend/src.css` e `kit.css` recompilado.
+- [ ] 5. Deploy nos dois hosts e conferência autenticada; bancada.
 
 ## Verificação
 

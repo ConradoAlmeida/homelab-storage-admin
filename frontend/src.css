@@ -565,4 +565,29 @@
   [data-table-empty] .empty {
     padding: 12px 0;
   }
+
+  /* Passos de "como aplicar" (Configuracao e Rotas e atalhos): lista curta
+     dentro de card/alert, com comando em mono que pode quebrar linha. */
+  .steps-list {
+    display: grid;
+    gap: 5px;
+    margin: 6px 0 0;
+    padding-left: 18px;
+    color: var(--txt);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .steps-list li::marker {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .steps-list .mono {
+    overflow-wrap: anywhere;
+  }
+
+  .steps-list + .muted {
+    margin-top: 8px;
+  }
 }

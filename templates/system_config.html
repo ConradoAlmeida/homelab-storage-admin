@@ -30,8 +30,20 @@
               <td>{{ apps_env.controlo }}</td>
             </tr>
             <tr>
-              <th scope="row">Quando vale</th>
-              <td>{{ apps_env.vigencia }}</td>
+              <th scope="row">Como aplicar</th>
+              <td>
+                <ol class="steps-list">
+                  <li>Edite o <span class="mono">apps.env</span> no repositório (é versionado: commit e push).</li>
+                  <li>No host: <span class="mono">cd /opt/stacks/homelab-storage-admin &amp;&amp; git pull</span>.</li>
+                  <li><span class="mono">{{ comando_apply }}</span> — sem <span class="mono">--apply</span> ele só mostra o plano.</li>
+                  <li>Recarregue o painel; <span class="mono">{{ comando_doctor }}</span> confirma se Caddy, DNS e atalhos batem com o env.</li>
+                </ol>
+                <p class="muted text-12">
+                  Nada muda antes do passo 3: o arquivo declarado e o host aplicado são coisas
+                  diferentes (é isso que a coluna <strong>Estado</strong> de
+                  <a href="{% url 'system_rotas' %}">Rotas e atalhos</a> mostra).
+                </p>
+              </td>
             </tr>
           </tbody>
         </table>

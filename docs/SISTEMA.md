@@ -8,9 +8,13 @@ não oferece some com explicação (sem erro 500).
 Somente leitura, organizada por **frequência de mudança**, não por arquivo:
 
 1. **Rotas, DNS e atalhos** — `deploy/<perfil>/apps.env`: o único arquivo do
-   dia a dia. Um cartão com o caminho no host, o que controla e quando vale
-   (`sudo scripts/stacks/apps-sync.sh --apply`), com link para
-   [Rotas e atalhos](#rotas-e-atalhos-sistemarotas). Sem `APPS_ENV_PATH`
+   dia a dia. Um cartão com o caminho no host, o que controla e **Como
+   aplicar**, em passos numerados e com os comandos reais: editar no
+   repositório → `git pull` no host → `sudo bash
+   scripts/stacks/apps-sync.sh [--perfil moya] --apply` (sem `--apply` é
+   dry-run) → `--doctor` para conferir. O flag `--perfil moya` só aparece onde
+   o script não assume o perfil. Link para
+   [Rotas e atalhos](#rotas-e-atalhos-sistemarotas); sem `APPS_ENV_PATH`
    definido, o cartão vira aviso.
 2. **Perfil e segredos** — `host.env` (perfil: portas `BIND_*`, prefixos,
    `SSH_LOGIN`, overlay do Compose) e o `.env` do stack (segredo do Django);

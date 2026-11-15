@@ -16,7 +16,7 @@ from django.urls import reverse
 
 from .agent import AgentError, agent
 from .apps_env import apps_do_env, resumo
-from .config_locais import contexto_config_locais
+from .config_locais import comandos_do_env, contexto_config_locais
 from .context_processors import capacidades_do_host
 from .models import AuditLog, token_da_api
 from .tarefas import com_tarefa, disparo
@@ -192,6 +192,7 @@ class SystemRotasView(AgentView):
             "estado_lido": estado_file.is_file(),
             "estado_caminho": str(estado_file),
             "esquema": settings.APPS_SCHEME,
+            **comandos_do_env(settings.APPS_ENV_PATH),
         }
         return render(request, self.template_name, ctx)
 
