@@ -409,8 +409,11 @@ caddyfile_inline() {
       t1=$(mktemp)
     fi
   done
-  # Sem blocos gerados no inicio do arquivo, a primeira linha pode sobrar vazia.
-  sed '/./,$!d' "$t2"
+  # Cada bloco removido deixa a linha vazia que o separava: colapsa as
+  # repetidas e descarta as do inicio do arquivo.
+  sed '/./,$!d' "$t2" | awk '
+    /^[[:space:]]*$/ { if (vazio) next; vazio = 1; print; next }
+    { vazio = 0; print }' 
   printf '\n%s\n' "$MARCA_INICIO"
   gera_blocos
   printf '%s\n' "$MARCA_FIM"

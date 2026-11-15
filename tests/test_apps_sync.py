@@ -590,6 +590,7 @@ def test_moya_apply_gera_regiao_inline_e_dns_por_nome(tmp_path):
     assert caddyfile.count("moya-git.local:80 {") == 1
     assert "redir / /admin" in caddyfile
     assert "reverse_proxy 10.72.60.202:80" in caddyfile
+    assert "\n\n\n" not in caddyfile  # blocos removidos nao deixam vazios
     assert "import cf" not in caddyfile
     assert "\ttls" not in caddyfile
 
