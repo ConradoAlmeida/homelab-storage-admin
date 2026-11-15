@@ -65,7 +65,7 @@ O que roda, na ordem:
 | moya | `manage.py check`, `pytest -q`, `scripts/vm/run-unit-tests.sh` (Credenciais + Storage) |
 | ambos com `--smoke` | `./deploy.sh` real + 7 rotas HTTP (login, painel, saude, backups, containers, sistema) |
 
-Esperado hoje: **453 passed, 8 skipped** (skips = laboratorio/hardware) e
+Esperado hoje: **475 passed, 8 skipped** (skips = laboratorio/hardware) e
 **8 lab passed** no homelab; **138 testes do Credenciais** e a mesma suite do
 Storage no moya. O `--smoke` leva alguns minutos por causa do `--build`.
 

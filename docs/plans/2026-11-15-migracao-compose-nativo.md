@@ -47,7 +47,7 @@ Pi. Efeitos: stack reproduzível, sobrevive a reinstalar o Portainer, o
       `stop`/`rm`; `up -d`; API 1.27.3, 27 repos, clone HTTP e SSH na 222.
 - [ ] 5. Portainer parado (container + compose), volume preservado.
       Pendente: decisão do dono, depois de alguns dias rodando assim.
-- [ ] 6. Docs, plano e deploy; bancada de VM nos dois perfis.
+- [x] 6. Docs, plano e deploy; bancada de VM nos dois perfis.
 
 ## Verificação
 
@@ -80,4 +80,5 @@ Pi. Efeitos: stack reproduzível, sobrevive a reinstalar o Portainer, o
 ## Estado
 
 Concluído em 2026-11-15, menos o passo 5 (Portainer), que espera decisão do
-dono. Bancada de VM pendente para o fechamento.
+dono. Bancada de VM: `homelab` e `moya` verdes (`475 passed, 8 skipped`, `8 lab
+passed` no homelab, smoke 200 nas 7 rotas dos dois perfis).
