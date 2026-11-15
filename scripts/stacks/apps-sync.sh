@@ -583,8 +583,8 @@ relata_dns_exatos() {
     item "Pi-hole ainda tem entrada exata para $nome (fora do env); o wildcard cobre, mas a entrada fica"
     sobrando=1
   done < <(
-    docker exec "$PIHOLE_CONTAINER" grep -hoE "\"[a-z0-9.-]+\.$escapado\"" \
-      /etc/pihole/pihole.toml 2>/dev/null | tr -d '"' | sort -u
+    docker exec "$PIHOLE_CONTAINER" grep -hoE "\"[^\"]*\.$escapado\"" \
+      /etc/pihole/pihole.toml 2>/dev/null | tr -d '"' | awk '{print $NF}' | sort -u
   )
   [[ $sobrando -eq 0 ]] || item "remova essas entradas na UI do Pi-hole (Local DNS) se quiser o DNS so pelo env"
 }

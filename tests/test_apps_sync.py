@@ -76,6 +76,10 @@ case "$1" in
     exit 0
     ;;
   exec)
+    if [[ "$*" == *"pihole.toml"* ]]; then
+      [[ -n "${STUB_PIHOLE_HOSTS:-}" ]] && printf "%s\n" "$STUB_PIHOLE_HOSTS"
+      exit 0
+    fi
     if [[ "$*" == *"test -f /etc/caddy/apps.caddy"* && "${STUB_SEM_MOUNT:-0}" == "1" ]]; then
       exit 1
     fi
@@ -167,7 +171,9 @@ class Sandbox:
     def escreve_env(self, extra: str = "") -> None:
         self.env_file.write_text(self.env_text(extra), encoding="utf-8")
 
-    def run(self, *args: str, env_file: Path | None = None) -> subprocess.CompletedProcess:
+    def run(
+        self, *args: str, env_file: Path | None = None, env_extra: dict | None = None
+    ) -> subprocess.CompletedProcess:
         env = {
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
@@ -184,6 +190,7 @@ class Sandbox:
             "STUB_DNSMASQ_D": str(self.dnsmasq_flag),
             "STUB_DIG_RESULT": "192.168.0.150",
             "STUB_SEM_MOUNT": os.environ.get("STUB_SEM_MOUNT", "0"),
+            **(env_extra or {}),
         }
         return subprocess.run(
             ["bash", str(SCRIPT), *args],
@@ -402,3 +409,23 @@ def test_sem_mount_do_apps_caddy_aborta_antes_do_caddyfile(tmp_path):
     assert "apps.caddy" in resultado.stderr
     assert "./apps.caddy:/etc/caddy/apps.caddy:ro" in resultado.stderr
     assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE
+
+
+def test_avisa_entrada_exata_do_pihole_fora_do_env(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    sandbox.env_file.write_text(
+        "homelab|homelab.conradhub.com|192.168.0.150:8060|"
+        f"{sandbox.dir_homelab}|\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run(
+        env_extra={
+            "STUB_PIHOLE_HOSTS": (
+                '"192.168.0.150 homelab.conradhub.com"\n'
+                '"192.168.0.150 velho.conradhub.com"'
+            )
+        }
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert "entrada exata para velho.conradhub.com" in resultado.stdout
+    assert "entrada exata para homelab.conradhub.com" not in resultado.stdout
