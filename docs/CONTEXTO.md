@@ -10,7 +10,7 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 |---|---|
 | Versão no moya | `6571c7a` (2026-11-15; Cockpit removido do repo e dos hosts) |
 | Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `6571c7a`). O agente do Pi ainda difere num comentário até o `install-agent.sh` do dono |
-| Testes | `466 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
+| Testes | `467 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
