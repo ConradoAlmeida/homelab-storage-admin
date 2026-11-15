@@ -124,6 +124,11 @@ def test_deploy_confere_app_viva():
     assert 'APP_URL="http://${BIND_ADDR:-127.0.0.1}:${BIND_PORT:-8060}/login/"' in text
     assert "OK: $APP_URL -> $APP_CODE" in text
     assert "logs --tail=80 web" in text
+    # O doctor entra no fim do deploy e so informa (nao muda o exit code).
+    assert "==> rotas, DNS e atalhos (--doctor)" in text
+    assert "apps-sync.sh$APPS_PERFIL --doctor" in text
+    assert "set +e" in text and "DOUTOR_RC=$?" in text
+    assert "exit 1" not in text.split("==> rotas, DNS e atalhos")[1]
 
 
 def test_deploy_cobra_o_apply_do_env():

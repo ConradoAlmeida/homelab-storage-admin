@@ -93,7 +93,9 @@ qualquer outra (`moya-weather` é assim).
    deploy avisa quando precisa de `sudo` (config do qBittorrent). O script só
    termina com `OK: …/login/ -> 200` quando o app responde (até 90 s); sem
    resposta ele sai 1 e imprime o comando de `logs`. Se o pull mexeu no
-   `apps.env` e o `--apply` não rodou, ele avisa com o comando pronto.
+   `apps.env` e o `--apply` não rodou, ele avisa com o comando pronto. No fim
+   roda o `--doctor` e mostra `erros`/`avisos`: desvio de rota, DNS ou atalho
+   aparece aqui, mas não reprova o deploy (o app está no ar).
 5. Se `agent/` mudou: `sudo ./install-agent.sh` (o deploy avisa; ele não instala).
 6. Confira `/saude/`, `/sistema/logs/` e a página alterada. Mudança em caminho
    crítico pede bancada de VM (`docs/VM_TESTES.md`).

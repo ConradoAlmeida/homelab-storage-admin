@@ -263,7 +263,7 @@ git push origin feat/credenciais-login:main
 ```bash
 # no servidor (Pi ou moya)
 cd /opt/stacks/homelab-storage-admin
-./deploy.sh   # termina em OK: …/login/ -> 200; avisa se o apps.env espera --apply
+./deploy.sh   # termina em OK: …/login/ -> 200, --doctor e aviso de --apply pendente
 
 # se agent/ mudou
 sudo ./install-agent.sh

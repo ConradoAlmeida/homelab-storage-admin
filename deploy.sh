@@ -80,13 +80,13 @@ fi
 # depois; git nao reescreve arquivo que nao mudou).
 APPS_ENV_LOCAL="${APPS_ENV_PATH:-}"
 APPS_ESTADO="${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}"
+# O apps-sync assume o perfil `pi`; so o moya precisa do flag.
+APPS_PERFIL=""
+case "$(basename "$(dirname "$APPS_ENV_LOCAL")")" in
+  moya) APPS_PERFIL=" --perfil moya" ;;
+esac
 if [[ -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LOCAL" ]] &&
   { [[ ! -f "$APPS_ESTADO" ]] || [[ "$APPS_ENV_LOCAL" -nt "$APPS_ESTADO" ]]; }; then
-  # O apps-sync assume o perfil `pi`; so o moya precisa do flag.
-  APPS_PERFIL=""
-  case "$(basename "$(dirname "$APPS_ENV_LOCAL")")" in
-    moya) APPS_PERFIL=" --perfil moya" ;;
-  esac
   echo
   echo "ATENCAO: $APPS_ENV_LOCAL mudou depois do ultimo --apply."
   echo "Rotas, DNS e atalhos continuam os antigos. Rode:"
@@ -222,3 +222,20 @@ if [[ "$APP_CODE" != "200" && "$APP_CODE" != "302" ]]; then
   exit 1
 fi
 echo "OK: $APP_URL -> $APP_CODE"
+
+# O --doctor so le e roda sem sudo (root so melhora a validacao do TLS); o
+# resumo entra no deploy para ninguem descobrir desvio de rota/DNS so depois.
+if [[ -f scripts/stacks/apps-sync.sh && -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LOCAL" ]]; then
+  echo "==> rotas, DNS e atalhos (--doctor)"
+  set +e
+  DOUTOR_SAIDA="$(bash scripts/stacks/apps-sync.sh$APPS_PERFIL --doctor 2>&1)"
+  DOUTOR_RC=$?
+  set -e
+  # So os erros: no Pi o aviso do token da Cloudflare apareceria em todo deploy.
+  printf '%s\n' "$DOUTOR_SAIDA" | grep -E '^ +erro:' || true
+  printf '%s\n' "$DOUTOR_SAIDA" | sed -n '/==> resumo/,$p' | grep -v '^==> resumo' || true
+  if [[ $DOUTOR_RC -ne 0 ]]; then
+    echo "AVISO: rota, DNS ou atalho divergente do env (o app esta no ar)." >&2
+    echo "Detalhe: bash scripts/stacks/apps-sync.sh$APPS_PERFIL --doctor" >&2
+  fi
+fi
