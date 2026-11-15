@@ -39,8 +39,8 @@ deploy.
 - [x] 3b. Re-exec depois do pull quando o `deploy.sh` mudou: bash lê o script
       por offset e o deploy que se atualiza roda o tail antigo (aconteceu na
       primeira execução com o doctor).
-- [ ] 4. Deploy nos dois hosts e conferência da seção nova.
-- [ ] 5. Docs e bancada.
+- [x] 4. Deploy nos dois hosts e conferência da seção nova.
+- [x] 5. Docs e bancada.
 
 ## Verificação
 
@@ -50,6 +50,18 @@ deploy.
   `AVISO` + o comando para ver o detalhe (simulado localmente com stub).
 - `pytest` verde e bancada nos dois perfis.
 
+## Resultado
+
+- `deploy.sh` termina com `==> rotas, DNS e atalhos (--doctor)` e o resumo:
+  Pi `erros: 0; avisos: 1` (token da Cloudflare sem sudo), moya `0/0`.
+- Erro do doctor não reprova o deploy (simulado com stub, rc=0) e imprime o
+  comando com o `--perfil` certo.
+- O re-exec depois do pull foi testado no moya: host em `5d28897` puxou
+  `6ac227e`, imprimiu `deploy.sh mudou no pull; reiniciando com a versao nova`
+  e rodou o doctor uma única vez (sem laço).
+- CI verde em `5d28897` e `6ac227e`; `521 passed` local e bancada `linux2024`
+  verde nos dois perfis, com o `/sistema/rotas/` no smoke.
+
 ## Estado
 
-Em andamento em 2026-11-15.
+Concluído em 2026-11-15.
