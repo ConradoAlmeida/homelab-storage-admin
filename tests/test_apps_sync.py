@@ -1102,3 +1102,16 @@ def test_descobrir_prefere_porta_web_entre_varias(tmp_path):
     )
     assert "55" not in resultado.stdout  # nada de somar portas
     assert "sugeri 8888" in resultado.stdout
+
+
+def test_descobrir_nao_duplica_app_ja_exposta(tmp_path):
+    sandbox = SandboxMoya(tmp_path)
+    # A pasta `pihole` ja esta no ar como `moya-pihole` (dir `-`, sem stack).
+    pasta = sandbox.fake_home / "pihole"
+    pasta.mkdir(exist_ok=True)
+    sandbox.dir_projetos.write_text(f"{pasta}|pihole\n", encoding="utf-8")
+    resultado = sandbox.run("--descobrir")
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert f"pihole: ja exposta como moya-pihole; troque o `-` por {pasta}" in resultado.stdout
+    # Nao sugere criar `pihole|pihole.local|...` por cima da app existente.
+    assert "pihole|pihole.local" not in resultado.stdout

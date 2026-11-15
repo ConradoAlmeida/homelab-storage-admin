@@ -13,8 +13,8 @@ fala com a LAN, não com o loopback).
 - Entra: flags de apresentação na sugestão, upstream por perfil, escolha da
   porta quando o container publica várias, notas de revisão, testes e docs.
 - Não entra: aplicar a sugestão (continua sendo revisar + commitar + `--apply`),
-  descobrir `descricao=`/`cor=` (não há de onde tirar) e casar uma stack nova
-  com uma app já declarada que tem `dir=-` (fica no backlog).
+  descobrir `descricao=`/`cor=` (não há de onde tirar) e escolher o `grupo=`
+  certo (não há heurística confiável; fica em `services` para revisão).
 
 ## Decisões
 
@@ -31,6 +31,11 @@ fala com a LAN, não com o loopback).
   — o Pi-hole publica 53, e sugerir `…:53` como upstream de site era um erro
   silencioso. A escolha passa por 443/80/8080/8000/3000/5000/9000, depois a
   primeira acima de 1024, e a saída diz quais portas existem.
+- **App já exposta com outro nome não vira linha nova.** No moya a pasta
+  `pihole` já está no ar como `moya-pihole` (com `dir=-`): sugerir
+  `pihole|pihole.local|…` criaria rota duplicada. Quando a key é igual ou sufixo
+  de uma declarada, a saída manda trocar o `-` pelo caminho da pasta na linha
+  existente e não sugere nada.
 - **Nada é escrito.** A aprovação continua sendo revisar a linha no repo,
   commitar e rodar o `--apply`.
 
@@ -42,6 +47,8 @@ fala com a LAN, não com o loopback).
 - [x] 3. Escolha de porta por heurística HTTP, com aviso quando há várias.
 - [x] 4. Testes: moya com flags e `localhost`, Pi com `192.168.0.150` e sem
       `grupo=`, container com 53/22/8888 escolhendo 8888.
+- [x] 4b. Guarda contra duplicata: key igual/sufixo de app declarada vira
+      "já exposta como X; troque o `-` por <pasta>".
 - [x] 5. Docs (`REDE`, `ROTINAS`, ajuda do script) e este plano.
 - [ ] 6. Bancada nos dois perfis.
 

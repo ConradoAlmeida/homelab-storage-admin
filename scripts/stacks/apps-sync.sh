@@ -1325,7 +1325,8 @@ doutor() {
 # aponta dir divergente. Nunca escreve: revisar e commitar e a aprovacao.
 
 descobrir() {
-  local nome dir porta portas chave fqdn k declarado outros flags sugeridas=0
+  local nome dir porta portas chave fqdn k declarado outros flags exposta
+  local sugeridas=0
   local -A vistos=()
 
   secao "apps declaradas (${#KEYS[@]})"
@@ -1368,6 +1369,21 @@ descobrir() {
       sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//')
     if [[ -z "$chave" ]]; then
       item "$dir: nao consegui derivar uma key pelo nome da pasta"
+      continue
+    fi
+    # Ja exposta com outro nome (moya-pihole, moya-docs): sugerir uma segunda
+    # linha criaria rota duplicada; o que falta e o `dir` da linha existente.
+    exposta=""
+    for k in "${KEYS[@]}"; do
+      if [[ "$k" == "$chave" || "$k" == *"-$chave" ]]; then
+        exposta=$k
+        break
+      fi
+    done
+    if [[ -n "$exposta" ]]; then
+      if [[ "${DIR[$exposta]}" == "-" ]]; then
+        item "$chave: ja exposta como $exposta; troque o \`-\` por $dir nessa linha"
+      fi
       continue
     fi
     fqdn="$chave.$DOMAIN"
