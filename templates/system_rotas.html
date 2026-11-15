@@ -128,7 +128,7 @@
             </td>
             <td data-sort-value="{{ app.fqdn }}">
               {% if app.url %}<span class="mono">{{ app.url }}</span>{% else %}<span class="muted">—</span>{% endif %}
-              <div class="muted mono text-11">{{ app.upstream|default:"—" }}</div>
+              <div class="muted mono text-11">{% if app.upstream and app.upstream != "-" %}{{ app.upstream }}{% else %}—{% endif %}</div>
               {% for extra in app.extras %}<span class="tag type">{{ extra }}</span>{% endfor %}
             </td>
             <td>
@@ -186,7 +186,7 @@
               </td>
               <td>
                 {% if app.url %}<span class="mono">{{ app.url }}</span>{% else %}<span class="muted">—</span>{% endif %}
-                <div class="muted mono text-11">{{ app.upstream|default:"—" }}</div>
+                <div class="muted mono text-11">{% if app.upstream and app.upstream != "-" %}{{ app.upstream }}{% else %}—{% endif %}</div>
               </td>
               <td>
                 {% for atalho in app.atalhos %}<span class="tag">{{ atalho }}</span>

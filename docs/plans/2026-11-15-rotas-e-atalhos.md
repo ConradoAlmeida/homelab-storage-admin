@@ -54,7 +54,7 @@ somente leitura no painel resolve isso sem tirar o env como fonte da verdade.
       estado e página (200, tags, perfil Pi sem portal, arquivos ausentes).
 - [x] 7. Docs (`SISTEMA`, `ROTINAS`, `CONTEXTO`, `ARQUITETURA` se citar a tela) e
       este plano.
-- [ ] 8. Deploy no moya e conferência autenticada; bancada nos dois perfis.
+- [x] 8. Deploy no moya e conferência autenticada; bancada nos dois perfis.
 
 ## Verificação
 
@@ -65,7 +65,19 @@ somente leitura no painel resolve isso sem tirar o env como fonte da verdade.
 - Sem `deploy/` ou sem estado a página abre com aviso, sem 500.
 - `pytest` verde e bancada `linux2024` nos dois perfis.
 
+## Resultado
+
+- Página em `/sistema/rotas/`, item novo no menu Sistema e link em
+  Configuração. Nada é escrito e o agente não é chamado.
+- No moya (deploy `dd56252`): 12 rotas, 2 no painel, 11 no portal, 1 sem
+  atalho, nenhuma pendente; `http://…local` porque o overlay seta
+  `APPS_SCHEME: http`.
+- Teste com o `apps.aplicados` real e o env do moya: todas `aplicado`, sem
+  linha inválida e sem app fora do env.
+- `511 passed` local (16 testes novos: parser, flags, default de nome,
+  estados, envs reais e a página com/sem arquivos).
+- Bancada `linux2024` verde nos dois perfis (`8 lab passed`, smoke 200).
+
 ## Estado
 
-Em andamento (2026-11-15): código, testes e docs prontos; falta deploy no moya
-e bancada.
+Concluído em 2026-11-15; falta o `./deploy.sh` no Pi, que é do dono.
