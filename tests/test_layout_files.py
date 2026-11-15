@@ -118,6 +118,21 @@ def test_deploy_loads_host_env_and_selected_overlay():
     assert '"upnp": True' in text
 
 
+def test_deploy_confere_app_viva():
+    text = read("deploy.sh")
+    # Deploy verde = /login/ respondendo no endereco em que o host publica.
+    assert 'APP_URL="http://${BIND_ADDR:-127.0.0.1}:${BIND_PORT:-8060}/login/"' in text
+    assert "OK: $APP_URL -> $APP_CODE" in text
+    assert "logs --tail=80 web" in text
+
+
+def test_ci_guarda_css_compilado_e_migracoes():
+    text = read(".github/workflows/ci.yml")
+    assert "makemigrations --check --dry-run" in text
+    assert "manage.py tailwind build" in text
+    assert "git diff --exit-code -- static/css/kit.css" in text
+
+
 def test_install_agent_selects_profile():
     text = read("install-agent.sh")
     assert "HOST_ENV_PROFILE" in text

@@ -75,20 +75,6 @@ if [[ "$NEED_AGENT" -eq 1 ]]; then
   echo
 fi
 
-if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
-  qbit_conf="/mnt/nas/apps/qbittorrent/config/qBittorrent/qBittorrent.conf"
-  if [[ ! -f "$qbit_conf" ]]; then
-    # Aviso, nao falha: o diretorio pode ser de root e o deploy roda como
-    # usuario comum. Sem o arquivo o qBittorrent sobe com a config padrao.
-    if mkdir -p "$(dirname "$qbit_conf")" "${JELLYFIN_ROOT:-/mnt/jellyfin}/.incomplete" 2>/dev/null \
-      && cp "$HERE/deploy/pi/qbittorrent.conf" "$qbit_conf" 2>/dev/null; then
-      echo "==> Configuracao inicial do qBittorrent"
-    else
-      echo "AVISO: nao foi possivel criar $qbit_conf; rode uma vez com sudo para copiar a configuracao do qBittorrent." >&2
-    fi
-  fi
-fi
-
 echo "==> docker compose up -d --build"
 docker compose "${COMPOSE_FILES[@]}" up -d --build
 
@@ -186,3 +172,20 @@ fi
 
 echo "==> status"
 docker compose "${COMPOSE_FILES[@]}" ps
+
+# Deploy verde = app respondendo. O entrypoint roda migracoes antes de subir o
+# servidor, entao os primeiros segundos valem 000/502; espera ate 90 s.
+APP_URL="http://${BIND_ADDR:-127.0.0.1}:${BIND_PORT:-8060}/login/"
+APP_CODE=""
+for _ in $(seq 1 45); do
+  APP_CODE=$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL" 2>/dev/null || true)
+  [[ "$APP_CODE" == "200" || "$APP_CODE" == "302" ]] && break
+  sleep 2
+done
+if [[ "$APP_CODE" != "200" && "$APP_CODE" != "302" ]]; then
+  echo "ERRO: $APP_URL respondeu '${APP_CODE:-sem resposta}'." >&2
+  echo "Veja os logs:" >&2
+  echo "  docker compose ${COMPOSE_FILES[*]} logs --tail=80 web" >&2
+  exit 1
+fi
+echo "OK: $APP_URL -> $APP_CODE"
