@@ -81,7 +81,11 @@ confirma() {
 }
 
 existe_snapshot() {
-  v snapshot-list "$VM" --name 2>/dev/null | grep -qx "$1"
+  # Captura a lista antes de filtrar: com pipefail, o grep -q fecha o pipe e o
+  # virsh termina com SIGPIPE (141), derrubando o pipeline.
+  local lista
+  lista=$(v snapshot-list "$VM" --name 2>/dev/null || true)
+  grep -qx "$1" <<<"$lista"
 }
 
 liga_ou_falha() {
