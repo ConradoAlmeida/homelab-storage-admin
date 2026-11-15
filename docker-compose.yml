@@ -37,3 +37,7 @@ services:
       - "${DATA_DIR:-./data}:/app/data"
       - "${STORAGE_ROOT:-/mnt/nas}:${STORAGE_ROOT:-/mnt/nas}:ro"
       - "${AGENT_SOCKET_DIR:-/run/homelab-storage-admin}:/run/homelab-storage-admin:ro"
+      # Pagina Rotas e atalhos: env do checkout e estado do ultimo --apply.
+      # Somente leitura; a pagina nao escreve nada.
+      - ./deploy:/app/deploy:ro
+      - /var/lib/homelab-storage-admin:/var/lib/homelab-storage-admin:ro

@@ -1,6 +1,6 @@
-# Sistema (host, configuração, chaves, logs, serviços, terminal)
+# Sistema (host, configuração, rotas, chaves, logs, serviços, terminal)
 
-Seis telas no menu **Sistema**, mesmo código no Pi e no moyaserver. O que o host
+Sete telas no menu **Sistema**, mesmo código no Pi e no moyaserver. O que o host
 não oferece some com explicação (sem erro 500).
 
 ## Configuração (`/sistema/config/`)
@@ -22,6 +22,24 @@ O Compose repassa `SSH_LOGIN`, `SERVICES_INI_HOST`, `STACK_ENV_PATH` e
 salvar; `host.env` e `.env` do stack valem após `install-agent.sh` e `deploy.sh`;
 `services.ini` (gerado pelo `apps-sync`) vale ao recarregar o painel; a
 curadoria é `atalho=` no env, não edição no host.
+
+## Rotas e atalhos (`/sistema/rotas/`)
+
+Somente leitura: lê o `deploy/<perfil>/apps.env` (montado do checkout em
+`/app/deploy`, sem depender do build) e o estado do último `apps-sync --apply`
+(`/var/lib/homelab-storage-admin/apps.aplicados`, 0644). Uma tabela com app,
+rota, atalhos (`painel`/`portal`), grupo do portal e estado:
+
+- `aplicado` — a linha do estado é idêntica à do env;
+- `pendente` — o env mudou depois do último `--apply`;
+- `novo` — ainda não aparece no estado (primeira execução ou sem sudo);
+- `fora do env` — seção separada com o que está aplicado mas saiu do env;
+  os containers/pastas só saem com `--prune-containers`/`--prune-data`.
+
+O resumo mostra quantas rotas, quantas no painel, quantas no portal e quantas
+estão sem atalho. `atalho=` é curadoria: sem a flag a app tem rota e DNS, mas
+não aparece em lugar nenhum. Grupo só vale para o portal. Env ou estado
+ausente viram aviso na tela, nunca erro 500 — a página não escreve nada.
 
 ## Host (`/sistema/`)
 

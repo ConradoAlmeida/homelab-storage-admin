@@ -34,7 +34,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   (fragmentos versionados em `deploy/<perfil>/snippets/`) e `atalho=` para os
   atalhos do painel e do portal, gerados em `DATA_DIR/services.ini` e em
   `/var/lib/homelab-storage-admin/apps-portal.ini` (o portal do moya lê essa
-  lista; ninguém edita HTML nem INI à mão). `--doctor` aponta o
+  lista; ninguém edita HTML nem INI à mão). A página **Rotas e atalhos**
+  (`/sistema/rotas/`) mostra o declarado no env e o que o último `--apply`
+  aplicou, sem escrever nada. `--doctor` aponta o
   que diverge (Caddy, DNS, containers, portas, pastas) sem escrever, e
   `--descobrir` sugere a linha de stacks fora do env. O check de containers usa
   o rótulo `working_dir`, então o projeto compose pode ter outro nome que a

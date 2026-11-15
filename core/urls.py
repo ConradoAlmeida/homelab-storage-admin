@@ -12,6 +12,7 @@ urlpatterns = [
         system_views.SystemConfigView.as_view(),
         name="system_config",
     ),
+    path("sistema/rotas/", system_views.SystemRotasView.as_view(), name="system_rotas"),
     path("sistema/chaves/", system_views.SystemKeysView.as_view(), name="system_keys"),
     path("sistema/logs/", system_views.SystemLogsView.as_view(), name="system_logs"),
     path(

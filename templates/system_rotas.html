@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Rotas e atalhos - {{ product_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Rotas e atalhos</h1>
+    <p class="lead">
+      O que o <span class="mono">apps.env</span> declara neste host e o que a última execução do
+      <span class="mono">apps-sync.sh --apply</span> deixou aplicado. Somente leitura: para mudar,
+      edite o env no repositório e rode o script.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn small" href="{% url 'system_config' %}">Configuração</a>
+    <a class="btn" href="{% url 'system_rotas' %}">Atualizar</a>
+  </div>
+</div>
+
+{% if not env_lido %}
+  <div class="alert danger">
+    <strong>apps.env não encontrado no container.</strong>
+    <p class="muted mono">{{ env_arquivo }}</p>
+    <p class="muted">
+      Sem ele não há rotas para mostrar. Confira <span class="mono">APPS_ENV_PATH</span> no
+      <span class="mono">host.env</span> e a montagem de <span class="mono">./deploy</span> no Compose.
+    </p>
+  </div>
+{% else %}
+  <div class="stat-grid">
+    <div class="stat-card is-static">
+      <span class="stat-label">Rotas</span>
+      <strong class="stat-value">{{ resumo.total }}</strong>
+      <span class="stat-note">declaradas em {{ env_caminho }}</span>
+    </div>
+    <div class="stat-card is-static">
+      <span class="stat-label">Painel</span>
+      <strong class="stat-value">{{ resumo.painel }}</strong>
+      <span class="stat-note">no botão Serviços</span>
+    </div>
+    <div class="stat-card is-static">
+      <span class="stat-label">Portal</span>
+      <strong class="stat-value">{{ resumo.portal }}</strong>
+      <span class="stat-note">cards no portal do moya</span>
+    </div>
+    <div class="stat-card is-static">
+      <span class="stat-label">Sem atalho</span>
+      <strong class="stat-value">{{ resumo.sem_atalho }}</strong>
+      <span class="stat-note">só rota e DNS</span>
+    </div>
+    <div class="stat-card is-static">
+      <span class="stat-label">Pendentes</span>
+      <strong class="stat-value {% if resumo.pendentes %}warn{% else %}ok{% endif %}">{{ resumo.pendentes }}</strong>
+      <span class="stat-note">
+        {% if resumo.pendentes %}rode o --apply{% else %}env e host iguais{% endif %}
+      </span>
+    </div>
+  </div>
+
+  {% if not estado_lido %}
+    <div class="alert">
+      <strong>Estado do último <span class="mono">--apply</span> não encontrado.</strong>
+      <p class="muted mono">{{ estado_caminho }}</p>
+      <p class="muted">
+        Sem ele não dá para dizer o que está aplicado: as apps aparecem como
+        <span class="tag">novo</span> até o script rodar com sudo.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if invalidas %}
+    <div class="alert danger">
+      <strong>{{ invalidas|length }} linha{{ invalidas|length|pluralize }} inválida{{ invalidas|length|pluralize }} no env.</strong>
+      <ul class="muted">
+        {% for linha in invalidas %}
+          <li>linha {{ linha.linha }}: {{ linha.erro }}{% if linha.key %} (<span class="mono">{{ linha.key }}</span>){% endif %}</li>
+        {% endfor %}
+      </ul>
+      <p class="muted">O <span class="mono">--apply</span> recusa o env inteiro enquanto isso não for corrigido.</p>
+    </div>
+  {% endif %}
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Apps declaradas</h2>
+      <span class="muted text-12">{{ apps|length }} app{{ apps|length|pluralize }}</span>
+    </div>
+    <div class="table-toolbar" data-table-toolbar="#rotas-table">
+      <div class="filters">
+        <input class="input table-search" type="search" data-table-search
+               placeholder="Buscar app, nome ou rota" autocomplete="off"
+               aria-label="Buscar apps">
+        <select class="input table-filter" data-table-filter data-column="2"
+                aria-label="Filtrar por atalho">
+          <option value="">Todos os atalhos</option>
+          <option value="painel">painel</option>
+          <option value="portal">portal</option>
+          <option value="sem atalho">sem atalho</option>
+        </select>
+        <select class="input table-filter" data-table-filter data-column="4"
+                aria-label="Filtrar por estado">
+          <option value="">Todos os estados</option>
+          <option value="aplicado">aplicado</option>
+          <option value="pendente">pendente</option>
+          <option value="novo">novo</option>
+        </select>
+      </div>
+      <div class="page-actions">
+        <span class="muted text-12" data-table-count>{{ apps|length }} itens</span>
+        <button class="btn small" type="button" data-table-clear>Limpar</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="rotas-table" class="data-table" data-table-sortable>
+      <thead>
+        <tr>
+          <th><button type="button" class="th-sort" data-sort="0" aria-sort="none">App</button></th>
+          <th><button type="button" class="th-sort" data-sort="1" aria-sort="none">Rota</button></th>
+          <th><button type="button" class="th-sort" data-sort="2" aria-sort="none">Atalhos</button></th>
+          <th>Grupo</th>
+          <th><button type="button" class="th-sort" data-sort="4" aria-sort="none">Estado</button></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in apps %}
+          <tr>
+            <td data-sort-value="{{ app.key }}">
+              <strong class="mono">{{ app.key }}</strong>
+              <div class="muted text-11">{{ app.nome }}{% if app.descricao %} · {{ app.descricao }}{% endif %}</div>
+            </td>
+            <td data-sort-value="{{ app.fqdn }}">
+              {% if app.url %}<span class="mono">{{ app.url }}</span>{% else %}<span class="muted">—</span>{% endif %}
+              <div class="muted mono text-11">{{ app.upstream|default:"—" }}</div>
+              {% for extra in app.extras %}<span class="tag type">{{ extra }}</span>{% endfor %}
+            </td>
+            <td>
+              {% for atalho in app.atalhos %}
+                <span class="tag">{{ atalho }}</span>
+              {% empty %}
+                <span class="muted">sem atalho</span>
+              {% endfor %}
+            </td>
+            <td>
+              {% if app.no_portal %}<span class="tag">{{ app.grupo }}</span>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td>
+              {% if app.estado == "aplicado" %}<span class="tag ok">aplicado</span>
+              {% elif app.estado == "pendente" %}<span class="tag warn">pendente</span>
+              {% elif app.estado == "novo" %}<span class="tag">novo</span>
+              {% else %}<span class="tag off">{{ app.estado }}</span>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td class="empty" colspan="5">Nenhuma app declarada no env.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  {% if fora_do_env %}
+    <section class="section">
+      <div class="section-head">
+        <h2>Fora do env</h2>
+        <span class="muted text-12">{{ fora_do_env|length }} app{{ fora_do_env|length|pluralize }}</span>
+      </div>
+      <div class="alert">
+        Aplicadas numa execução anterior e agora ausentes do <span class="mono">apps.env</span>.
+        O próximo <span class="mono">--apply</span> para de gerar a rota e o atalho; os containers e a
+        pasta só saem com <span class="mono">--prune-containers</span> e
+        <span class="mono">--prune-data</span>.
+      </div>
+      <div class="table-wrap"><table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">App</th>
+            <th scope="col">Rota</th>
+            <th scope="col">Atalhos</th>
+            <th scope="col">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in fora_do_env %}
+            <tr>
+              <td>
+                <strong class="mono">{{ app.key }}</strong>
+                <div class="muted text-11">{{ app.nome }}</div>
+              </td>
+              <td>
+                {% if app.url %}<span class="mono">{{ app.url }}</span>{% else %}<span class="muted">—</span>{% endif %}
+                <div class="muted mono text-11">{{ app.upstream|default:"—" }}</div>
+              </td>
+              <td>
+                {% for atalho in app.atalhos %}<span class="tag">{{ atalho }}</span>
+                {% empty %}<span class="muted">sem atalho</span>{% endfor %}
+              </td>
+              <td><span class="tag off">fora do env</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+  {% endif %}
+
+  <div class="alert">
+    Para aplicar uma mudança no host:
+    <span class="mono">sudo bash scripts/stacks/apps-sync.sh [--perfil moya] --apply</span>
+    (dry-run sem <span class="mono">--apply</span>). As rotas usam
+    <span class="mono">{{ esquema }}</span> neste host; o DNS e o Caddy ficam fora desta página,
+    no <span class="mono">--doctor</span>.
+  </div>
+{% endif %}
+{% endblock %}

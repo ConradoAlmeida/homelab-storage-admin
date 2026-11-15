@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from pathlib import Path
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -14,6 +15,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .agent import AgentError, agent
+from .apps_env import apps_do_env, resumo
 from .config_locais import contexto_config_locais
 from .context_processors import capacidades_do_host
 from .models import AuditLog, token_da_api
@@ -164,6 +166,33 @@ class SystemConfigView(AgentView):
             apps_env=settings.APPS_ENV_PATH,
         )
         ctx["host_error"] = None
+        return render(request, self.template_name, ctx)
+
+
+class SystemRotasView(AgentView):
+    """Le o apps.env do checkout e o estado do ultimo --apply (somente leitura)."""
+
+    template_name = "system_rotas.html"
+    http_method_names = ["get", "head"]
+
+    def get(self, request):
+        env_file = Path(settings.APPS_ENV_FILE)
+        estado_file = Path(settings.APPS_STATE_FILE)
+        apps, fora, invalidas = apps_do_env(
+            env=env_file, estado=estado_file, scheme=settings.APPS_SCHEME
+        )
+        ctx = {
+            "apps": apps,
+            "fora_do_env": fora,
+            "invalidas": invalidas,
+            "resumo": resumo(apps),
+            "env_caminho": settings.APPS_ENV_PATH or str(env_file),
+            "env_arquivo": str(env_file),
+            "env_lido": env_file.is_file(),
+            "estado_lido": estado_file.is_file(),
+            "estado_caminho": str(estado_file),
+            "esquema": settings.APPS_SCHEME,
+        }
         return render(request, self.template_name, ctx)
 
 

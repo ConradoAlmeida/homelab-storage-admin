@@ -314,7 +314,10 @@ No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A ba
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
 | `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
-| `APPS_ENV_PATH` | `deploy/<perfil>/apps.env` no checkout | fonte das rotas do Caddy/DNS mostrada em Configuração; vazio esconde a linha |
+| `APPS_ENV_PATH` | `deploy/<perfil>/apps.env` no checkout | fonte das rotas, do DNS e dos atalhos (mostrada em Configuração); vazio esconde a linha |
+| `APPS_ENV_FILE` | `deploy/<perfil>/apps.env` dentro do container | leitura da página Rotas e atalhos (`./deploy` montado read-only) |
+| `APPS_STATE_FILE` | `/var/lib/homelab-storage-admin/apps.aplicados` | estado do último `--apply`, usado para dizer o que está aplicado |
+| `APPS_SCHEME` | `https` (Pi) / `http` (moya, no overlay) | esquema das rotas exibidas |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |
 | `DOWNLOAD_DIR` | `DATA_DIR/downloads` | arquivos temporários baixados do restic |
 | `TORRENT_API_TOKEN` | vazio | Primeiro token da API, se o banco ainda não tiver um. Depois a página Torrents é quem troca |

@@ -57,9 +57,21 @@ SERVICES_INI_HOST = os.environ.get(
     "SERVICES_INI_HOST", str(DATA_DIR / "services.ini")
 )
 CREDENCIAIS_ENV = os.environ.get("CREDENCIAIS_ENV", "").strip()
-# Fonte da verdade das rotas do Caddy/DNS (scripts/stacks/apps-sync.sh).
-# Vazio no moya: a pagina de configuracao nao mostra o arquivo.
+# Fonte da verdade das rotas do Caddy, do DNS e dos atalhos
+# (scripts/stacks/apps-sync.sh). APPS_ENV_PATH e o caminho no host, exibido em
+# Configuracao; APPS_ENV_FILE e o mesmo arquivo dentro do container (./deploy
+# montado read-only), lido pela pagina Rotas e atalhos.
 APPS_ENV_PATH = os.environ.get("APPS_ENV_PATH", "").strip()
+APPS_ENV_FILE = Path(
+    os.environ.get("APPS_ENV_FILE", "")
+    or (BASE_DIR / "deploy" / Path(APPS_ENV_PATH).parent.name / "apps.env")
+)
+# Estado gravado pelo --apply: permite dizer se o env ja foi aplicado no host.
+APPS_STATE_FILE = Path(
+    os.environ.get("APPS_STATE_FILE", "/var/lib/homelab-storage-admin/apps.aplicados")
+)
+# Esquema das rotas neste host (Pi com TLS do Cloudflare, moya em HTTP:80).
+APPS_SCHEME = os.environ.get("APPS_SCHEME", "https").strip().lower() or "https"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
