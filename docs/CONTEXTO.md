@@ -8,9 +8,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `4c43428` (2026-11-15; reconciler de apps e apps.env na Configuração) |
-| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `4c43428`); agente do Pi reinstalado e em sync |
-| Testes | `468 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
+| Versão no moya | `7665a4d` (2026-11-15; reconciler de apps nos dois hosts) |
+| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `7665a4d`); agente do Pi reinstalado e em sync |
+| Testes | `475 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -26,10 +26,12 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   `.lan` saíram. SSH em casa é `conrado@homelab.local`. Sem túnel e sem
   Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
   Ver [REDE](REDE.md#nomes).
-- Rotas do Caddy a partir de `/etc/homelab-storage-admin/apps.env`
-  (`scripts/stacks/apps-sync.sh`): dry-run por padrão, `--apply` gera
-  `apps.caddy` e o wildcard DNS, e os prunes param containers ou movem a pasta
-  da app removida para `/opt/stacks/_removidos/`. App nova é uma linha no env.
+- Rotas do Caddy a partir de `/etc/homelab-storage-admin/apps.env`, nos dois
+  hosts (`scripts/stacks/apps-sync.sh`, `--perfil pi|moya`): dry-run por
+  padrão, `--apply` gera `apps.caddy` (Pi) ou a região do `Caddyfile` (moya) e
+  o DNS, e os prunes param containers ou movem a pasta da app removida para a
+  quarentena. App nova é uma linha no env. O check de containers usa o rótulo
+  `working_dir`, então o projeto compose pode ter outro nome que a pasta.
   Ver [REDE](REDE.md#apps-e-rotas-appsenv).
 - Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
   A lista do share cita o disco do caminho; um RAID mostra os dois membros.
