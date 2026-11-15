@@ -481,6 +481,7 @@ class SandboxMoya:
         self.fake_home = tmp_path / "home" / "conrado"
         self.caddy_dir = self.fake_home / "caddy"
         self.caddyfile = self.caddy_dir / "Caddyfile"
+        self.apps_caddy = self.caddy_dir / "apps.caddy"
         self.pihole_dir = self.fake_home / "pihole"
         self.dns_dir = self.pihole_dir / "etc-dnsmasq.d"
         self.dns_conf = self.dns_dir / "10-apps-local.conf"
@@ -536,6 +537,7 @@ class SandboxMoya:
             "STACKS_ROOT": str(self.root / "opt"),
             "CADDY_DIR": str(self.caddy_dir),
             "CADDYFILE": str(self.caddyfile),
+            "CADDY_APPS": str(self.apps_caddy),
             "DNS_CONF": str(self.dns_conf),
             "PIHOLE_DIR": str(self.pihole_dir),
             "QUARANTINE": str(self.quarantine),
@@ -578,21 +580,24 @@ def test_moya_dry_run_sem_escrever(tmp_path):
     assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE_MOYA
 
 
-def test_moya_apply_gera_regiao_inline_e_dns_por_nome(tmp_path):
+def test_moya_apply_gera_apps_caddy_e_dns_por_nome(tmp_path):
     sandbox = SandboxMoya(tmp_path)
     resultado = sandbox.run("--apply")
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
 
+    apps = sandbox.apps_caddy.read_text(encoding="utf-8")
+    assert "moya-git.local:80 {\n\treverse_proxy localhost:3000\n}" in apps
+    assert "moya-pihole" not in apps  # manual fica no Caddyfile
+    assert "moya-weather" not in apps
+    assert "import cf" not in apps
+    assert "\ttls" not in apps
+
     caddyfile = sandbox.caddyfile.read_text(encoding="utf-8")
-    assert caddyfile.count("# >>> apps-sync") == 1
-    assert caddyfile.count("# <<< apps-sync") == 1
-    assert "moya-git.local:80 {\n\treverse_proxy localhost:3000\n}" in caddyfile
-    assert caddyfile.count("moya-git.local:80 {") == 1
+    assert caddyfile.count("import apps.caddy") == 1
+    assert "moya-git.local:80 {" not in caddyfile
     assert "redir / /admin" in caddyfile
     assert "reverse_proxy 10.72.60.202:80" in caddyfile
-    assert "\n\n\n" not in caddyfile  # blocos removidos nao deixam vazios
-    assert "import cf" not in caddyfile
-    assert "\ttls" not in caddyfile
+    assert "\n\n\n" not in caddyfile  # bloco removido nao deixa vazio
 
     conf = sandbox.dns_conf.read_text(encoding="utf-8")
     enderecos = [l for l in conf.splitlines() if l.startswith("address=")]
@@ -619,16 +624,18 @@ def test_moya_apply_e_idempotente(tmp_path):
     sandbox = SandboxMoya(tmp_path)
     assert sandbox.run("--apply").returncode == 0
     antes = sandbox.caddyfile.read_text(encoding="utf-8")
+    apps_antes = sandbox.apps_caddy.read_text(encoding="utf-8")
     conf_antes = sandbox.dns_conf.read_text(encoding="utf-8")
     sandbox.log.unlink()
 
     resultado = sandbox.run("--apply")
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
-    assert "regiao apps-sync sem mudanca" in resultado.stdout
+    assert "apps.caddy sem mudanca" in resultado.stdout
     assert "Caddy ja estava com a configuracao do env" in resultado.stdout
     assert "DNS sem mudanca" in resultado.stdout
     assert "Pi-hole reiniciado" not in resultado.stdout
     assert sandbox.caddyfile.read_text(encoding="utf-8") == antes
+    assert sandbox.apps_caddy.read_text(encoding="utf-8") == apps_antes
     assert sandbox.dns_conf.read_text(encoding="utf-8") == conf_antes
 
 

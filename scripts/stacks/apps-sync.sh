@@ -15,8 +15,9 @@
 # Perfis:
 #   pi (default)  *.conradhub.com com TLS (DNS-01), Caddy em arquivo separado
 #                 (apps.caddy importado pelo Caddyfile) e wildcard no Pi-hole.
-#   moya          *.local em HTTP:80, Caddy gerado inline no Caddyfile e
-#                 entrada de DNS por nome (`.local` e mDNS: sem wildcard).
+#   moya          *.local em HTTP:80, Caddy em arquivo separado (apps.caddy,
+#                 importado pelo Caddyfile) e DNS por nome: `.local` e mDNS,
+#                 entao nao ha wildcard.
 #
 # `--prune-containers` roda `docker compose down` (sem -v) so para quem saiu do
 # env. `--prune-data` move a pasta para a quarentena, nunca apaga. Sem estado
@@ -92,13 +93,12 @@ case "${PERFIL:-pi}" in
   pi) PERFIL=pi ;;
   moya)
     PERFIL=moya
-    CADDY_DIR=${CADDY_DIR:-/home/conrado/caddy}
+    CADDY_DIR=${CADDY_DIR:-/opt/stacks/caddy}
     CADDY_CONTAINER=${CADDY_CONTAINER:-moya-caddy}
     PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
     DOMAIN=${DOMAIN:-local}
     DNS_IP=${DNS_IP:-192.168.0.10}
     DNS_MODE=${DNS_MODE:-nome}
-    CADDY_MODO=${CADDY_MODO:-inline}
     CADDY_PORTA=${CADDY_PORTA-:80}
     CADDY_TLS=${CADDY_TLS-}
     CADDY_PROXY=${CADDY_PROXY:-reverse_proxy}
@@ -121,7 +121,6 @@ DOMAIN=${DOMAIN:-conradhub.com}
 DNS_IP=${DNS_IP:-192.168.0.150}
 DNS_MODE=${DNS_MODE:-wildcard}
 DNS_QUERY_HOST=${DNS_QUERY_HOST:-127.0.0.1}
-CADDY_MODO=${CADDY_MODO:-arquivo}
 CADDY_PORTA=${CADDY_PORTA-}
 CADDY_TLS=${CADDY_TLS-import cf}
 CADDY_PROXY=${CADDY_PROXY:-import proxy}
@@ -382,48 +381,6 @@ remove_bloco() {
   ' "$arquivo"
 }
 
-MARCA_INICIO='# >>> apps-sync (gerado; nao edite)'
-MARCA_FIM='# <<< apps-sync'
-
-remove_regiao_inline() {
-  awk -v ini="$MARCA_INICIO" -v fim="$MARCA_FIM" '
-    $0 == ini { dentro = 1; next }
-    $0 == fim { dentro = 0; next }
-    !dentro { print }
-  ' "$1" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}'
-}
-
-# Caddyfile inteiro com a regiao gerada no fim, sem os blocos manuais que
-# duplicam uma app gerada (primeira migracao).
-caddyfile_inline() {
-  local t1 t2 k endereco
-  t1=$(mktemp)
-  t2=$(mktemp)
-  remove_regiao_inline "$CADDYFILE" >"$t1"
-  cp "$t1" "$t2"
-  for k in "${KEYS[@]}"; do
-    e_manual "$k" && continue
-    endereco=$(endereco_site "$k")
-    if grep -qxF "$endereco {" "$t2"; then
-      if ! remove_bloco "$t2" "$endereco" >"$t1"; then
-        rm -f "$t1" "$t2"
-        erro "o bloco de $endereco no Caddyfile tem chaves aninhadas; remova a mao e rode de novo"
-      fi
-      mv -f "$t1" "$t2"
-      t1=$(mktemp)
-    fi
-  done
-  # Cada bloco removido deixa a linha vazia que o separava: colapsa as
-  # repetidas e descarta as do inicio do arquivo.
-  sed '/./,$!d' "$t2" | awk '
-    /^[[:space:]]*$/ { if (vazio) next; vazio = 1; print; next }
-    { vazio = 0; print }' 
-  printf '\n%s\n' "$MARCA_INICIO"
-  gera_blocos
-  printf '%s\n' "$MARCA_FIM"
-  rm -f "$t1" "$t2"
-}
-
 # O arquivo e reescrito como root. Mantem dono e modo do original para o
 # operador seguir editando sem sudo (moya) e o Pi continuar em 644.
 preserva_dono() {
@@ -455,68 +412,53 @@ aplica_caddy() {
 
   backup="$CADDYFILE.bak-$(date +%Y%m%d-%H%M%S)"
 
-  if [[ "$CADDY_MODO" == "inline" ]]; then
-    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
-    caddyfile_inline >"$tmp"
-    if cmp -s "$tmp" "$CADDYFILE"; then
-      rm -f "$tmp"
-      item "regiao apps-sync sem mudanca"
-    else
-      cp -p "$CADDYFILE" "$backup"
-      preserva_dono "$tmp" "$CADDYFILE"
-      mv -f "$tmp" "$CADDYFILE"
-      item "regiao apps-sync atualizada no Caddyfile (backup: $(basename "$backup"))"
-      mudou=1
-    fi
+  tmp=$(mktemp "$CADDY_DIR/.apps.caddy.XXXXXX")
+  gera_apps >"$tmp"
+  if [[ -f "$CADDY_APPS" ]] && cmp -s "$tmp" "$CADDY_APPS"; then
+    rm -f "$tmp"
+    item "apps.caddy sem mudanca"
   else
-    tmp=$(mktemp "$CADDY_DIR/.apps.caddy.XXXXXX")
-    gera_apps >"$tmp"
-    if [[ -f "$CADDY_APPS" ]] && cmp -s "$tmp" "$CADDY_APPS"; then
-      rm -f "$tmp"
-      item "apps.caddy sem mudanca"
-    else
-      preserva_dono "$tmp" "$CADDY_APPS"
-      mv -f "$tmp" "$CADDY_APPS"
-      item "apps.caddy atualizado: $CADDY_APPS"
-      mudou=1
-    fi
+    preserva_dono "$tmp" "$CADDY_APPS"
+    mv -f "$tmp" "$CADDY_APPS"
+    item "apps.caddy atualizado: $CADDY_APPS"
+    mudou=1
+  fi
 
-    # O Caddyfile importa apps.caddy de dentro do container. Se o bind mount
-    # nao existe, o import falha e o Caddy antigo continua no ar: melhor parar
-    # aqui, antes de editar o Caddyfile.
-    if ! docker exec "$CADDY_CONTAINER" test -f /etc/caddy/apps.caddy 2>/dev/null; then
-      erro "o container $CADDY_CONTAINER nao ve /etc/caddy/apps.caddy.
+  # O Caddyfile importa apps.caddy de dentro do container. Se o bind mount
+  # nao existe, o import falha e o Caddy antigo continua no ar: melhor parar
+  # aqui, antes de editar o Caddyfile.
+  if ! docker exec "$CADDY_CONTAINER" test -f /etc/caddy/apps.caddy 2>/dev/null; then
+    erro "o container $CADDY_CONTAINER nao ve /etc/caddy/apps.caddy.
     Monte a pasta do Caddy em $CADDY_DIR/compose.yaml, no lugar dos mounts
     de Caddyfile e cloudflare.token:
       - ./:/etc/caddy:ro
     Depois: docker compose up -d && sudo $0 --apply"
-    fi
-
-    if ! grep -qxF 'import apps.caddy' "$CADDYFILE"; then
-      cp -p "$CADDYFILE" "$backup"
-      tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
-      garante_import <"$CADDYFILE" >"$tmp"
-      preserva_dono "$tmp" "$CADDYFILE"
-      mv -f "$tmp" "$CADDYFILE"
-      item "import apps.caddy adicionado ao Caddyfile (backup: $(basename "$backup"))"
-      mudou=1
-    fi
-
-    for endereco in "${geradas[@]:-}"; do
-      [[ -n "$endereco" ]] || continue
-      grep -qxF "$endereco {" "$CADDYFILE" || continue
-      tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
-      if ! remove_bloco "$CADDYFILE" "$endereco" >"$tmp"; then
-        rm -f "$tmp"
-        erro "o bloco de $endereco no Caddyfile tem chaves aninhadas; remova a mao e rode de novo"
-      fi
-      [[ -f "$backup" ]] || cp -p "$CADDYFILE" "$backup"
-      preserva_dono "$tmp" "$CADDYFILE"
-      mv -f "$tmp" "$CADDYFILE"
-      item "bloco de $endereco saiu do Caddyfile (agora vem de apps.caddy)"
-      mudou=1
-    done
   fi
+
+  if ! grep -qxF 'import apps.caddy' "$CADDYFILE"; then
+    cp -p "$CADDYFILE" "$backup"
+    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
+    garante_import <"$CADDYFILE" >"$tmp"
+    preserva_dono "$tmp" "$CADDYFILE"
+    mv -f "$tmp" "$CADDYFILE"
+    item "import apps.caddy adicionado ao Caddyfile (backup: $(basename "$backup"))"
+    mudou=1
+  fi
+
+  for endereco in "${geradas[@]:-}"; do
+    [[ -n "$endereco" ]] || continue
+    grep -qxF "$endereco {" "$CADDYFILE" || continue
+    tmp=$(mktemp "$CADDY_DIR/.Caddyfile.XXXXXX")
+    if ! remove_bloco "$CADDYFILE" "$endereco" >"$tmp"; then
+      rm -f "$tmp"
+      erro "o bloco de $endereco no Caddyfile tem chaves aninhadas; remova a mao e rode de novo"
+    fi
+    [[ -f "$backup" ]] || cp -p "$CADDYFILE" "$backup"
+    preserva_dono "$tmp" "$CADDYFILE"
+    mv -f "$tmp" "$CADDYFILE"
+    item "bloco de $endereco saiu do Caddyfile (agora vem de apps.caddy)"
+    mudou=1
+  done
 
   caddy_validate || erro "caddy validate falhou; Caddyfile e apps.caddy mantidos, sem reload"
   if [[ $mudou -eq 1 ]]; then

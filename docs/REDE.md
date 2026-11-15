@@ -101,13 +101,13 @@ exige:
 | | Pi | moya |
 |---|---|---|
 | Nomes | `*.conradhub.com` com TLS | `*.local:80`, HTTP |
-| Caddy | `apps.caddy` importado | região gerada no `Caddyfile` |
+| Caddy | `/opt/stacks/caddy`, `apps.caddy` | `/opt/stacks/caddy`, `apps.caddy` |
 | DNS | wildcard `address=/conradhub.com/<ip>` | uma entrada por nome em `etc-dnsmasq.d/10-apps-local.conf` |
 
 `.local` é reservado para mDNS: sem wildcard, cada app ganha a própria
-entrada. O `Caddyfile` fica em `/home/conrado/caddy` e o container do Caddy é
-do Portainer (não há compose no host), então o script reescreve o arquivo e
-recarrega — não recria o container. `dir` pode ser `-` para app sem stack
+entrada. Os dois hosts têm o mesmo modelo de Caddy (compose nativo, pasta
+montada, `apps.caddy` importado); o moya só não tem TLS porque não há
+certificado possível para `.local`. `dir` pode ser `-` para app sem stack
 local (`moya-weather`, noutra máquina).
 
 **Tailscale, só no Pi.** Nó `homelab`, `100.84.34.25`, MagicDNS

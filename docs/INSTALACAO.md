@@ -86,9 +86,9 @@ sudo scripts/stacks/apps-sync.sh --perfil moya            # dry-run
 sudo scripts/stacks/apps-sync.sh --perfil moya --apply    # Caddyfile + DNS
 ```
 
-- O gerador escreve no fim de `/home/conrado/caddy/Caddyfile`, entre
-  `# >>> apps-sync` e `# <<< apps-sync`, e recarrega o container. O stack do
-  Caddy é do Portainer (não há compose no host), então nada é recriado.
+- O Caddy é compose nativo em `/opt/stacks/caddy` (antes era stack do
+  Portainer): a pasta é montada em `/etc/caddy` e o gerador escreve
+  `apps.caddy` + `import`, igual ao Pi.
 - O DNS vai para `etc-dnsmasq.d/10-apps-local.conf`, uma linha
   `address=/<nome>/192.168.0.10` por app. `.local` é mDNS: não há wildcard.
 - `--prune-data` move a pasta para `/home/conrado/_removidos/`.
