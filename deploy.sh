@@ -75,6 +75,39 @@ if [[ "$NEED_AGENT" -eq 1 ]]; then
   echo
 fi
 
+# O apps.env vale no host depois do --apply: um pull que muda o arquivo nao
+# mexe em rota, DNS nem atalho. A data e o sinal (o --apply grava o estado
+# depois; git nao reescreve arquivo que nao mudou).
+APPS_ENV_LOCAL="${APPS_ENV_PATH:-}"
+APPS_ESTADO="${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}"
+if [[ -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LOCAL" ]] &&
+  { [[ ! -f "$APPS_ESTADO" ]] || [[ "$APPS_ENV_LOCAL" -nt "$APPS_ESTADO" ]]; }; then
+  # O apps-sync assume o perfil `pi`; so o moya precisa do flag.
+  APPS_PERFIL=""
+  case "$(basename "$(dirname "$APPS_ENV_LOCAL")")" in
+    moya) APPS_PERFIL=" --perfil moya" ;;
+  esac
+  echo
+  echo "ATENCAO: $APPS_ENV_LOCAL mudou depois do ultimo --apply."
+  echo "Rotas, DNS e atalhos continuam os antigos. Rode:"
+  echo "  sudo bash scripts/stacks/apps-sync.sh$APPS_PERFIL --apply"
+  echo
+fi
+
+if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
+  qbit_conf="/mnt/nas/apps/qbittorrent/config/qBittorrent/qBittorrent.conf"
+  if [[ ! -f "$qbit_conf" ]]; then
+    # Aviso, nao falha: o diretorio pode ser de root e o deploy roda como
+    # usuario comum. Sem o arquivo o qBittorrent sobe com a config padrao.
+    if mkdir -p "$(dirname "$qbit_conf")" "${JELLYFIN_ROOT:-/mnt/jellyfin}/.incomplete" 2>/dev/null \
+      && cp "$HERE/deploy/pi/qbittorrent.conf" "$qbit_conf" 2>/dev/null; then
+      echo "==> Configuracao inicial do qBittorrent"
+    else
+      echo "AVISO: nao foi possivel criar $qbit_conf; rode uma vez com sudo para copiar a configuracao do qBittorrent." >&2
+    fi
+  fi
+fi
+
 echo "==> docker compose up -d --build"
 docker compose "${COMPOSE_FILES[@]}" up -d --build
 

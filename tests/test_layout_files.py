@@ -126,6 +126,21 @@ def test_deploy_confere_app_viva():
     assert "logs --tail=80 web" in text
 
 
+def test_deploy_cobra_o_apply_do_env():
+    text = read("deploy.sh")
+    # env mais novo que o estado do --apply vira aviso com o comando do perfil.
+    assert "apps.aplicados" in text
+    assert '"$APPS_ENV_LOCAL" -nt "$APPS_ESTADO"' in text
+    assert "sudo bash scripts/stacks/apps-sync.sh$APPS_PERFIL --apply" in text
+    assert "moya) APPS_PERFIL=\" --perfil moya\"" in text
+    # O deploy nao aplica sozinho: precisa de sudo e a decisao e do dono.
+    assert not [
+        linha
+        for linha in text.splitlines()
+        if linha.strip().startswith(("bash scripts/stacks", "sudo bash scripts/stacks"))
+    ]
+
+
 def test_ci_guarda_css_compilado_e_migracoes():
     text = read(".github/workflows/ci.yml")
     assert "makemigrations --check --dry-run" in text
