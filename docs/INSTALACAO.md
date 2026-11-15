@@ -52,14 +52,20 @@ sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
 
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
-rode antes `sudo ./install-agent.sh`.
+rode antes `sudo ./install-agent.sh`. Ele também exige o `.env` do clone
+(copiar de `.env.example`) e acesso ao Docker pelo usuário (`docker info`); sem
+um dos dois, aborta com mensagem própria antes de mexer em qualquer coisa.
 
 ```bash
 cd /opt/stacks/homelab-storage-admin
 ./deploy.sh
 ```
 
-Se o agente mudou, o `deploy.sh` avisa; rode `sudo ./install-agent.sh`.
+Se o agente mudou, o `deploy.sh` avisa **antes** do `docker compose up`; rode
+`sudo ./install-agent.sh`. A comparação cobre os quatro binários e as units que
+o `install-agent.sh` instala (menos o timer de snapshots, que o agente reescreve
+conforme a agenda). A configuração inicial do qBittorrent e o passo de UPnP
+viram aviso, não falha: o app já está no ar quando eles rodam.
 
 ### Checklist de deploy seguro
 

@@ -6,7 +6,10 @@ python manage.py migrate --noinput
 python manage.py collectstatic --noinput >/dev/null 2>&1 || true
 
 if [ -n "${DJANGO_SUPERUSER_USERNAME:-}" ] && [ -n "${DJANGO_SUPERUSER_PASSWORD:-}" ]; then
-  python manage.py createsuperuser --noinput 2>/dev/null || true
+  # --email sempre presente: o Django 5.2 recusa --noinput sem ele. O erro
+  # aparece no log em vez de sumir, e o container continua subindo.
+  python manage.py createsuperuser --noinput --email "${DJANGO_SUPERUSER_EMAIL:-}" \
+    || echo "AVISO: nao foi possivel criar o superusuario (veja o erro acima)." >&2
 fi
 
 exec "$@"

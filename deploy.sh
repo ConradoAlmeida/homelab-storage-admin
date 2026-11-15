@@ -11,6 +11,17 @@ if [[ ! -d .git ]]; then
   exit 1
 fi
 
+if [[ ! -f .env ]]; then
+  echo "ERRO: .env ausente. Copie de .env.example e ajuste o SECRET_KEY e o ALLOWED_HOSTS antes do deploy." >&2
+  exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  echo "ERRO: Docker indisponivel para este usuario (daemon parado ou fora do grupo docker)." >&2
+  echo "Ajuste com: sudo systemctl enable --now docker && sudo usermod -aG docker \"$USER\" e abra uma sessao nova." >&2
+  exit 1
+fi
+
 echo "==> git pull --ff-only origin main"
 git pull --ff-only origin main
 
@@ -36,27 +47,45 @@ fi
 chmod +x install-agent.sh entrypoint.sh deploy.sh
 
 NEED_AGENT=0
-if [[ ! -f /usr/local/sbin/homelab-storage-agent ]] || ! cmp -s agent/homelab-storage-agent.py /usr/local/sbin/homelab-storage-agent; then
-  NEED_AGENT=1
-fi
-if [[ ! -f /usr/local/sbin/homelab-storage-snapshot ]] || ! cmp -s agent/homelab-storage-snapshot.py /usr/local/sbin/homelab-storage-snapshot; then
-  NEED_AGENT=1
-fi
-if [[ ! -f /etc/systemd/system/homelab-storage-agent.service ]] || ! cmp -s agent/homelab-storage-agent.service /etc/systemd/system/homelab-storage-agent.service; then
-  NEED_AGENT=1
-fi
-# O timer de snapshots e dinamico: o agente reescreve OnCalendar conforme a
-# agenda salva (1 a 24 copias por dia), entao nao serve para comparar aqui.
-if [[ ! -f /etc/systemd/system/homelab-storage-snapshot.service ]] || ! cmp -s agent/homelab-storage-snapshot.service /etc/systemd/system/homelab-storage-snapshot.service; then
-  NEED_AGENT=1
+# Compara tudo o que o install-agent.sh instala: os quatro binarios e as units.
+# O timer de snapshots fica de fora porque e dinamico (o agente reescreve o
+# OnCalendar conforme a agenda salva, de 1 a 24 copias por dia).
+for origem in agent/homelab-storage-agent.py agent/homelab-storage-snapshot.py \
+  agent/homelab-restic-backup.py agent/homelab-cold-copy.py; do
+  destino="/usr/local/sbin/$(basename "${origem%.py}")"
+  if [[ ! -f "$destino" ]] || ! cmp -s "$origem" "$destino"; then
+    NEED_AGENT=1
+  fi
+done
+for origem in agent/*.service agent/*.timer; do
+  nome="$(basename "$origem")"
+  if [[ "$nome" == "homelab-storage-snapshot.timer" ]]; then
+    continue
+  fi
+  destino="/etc/systemd/system/$nome"
+  if [[ ! -f "$destino" ]] || ! cmp -s "$origem" "$destino"; then
+    NEED_AGENT=1
+  fi
+done
+
+if [[ "$NEED_AGENT" -eq 1 ]]; then
+  echo
+  echo "ATENCAO: o agente no host esta ausente ou diferente do repositorio."
+  echo "Rode: sudo ./install-agent.sh"
+  echo
 fi
 
 if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
   qbit_conf="/mnt/nas/apps/qbittorrent/config/qBittorrent/qBittorrent.conf"
   if [[ ! -f "$qbit_conf" ]]; then
-    mkdir -p "$(dirname "$qbit_conf")" "${JELLYFIN_ROOT:-/mnt/jellyfin}/.incomplete"
-    cp "$HERE/deploy/pi/qbittorrent.conf" "$qbit_conf"
-    echo "==> Configuracao inicial do qBittorrent"
+    # Aviso, nao falha: o diretorio pode ser de root e o deploy roda como
+    # usuario comum. Sem o arquivo o qBittorrent sobe com a config padrao.
+    if mkdir -p "$(dirname "$qbit_conf")" "${JELLYFIN_ROOT:-/mnt/jellyfin}/.incomplete" 2>/dev/null \
+      && cp "$HERE/deploy/pi/qbittorrent.conf" "$qbit_conf" 2>/dev/null; then
+      echo "==> Configuracao inicial do qBittorrent"
+    else
+      echo "AVISO: nao foi possivel criar $qbit_conf; rode uma vez com sudo para copiar a configuracao do qBittorrent." >&2
+    fi
   fi
 fi
 
@@ -65,7 +94,8 @@ docker compose "${COMPOSE_FILES[@]}" up -d --build
 
 if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
   echo "==> firewall do qBittorrent e UPnP"
-  docker exec -i homelab-storage-admin python - << 'PY'
+  # Aviso, nao falha: o app ja esta no ar e o UPnP pode ser reaplicado depois.
+  if ! docker exec -i homelab-storage-admin python - << 'PY'
 import json
 import socket
 import time
@@ -149,13 +179,10 @@ for _ in range(40):
 else:
     raise SystemExit(f"qBittorrent nao aceitou o UPnP: {ultimo}")
 PY
+  then
+    echo "AVISO: o qBittorrent nao confirmou o UPnP; confira a pagina Torrents." >&2
+  fi
 fi
 
 echo "==> status"
 docker compose "${COMPOSE_FILES[@]}" ps
-
-if [[ "$NEED_AGENT" -eq 1 ]]; then
-  echo
-  echo "ATENCAO: o agente no host esta ausente ou diferente do repositorio."
-  echo "Rode: sudo ./install-agent.sh"
-fi
