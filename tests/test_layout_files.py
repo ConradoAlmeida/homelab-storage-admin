@@ -122,11 +122,10 @@ def test_deploy_confere_app_viva():
     assert 'APP_URL="http://${BIND_ADDR:-127.0.0.1}:${BIND_PORT:-8060}/login/"' in text
     assert "OK: $APP_URL -> $APP_CODE" in text
     assert "logs --tail=80 web" in text
-    # O doctor entra no fim do deploy e so informa (nao muda o exit code).
+    # O doctor entra no fim do deploy e falha em erro (aviso continua aviso).
     assert "==> rotas, DNS e atalhos (--doctor)" in text
-    assert "apps-sync.sh$APPS_PERFIL --doctor" in text
+    assert "apps-sync.sh --doctor" in text
     assert "set +e" in text and "DOUTOR_RC=$?" in text
-    assert "exit 1" not in text.split("==> rotas, DNS e atalhos")[1]
 
 
 def test_deploy_relanca_quando_o_pull_muda_o_proprio_script():
@@ -142,8 +141,9 @@ def test_deploy_cobra_o_apply_do_env():
     # env mais novo que o estado do --apply vira aviso com o comando do perfil.
     assert "apps.aplicados" in text
     assert '"$APPS_ENV_LOCAL" -nt "$APPS_ESTADO"' in text
-    assert "sudo bash scripts/stacks/apps-sync.sh$APPS_PERFIL --apply" in text
-    assert "moya) APPS_PERFIL=\" --perfil moya\"" in text
+    assert "sudo bash scripts/stacks/apps-sync.sh --apply" in text
+    # Nenhum flag por host: o apps-sync le o HOST_PROFILE do host.env.
+    assert "APPS_PERFIL" not in text
     # O deploy nao aplica sozinho: precisa de sudo e a decisao e do dono.
     assert not [
         linha

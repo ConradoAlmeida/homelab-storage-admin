@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Atualiza o Homelab Storage Admin no rpi5 a partir do GitHub.
-# Uso (no Pi): ./deploy.sh
+# Atualiza o Homelab Storage Admin no host a partir do GitHub.
+# Uso (no host): ./deploy.sh
 # Termina conferindo /login/ e rodando o apps-sync --doctor. Se o proprio
 # deploy.sh mudar no pull, reexecuta uma vez para nao rodar o tail antigo.
 set -euo pipefail
@@ -89,27 +89,26 @@ fi
 # depois; git nao reescreve arquivo que nao mudou).
 APPS_ENV_LOCAL="${APPS_ENV_PATH:-}"
 APPS_ESTADO="${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}"
-# O apps-sync assume o perfil `pi`; so o moya precisa do flag.
-APPS_PERFIL=""
-case "$(basename "$(dirname "$APPS_ENV_LOCAL")")" in
-  moya) APPS_PERFIL=" --perfil moya" ;;
-esac
+# O apps-sync le o HOST_PROFILE do host.env: nenhum flag por host aqui.
 if [[ -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LOCAL" ]] &&
   { [[ ! -f "$APPS_ESTADO" ]] || [[ "$APPS_ENV_LOCAL" -nt "$APPS_ESTADO" ]]; }; then
   echo
   echo "ATENCAO: $APPS_ENV_LOCAL mudou depois do ultimo --apply."
   echo "Rotas, DNS e atalhos continuam os antigos. Rode:"
-  echo "  sudo bash scripts/stacks/apps-sync.sh$APPS_PERFIL --apply"
+  echo "  sudo bash scripts/stacks/apps-sync.sh --apply"
   echo
 fi
 
-if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
-  qbit_conf="/mnt/nas/apps/qbittorrent/config/qBittorrent/qBittorrent.conf"
+# A feature do host.toml decide, nao o nome do overlay: host com qBittorrent
+# recebe a config inicial e o firewall; host sem ele nao passa por aqui.
+if [[ "${QBITTORRENT_ENABLE:-0}" == "1" && -n "${STORAGE_ROOT:-}" ]]; then
+  qbit_conf="$STORAGE_ROOT/apps/qbittorrent/config/qBittorrent/qBittorrent.conf"
+  incompleto="${JELLYFIN_ROOT:+$JELLYFIN_ROOT/.incomplete}"
   if [[ ! -f "$qbit_conf" ]]; then
     # Aviso, nao falha: o diretorio pode ser de root e o deploy roda como
     # usuario comum. Sem o arquivo o qBittorrent sobe com a config padrao.
-    if mkdir -p "$(dirname "$qbit_conf")" "${JELLYFIN_ROOT:-/mnt/jellyfin}/.incomplete" 2>/dev/null \
-      && cp "$HERE/deploy/pi/qbittorrent.conf" "$qbit_conf" 2>/dev/null; then
+    if mkdir -p "$(dirname "$qbit_conf")" ${incompleto:+"$incompleto"} 2>/dev/null \
+      && cp "$HERE/deploy/${HOST_PROFILE:-}/qbittorrent.conf" "$qbit_conf" 2>/dev/null; then
       echo "==> Configuracao inicial do qBittorrent"
     else
       echo "AVISO: nao foi possivel criar $qbit_conf; rode uma vez com sudo para copiar a configuracao do qBittorrent." >&2
@@ -120,7 +119,7 @@ fi
 echo "==> docker compose up -d --build"
 docker compose "${COMPOSE_FILES[@]}" up -d --build
 
-if [[ "${COMPOSE_OVERLAY:-}" == *homelab* ]]; then
+if [[ "${QBITTORRENT_ENABLE:-0}" == "1" ]]; then
   echo "==> firewall do qBittorrent e UPnP"
   # Aviso, nao falha: o app ja esta no ar e o UPnP pode ser reaplicado depois.
   if ! docker exec -i homelab-storage-admin python - << 'PY'
@@ -237,7 +236,7 @@ echo "OK: $APP_URL -> $APP_CODE"
 if [[ -f scripts/stacks/apps-sync.sh && -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LOCAL" ]]; then
   echo "==> rotas, DNS e atalhos (--doctor)"
   set +e
-  DOUTOR_SAIDA="$(bash scripts/stacks/apps-sync.sh$APPS_PERFIL --doctor 2>&1)"
+  DOUTOR_SAIDA="$(bash scripts/stacks/apps-sync.sh --doctor 2>&1)"
   DOUTOR_RC=$?
   set -e
   # So os erros: no Pi o aviso do token da Cloudflare apareceria em todo deploy.
@@ -245,6 +244,6 @@ if [[ -f scripts/stacks/apps-sync.sh && -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LO
   printf '%s\n' "$DOUTOR_SAIDA" | sed -n '/==> resumo/,$p' | grep -v '^==> resumo' || true
   if [[ $DOUTOR_RC -ne 0 ]]; then
     echo "AVISO: rota, DNS ou atalho divergente do env (o app esta no ar)." >&2
-    echo "Detalhe: bash scripts/stacks/apps-sync.sh$APPS_PERFIL --doctor" >&2
+    echo "Detalhe: bash scripts/stacks/apps-sync.sh --doctor" >&2
   fi
 fi

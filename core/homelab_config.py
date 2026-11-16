@@ -315,6 +315,9 @@ def render_host_env(cfg: HostConfig) -> list[tuple[str, str]]:
     if cfg.ligado("jellyfin"):
         pares.append(("JELLYFIN_ROOT", c["jellyfin"]))
     pares.append(("DOWNLOAD_DIR", dados_app.rstrip("/") + "/downloads"))
+    # Default do deploy e 0: so o host com a feature precisa da chave.
+    if cfg.ligado("qbittorrent"):
+        pares.append(("QBITTORRENT_ENABLE", "1"))
     if cfg.ligado("credenciais"):
         pares += [
             ("CREDENCIAIS_DB", cr["db"]),

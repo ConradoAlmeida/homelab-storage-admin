@@ -22,7 +22,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 # O render passou a gravar 0 explicito nas features de UI (o default do
 # settings e 1); so o Pi nao tinha DJANGO_ADMIN_MANAGE no host.env efetivo.
 EXTRAS = {
-    "pi": {"HOST_PROFILE", "DJANGO_ADMIN_MANAGE"},
+    "pi": {"HOST_PROFILE", "DJANGO_ADMIN_MANAGE", "QBITTORRENT_ENABLE"},
     "moya": {"HOST_PROFILE"},
 }
 
@@ -56,6 +56,7 @@ def test_texto_host_env_e_relegivel(slug, tmp_path):
     esperado = {**env_efetivo(slug), "HOST_PROFILE": slug}
     if slug == "pi":
         esperado["DJANGO_ADMIN_MANAGE"] = "0"
+        esperado["QBITTORRENT_ENABLE"] = "1"
     assert parse_env_file(destino) == esperado
 
 
