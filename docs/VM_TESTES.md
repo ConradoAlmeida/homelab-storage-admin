@@ -71,7 +71,7 @@ O que roda, na ordem:
 | com `--smoke` | `./deploy.sh` real + 7 rotas HTTP (login, painel, saude, backups, containers, sistema) |
 | generico com `--smoke` | idem + `apps-sync.sh --doctor` com 0 erros (`dns_modo=nenhum`) |
 
-Esperado hoje: **483 passed, 8 skipped** (skips = laboratorio/hardware) e
+Esperado hoje: **618 passed, 9 skipped** (skips = laboratorio/hardware) e
 **8 lab passed** no homelab; **138 testes do Credenciais** e a mesma suite do
 Storage no moya. O `--smoke` leva alguns minutos por causa do `--build`.
 
