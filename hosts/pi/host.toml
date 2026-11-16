@@ -32,7 +32,7 @@ proprietario = "conrado"
 snapshot_backend = "auto"
 snapshot_denylist = ""
 prefixos_permitidos = ["/mnt/nas/"]
-mounts = ["/", "/mnt/nas", "/mnt/backup", "/mnt/jellyfin"]
+mounts = ["/", "/mnt/nas", "/mnt/backup/hdd700", "/mnt/jellyfin"]
 firewall_safe_ports = [
   "22/tcp", "53/tcp", "53/udp", "80/tcp", "443/tcp", "8060/tcp",
   "5001/tcp", "8080/tcp", "137/udp", "138/udp", "139/tcp", "445/tcp",

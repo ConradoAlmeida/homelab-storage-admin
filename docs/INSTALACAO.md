@@ -331,7 +331,7 @@ No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A ba
 | `JELLYFIN_ROOT` | `/mnt/jellyfin` | mídia Jellyfin read-only (sem snapshot/restic) |
 | `SNAPSHOT_ROOT` | `/mnt/nas/.snapshots` | snapdir Btrfs |
 | `ALLOWED_PATH_PREFIXES` | `/mnt/nas/` | prefixos aceitos (vírgula) |
-| `DF_MOUNTS` | `/,/mnt/nas,/mnt/backup,/mnt/jellyfin` | mounts do `df` |
+| `DF_MOUNTS` | `/,/mnt/nas,/mnt/backup/hdd700,/mnt/jellyfin` | mounts do `df` |
 | `SHARE_OWNER` | `conrado` | dono dos shares |
 | `SNAPSHOT_DENYLIST` | vazio | shares que nunca recebem snapshot |
 | `SNAPSHOT_BACKEND` | `auto` | `auto`, `btrfs`, `rsync` ou `none` |
