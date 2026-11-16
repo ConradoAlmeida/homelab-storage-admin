@@ -72,25 +72,30 @@ Os 15 itens levantados na revisão de 2026-11-15, em quatro lotes:
 
 ## Verificação
 
-- `uv run pytest` verde em cada commit.
-- `bash -n` + `shellcheck` nos scripts alterados.
-- Bancada: `bench.sh testar --perfil generico|homelab|moya --smoke --yes`.
-- Produção: `render --write`, `./deploy.sh`, `--doctor` e `doctor` no Pi e no
-  moya; `/login/` 200 nos dois.
-- `homelabctl bootstrap --sim` num tmp sem tocar em `/etc`.
+- [x] `uv run pytest` verde em cada commit (final: `619 passed, 8 skipped`).
+- [x] `bash -n` + `shellcheck --severity=warning` nos quatro scripts de root
+  (`deploy.sh`, `entrypoint.sh`, `install-agent.sh`, `apps-sync.sh`): 0 achados.
+- [x] Bancada `linux2024`: `generico`, `homelab` (8 testes de laboratório) e
+  `moya` (suite unitária do Credenciais) com `--smoke`; `/login/` e as nove
+  rotas em 200 nos três, `--doctor` 0 erros.
+- [x] Produção em `ab9ea87`: Pi e moya com `render --write --ambos`,
+  `./deploy.sh` e `install-agent.sh`; `/login/` 200. `doctor pi` 0/0 e
+  `doctor moya` 0 erros/1 aviso (`/srv/samba` não é ponto de montagem).
+- [x] `bootstrap` dry-run nos dois hosts (`--config-dir`/`--env-file` em
+  `/tmp`): relata e não escreve nada.
 
-## Riscos
+## Achados fora do escopo (viram próxima sessão)
 
-- `deploy.sh` mais rígido pode parar um deploy de emergência; o rollback é
-  `git revert` do commit (os checks são só leitura).
-- `doctor` com falso positivo em host sem docker/mount ativo vira ruído; por
-  isso esses dois níveis são `aviso`.
-- Remover o preset do `apps-sync` quebra host que nunca rodou `render`: a
-  mensagem de erro passa a dizer exatamente o comando.
+- Moyaserver: os shares do Samba vivem em `/srv/samba` no LV do sistema
+  (100 GB, 68% usado) e não no RAID `/mnt/data`. O doctor avisa; mover exige
+  janela com o Samba parado.
+- Pi: `/var/backups/moya-credenciais` foi criado no passado pelo
+  `install-agent.sh` e ficou órfão (o script não cria mais); pode ser apagado.
 
 ## Estado
 
-Codigo dos 15 itens concluido em 2026-11-15 (um commit por item, `pytest`
-verde). Falta a validacao: bancada `generico`/`homelab`/`moya`, deploy no Pi e
-no moya, e o registro no `CONTEXTO.md`. Autorizado: lista completa, deploy no
-Pi, arm64 so em `main`.
+Concluido em 2026-11-15. Os 15 itens estao em producao no Pi e no moya
+(`ab9ea87`), com bancada verde nos tres perfis. Falhas achadas no caminho e
+corrigidas no mesmo lote: o `check` comparava todos os hosts com o `/etc` de
+um so, o `DF_MOUNTS` do Pi apontava para o diretorio pai do disco de backup e
+o `.env` das VMs usava o segredo de exemplo (recusado pelo deploy novo).

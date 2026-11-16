@@ -8,9 +8,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `0b12e76` (2026-11-15; host genérico, render do `host.env`/`sync.env`) |
-| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `0b12e76`); `/login/` 200 nos dois, `--doctor` 0 erros |
-| Testes | `585 passed, 9 skipped` na bancada (`generico`, `homelab` e `moya`, `linux2024`, 2026-11-15) |
+| Versão no moya | `ab9ea87` (2026-11-15; instalação/manutenção: doctor, bootstrap, unit do boot) |
+| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `ab9ea87`); `/login/` 200 nos dois, `--doctor` 0 erros. Pi `doctor` 0/0; moya 0 erros/1 aviso (`/srv/samba` não é mount) |
+| Testes | `619 passed, 8 skipped` local; bancada `616 passed, 9 skipped` (sem `textual`) + 8 testes de laboratório no `homelab` (`linux2024`, 2026-11-15) |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
@@ -241,6 +241,20 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
     dois containers) e a bancada tem `generico-pronto` (`pytest` + smoke +
     `--doctor` com 0 erros, sem Caddy/DNS). Único aviso no Pi: `validate sem
     cloudflare.token` quando o `--doctor` roda sem sudo — esperado.
+
+11. **Instalação e manutenção** (2026-11-15): `homelabctl doctor <slug>`
+    (preflight sem escrever: env em sync, dependências por feature, `.env`
+    600, mounts, `apps.env`, unit de boot), `bootstrap <slug>` (env, `.env`
+    com segredo aleatório e `apt` das features — nunca sobrescreve),
+    `boot <slug>` (unit do `[boot]` do TOML) e `schema`/defaults no loader.
+    O `check` avisa drift entre o `/etc` e o TOML do host que o `host.env`
+    declara; o `deploy.sh` falha em erro do `--doctor`, recusa `.env` com
+    modo ≠ 600 ou segredo de exemplo e liga qBittorrent pela feature, não pelo
+    nome do overlay. `apps-sync.sh` e `install-agent.sh` não têm mais preset
+    de host: sem `hosts/<slug>/host.toml`/`sync.env`, o erro mostra o render.
+    CI: `bash -n` + `shellcheck --severity=warning` nos quatro scripts de root
+    e build arm64 só em push para `main`. Plano:
+    [docs/plans/2026-11-15-manutencao-instalacao.md](plans/2026-11-15-manutencao-instalacao.md).
 
 ## Testes em VM
 
