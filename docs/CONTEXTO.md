@@ -19,9 +19,9 @@ Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
 - Código local (desktop Fedora): `/home/conradoalmeida/development/homelab-storage-admin`.
 - Repositório: `https://github.com/ConradoAlmeida/homelab-storage-admin.git`
   (push direto em `main`; avisa bypass do check `test`).
-- Em produção: `6804e6a` no moya e no Pi. `/login/` 200 nos dois e `doctor`
-  **0 erros**; no moya, 0 avisos. No Pi resta 1 aviso esperado: validação do
-  TLS sem o token da Cloudflare, que só roda com sudo.
+- Em produção: `08547ae` no moya e no Pi (apps construídos a partir de
+  `6804e6a`, só docs depois). `/login/` 200 nos dois e `doctor` **0 erros/0
+  avisos**; no Pi, a validação do TLS usou o token da Cloudflare via root.
 - Pi atualizado em 16/11: `host.env`/`sync.env` conferem com o render do
   `host.toml`, deploy feito e agente reinstalado com CPU/RAM dos containers.
 - Testes: `623 passed, 9 skipped` na VM (`moya`); **138 do Credenciais** e
