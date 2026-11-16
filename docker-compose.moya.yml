@@ -3,7 +3,7 @@
 services:
   web:
     volumes:
-      - ./data:/app/data
+      - ${DATA_DIR:-./data}:/app/data
       - /srv/samba:/srv/samba:ro
       - /mnt/data:/mnt/data:ro
       - /run/homelab-storage-admin:/run/homelab-storage-admin:ro
