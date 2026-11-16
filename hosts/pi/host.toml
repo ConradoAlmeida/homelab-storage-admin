@@ -1,0 +1,75 @@
+# Perfil do Raspberry Pi 5: NAS principal, TLS pelo Cloudflare e Pi-hole local.
+# Segredos NAO entram aqui: ficam em .env (container) e no ambiente do agente.
+# O `homelabctl render` gera /etc/homelab-storage-admin/host.env e o sync.env.
+
+[host]
+nome = "pi"
+descricao = "Raspberry Pi 5 (NAS principal)"
+ssh = "conrado@homelab.local"
+lan_ip = "192.168.0.150"
+repo = "/opt/stacks/homelab-storage-admin"
+
+[app]
+site_name = "Homelab Storage"
+bind_addr = "192.168.0.150"
+bind_port = 8060
+compose_overlay = "docker-compose.homelab.yml"
+
+[caminhos]
+dados = "/mnt/nas"
+snapshots = "/mnt/nas/.snapshots"
+backup = "/mnt/backup"
+dados_app = "/mnt/nas/apps/homelab-storage-admin/data"
+jellyfin = "/mnt/jellyfin"
+stacks = "/opt"
+quarentena = "/opt/stacks/_removidos"
+estado = "/var/lib/homelab-storage-admin"
+sockets = "/run/homelab-storage-admin"
+config = "/etc/homelab-storage-admin"
+
+[armazenamento]
+proprietario = "conrado"
+snapshot_backend = "auto"
+snapshot_denylist = ""
+prefixos_permitidos = ["/mnt/nas/"]
+mounts = ["/", "/mnt/nas", "/mnt/backup", "/mnt/jellyfin"]
+firewall_safe_ports = [
+  "22/tcp", "53/tcp", "53/udp", "80/tcp", "443/tcp", "8060/tcp",
+  "5001/tcp", "8080/tcp", "137/udp", "138/udp", "139/tcp", "445/tcp",
+]
+
+[rotas]
+esquema = "https"
+apps = "deploy/pi/apps.env"
+dominio = "conradhub.com"
+dns_ip = "192.168.0.150"
+dns_modo = "wildcard"
+dns_conf = "/opt/stacks/pihole/etc-dnsmasq.d/10-conradhub.com-wildcard.conf"
+pihole_dir = "/opt/stacks/pihole"
+pihole_container = "pihole"
+upstream = "lan"
+dirs_permitidos = ["/opt/stacks", "/opt"]
+scan_roots = ["/opt"]
+
+[rotas.caddy]
+dir = "/opt/stacks/caddy"
+container = "caddy"
+porta = ""
+tls = "import cf"
+proxy = "import proxy"
+
+[features]
+samba = true
+snapshots = true
+restic = true
+copia_fria = true
+ufw = true
+terminal = true
+apt = true
+qbittorrent = true
+jellyfin = true
+pihole = true
+gitea = false
+portal = false
+credenciais = false
+django_admins = false

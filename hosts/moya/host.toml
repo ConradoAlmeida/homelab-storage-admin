@@ -1,0 +1,83 @@
+# Perfil do moyaserver: Samba em /srv/samba, Caddy proprio em HTTP:80 e o
+# portal interno. Identidade e do Credenciais (CREDENTIALS_MANAGE_USERS=1).
+# Segredos NAO entram aqui: ficam em .env (container) e no ambiente do agente.
+
+[host]
+nome = "moya"
+descricao = "moyaserver (Ubuntu Server)"
+ssh = "conrado@10.72.60.181"
+lan_ip = "192.168.0.10"
+repo = "/opt/stacks/homelab-storage-admin"
+
+[app]
+site_name = "Moya Storage"
+bind_addr = "127.0.0.1"
+bind_port = 8060
+compose_overlay = "docker-compose.moya.yml"
+
+[caminhos]
+dados = "/srv/samba"
+snapshots = "/srv/samba/.snapshots"
+backup = "/mnt/data/backups"
+dados_app = "/opt/stacks/homelab-storage-admin/data"
+stacks = "/opt"
+quarentena = "/home/conrado/_removidos"
+estado = "/var/lib/homelab-storage-admin"
+sockets = "/run/homelab-storage-admin"
+config = "/etc/homelab-storage-admin"
+
+[armazenamento]
+proprietario = "conrado"
+snapshot_backend = "rsync"
+snapshot_denylist = ["Veronte_Images"]
+prefixos_permitidos = ["/srv/samba/", "/mnt/data/"]
+mounts = ["/", "/srv/samba", "/mnt/data"]
+firewall_safe_ports = [
+  "22/tcp", "53/tcp", "53/udp", "80/tcp", "443/tcp", "8060/tcp",
+  "137/udp", "138/udp", "139/tcp", "445/tcp",
+]
+
+[rotas]
+esquema = "http"
+apps = "deploy/moya/apps.env"
+dominio = "local"
+dns_ip = "192.168.0.10"
+dns_modo = "nome"
+dns_conf = "/home/conrado/pihole/etc-dnsmasq.d/10-apps-local.conf"
+pihole_dir = "/home/conrado/pihole"
+pihole_container = "pihole"
+upstream = "localhost"
+dirs_permitidos = ["/opt/stacks", "/opt", "/home/conrado", "/data/compose"]
+scan_roots = ["/opt", "/home/conrado"]
+portal_ini = "/var/lib/homelab-storage-admin/apps-portal.ini"
+
+[rotas.caddy]
+dir = "/opt/stacks/caddy"
+container = "moya-caddy"
+porta = ":80"
+tls = ""
+proxy = "reverse_proxy"
+
+[credenciais]
+db = "/home/conrado/moya_credenciais_app/data/db.sqlite3"
+env = "/home/conrado/moya_credenciais_app/.env"
+backup_dir = "/var/backups/moya-credenciais"
+container = "moya-credenciais"
+time = "03:30"
+retention_days = 30
+
+[features]
+samba = true
+snapshots = true
+restic = true
+copia_fria = true
+ufw = true
+terminal = true
+apt = true
+qbittorrent = false
+jellyfin = false
+pihole = true
+gitea = true
+portal = true
+credenciais = true
+django_admins = true
