@@ -271,3 +271,10 @@ def test_ci_roda_bash_n_e_shellcheck_nos_scripts_do_host():
     # warning: info (ex.: SC2086 de quoting) vira ruido e ninguem olha mais.
     assert "--severity=info" not in text
 
+
+def test_ci_builda_arm64_so_no_push_para_main():
+    text = read(".github/workflows/ci.yml")
+    assert "imagem-arm64:" in text
+    assert "github.event_name == 'push' && github.ref == 'refs/heads/main'" in text
+    assert "docker/setup-qemu-action@v3" in text
+    assert "platforms: linux/arm64" in text

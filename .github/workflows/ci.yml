@@ -35,3 +35,22 @@ jobs:
             deploy.sh entrypoint.sh install-agent.sh scripts/stacks/apps-sync.sh
       - name: Testes
         run: uv run pytest
+
+  imagem-arm64:
+    # O Pi e arm64: qemu custa minutos, entao so no push para main (PR fica
+    # rapido) e sem publicar imagem.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+      - name: Build da imagem para o Pi
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          tags: homelab-storage-admin:arm64
