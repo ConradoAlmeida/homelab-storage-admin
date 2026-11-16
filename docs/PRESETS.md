@@ -25,6 +25,10 @@ com backup `.bak-<data>` quando o conteúdo muda. O `install-agent.sh` chama o
 render **só para o que falta**: nunca sobrescreve `host.env` nem `sync.env`
 existentes; para aplicar uma mudança de TOML, rode o `render --write`.
 
+O `pi` e o `moya` já rodam com os dois arquivos renderizados (2026-11-15);
+mudar o comportamento deles é editar `hosts/<slug>/host.toml` e rodar o render
+no host — não editar `/etc/homelab-storage-admin/*.env`.
+
 O `detect` só faz leitura (`lsblk`, `findmnt`, `ip`, `systemctl`, `docker`) e o
 `init` nunca formata, monta ou apaga disco: os papéis sugeridos só decidem o
 que a UI mostra depois.

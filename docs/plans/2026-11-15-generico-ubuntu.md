@@ -183,9 +183,9 @@ os defaults do `settings.py`.
       opcional no reconciliador (`apps-sync.sh:711-883`).
 - [x] 6b. `install-agent.sh` checa dependência por feature (Samba/parted só
       quando `samba`/`discos` estão ligados).
-- [ ] 7. Docs: `INSTALACAO` como "Ubuntu Server genérico", `docs/PRESETS.md`
+- [x] 7. Docs: `INSTALACAO` como "Ubuntu Server genérico", `docs/PRESETS.md`
       com pi/moya; `host.env.example` vira referência gerada.
-- [ ] 8. Bancada: perfil `generico` criado pelo wizard (não é pi nem moya)
+- [x] 8. Bancada: perfil `generico` criado pelo wizard (não é pi nem moya)
       passando smoke + `--doctor` nos dois sentidos.
 
 ## Verificação
@@ -222,4 +222,10 @@ Plano aprovado em 2026-11-15.
   `FIREWALL_MANAGE`/`TERMINAL_ENABLE`/`DJANGO_ADMIN_MANAGE` no render e
   `dns_modo=nenhum`/`upstream=nenhum` no `apps-sync.sh` (plano, apply e
   `--doctor` pulam Caddy/DNS sem erro).
-- Resta 7 (docs) e 8 (bancada).
+- 7: `PRESETS` novo, `INSTALACAO` genérico, README/ARQUITETURA/ROTINAS/CONTEXTO/
+  VM_TESTES atualizados; exemplos marcados como referência, não fonte.
+- 8: `scripts/vm/perfil-generico.sh` + `bench.sh --perfil generico`. Bancada
+  verde em 2026-11-15: `585 passed, 9 skipped` nos três snapshots, smoke com
+  200 nas rotas e `--doctor` do generico com 0 erros/0 avisos.
+- Deploy de produção feito com o novo `host.env`/`sync.env` (Pi e moya,
+  `0b12e76`). Plano concluído; não há passo pendente.

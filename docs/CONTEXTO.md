@@ -8,14 +8,14 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `b35540d` (2026-11-15; deploy pendente do commit de host genérico) |
-| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `b35540d`); só código/docs, agente sem mudança |
-| Testes | `585 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
+| Versão no moya | `0b12e76` (2026-11-15; host genérico, render do `host.env`/`sync.env`) |
+| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `0b12e76`); `/login/` 200 nos dois, `--doctor` 0 erros |
+| Testes | `585 passed, 9 skipped` na bancada (`generico`, `homelab` e `moya`, `linux2024`, 2026-11-15) |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local`; 12 apps em compose no host, sem Portainer |
-| Perfil | `hosts/<slug>/host.toml` → `/etc/homelab-storage-admin/host.env` + `sync.env` |
+| Perfil | `hosts/<slug>/host.toml` → `/etc/homelab-storage-admin/host.env` + `sync.env` (já renderizados em `pi` e `moya`) |
 | Agente | `homelab-storage-agent` (systemd, root, socket Unix) |
 | Repositório | `https://github.com/ConradoAlmeida/homelab-storage-admin.git` |
 
@@ -236,9 +236,11 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
    A árvore antiga permanece em `/mnt/backup` até esse resync terminar; não é
    uma segunda política de backup. Retenção e restic não mudaram.
 9. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
-10. **Host genérico**: código pronto (TOML, render, detect/init, `--doctor`
-    sem Caddy/DNS). Falta deploy dos dois hosts com o novo `host.env` e o
-    perfil `generico` na bancada (`preparar --perfil generico`).
+10. **Host genérico**: concluído em 2026-11-15. `pi` e `moya` já rodam com o
+    `host.env`/`sync.env` renderizados do TOML (`HOST_PROFILE` confirmado nos
+    dois containers) e a bancada tem `generico-pronto` (`pytest` + smoke +
+    `--doctor` com 0 erros, sem Caddy/DNS). Único aviso no Pi: `validate sem
+    cloudflare.token` quando o `--doctor` roda sem sudo — esperado.
 
 ## Testes em VM
 
