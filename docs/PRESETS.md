@@ -89,10 +89,11 @@ NAS principal: Btrfs em `/mnt/nas`, TLS pelo Cloudflare, Pi-hole com wildcard
 
 ### `moya` — moyaserver
 
-Samba em `/srv/samba`, Caddy próprio em HTTP:80, DNS por nome (`.local`, mDNS),
-portal interno, backup local do Credenciais e superuser dos apps Django pelo
-agente. Identidade é do Credenciais: `CREDENTIALS_MANAGE_USERS=1` bloqueia
-`/usuarios/` no Storage Admin. Overlay `docker-compose.moya.yml`.
+Samba em `/mnt/data` (RAID), Caddy próprio em HTTP:80, DNS por nome (`.local`,
+mDNS), portal interno, backup local do Credenciais e superuser dos apps Django
+pelo agente. Dados de apps em `/mnt/data/apps/<slug>`. Identidade é do
+Credenciais: `CREDENTIALS_MANAGE_USERS=1` bloqueia `/usuarios/` no Storage
+Admin. Overlay `docker-compose.moya.yml`.
 
 ### Host novo (runbook)
 

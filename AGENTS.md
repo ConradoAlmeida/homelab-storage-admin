@@ -94,6 +94,13 @@ sudo env HOST_ENV_PROFILE=moya ./install-agent.sh   # moya
 12. **Firewall**: só operações UFW explícitas (`enable`, `disable`, `add`,
     `delete`); nunca comando livre. Preserve SSH e as portas essenciais antes de
     ativar e audite toda ação.
+13. **Dados vivos de apps ficam no RAID/SSD, nunca no disco de sistema.** No
+    `moya`, dados de apps e bancos ficam em `/mnt/data/apps/<slug>` e shares em
+    `/mnt/data/<share>` (RAID). No Pi, ficam em `/mnt/nas/apps/<slug>`
+    (SSD/array), nunca no microSD. Caminho novo entra em
+    `hosts/<slug>/host.toml` e no teste de perfil. Exceções explícitas: dumps
+    do Gitea em `/var/backups/gitea` (moya) e estado do Portal em
+    `/var/lib/homelab-storage-admin`.
 
 ## Mapa rápido
 

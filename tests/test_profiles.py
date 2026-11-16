@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import tomllib
 from pathlib import Path
 
 from django.test import SimpleTestCase, override_settings
@@ -57,6 +58,40 @@ def test_minimal_profile_has_no_optional_backend(profile_env):
     minimal = profile_env["minimal"]
     assert minimal["SNAPSHOT_BACKEND"] == "none"
     assert minimal["ALLOWED_PATH_PREFIXES"] == "/srv/samba/"
+
+
+def _host_toml(slug):
+    path = ROOT / "hosts" / slug / "host.toml"
+    return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
+def test_dados_de_apps_ficam_no_raid_no_moya():
+    host = _host_toml("moya")
+    caminhos = host["caminhos"]
+    assert caminhos["dados"] == "/mnt/data"
+    assert caminhos["dados_app"] == "/mnt/data/apps/storage/data"
+    assert caminhos["snapshots"] == "/mnt/data/.snapshots"
+    assert host["credenciais"]["db"].startswith("/mnt/data/apps/credenciais/")
+
+
+def test_dados_de_apps_ficam_no_ssd_no_pi():
+    host = _host_toml("pi")
+    caminhos = host["caminhos"]
+    assert caminhos["dados"] == "/mnt/nas"
+    assert caminhos["dados_app"].startswith("/mnt/nas/apps/")
+    assert caminhos["snapshots"].startswith("/mnt/nas/")
+
+
+def test_dados_de_apps_nunca_no_disco_de_sistema():
+    for slug, raiz in (("moya", "/mnt/data/"), ("pi", "/mnt/nas/")):
+        caminhos = _host_toml(slug)["caminhos"]
+        for chave in ("dados", "dados_app", "snapshots"):
+            valor = caminhos[chave]
+            assert valor == raiz.rstrip("/") or valor.startswith(raiz), (
+                slug,
+                chave,
+                valor,
+            )
 
 
 def test_django_settings_read_environment(monkeypatch, profile_env):

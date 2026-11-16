@@ -120,7 +120,7 @@ navegador já no snapshot escolhido. A busca é feita no conteúdo do snapshot
 selecionado; não altera nem cria arquivos.
 
 O container precisa do `STORAGE_ROOT` montado read-only (no Pi, `/mnt/nas`;
-no moya, `/srv/samba` e `/mnt/data`). No Pi, `/mnt/jellyfin` também é montado
+no moya, `/mnt/data`). No Pi, `/mnt/jellyfin` também é montado
 read-only para o share `jellyfin` aparecer no histórico; sem esse mount, a rota
 `/history/jellyfin/live/` retorna 404. O app não escreve nos dados por esse
 caminho; qualquer escrita continua no agente root.

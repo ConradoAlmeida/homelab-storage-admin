@@ -25,7 +25,17 @@ Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
   smoke com as 9 rotas em 200. No Windows restam falhas de plataforma
   (systemd/caminhos), cobertas pela VM.
 
-## Dados no RAID (2026-11-16)
+## Regra: dados de apps no RAID/SSD (2026-11-16)
+
+**Dado vivo de app nunca fica no disco de sistema.** No `moya`, apps e bancos
+ficam em `/mnt/data/apps/<slug>` e os shares em `/mnt/data/<share>`, no RAID
+(`md0`). No Pi, ficam em `/mnt/nas/apps/<slug>`, no SSD/array; nunca no
+microSD. Um caminho novo só é aceito se estiver em `hosts/<slug>/host.toml` e
+coberto pelo teste de perfil.
+
+Exceções explícitas: dumps do Gitea em `/var/backups/gitea` (moya) e estado do
+Portal em `/var/lib/homelab-storage-admin`. O Pi-hole segue no SSD do Pi, fora
+dos dados de apps.
 
 No moya, os dados vivos de shares e apps saíram do disco de sistema e estão em
 `/mnt/data`:

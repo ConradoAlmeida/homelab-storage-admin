@@ -50,8 +50,14 @@ systemd), pelo `deploy.sh` (variáveis do Compose) e pelo `apps-sync.sh`. O
 | Preset | Overlay | Storage | Snapshots | Rotas |
 |---|---|---|---|---|
 | `pi` | `docker-compose.homelab.yml` | `/mnt/nas` | `auto` (Btrfs) | HTTPS + wildcard no Pi-hole |
-| `moya` | `docker-compose.moya.yml` | `/srv/samba` + `/mnt/data` | `rsync` | HTTP:80 + DNS por nome |
+| `moya` | `docker-compose.moya.yml` | `/mnt/data` | `rsync` | HTTP:80 + DNS por nome |
 | host novo | vazio (só `docker-compose.yml`) | conforme o `host.toml` | `none`/`rsync` | conforme `[rotas]` |
+
+**Dados vivos de apps nunca ficam no disco de sistema.** No `moya`, cada app
+grava em `/mnt/data/apps/<slug>` (RAID); no Pi, em `/mnt/nas/apps/<slug>`
+(SSD/array). Shares seguem a mesma raiz: `/mnt/data/<share>` e
+`/mnt/nas/<share>`. O teste de perfil garante que `dados`, `dados_app` e
+`snapshots` do `host.toml` apontem para essas raízes.
 
 Schema, `detect`/`init` e o fluxo de host novo: [Hosts e presets](PRESETS.md).
 
