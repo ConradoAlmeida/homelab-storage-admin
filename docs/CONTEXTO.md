@@ -1,348 +1,151 @@
 # Contexto — Homelab Storage Admin
 
-Documento de retomada. Última atualização: **2026-11-15**.
+Documento de retomada para quem chega sem contexto. Última atualização:
+**2026-11-15**. Detalhe por área fica em `docs/` (mapa no fim); o histórico da
+sessão de 27–29/10 está em [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
-Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
+## O que é
 
-## Estado atual
+Painel Django que administra o NAS de um homelab: shares Samba, snapshots,
+backups restic, discos/RAID/SMART, rede/UFW, containers, terminal e rotas do
+Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
+`hosts/<slug>/host.toml`.
 
-| Item | Valor |
-|---|---|
-| Versão no moya | `ab9ea87` (2026-11-15; instalação/manutenção: doctor, bootstrap, unit do boot) |
-| Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `ab9ea87`); `/login/` 200 nos dois, `--doctor` 0 erros. Pi `doctor` 0/0; moya 0 erros/1 aviso (`/srv/samba` não é mount) |
-| Testes | `619 passed, 8 skipped` local; bancada `616 passed, 9 skipped` (sem `textual`) + 8 testes de laboratório no `homelab` (`linux2024`, 2026-11-15) |
-| Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
-| Container | `homelab-storage-admin` |
-| Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
-| moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local`; 12 apps em compose no host, sem Portainer |
-| Perfil | `hosts/<slug>/host.toml` → `/etc/homelab-storage-admin/host.env` + `sync.env` (já renderizados em `pi` e `moya`) |
-| Agente | `homelab-storage-agent` (systemd, root, socket Unix) |
-| Repositório | `https://github.com/ConradoAlmeida/homelab-storage-admin.git` |
+| Host | Onde | Acesso |
+|---|---|---|
+| `pi` (Raspberry Pi 5) | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060`, `https://homelab.conradhub.com` (Caddy + DNS Cloudflare) | `conrado@homelab.local`, sudo com senha |
+| `moya` (moyaserver) | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local` | `conrado@10.72.60.181`, `sudo -n` |
+
+- Código local (desktop Fedora): `/home/conradoalmeida/development/homelab-storage-admin`.
+- Repositório: `https://github.com/ConradoAlmeida/homelab-storage-admin.git`
+  (push direto em `main`; avisa bypass do check `test`).
+- Em produção: `ab9ea87` nos dois hosts, `/login/` 200, `doctor pi` 0/0 e
+  `doctor moya` 0 erros/1 aviso (`/srv/samba` não é mount — ver pendências).
+- Testes: `619 passed, 8 skipped` local; bancada verde nos três perfis.
+
+## Como funciona
+
+- O container `homelab-storage-admin` **não tem root no host**: toda operação
+  privilegiada passa pelo `homelab-storage-agent` (systemd, root, socket
+  `/run/homelab-storage-admin/agent.sock`), que só aceita operações da
+  allowlist. Nunca `shell=True`, comando livre ou caminho arbitrário.
+- `hosts/<slug>/host.toml` é a fonte da verdade do host. `homelabctl render
+  <slug> --write --ambos` gera `host.env` + `sync.env` em
+  `/etc/homelab-storage-admin`; **não se edita o env no host**.
+- `deploy/<slug>/apps.env` é a fonte das rotas: `scripts/stacks/apps-sync.sh`
+  gera Caddy, DNS e atalhos. App nova = uma linha no env.
+- UI é requisito: `static/css/ui.css` + kit Tailwind (`frontend/src.css` →
+  `static/css/kit.css`, versionado). Página nova fora dos componentes quebra o
+  padrão.
+- No moya a identidade é do **Credenciais** (`CREDENTIALS_MANAGE_USERS=1`
+  bloqueia toda a seção `/usuarios/`); no Pi o login é local.
+- Jobs em produção: **Credenciais** (banco + `.env`, diário 03:30, 30 dias) e
+  **Dados dos apps** (manual, sem timer).
+
+## Comandos
+
+```bash
+uv sync --dev
+uv run manage.py check
+uv run pytest
+uv run manage.py tailwind build      # depois de editar frontend/src.css
+
+# bancada server-like (obrigatória neste desktop com virt-manager)
+scripts/vm/bench.sh testar --perfil generico|homelab|moya --smoke --yes
+
+# host: TOML -> env, preflight e unit de boot
+python3 scripts/homelabctl.py check                  # valida + avisa drift do /etc
+python3 scripts/homelabctl.py doctor <slug>          # preflight, sai 1 em erro
+sudo python3 scripts/homelabctl.py bootstrap <slug> --escrever --apt
+sudo python3 scripts/homelabctl.py render <slug> --write --ambos
+python3 scripts/homelabctl.py boot <slug> --write
+```
+
+```bash
+# no host (Pi ou moya): puxa main, build, /login/, --doctor
+cd /opt/stacks/homelab-storage-admin && ./deploy.sh
+# quando agent/ ou install-agent.sh mudou
+sudo HOST_ENV_PROFILE=<slug> ./install-agent.sh
+```
+
+Diagnóstico: `systemctl status homelab-storage-agent`,
+`docker logs homelab-storage-admin --tail 100` e, no compose,
+`docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps` (com o
+`host.env` carregado).
+
+> Deploy no Pi é decisão do dono: não execute sem pedido explícito.
+
+## Regras que não podem ser quebradas
+
+1. Código compartilhado Pi + moya: feature não se remove por host, use flag
+   (`CREDENTIALS_MANAGE_USERS`) e gating por capability.
+2. Nada de `500` por falta de recurso: esconda a ação e mostre o motivo.
+3. Operação destrutiva exige confirmação; nunca apague repo restic, snapshot
+   ou dados de share por ação de UI.
+4. Backup só em disco externo; o wizard recusa sistema/dados e o job fica
+   `skipped` (não falha) sem disco.
+5. Agente só allowlist; containers só `start/stop/restart/logs` (nunca
+   `rm`/`exec`/`prune`).
+6. Pi-safe: recurso do Credenciais/Gitea ausente não pode gerar alerta falso.
+
+A lista completa e os detalhes estão em `AGENTS.md`.
 
 ## O que está pronto
 
-- Nomes no Pi: `https://*.conradhub.com` com Let's Encrypt no Caddy. Sem DNS
-  público nesses nomes. Fora de casa só o Tailscale (`100.84.34.25`). Os
-  `.lan` saíram. SSH em casa é `conrado@homelab.local`. Sem túnel e sem
-  Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
-  Ver [REDE](REDE.md#nomes).
-- Host genérico: `hosts/<slug>/host.toml` é a fonte da verdade do que muda
-  entre hosts (caminhos, IP, overlay, rotas e features). O
-  `scripts/homelabctl.py render <slug> --write --ambos` gera o `host.env` e o
-  `sync.env` com as mesmas chaves de sempre; `detect` e `init` propõem e
-  validam o TOML de um Ubuntu novo (TUI textual, fallback por perguntas) e
-  `install-agent.sh` aceita qualquer slug. O que difere de host para host saiu
-  do `case $PERFIL`. Ver [PRESETS](PRESETS.md).
-- Rotas do Caddy a partir de `deploy/<slug>/apps.env` no repo, nos dois hosts
-  (`scripts/stacks/apps-sync.sh`, perfil pelo `HOST_PROFILE` do `host.env` e
-  `sync.env` gerados; `--perfil <slug>` continua aceito): dry-run por padrão,
-  `--apply` gera `apps.caddy` + `import` nos dois hosts e o DNS, e os prunes
-  param containers ou movem a pasta da app removida para a quarentena. App nova
-  é uma linha no env, com `redir=` e `snippet=` para os casos especiais
-  (fragmentos versionados em `deploy/<perfil>/snippets/`) e `atalho=` para os
-  atalhos do painel e do portal, gerados em `DATA_DIR/services.ini` e em
-  `/var/lib/homelab-storage-admin/apps-portal.ini` (o portal do moya lê essa
-  lista; ninguém edita HTML nem INI à mão). A página **Rotas e atalhos**
-  (`/sistema/rotas/`) mostra o declarado no env e o que o último `--apply`
-  aplicou, sem escrever nada. `--doctor` aponta o
-  que diverge (Caddy, DNS, containers, portas, pastas) sem escrever; host sem
-  Caddy (`upstream = "nenhum"`) ou sem DNS (`dns_modo = "nenhum"`) pula essas
-  etapas em vez de falhar, e
-  `--descobrir` sugere a linha pronta de stacks fora do env (com `atalho=`,
-  upstream do perfil e a porta web entre as publicadas). O check de containers usa
-  o rótulo `working_dir`, então o projeto compose pode ter outro nome que a
-  pasta. Ver [REDE](REDE.md#apps-e-rotas-appsenv).
-- Usuários/grupos Samba, shares, snapshots e navegador read-only de arquivos.
-  A lista do share cita o disco do caminho; um RAID mostra os dois membros.
-  A política de snapshot também se configura e se edita pela UI, inclusive em
-  share que nasceu sem ela. Desativar não apaga os snapshots já criados. A
-  agenda global (1 a 24 cópias por dia e o primeiro horário) fica em Backups e
-  reescreve o timer systemd; o cron legado do `samba-snapshot.sh` é removido
-  para não duplicar. No
-  Btrfs o share nasce subvolume mesmo sem política; ligar o snapshot depois ou
-  converter pasta antiga exige confirmação do nome do share. Com o disco do
-  Jellyfin montado, o portal também cria share numa pasta dele
-  (`/mnt/jellyfin/fotos`); em ext4 ela nasce diretório comum.
-- No homelab a marca é Conradhub Homelab: símbolo mais CONRADHUB, com HOMELAB
-  na linha de baixo, na faixa em degradê da barra. O login usa o wordmark
-  vertical. O menu separa Visão geral, Dados e Sistema. No moya
-  (`CREDENTIALS_MANAGE_USERS=1`) continua o wordmark Moya. Nesse
-  contexto o `<body>` recebe `brand-moya` e os acentos roxos da sidebar
-  passam ao ciano da marca (`#3ceef8`). No homelab a sidebar segue roxa.
-- Controles (botão, badge, tabela, foco) saem dos tokens em
-  `static/css/app.css`. Ação de linha é um grupo horizontal de 34px:
-  primário ciano, secundário com borda, perigo só contorno. Badge de estado
-  leva ponto colorido. O menu lateral permanece o original (roxo no item
-  ativo, seções e Sair); os tokens novos não entram nele.
-- Usuários Samba: cartões fixos 240×156px, share em uma linha com `+N`, rodapé
-  de ações no fundo; painel de grupos ao lado. No moya, atalhos abrem o
-  Credenciais (`CREDENTIALS_BROWSER_URL`).
-  Em Serviços, Parar/reiniciar/desabilitar abre num painel sobreposto e pede
-  o nome da unit. Em Containers, Logs/Parar/Reiniciar ficam em slots fixos;
-  o painel mostra um cadeado no lugar de parar.
-- No host com Jellyfin, a página Torrents envia um link magnético para uma
-  biblioteca dele. O qBittorrent continua em container, na rede do Pi, para o
-  handshake dos peers não passar pela bridge. A WebUI fica na 8090; a 8080 do
-  host não muda. Com o UFW ativo, 6881/tcp e 6881/udp ficam liberadas e a
-  8090 só aceita a rede Docker. O UPnP fica ligado. A página enfatiza o
-  andamento: chips de estado, busca por nome e filtro de pasta. **Atualizar** e
-  **Automático** ficam no bloco Andamento (sem recarregar a página). Adicionar
-  torrent e a API de envio abrem em painéis na própria página. A lista mostra
-  a taxa de download (sem coluna de upload). O cabeçalho da
-  coluna ordena a lista. Pausar e retomar alternam na mesma linha;
-  no concluído ficam Remover e Apagar arquivos, exceto em movimentação ou
-  verificação (a linha pede aguardar). Sem o Jellyfin, a página
-  não aparece. `POST /api/torrents/` repete esse envio com Bearer.
-  Token vazio no banco desliga a rota. A categoria no qBittorrent é
-  sempre `jellyfin`. Hash já presente na lista responde `409`. **Organizar biblioteca**
-  lista pastas fora de Título (Ano), aplica só as marcadas e mostra feito, não feito e ignorados.
-  Colchetes de release saem do título limpo; o alvo continua Título (Ano).
-  Pastas sem ano (sem override) não são criadas; resíduo grande sem torrent é avisado
-  e, se marcada com ano no alvo, ainda é mesclada;
-  pasta com torrent ativo fica ignorada até remover o torrent da lista (manter arquivos).
-  O token fica
-  legível no banco do painel. O `host.env` só grava o primeiro valor. O
-  administrador cria, consulta e troca na página Torrents com a senha da
-  própria conta. Sem token, o botão é Criar token. O mesmo registro aparece
-  em `/admin`. Quem acompanha o término do arquivo faz isso pelo SMB, na pasta da
-  biblioteca: stat remoto e comparação de tamanho, o mesmo critério dos transfers.
-- Discos, SMART standby-safe, RAID/Btrfs e métricas ao vivo. O `/proc/mdstat`
-  é relido ao abrir o dashboard; o SMART continua na coleta diária.
-- Backups:
-  - ações longas (disco, cópia fria, restore, verificação, Gitea, backup local
-    e snapshot) só disparam: o agente grava o status e a página consulta até
-    concluir ou falhar. Download, busca e cálculo de tamanho continuam na
-    própria resposta. O Gunicorn espera 660 s;
-  - jobs restic por disco, com agenda, retenção, verificação semanal, unlock
-    de lock órfão neste host e restore aos caminhos originais;
-  - restore de snapshot de share (Btrfs/rsync) para o share, com confirmação;
-  - **backup local de arquivos** com jobs independentes (fontes, agenda,
-    retenção, restore verificado, cópia para USB);
-  - backup do Gitea (dump + USB + restore no container quando o Gitea existe).
-    A lista dos dumps mostra o diretório, o disco, baixar e restaurar;
-  - cópia fria USB implementada, dependente de repo primário.
-- Jobs em produção:
-  - **Credenciais** — banco + `.env`, diário 03:30, 30 dias;
-  - **Dados dos apps** — 16 fontes, manual, sem timer.
-- Página **Rede**: firewall UFW editável (ativar/desativar, adicionar/remover
-  regras), interfaces, rotas, portas e containers.
-- **Sistema** (`/sistema/…`): Host (ficha + apt com `SYSTEM_MANAGE`), **Configuração**
-  (SSH e caminhos de `host.env`, `.env` e `services.ini` no host), Chaves
-  (fingerprints SSH + slot torrent com `jellyfin`), Logs (journal com filtros
-  fechados ou log de container), Serviços (units systemd), Terminal ligado
-  por padrão e aberto só com senha sudo da conta Linux. Ver [SISTEMA.md](SISTEMA.md).
-- Card **Saúde** no Dashboard: discos, backups, containers e pendências.
-- **Containers** (`/containers/`): Docker ou Podman, estado, portas, iniciar,
-  parar, reiniciar e logs; sem remover nem executar comandos. Todas as portas
-  aparecem em chips com quebra de linha; a tabela tem colunas fixas para não
-  esconder conteúdo sob as ações. O container do painel é protegido contra
-  parada/reinício pela própria UI.
-- Login pelo Credenciais no moya, com `CREDENTIALS_MANAGE_USERS=1` e
-  break-glass local. No Pi, sem `CREDENTIALS_URL`, o login é local.
-- Textos e rotas de Gitea, backup local de arquivos e gestão pelo
-  Credenciais só aparecem quando o host tem o recurso. O código continua o
-  mesmo nos dois ambientes.
-- Passe completo de UI: `ui.css` com cabeçalho, seções, cards, avisos, botões,
-  tabelas, chips, métricas, ações e formulários padronizados.
-- **Kit Tailwind (piloto):** `django-tailwind-cli`
-  via uv, sem npm. Fonte em `frontend/src.css`, folha em `static/css/kit.css`.
-  Tokens e `@theme` vêm de `static/vendor/moya-ui/tailwind.css` (kit do
-  `moya_art_design`); o resto do `src.css` é layout específico.
-- **Contrato de tabelas (kit 1.3.0):** `data-table` é o nome canônico;
-  `file-table` fica só como alias legado. Tabela de coleção usa
-  `table-toolbar` com busca, filtros, contador e Limpar; a ordenação fica no
-  header com `button.th-sort`. Filtro não entra no `<th>`, nenhuma célula corta
-  conteúdo e a última coluna é a de ações. `table-filter.js` aplica o filtro
-  local via `data-table-*`.
-  A lista de usuários junta identidade+status e mostra grupos de share em
-  faixa; a lógica (`set_groups`, Senha, confirmação) não muda. Sem matriz de
-  ACL neste passo. Torrents enfatiza o andamento; envio e API abrem em
-  painéis na página.
-- Troca de senha Samba (`/usuarios/senha/`): sucesso e fracasso usam o
-  `alert` do kit. O usuário fica visível (readonly). Erro de validação ou do
-  agente não some mais num campo hidden. O aviso do Chrome sobre password
-  field em HTTP direto (`http://192.168.0.150:8060`) é o navegador, não o
-  resultado do POST. Com `DJANGO_SECURE_COOKIES=1` essa URL abre e não mantém
-  sessão; o login que grava sessão é `https://homelab.conradhub.com`
-  ([SEGURANCA.md](SEGURANCA.md#cookies-e-https)).
-- **Novo layout de painel de operação** (branch `ui/layout-telas`, merge `76dc5f2`):
-  visual compacto, rotas/firewall em tabelas, status com ponto e ações como texto.
-- Modo demo (`STORAGE_ADMIN_DEMO=1` + `DEBUG=1`) para pré-visualizar a UI sem host.
-- Dashboard resume saúde, volumes, discos, snapshots, backups e shares em
-  blocos; cada bloco leva à seção ou página. Discos abrem o detalhe no próprio
-  card; backups e shares mostram um resumo curto e o link para a página. Os
-  atalhos de serviço ficam no menu `details` do topo; o rodapé só leva o nome
-  do produto. O detalhe do disco abre em largura total e os cards fechados
-  mantêm a mesma altura.
-- O tamanho dos shares é carregado só na página Shares, com cache de 3 minutos
-  no agente.
-- Backups do Gitea e do Credenciais validados com restore de teste.
-  O Gitea para pendrive também foi validado manualmente; não retestar sem
-  mudança no fluxo de dump/cópia USB.
-- **Admins locais (2026-11-12).** `Sistema → Admins locais`, só para
-  superuser, cria o superuser `admin` dos apps Django via agente e troca a
-  senha dele quando ele já existe. Registry fixa de apps; a senha é digitada
-  no painel, vai por stdin e não volta na resposta; a troca abre em modal com
-  medidor de força e confirmação; senha fraca exige confirmação extra
-  (`validate_password` + `Permitir senha fraca mesmo assim`);
-  nada de container ou comando vindo do cliente. A página é uma tabela única
-  com estado, usuário alvo, superusers e ações alinhadas. Outros superusers
-  são somente informativos; gerencie-os pelo painel admin do Django ou, quando
-  a conta for do Credenciais, pela tela do Credenciais (que sincroniza Samba,
-  histórico e sessões).
-  Desligável com `DJANGO_ADMIN_MANAGE=0` no host e `DJANGO_ADMIN_ENABLE=0` no
-  agente. Detalhe em [SEGURANCA](SEGURANCA.md#admins-locais-dos-apps-django).
+- Dashboard com blocos (Saúde, volumes, discos, snapshots, backups, shares) e
+  páginas próprias para cada área.
+- Samba: usuários/grupos, shares, senha, snapshots por share e navegador
+  read-only de versões.
+- Backups: restic por disco (agenda, retenção, verificação, unlock, restore),
+  restore de snapshot, backup local de arquivos, Gitea (dump + USB + restore) e
+  cópia fria USB.
+- Discos/SMART standby-safe, RAID, métricas ao vivo; Rede com UFW editável.
+- Sistema: host + apt, Configuração, chaves SSH, logs, serviços systemd,
+  terminal no navegador e Admins locais (break-glass); Containers sem remover
+  nem executar; modo demo com `STORAGE_ADMIN_DEMO=1 DEBUG=1`.
+- Host genérico: TOML com `schema`/defaults, `detect`/`init`, `render`,
+  `doctor`, `bootstrap`, `boot`, CI (`bash -n` + `shellcheck`, arm64 só em
+  push para `main`).
 
-## Decisões que não devem ser revertidas sem conversa
+## Pendências / próximos jobs
 
-1. **Código compartilhado Pi + moya.** Feature não se remove para atender um host.
-2. **Credenciais é o IdP do moya.** Sem OIDC; o Storage Admin só consome.
-3. **Acesso ao Storage Admin é binário** (tem ou não tem concessão `storage`).
-4. **Portal Interno é público** e não passa por login.
-5. **Restic só em disco externo.** O disco do sistema/dados é recusado; sem disco
-   os jobs ficam `skipped`, não falham.
-6. **Cópia fria exige repo primário.**
-7. **Gitea é manual** (dump + USB) até haver RAID1/discos.
-8. **ACLs são relatório/sugestão**, sem correção automática.
-9. **UI consistente é requisito**, não preferência.
-10. **Nada de shell livre no agente.**
-
-## Pendências, em ordem
-
-1. **Rede no Pi:** concluída em 2026-11-04. Caddy, Pi-hole, rota, split DNS e firewall do Tailscale prontos. Sem túnel. Zero Trust Free existe na conta e não é usado. Celular em 5G com Tailscale abre o painel, os apps e o Samba; o play do Jellyfin só na LAN. Sem Tailscale e fora de casa, o nome não resolve.
-   Roteiro:
-   [plano](plans/2026-11-04-tunnel-tailscale.md), [REDE](REDE.md),
-   [SEGURANCA](SEGURANCA.md).
-2. **Deploy no Pi** — responsabilidade do Conrado; o código já está em `main`.
-   Agente do Pi reinstalado em 15/11 (4 binários em sync).
-3. **Reconciler de apps no Pi** (`scripts/stacks/apps-sync.sh`): concluído em
-   2026-11-15. Pasta do Caddy montada (`- ./:/etc/caddy:ro`), `apps.env`
-   instalado, `--apply` aplicado e segunda execução sem mudança. Wildcard
-   confirmado; homelab 302, dockge 200, pihole 302, jellyfin 302.
-4. **Discos externos**: criar repo restic, jobs, cópia fria e `restic check`
-   já existem no painel; restore restic também. Hardware real de disco/USB
-   de cópia fria continua o limite para o teste físico.
-5. **Firewall**: a UI já gerencia o UFW; decidir quando ativar no moya/Pi.
-   O alerta "Firewall inativo" continua real até a ativação.
-6. **Gitea**: o dump no servidor pode ser agendado pelo admin; continuam
-   pendentes a cópia USB automática (não fazer) e apagar os arquivos USB
-   antigos inválidos.
-7. **Job “Dados dos apps”**: manual por decisão; rodar + “Backup para USB”
+1. **moya:** shares do Samba em `/srv/samba` (LV do sistema, 98 GB/68%) e
+   não no RAID `/mnt/data` (3,6 TB/6%); mover exige janela com o Samba
+   parado (o `doctor` avisa).
+2. **Pi:** apagar `/var/backups/moya-credenciais`, pasta órfã do install
+   antigo.
+3. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
+   quando ativar.
+4. **Gitea:** apagar dumps inválidos no pendrive; cópia USB automática foi
+   decidida como "não".
+5. **Job “Dados dos apps”:** manual por decisão; rodar + “Backup para USB”
    quando quiser cópia fria.
-8. **RAID1 no moya** (2026-11-10): `/dev/md0` ext4 com os dois WD Red Plus
-   de 4 TB, montado em `/mnt/data` (Veronte, Production, datasheets). O Seagate
-   de 2 TB continua com o sistema; o `data-lv` foi para `/mnt/backup` e o
-   backup do Samba aponta para lá. O resync inicial ainda corria no corte.
-   A árvore antiga permanece em `/mnt/backup` até esse resync terminar; não é
-   uma segunda política de backup. Retenção e restic não mudaram.
-9. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
-10. **Host genérico**: concluído em 2026-11-15. `pi` e `moya` já rodam com o
-    `host.env`/`sync.env` renderizados do TOML (`HOST_PROFILE` confirmado nos
-    dois containers) e a bancada tem `generico-pronto` (`pytest` + smoke +
-    `--doctor` com 0 erros, sem Caddy/DNS). Único aviso no Pi: `validate sem
-    cloudflare.token` quando o `--doctor` roda sem sudo — esperado.
-
-11. **Instalação e manutenção** (2026-11-15): `homelabctl doctor <slug>`
-    (preflight sem escrever: env em sync, dependências por feature, `.env`
-    600, mounts, `apps.env`, unit de boot), `bootstrap <slug>` (env, `.env`
-    com segredo aleatório e `apt` das features — nunca sobrescreve),
-    `boot <slug>` (unit do `[boot]` do TOML) e `schema`/defaults no loader.
-    O `check` avisa drift entre o `/etc` e o TOML do host que o `host.env`
-    declara; o `deploy.sh` falha em erro do `--doctor`, recusa `.env` com
-    modo ≠ 600 ou segredo de exemplo e liga qBittorrent pela feature, não pelo
-    nome do overlay. `apps-sync.sh` e `install-agent.sh` não têm mais preset
-    de host: sem `hosts/<slug>/host.toml`/`sync.env`, o erro mostra o render.
-    CI: `bash -n` + `shellcheck --severity=warning` nos quatro scripts de root
-    e build arm64 só em push para `main`. Plano:
-    [docs/plans/2026-11-15-manutencao-instalacao.md](plans/2026-11-15-manutencao-instalacao.md).
-
-## Testes em VM
-
-Roteiro: [`docs/VM_TESTES.md`](VM_TESTES.md). No desktop Fedora, a bancada
-**precisa** dos testes server-like no virt-manager (`linux2024`). Pytest
-local nao substitui. Sem virt-manager neste host, declare a excecao.
-
-A bancada virou um ciclo deterministico: `bench.sh` no host reverte o snapshot
-do perfil, roda os testes e devolve a VM ao mesmo snapshot. Snapshots:
-`base-limpo` (origem, so `setup-ubuntu-2604.sh`), `homelab-pronto`,
-`moya-pronto` (2026-11-15) e `generico-pronto` (host criado pelo wizard, sem
-Caddy/Pi-hole/Samba).
-
-- host: `scripts/vm/bench.sh snapshot|preparar|testar|limpar --perfil ...`
-- perfis (convidado, root): `scripts/vm/perfil-homelab.sh`,
-  `scripts/vm/perfil-moya.sh`, `scripts/vm/perfil-generico.sh`
-- limpeza guardada pelo marker `/etc/homelab-vm-bench`: `scripts/vm/clean.sh`
-- suites dos dois apps: `scripts/vm/run-unit-tests.sh`
-- laboratorio: `sudo bash scripts/vm/run-lab-tests.sh`
-- smoke somente leitura: `scripts/vm/smoke-moyaserver.sh`
-- E2E de identidade/Samba: no repo do Credenciais, `docs/E2E_VM.md`
-
-## Como retomar
-
-```bash
-# no PC
-cd C:\Users\Conrado\development\homelab-storage-admin-credenciais
-
-uv run manage.py check
-uv run pytest
-
-git add -A && git commit -m "feat: ..."
-git push origin feat/credenciais-login:main
-```
-
-```bash
-# no servidor (Pi ou moya)
-cd /opt/stacks/homelab-storage-admin
-./deploy.sh   # termina em OK: …/login/ -> 200, --doctor e aviso de --apply pendente
-
-# se agent/ mudou
-sudo ./install-agent.sh
-```
-
-> O deploy no Pi é feito pelo responsável; não execute sem pedido explícito.
-
-Diagnóstico:
-
-```bash
-sudo systemctl status homelab-storage-agent
-docker logs homelab-storage-admin --tail 100
-set -a; . /etc/homelab-storage-admin/host.env; set +a
-docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
-```
+6. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+7. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
+   acesso/desconexão SMB: integrar ou descartar antes de remover.
+8. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
 
 ## Armadilhas conhecidas
 
-- **Sem repo restic** não há snapshots restic; a UI mostra "aguardando disco".
-- **Estado do disco `n/d`** não é falha: algumas controladoras USB/RAID não
-  respondem ao `hdparm -C`/`smartctl -n standby`. SMART e temperatura continuam
-  sendo lidos quando disponíveis; a UI não mostra mais `unknown` como status.
-- **Não rode o app antigo** `moya-storage-admin` junto com este.
-- **No Pi**, `data` é symlink para `/mnt/nas/apps/homelab-storage-admin/data`;
-  num clone novo, recrie o symlink antes de rodar `manage.py` no host.
-- **`CREDENTIALS_MANAGE_USERS=1`** bloqueia toda a seção `/usuarios/`
-  (pessoas e grupos); não confunda com remoção de features de storage.
-- **Senha Samba ≠ senha Linux.** No Pi, a conta criada pela UI não tem senha
-  Unix e usa shell `nologin`; a tela define só a credencial Samba. No moya, a
-  igualdade com o Credenciais vem de automação externa (push), e troca
-  posterior/desativação precisam do mesmo push ou desincronizam.
-  Detalhes em [ARQUITETURA.md](ARQUITETURA.md#propagação-da-senha-para-o-samba-moyaserver).
-- **O overlay do Compose** vem do `host.env`; sem ele o app fica fora da rede.
-- **Sessões do Credenciais** precisam estar válidas: o app revalida a cada request.
-- **UI**: qualquer página nova sem `page-head`/`section-head`/`card` quebra o
-  padrão e deve ser corrigida.
-- **Worktree antigo** em `C:\Users\Conrado\development\homelab-storage-admin`
-  (detached, 46 commits atrás) ainda tem WIP de acesso/desconexão SMB, não
-  integrado. Patch de segurança em
-  `C:\Users\Conrado\Documents\wip-acesso-smb-20261028.patch`. Decidir se integra
-  ou descarta antes de remover o worktree.
-- **Backups**: nunca apontar job restic para o disco do sistema/dados; o wizard
-  recusa de propósito.
-- **Job “Dados dos apps”** não tem timer; não estranhe o status “desativado”.
+- Sem repo restic a UI mostra "aguardando disco"; `skipped` não é falha.
+- Estado de disco `n/d` não é falha: controladora USB/RAID não responde ao
+  `hdparm -C`/`smartctl -n standby`.
+- `CREDENTIALS_MANAGE_USERS=1` bloqueia `/usuarios/` inteiro (pessoas, senha,
+  grupos); storage continua no Storage Admin.
+- Senha Samba ≠ senha Linux: no Pi a conta é `nologin` e só tem credencial
+  Samba; no moya a igualdade vem de push do Credenciais.
+- O overlay do Compose vem do `host.env`; sem ele o app fica fora da rede.
+- No Pi, `data` é symlink para `/mnt/nas/apps/homelab-storage-admin/data`:
+  num clone novo, recrie o symlink antes de rodar `manage.py`.
+- Sessões do Credenciais são revalidadas a cada request.
+- Não rode o app antigo `moya-storage-admin` junto com este.
 
-## Documentos irmãos
+## Onde ler mais
 
-- `README.md` — índice; `docs/` — manuais por área (instalação, arquitetura,
-  armazenamento, backups, rede, segurança, troubleshooting).
-- `AGENTS.md` — regras para agentes/automação.
-- Credenciais: `C:\Users\Conrado\Documents\moya_credencials_app`
-  (`docs/CONTEXTO.md`), fonte de identidade do moya.
+- `README.md` — índice do projeto.
+- [INSTALACAO](INSTALACAO.md) — pré-requisitos, deploy, checklist, rollback, boot e variáveis.
+- [PRESETS](PRESETS.md) — `host.toml`, schema, `homelabctl` e runbook de host novo.
+- [ARQUITETURA](ARQUITETURA.md) — agente, allowlist, fluxo de dados.
+- [ARMAZENAMENTO](ARMAZENAMENTO.md) · [BACKUPS](BACKUPS.md) · [REDE](REDE.md) · [SEGURANCA](SEGURANCA.md) · [SISTEMA](SISTEMA.md) · [ROTINAS](ROTINAS.md) · [TROUBLESHOOTING](TROUBLESHOOTING.md).
+- [VM_TESTES](VM_TESTES.md) — bancada `linux2024` (`bench.sh`, snapshots por perfil).
+- `AGENTS.md` — regras para agentes (ler antes de mexer).
