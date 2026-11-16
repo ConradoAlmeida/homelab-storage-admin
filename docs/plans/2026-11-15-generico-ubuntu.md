@@ -178,7 +178,7 @@ os defaults do `settings.py`.
       revisão/diff → escreve), `--dry-run` por padrão.
 - [x] 5. Tirar os literais `pi|moya` do `apps-sync.sh` e do
       `install-agent.sh`; perfil inválido = diretório inexistente.
-- [ ] 6. Gating por `requires` + testes Pi-safe (host sem Credenciais/Gitea/
+- [x] 6. Gating por `requires` + testes Pi-safe (host sem Credenciais/Gitea/
       Pi-hole não gera alerta falso) e modo `dns = "nenhum"` / `caddy`
       opcional no reconciliador (`apps-sync.sh:711-883`).
 - [x] 6b. `install-agent.sh` checa dependência por feature (Samba/parted só
@@ -218,4 +218,8 @@ Plano aprovado em 2026-11-15.
 - 3/4: `core/homelab_detect.py` (lsblk/findmnt/ip/systemctl/docker com runner
   injetável e fixtures) e `core/homelab_wizard.py` (TUI textual com fallback
   por perguntas; valida o TOML antes de gravar, nunca escreve sem `--escrever`).
-- Resta 6 (requires/dns_modo no reconciler), 7 (docs), 8 (bancada).
+- 6: `REQUISITOS` por feature (usado no install-agent), zeros explícitos de
+  `FIREWALL_MANAGE`/`TERMINAL_ENABLE`/`DJANGO_ADMIN_MANAGE` no render e
+  `dns_modo=nenhum`/`upstream=nenhum` no `apps-sync.sh` (plano, apply e
+  `--doctor` pulam Caddy/DNS sem erro).
+- Resta 7 (docs) e 8 (bancada).

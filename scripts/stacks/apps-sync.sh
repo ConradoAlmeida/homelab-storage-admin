@@ -169,7 +169,8 @@ APPS_STATE=${APPS_STATE:-/var/lib/homelab-storage-admin/apps.aplicados}
 # Fragmentos de Caddyfile versionados: ficam ao lado do apps.env, no repo.
 SNIPPETS_DIR=${SNIPPETS_DIR:-$(dirname "$APPS_ENV")/snippets}
 STACKS_ROOT=${STACKS_ROOT:-/opt}
-CADDY_CONTAINER=${CADDY_CONTAINER:-caddy}
+# Sem `:-`: o sync.env grava vazio para host sem proxy e isso precisa valer.
+CADDY_CONTAINER=${CADDY_CONTAINER-caddy}
 PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
 DOMAIN=${DOMAIN:-conradhub.com}
 DNS_IP=${DNS_IP:-192.168.0.150}
@@ -205,9 +206,14 @@ PORTAL_INI=${PORTAL_INI-}
 PROTEGIDOS=("$CADDY_DIR" "$PIHOLE_DIR")
 
 case "$DNS_MODE" in
-  wildcard|nome) ;;
-  *) erro "DNS_MODE invalido: $DNS_MODE (use wildcard ou nome)" ;;
+  wildcard|nome) DNS_ATIVO=1 ;;
+  nenhum) DNS_ATIVO=0 ;;
+  *) erro "DNS_MODE invalido: $DNS_MODE (use wildcard, nome ou nenhum)" ;;
 esac
+
+# Host sem Caddy (upstream nenhum no host.toml): as rotas ficam so no env.
+PROXY_ATIVO=1
+[[ -n "${CADDY_CONTAINER:-}" ]] || PROXY_ATIVO=0
 
 declare -A FQDN=() UPSTREAM=() DIR=() FLAGS=()
 declare -A ANT_FQDN=() ANT_UPSTREAM=() ANT_DIR=() ANT_FLAGS=()
@@ -1085,6 +1091,10 @@ mostra_plano() {
       item "pasta ausente: ${DIR[$k]} (a rota ainda pode ser gerada)"
   done
   item "apps: ${#KEYS[@]} declaradas, $geradas geradas, $manuais manuais"
+  [[ $PROXY_ATIVO -eq 1 ]] ||
+    item "sem Caddy neste host: as rotas acima ficam so declaradas no env"
+  [[ $DNS_ATIVO -eq 1 ]] ||
+    item "sem DNS gerenciado (dns_modo=nenhum): nada sera gravado no Pi-hole"
   mostra_atalhos_plano
 
   if [[ ${#ANT_KEYS[@]} -eq 0 ]]; then
@@ -1099,7 +1109,9 @@ mostra_plano() {
   fi
   relata_containers
   relata_orfaos
-  relata_dns_exatos
+  if [[ $DNS_ATIVO -eq 1 ]]; then
+    relata_dns_exatos
+  fi
 }
 
 mostra_atalhos_plano() {
@@ -1319,11 +1331,21 @@ doutor() {
   item "snippets: $SNIPPETS_DIR"
   item "apps: ${#KEYS[@]} declaradas"
 
-  secao "caddy"
-  checa_caddy
+  if [[ $PROXY_ATIVO -eq 1 ]]; then
+    secao "caddy"
+    checa_caddy
+  else
+    secao "caddy"
+    item "host sem proxy reverso (upstream=nenhum): check pulado"
+  fi
 
-  secao "dns"
-  checa_dns
+  if [[ $DNS_ATIVO -eq 1 ]]; then
+    secao "dns"
+    checa_dns
+  else
+    secao "dns"
+    item "dns_modo=nenhum: check pulado"
+  fi
 
   secao "atalhos"
   checa_atalhos
@@ -1462,8 +1484,12 @@ if [[ $APLICAR -eq 1 ]]; then
   if [[ $EUID -ne 0 && "$TEST_MODE" != "1" ]]; then
     erro "--apply precisa de root (sudo): escreve em $CADDY_DIR e em $APPS_STATE"
   fi
-  tem_docker || erro "--apply precisa do docker no PATH"
-  command -v dig >/dev/null 2>&1 || erro "--apply precisa do dig para confirmar o DNS"
+  if [[ $PROXY_ATIVO -eq 1 || $DNS_ATIVO -eq 1 || $PODAR_CONTAINERS -eq 1 ]]; then
+    tem_docker || erro "--apply precisa do docker no PATH"
+  fi
+  if [[ $DNS_ATIVO -eq 1 ]]; then
+    command -v dig >/dev/null 2>&1 || erro "--apply precisa do dig para confirmar o DNS"
+  fi
 fi
 
 valida
@@ -1485,11 +1511,15 @@ if [[ $APLICAR -eq 0 ]]; then
   exit 0
 fi
 
-secao "caddy"
-aplica_caddy
+if [[ $PROXY_ATIVO -eq 1 ]]; then
+  secao "caddy"
+  aplica_caddy
+fi
 
-secao "dns"
-aplica_dns
+if [[ $DNS_ATIVO -eq 1 ]]; then
+  secao "dns"
+  aplica_dns
+fi
 
 secao "atalhos"
 aplica_atalhos
@@ -1507,8 +1537,10 @@ fi
 secao "estado"
 grava_estado
 
-secao "dns do Pi-hole"
-relata_dns_exatos
+if [[ $DNS_ATIVO -eq 1 ]]; then
+  secao "dns do Pi-hole"
+  relata_dns_exatos
+fi
 
 secao "resumo"
 item "${#KEYS[@]} apps declaradas e aplicadas"
@@ -1518,5 +1550,9 @@ if [[ -n "$commit_env" ]]; then
 else
   item "env: $APPS_ENV"
 fi
-item "Caddy: ${CADDYFILE}"
-item "DNS: $DNS_CONF"
+if [[ $PROXY_ATIVO -eq 1 ]]; then
+  item "Caddy: ${CADDYFILE}"
+fi
+if [[ $DNS_ATIVO -eq 1 ]]; then
+  item "DNS: $DNS_CONF"
+fi

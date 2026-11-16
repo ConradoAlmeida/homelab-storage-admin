@@ -1192,3 +1192,52 @@ def test_perfil_vem_do_host_env_sem_preset(tmp_path):
     assert resultado.returncode == 2
     assert "nas2" in resultado.stderr
     assert "homelabctl.py render nas2" in resultado.stderr
+
+
+def _sync_sem_proxy(tmp_path, sandbox) -> Path:
+    sync = tmp_path / "sync.env"
+    sync.write_text(
+        "SCHEME='http'\n"
+        f"DATA_DIR='{sandbox.services_ini.parent}'\n"
+        f"STACKS_ROOT='{sandbox.stacks}'\n"
+        "CADDY_DIR=''\n"
+        "CADDY_CONTAINER=''\n"
+        "CADDYFILE=''\n"
+        "CADDY_APPS=''\n"
+        "CADDY_TOKEN_FILE=''\n"
+        "DNS_MODE='nenhum'\n"
+        f"DNS_CONF='{sandbox.dns_conf}'\n"
+        "UPSTREAM_HOST=''\n"
+        f"QUARANTINE='{sandbox.quarantine}'\n"
+        f"PORTAL_INI=''\n",
+        encoding="utf-8",
+    )
+    return sync
+
+
+def test_apply_sem_proxy_nem_dns_so_grava_atalhos_e_estado(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    sync = _sync_sem_proxy(tmp_path, sandbox)
+    resultado = sandbox.run("--apply", env_extra={"SYNC_ENV": str(sync)})
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    # Sem Caddy: nada de apps.caddy nem de Caddyfile mexido.
+    assert not sandbox.apps_caddy.exists()
+    assert sandbox.caddyfile.read_text(encoding="utf-8") == CADDYFILE
+    # Sem DNS: nenhum arquivo no Pi-hole.
+    assert not sandbox.dns_conf.exists()
+    # O que continua valendo: atalhos e estado do env.
+    assert sandbox.state.exists()
+    # O dry-run explica por que caddy/dns ficaram de fora.
+    plano = sandbox.run(env_extra={"SYNC_ENV": str(sync)})
+    assert plano.returncode == 0, plano.stderr
+    assert "sem Caddy neste host" in plano.stdout
+    assert "sem DNS gerenciado" in plano.stdout
+
+
+def test_doctor_sem_proxy_nem_dns_nao_acusa_falta(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    sync = _sync_sem_proxy(tmp_path, sandbox)
+    resultado = sandbox.run("--doctor", env_extra={"SYNC_ENV": str(sync)})
+    assert "host sem proxy reverso (upstream=nenhum)" in resultado.stdout
+    assert "dns_modo=nenhum" in resultado.stdout
+    assert "arquivo de DNS ausente" not in resultado.stderr + resultado.stdout

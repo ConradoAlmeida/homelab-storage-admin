@@ -325,16 +325,16 @@ def render_host_env(cfg: HostConfig) -> list[tuple[str, str]]:
             ("CREDENCIAIS_RETENTION_DAYS", str(cr.get("retention_days", 30))),
         ]
     pares.append(("CREDENTIALS_MANAGE_USERS", "1" if cfg.ligado("credenciais") else "0"))
+    # Sempre explicito: o default do settings e 1, entao host que nao tem a
+    # feature precisa dizer 0 em vez de herdar o comportamento do Pi.
+    pares.append(("FIREWALL_MANAGE", "1" if cfg.ligado("ufw") else "0"))
     if cfg.ligado("ufw"):
-        pares.append(("FIREWALL_MANAGE", "1"))
         pares.append(
             ("FIREWALL_SAFE_PORTS", _lista(arm.get("firewall_safe_ports")
                                            or PADROES["FIREWALL_SAFE_PORTS"]))
         )
-    if cfg.ligado("terminal"):
-        pares.append(("TERMINAL_ENABLE", "1"))
-    if cfg.ligado("django_admins"):
-        pares.append(("DJANGO_ADMIN_MANAGE", "1"))
+    pares.append(("TERMINAL_ENABLE", "1" if cfg.ligado("terminal") else "0"))
+    pares.append(("DJANGO_ADMIN_MANAGE", "1" if cfg.ligado("django_admins") else "0"))
     pares.append(("HOST_PROFILE", cfg.slug))
     repo = str(cfg.valor("host", "repo")).rstrip("/")
     pares.append(("APPS_ENV_PATH", f"{repo}/{r['apps']}"))

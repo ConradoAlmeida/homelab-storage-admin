@@ -19,7 +19,12 @@ from core.homelab_config import (
 from .conftest import ROOT, parse_env_file
 
 FIXTURES = Path(__file__).parent / "fixtures"
-CHAVES_NOVAS = {"HOST_PROFILE"}
+# O render passou a gravar 0 explicito nas features de UI (o default do
+# settings e 1); so o Pi nao tinha DJANGO_ADMIN_MANAGE no host.env efetivo.
+EXTRAS = {
+    "pi": {"HOST_PROFILE", "DJANGO_ADMIN_MANAGE"},
+    "moya": {"HOST_PROFILE"},
+}
 
 
 def env_efetivo(slug: str) -> dict[str, str]:
@@ -37,8 +42,8 @@ def test_render_reproduz_o_host_env_efetivo(slug):
 
     # Toda chave que existia continua com o mesmo valor...
     assert {k: rendered.get(k) for k in efetivo} == efetivo
-    # ...e o render so acrescenta o perfil explicito (fim do chute pelo diretorio).
-    assert set(rendered) - set(efetivo) == CHAVES_NOVAS
+    # ...e o render so acrescenta o perfil explicito e os zeros de feature.
+    assert set(rendered) - set(efetivo) == EXTRAS[slug]
     assert rendered["HOST_PROFILE"] == slug
 
 
@@ -46,7 +51,10 @@ def test_render_reproduz_o_host_env_efetivo(slug):
 def test_texto_host_env_e_relegivel(slug, tmp_path):
     destino = tmp_path / "host.env"
     destino.write_text(texto_host_env(carregar(slug)), encoding="utf-8")
-    assert parse_env_file(destino) == {**env_efetivo(slug), "HOST_PROFILE": slug}
+    esperado = {**env_efetivo(slug), "HOST_PROFILE": slug}
+    if slug == "pi":
+        esperado["DJANGO_ADMIN_MANAGE"] = "0"
+    assert parse_env_file(destino) == esperado
 
 
 def test_sync_env_do_pi():
@@ -179,3 +187,21 @@ def test_requisitos_sem_feature_nao_pede_o_binario(tmp_path):
     assert "restic" not in nomes
     # As demais continuam.
     assert "ufw" in nomes
+
+
+def test_host_sem_feature_grava_zero_explicito(tmp_path):
+    # O default do settings/agente e 1: host sem a feature precisa dizer 0,
+    # senao herda o comportamento do Pi e mostra acao que nao funciona.
+    texto = BASE.replace("ufw = true", "ufw = false").replace(
+        "terminal = true", "terminal = false"
+    )
+    arquivo = tmp_path / "host.toml"
+    arquivo.write_text(texto, encoding="utf-8")
+    render = texto_host_env(carregar_arquivo(arquivo))
+    assert "FIREWALL_MANAGE=0" in render
+    assert "TERMINAL_ENABLE=0" in render
+    assert "DJANGO_ADMIN_MANAGE=0" in render
+    assert "CREDENTIALS_MANAGE_USERS=0" in render
+    # Nada de credenciais no host sem a feature.
+    assert "CREDENCIAIS_DB" not in render
+    assert "FIREWALL_SAFE_PORTS" not in render
