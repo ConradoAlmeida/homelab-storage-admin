@@ -250,3 +250,15 @@ def test_scripts_de_producao_nao_tem_host_literal():
             assert not __import__("re").search(r"\b(pi|moya)\b", linha), (
                 f"{nome}:{numero}: host literal fora de comentario: {linha.strip()}"
             )
+
+
+def test_exemplos_do_host_nao_mentem_sobre_o_render():
+    # O exemplo e referencia para quem ainda nao tem TOML: toda chave que o
+    # render escreve precisa estar nele com o mesmo valor.
+    from core.homelab_config import carregar, render_host_env
+
+    for slug, exemplo in (("pi", "host.env.example"), ("moya", "host.env.moya.example")):
+        valores = parse_env_file(ROOT / exemplo)
+        gerado = dict(render_host_env(carregar(slug)))
+        faltam = {k: v for k, v in gerado.items() if valores.get(k) != v}
+        assert not faltam, f"{exemplo} difere do render {slug}: {faltam}"
