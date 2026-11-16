@@ -1,4 +1,4 @@
-# Bancada de VM Ubuntu 26.04 (perfis homelab e moya)
+# Bancada de VM Ubuntu 26.04 (perfis homelab, moya e generico)
 
 Roteiro para validar o ecossistema Moya em uma VM descartavel com Ubuntu
 Server 26.04. Pytest no clone (Fedora ou CI) cobre contrato e UI; **nao**
@@ -17,7 +17,8 @@ segunda rodada comeca igual a primeira.
 
 ```
 base-limpo ──preparar homelab──► homelab-pronto ──testar──► volta
-           └─preparar moya────► moya-pronto    ──testar──► volta
+           ├─preparar moya────► moya-pronto    ──testar──► volta
+           └─preparar generico► generico-pronto ─testar──► volta
 ```
 
 | Script | Onde roda | Papel |
@@ -25,6 +26,7 @@ base-limpo ──preparar homelab──► homelab-pronto ──testar──► 
 | `scripts/vm/bench.sh` | host | revert, start, espera guest agent, ssh, snapshot |
 | `scripts/vm/perfil-homelab.sh` | convidado (root) | `/mnt/nas`, `/mnt/backup`, `host.env`, overlay, agente |
 | `scripts/vm/perfil-moya.sh` | convidado (root) | `/srv/samba`, `/mnt/data`, rede `moya`, `host.env`, agente |
+| `scripts/vm/perfil-generico.sh` | convidado (root) | `/srv/dados`, `hosts/generico` pelo wizard, render, agente |
 | `scripts/vm/clean.sh` | convidado (root) | remove so o que o projeto instalou |
 
 `base-limpo` e a origem (so `setup-ubuntu-2604.sh`) e nunca recebe testes.
@@ -43,6 +45,7 @@ scripts/vm/bench.sh snapshot criar base-limpo
 # 3. no host: perfil instalado e congelado
 scripts/vm/bench.sh preparar --perfil homelab
 scripts/vm/bench.sh preparar --perfil moya
+scripts/vm/bench.sh preparar --perfil generico
 ```
 
 O `preparar` reverte `base-limpo`, clona/reseta o clone do repo
@@ -55,6 +58,7 @@ esta em `main` e `--recriar` para atualizar o snapshot do perfil.
 ```bash
 scripts/vm/bench.sh testar --perfil homelab --smoke
 scripts/vm/bench.sh testar --perfil moya --smoke
+scripts/vm/bench.sh testar --perfil generico --smoke
 ```
 
 O que roda, na ordem:
@@ -63,7 +67,9 @@ O que roda, na ordem:
 |---|---|
 | homelab | `manage.py check`, `pytest -q`, `scripts/vm/run-lab-tests.sh` |
 | moya | `manage.py check`, `pytest -q`, `scripts/vm/run-unit-tests.sh` (Credenciais + Storage) |
-| ambos com `--smoke` | `./deploy.sh` real + 7 rotas HTTP (login, painel, saude, backups, containers, sistema) |
+| generico | `manage.py check`, `pytest -q`: host sem Samba/Caddy/Pi-hole/restic |
+| com `--smoke` | `./deploy.sh` real + 7 rotas HTTP (login, painel, saude, backups, containers, sistema) |
+| generico com `--smoke` | idem + `apps-sync.sh --doctor` com 0 erros (`dns_modo=nenhum`) |
 
 Esperado hoje: **483 passed, 8 skipped** (skips = laboratorio/hardware) e
 **8 lab passed** no homelab; **138 testes do Credenciais** e a mesma suite do
@@ -74,7 +80,7 @@ Flags uteis:
 ```bash
 --manter    # deixa a VM ligada e NAO reverte (quebra o invariante de proposito)
 --yes       # sem confirmacao interativa (CI, terminal sem tty)
---perfil    # homelab | moya
+--perfil    # homelab | moya | generico
 ```
 
 Estado e limpeza:

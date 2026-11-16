@@ -1,9 +1,9 @@
 # Homelab Storage Admin
 
-Painel web para administrar o NAS do homelab (`homelab`, Raspberry Pi 5) sem
-decorar comandos: usuários e grupos do Samba, shares, snapshots Btrfs ou rsync
-e espaço em disco. O mesmo código atende o Pi, o moyaserver e um
-Ubuntu+Samba via perfil de host.
+Painel web para administrar um NAS Ubuntu sem decorar comandos: usuários e
+grupos do Samba, shares, snapshots Btrfs ou rsync e espaço em disco. O mesmo
+código atende o Raspberry Pi 5 (`pi`), o moyaserver (`moya`) e qualquer Ubuntu
+Server: o que muda entre hosts vive em `hosts/<slug>/host.toml`.
 
 > **Nunca comite `.env`.** Este repositório não contém senhas. A senha do admin
 > é definida no `.env` do servidor (modo `600`) e trocada com
@@ -106,9 +106,10 @@ Ele só pede operações conhecidas ao agente, que valida cada argumento.
 
 ## Perfis de host
 
-O mesmo código atende o Pi, o moyaserver e um Ubuntu+Samba. O perfil fica em
-`/etc/homelab-storage-admin/host.env`; os overlays são
-`docker-compose.homelab.yml` (Pi) e `docker-compose.moya.yml` (moya). O app
+Cada host é um `hosts/<slug>/host.toml` versionado (sem segredo). O
+`homelabctl render` gera o `host.env` e o `sync.env` que o deploy, o compose, o
+agente e o `apps-sync.sh` leem; host novo sai do `homelabctl detect`/`init`.
+Os presets `pi` e `moya` estão em [Hosts e presets](docs/PRESETS.md). O app
 **não** gerencia Pi-hole, Caddy, DNS nem o Jellyfin — são vizinhos.
 Detalhes: [Arquitetura](docs/ARQUITETURA.md#perfis-de-host).
 
@@ -117,6 +118,7 @@ Detalhes: [Arquitetura](docs/ARQUITETURA.md#perfis-de-host).
 | Documento | Conteúdo |
 |---|---|
 | [Instalação e deploy](docs/INSTALACAO.md) | Pré-requisitos, deploy, checklist, rollback, boot, dev local e `.env` |
+| [Hosts e presets](docs/PRESETS.md) | `host.toml`, `homelabctl`, presets `pi`/`moya` e host novo |
 | [Rotinas do dia a dia](docs/ROTINAS.md) | Adicionar/remover app, atalhos, deploy de código e rotinas extras |
 | [Arquitetura e código](docs/ARQUITETURA.md) | Container/agente, perfis de host, Btrfs, estrutura, UI e Credenciais |
 | [Snapshots, discos e Samba](docs/ARMAZENAMENTO.md) | Snapshots, Jellyfin, histórico, SMART e shares |

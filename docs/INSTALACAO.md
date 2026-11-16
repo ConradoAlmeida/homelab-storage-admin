@@ -2,20 +2,26 @@
 
 [← Voltar ao README](../README.md) · [Contexto](CONTEXTO.md) · [Arquitetura](ARQUITETURA.md) · [Segurança](SEGURANCA.md)
 
-> Pré-requisitos, deploy no PC e no Pi, checklist, rollback, boot, desenvolvimento local e variáveis de ambiente.
+> Pré-requisitos, deploy, checklist, rollback, boot, desenvolvimento local e variáveis de ambiente.
+
+O código é o mesmo para qualquer Ubuntu Server. O que muda entre hosts está em
+`hosts/<slug>/host.toml` — os presets `pi` e `moya` e o fluxo de host novo
+estão em [Hosts e presets](PRESETS.md).
 
 ---
 
-## Pré-requisitos no Pi
+## Pré-requisitos
 
-- Ubuntu Server 26.04.1 LTS (arm64), kernel com Btrfs e suporte ao HAT.
-- Array montado em `/mnt/nas` (ver [Layout Btrfs](ARQUITETURA.md#layout-btrfs)).
-- Docker + Compose.
-- Samba instalado: `sudo apt install samba samba-common-bin` (obrigatório).
-- Opcionais: `btrfs-progs`, `restic`, `smartmontools`, `hdparm`, `mdadm`.
-  Sem eles o install não aborta; o recurso correspondente é escondido.
-- Usuário `conrado` com sudo e no grupo `docker`.
-- `smbd` rodando: `sudo systemctl enable --now smbd`.
+- Ubuntu Server (amd64 ou arm64) com Docker + Compose.
+- Python 3.11+ (`tomllib`) para o `homelabctl`; o app roda em 3.12.
+- O disco dos dados montado e um disco externo para backup (nunca o mesmo).
+- Samba só se `samba = true`: `sudo apt install samba samba-common-bin`
+  (`smbd` habilitado). Ferramentas de disco só se `discos = true`:
+  `sudo apt install parted e2fsprogs`.
+- Opcionais por feature: `btrfs-progs`, `restic`, `smartmontools`, `hdparm`,
+  `mdadm`, `ufw`. Sem eles o install avisa e o recurso é escondido na UI;
+  `homelabctl requisitos <slug>` diz o que falta e o pacote.
+- Usuário com sudo e no grupo `docker`.
 
 ---
 
@@ -37,7 +43,7 @@ Para push via SSH, use:
 git remote set-url --push origin git@github.com:ConradoAlmeida/homelab-storage-admin.git
 ```
 
-### No Pi
+### No host
 
 ```bash
 git clone https://github.com/ConradoAlmeida/homelab-storage-admin.git \
@@ -46,24 +52,34 @@ cd /opt/stacks/homelab-storage-admin
 cp .env.example .env
 chmod 600 .env
 # edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF
-sudo ./install-agent.sh   # cria /etc/homelab-storage-admin/host.env se faltar
+sudo python3 scripts/homelabctl.py render <slug> --write --ambos  # se o host.toml ja existe
+sudo ./install-agent.sh   # gera o que faltar; nunca sobrescreve host.env
 ./deploy.sh               # usa host.env + COMPOSE_OVERLAY
 ```
 
+O `install-agent.sh` descobre o perfil pelo `HOST_ENV_PROFILE`, pelo
+`HOST_PROFILE` do `host.env` existente ou (na primeira vez) pelo slug `pi`.
+Host novo: crie o TOML com `homelabctl init` ([PRESETS](PRESETS.md)).
+
 ### Apps e rotas (Caddy + DNS)
 
-O Caddy e o Pi-hole do Pi são reconciliados pelo `deploy/pi/apps.env`, que é
-versionado no repo e lido pelo próprio script:
+O perfil vem do `HOST_PROFILE` do `host.env` e as diferenças (domínio, TLS,
+DNS, caminhos) do `sync.env`; os dois são gerados do `host.toml`. Cada host tem
+seu `deploy/<slug>/apps.env` versionado, é a fonte da verdade das rotas:
 
 ```bash
 sudo scripts/stacks/apps-sync.sh            # dry-run: mostra o plano
-sudo scripts/stacks/apps-sync.sh --apply    # gera apps.caddy + wildcard DNS
+sudo scripts/stacks/apps-sync.sh --apply    # gera apps.caddy + DNS
 scripts/stacks/apps-sync.sh --doctor        # só lê: o que diverge?
 scripts/stacks/apps-sync.sh --descobrir     # só lê: stacks fora do env
 ```
 
+O `--perfil <slug>` continua aceito (e a tela de Configuração mostra o comando
+certo); sem ele vale o `HOST_PROFILE`. Host sem Caddy (`upstream = "nenhum"`)
+ou sem DNS (`dns_modo = "nenhum"`) roda o `--apply` só para atalhos e estado.
+
 App nova, redirect e bloco especial são linhas no `apps.env` (flags `redir=` e
-`snippet=`, fragmentos em `deploy/pi/snippets/`); nada é editado à mão no
+`snippet=`, fragmentos em `deploy/<slug>/snippets/`); nada é editado à mão no
 Caddyfile do host.
 
 O stack do Caddy precisa montar a pasta (uma vez, no `compose.yaml` dele), no
@@ -82,30 +98,15 @@ Sem `--apply` nada é escrito. Depois de remover uma linha do `apps.env`, o
 `--prune-containers` e `--prune-data` (quarentena em
 `/opt/stacks/_removidos/`).
 
-### Apps e rotas no moya
+### Diferenças por host
 
-Mesmo arquivo, mesmo script, com `--perfil moya`, lendo
-`deploy/moya/apps.env` (também versionado):
+O preset `pi` usa TLS pelo Cloudflare e wildcard no Pi-hole; o `moya` usa
+HTTP:80 e DNS por nome. Os dois estão em [Hosts e presets](PRESETS.md) — aqui
+fica só o que vale para todos: `APPS_ENV_PATH` aponta para
+`<repo>/deploy/<slug>/apps.env`, e a página Configuração mostra o comando com
+`--perfil <slug>` quando o host não é o `pi`.
 
-```bash
-sudo scripts/stacks/apps-sync.sh --perfil moya            # dry-run
-sudo scripts/stacks/apps-sync.sh --perfil moya --apply    # apps.caddy + DNS
-scripts/stacks/apps-sync.sh --perfil moya --doctor
-```
-
-- O Caddy é compose nativo em `/opt/stacks/caddy` (antes era stack do
-  Portainer): a pasta é montada em `/etc/caddy` e o gerador escreve
-  `apps.caddy` + `import`, igual ao Pi.
-- O DNS vai para `etc-dnsmasq.d/10-apps-local.conf`, uma linha
-  `address=/<nome>/192.168.0.10` por app. `.local` é mDNS: não há wildcard.
-- `--prune-data` move a pasta para `/home/conrado/_removidos/`.
-
-O script lê `deploy/moya/apps.env` do checkout. Para a página Configuração
-listar o arquivo, o `host.env` do moya leva
-`APPS_ENV_PATH=/opt/stacks/homelab-storage-admin/deploy/moya/apps.env` (no Pi,
-o caminho equivalente é `deploy/pi/apps.env`).
-
-Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no Pi.
+Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no host.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
 rode antes `sudo ./install-agent.sh`. Ele também exige o `.env` do clone
 (copiar de `.env.example`) e acesso ao Docker pelo usuário (`docker info`); sem
@@ -124,7 +125,7 @@ viram aviso, não falha: o app já está no ar quando eles rodam.
 
 ### Checklist de deploy seguro
 
-Vale para Pi e moya. A ordem importa:
+Vale para qualquer host. A ordem importa:
 
 1. **Backup dos configs do host** (root):
    ```bash
@@ -136,20 +137,24 @@ Vale para Pi e moya. A ordem importa:
      /opt/stacks/homelab-storage-admin/.env
    ```
 2. **Perfil e agente**:
-   - Pi: `sudo ./install-agent.sh`
-   - Moya: `sudo env HOST_ENV_PROFILE=moya ./install-agent.sh`
-   - O script cria `host.env` só se não existir; nunca sobrescreve.
+   ```bash
+   sudo ./install-agent.sh
+   ```
+   O perfil vem do `host.env` (`HOST_PROFILE`) ou de
+   `HOST_ENV_PROFILE=<slug>`; o script cria `host.env`/`sync.env` só se não
+   existirem e nunca sobrescreve.
 3. **App**:
    ```bash
    ./deploy.sh
    ```
-   O `deploy.sh` exige `host.env`, lê `COMPOSE_OVERLAY` e aborta se o overlay
-   não existir. Ele termina conferindo `/login/` no endereço de `BIND_ADDR`:
+   O `deploy.sh` exige `host.env`, lê `COMPOSE_OVERLAY` (vazio usa só o
+   `docker-compose.yml`) e aborta se o overlay declarado não existir. Ele
+   termina conferindo `/login/` no endereço de `BIND_ADDR`:
    sem resposta em 90 s, sai 1 com o comando de `logs`. Se o `apps.env` for
    mais novo que o estado do `--apply`, avisa e mostra o comando do perfil. No
    fim roda o `--doctor` (sem sudo) e imprime erros e resumo; divergência de
    rota/DNS não muda o exit code do deploy.
-4. **Atalhos** (opcional, sem restart): saem do `deploy/<perfil>/apps.env`
+4. **Atalhos** (opcional, sem restart): saem do `deploy/<slug>/apps.env`
    (`atalho=painel`), não de um arquivo copiado à mão.
    ```bash
    sudo scripts/stacks/apps-sync.sh --apply   # gera Caddy, DNS e services.ini
@@ -158,13 +163,13 @@ Vale para Pi e moya. A ordem importa:
 5. **Smoke**:
    ```bash
    sudo systemctl is-active homelab-storage-agent
-   curl -fsS -o /dev/null -w '%{http_code}\n' http://192.168.0.150:8060/login/
+   curl -fsS -o /dev/null -w '%{http_code}\n' http://<BIND_ADDR>:8060/login/
    cd /opt/stacks/homelab-storage-admin
    set -a; . /etc/homelab-storage-admin/host.env; set +a
    docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" ps
    docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" logs --tail=80 web
    ```
-   No moya, use `http://127.0.0.1:8060/login/`.
+   Se `BIND_ADDR` for `127.0.0.1`, rode o curl no próprio host.
 
 ### Rollback
 
@@ -188,13 +193,14 @@ sudo systemctl restart homelab-storage-agent smbd
 
 O rollback não mexe em `/mnt/nas`, snapshots, banco ou dados de share.
 
-### Boot no Pi (`homelab-compose.service`)
+### Boot do preset `pi` (`homelab-compose.service`)
 
-A unidade de boot do Pi é específica do host e fica versionada em
-`deploy/pi/homelab-compose.service`. Ela espera o IP `192.168.0.150` em
-**qualquer interface** (Wi-Fi ou Ethernet) e sobe Pi-hole, o storage-admin,
-Dockge e Caddy. A linha do storage-admin carrega
-`/etc/homelab-storage-admin/host.env` e usa `COMPOSE_OVERLAY`.
+A unidade de boot do Pi é específica daquele host e fica versionada em
+`deploy/pi/homelab-compose.service`. Ela espera o IP do preset em **qualquer
+interface** (Wi-Fi ou Ethernet) e sobe Pi-hole, o storage-admin, Dockge e
+Caddy. A linha do storage-admin carrega
+`/etc/homelab-storage-admin/host.env` e usa `COMPOSE_OVERLAY`. Host novo sem
+stacks de terceiros não precisa dela.
 
 Instalação/atualização:
 
@@ -301,10 +307,15 @@ os nomes não têm DNS público. Ver [Nomes](REDE.md#nomes).
 
 ### Perfil do host (`host.env`)
 
+O `host.env` é **gerado** de `hosts/<slug>/host.toml` por
+`homelabctl render <slug> --write`. A tabela abaixo documenta as chaves
+(resultado no preset `pi`); a fonte da verdade é o TOML.
+
 No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A barra usa o símbolo com CONRADHUB e a linha HOMELAB. Os ícones do navegador vêm desse pacote. No moya, com `CREDENTIALS_MANAGE_USERS=1`, permanece o wordmark Moya.
 
-| Variável | Default do Pi | Função |
+| Variável | Default do preset `pi` | Função |
 |---|---|---|
+| `HOST_PROFILE` | `pi` | slug do host; é ele que a UI usa para montar o `--perfil` e que o `apps-sync` lê sem flag |
 | `SITE_NAME` | `Homelab Storage` | nome na UI/admin, abaixo da marca |
 | `STORAGE_ROOT` | `/mnt/nas` | raiz dos shares/volume principal |
 | `JELLYFIN_ROOT` | `/mnt/jellyfin` | mídia Jellyfin read-only (sem snapshot/restic) |
@@ -317,9 +328,9 @@ No homelab, a tela de entrada mostra o wordmark vertical Conradhub Homelab. A ba
 | `BACKUP_ROOT` | `/mnt/backup` | raiz dos discos restic |
 | `AGENT_SOCKET` | `/run/homelab-storage-admin/agent.sock` | socket (não renomear) |
 | `BIND_ADDR` / `BIND_PORT` | `192.168.0.150` / `8060` | bind do container |
-| `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy (moya usa `docker-compose.moya.yml`) |
-| `APPS_ENV_PATH` | `deploy/<perfil>/apps.env` no checkout | fonte das rotas, do DNS e dos atalhos (mostrada em Configuração); vazio esconde a linha |
-| `APPS_ENV_FILE` | `deploy/<perfil>/apps.env` dentro do container | leitura da página Rotas e atalhos (`./deploy` montado read-only) |
+| `COMPOSE_OVERLAY` | `docker-compose.homelab.yml` | overlay do deploy; vazio usa só o `docker-compose.yml` (moya usa `docker-compose.moya.yml`) |
+| `APPS_ENV_PATH` | `/opt/stacks/homelab-storage-admin/deploy/<slug>/apps.env` | fonte das rotas, do DNS e dos atalhos (mostrada em Configuração); vazio esconde a linha |
+| `APPS_ENV_FILE` | `deploy/<slug>/apps.env` dentro do container | leitura da página Rotas e atalhos (`./deploy` montado read-only) |
 | `APPS_STATE_FILE` | `/var/lib/homelab-storage-admin/apps.aplicados` | estado do último `--apply`, usado para dizer o que está aplicado |
 | `APPS_SCHEME` | `https` (Pi) / `http` (moya, no overlay) | esquema das rotas exibidas |
 | `DATA_DIR` | `/mnt/nas/apps/homelab-storage-admin/data` | banco/dados do app |

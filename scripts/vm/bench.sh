@@ -5,9 +5,9 @@
 #
 #   scripts/vm/bench.sh snapshot listar
 #   scripts/vm/bench.sh snapshot criar base-limpo
-#   scripts/vm/bench.sh preparar --perfil homelab|moya [--ref main] [--yes]
-#   scripts/vm/bench.sh testar   --perfil homelab|moya [--smoke] [--manter] [--yes]
-#   scripts/vm/bench.sh limpar   --perfil homelab|moya [--yes]
+#   scripts/vm/bench.sh preparar --perfil homelab|moya|generico [--ref main] [--yes]
+#   scripts/vm/bench.sh testar   --perfil homelab|moya|generico [--smoke] [--manter] [--yes]
+#   scripts/vm/bench.sh limpar   --perfil homelab|moya|generico [--yes]
 #
 # Invariante: cada execucao comeca e termina no snapshot <perfil>-pronto.
 # base-limpo e a origem (setup-ubuntu-2604.sh) e nunca recebe testes.
@@ -54,8 +54,8 @@ Uso (no HOST, com libvirt):
   scripts/vm/bench.sh snapshot criar <nome>
   scripts/vm/bench.sh snapshot apagar <nome>
   scripts/vm/bench.sh preparar --perfil homelab|moya [--ref main] [--recriar] [--yes]
-  scripts/vm/bench.sh testar   --perfil homelab|moya [--smoke] [--manter] [--yes]
-  scripts/vm/bench.sh limpar   --perfil homelab|moya [--yes]
+  scripts/vm/bench.sh testar   --perfil homelab|moya|generico [--smoke] [--manter] [--yes]
+  scripts/vm/bench.sh limpar   --perfil homelab|moya|generico [--yes]
 
 Invariante: cada execucao comeca e termina no snapshot <perfil>-pronto.
 base-limpo e a origem e nunca recebe testes.
@@ -66,6 +66,13 @@ TXT
 erro() {
   echo "ERRO: $*" >&2
   exit 1
+}
+
+perfil_valido() {
+  case "$PERFIL" in
+    homelab|moya|generico) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 v() { virsh -c "$URI" "$@"; }
@@ -195,7 +202,7 @@ case "$ACAO" in
     ;;
 
   preparar)
-    [[ "$PERFIL" == "homelab" || "$PERFIL" == "moya" ]] || erro "--perfil homelab|moya"
+    perfil_valido || erro "--perfil homelab|moya|generico"
     existe_snapshot "$BASE" || erro "snapshot $BASE nao existe; rode setup-ubuntu-2604.sh e crie o base-limpo"
     confirma "reverter $VM para $BASE (descarta o estado atual)"
     desliga
@@ -219,7 +226,7 @@ case "$ACAO" in
     ;;
 
   testar)
-    [[ "$PERFIL" == "homelab" || "$PERFIL" == "moya" ]] || erro "--perfil homelab|moya"
+    perfil_valido || erro "--perfil homelab|moya|generico"
     ALVO="$PERFIL-pronto"
     existe_snapshot "$ALVO" || erro "snapshot $ALVO nao existe; rode: preparar --perfil $PERFIL"
     confirma "reverter $VM para $ALVO"
@@ -240,7 +247,7 @@ case "$ACAO" in
       if ! guest "cd $REPO_DIR && sudo bash scripts/vm/run-lab-tests.sh"; then
         FALHOU=1
       fi
-    else
+    elif [[ "$PERFIL" == "moya" ]]; then
       if guest "test -d /home/$GUEST_USER/moya_credenciais_app"; then
         if ! guest "cd $REPO_DIR && bash scripts/vm/run-unit-tests.sh"; then
           FALHOU=1
@@ -252,6 +259,12 @@ case "$ACAO" in
     if [[ "$SMOKE" -eq 1 ]]; then
       if ! rodar_smoke; then
         FALHOU=1
+      fi
+      # Host sem Caddy/DNS: o --doctor precisa fechar em 0 erros.
+      if [[ "$PERFIL" == "generico" ]]; then
+        if ! guest "cd $REPO_DIR && sudo bash scripts/stacks/apps-sync.sh --doctor"; then
+          FALHOU=1
+        fi
       fi
     fi
     if [[ "$MANTER" -eq 1 ]]; then
@@ -265,7 +278,7 @@ case "$ACAO" in
     ;;
 
   limpar)
-    [[ "$PERFIL" == "homelab" || "$PERFIL" == "moya" ]] || erro "--perfil homelab|moya"
+    perfil_valido || erro "--perfil homelab|moya|generico"
     ALVO="$PERFIL-pronto"
     existe_snapshot "$ALVO" || erro "snapshot $ALVO nao existe"
     confirma "reverter $VM para $ALVO (descarta o estado atual)"

@@ -210,3 +210,15 @@ def test_static_assets_exist():
         "share-sizes.js",
     ):
         assert (ROOT / "static" / "js" / name).is_file(), name
+
+
+def test_vm_bench_tem_perfil_generico():
+    bench = read("scripts/vm/bench.sh")
+    assert "generico" in bench
+    assert "perfil-generico.sh" in bench or (ROOT / "scripts/vm/perfil-generico.sh").is_file()
+    perfil = read("scripts/vm/perfil-generico.sh")
+    assert "homelabctl.py init generico" in perfil
+    assert "render generico --write --ambos" in perfil
+    docs = read("docs/PRESETS.md")
+    assert "hosts/<slug>/host.toml" in docs
+    assert "homelabctl" in docs

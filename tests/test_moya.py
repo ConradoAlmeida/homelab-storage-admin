@@ -32,8 +32,11 @@ def test_homelab_overlay_still_reproduces_pi_paths():
 
 def test_readme_documents_profiles_and_neighbors():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "host.env" in text
-    assert "docker-compose.homelab.yml" in text
-    assert "docker-compose.moya.yml" in text
+    # O README aponta o TOML e o PRESETS; os overlays ficam no doc da area.
+    assert "host.toml" in text
+    assert "PRESETS.md" in text
     assert "Jellyfin" in text
     assert "Pi-hole" in text
+    presets = (ROOT / "docs" / "PRESETS.md").read_text(encoding="utf-8")
+    assert "docker-compose.homelab.yml" in presets
+    assert "docker-compose.moya.yml" in presets

@@ -1,6 +1,6 @@
 # Rotinas do dia a dia
 
-**Um arquivo por host**: `deploy/<perfil>/apps.env`. Dele saem a rota no Caddy,
+**Um arquivo por host**: `deploy/<slug>/apps.env`. Dele saem a rota no Caddy,
 o DNS, o botão Serviços do painel e, no moya, os cards do portal. Nada de
 editar `apps.caddy`, `services.ini` ou HTML do portal à mão.
 
@@ -23,7 +23,7 @@ Atalhos usados abaixo:
    `- "127.0.0.1:8097:8000"` (moya) ou `- "192.168.0.150:8097:8000"` (Pi).
    Suba com `docker compose up -d`.
 2. **Linha no env** do perfil, no repo. Se a stack já está no ar,
-   `bash scripts/stacks/apps-sync.sh [--perfil moya] --descobrir` imprime a
+   `bash scripts/stacks/apps-sync.sh --descobrir` imprime a
    linha pronta (rota, upstream, `atalho=`, `icone=`/`grupo=` no moya); revise
    o `atalho=` e cole:
 
@@ -35,7 +35,7 @@ Atalhos usados abaixo:
    `upstream` é a porta publicada; `dir` é a pasta do compose. Sem `atalho=` a
    app tem rota e DNS, mas não aparece no painel nem no portal.
 3. **Commit + push** e, no host, `git pull` +
-   `sudo bash scripts/stacks/apps-sync.sh [--perfil moya] --apply`.
+   `sudo bash scripts/stacks/apps-sync.sh --apply`.
    Isso gera `apps.caddy`, o DNS e os atalhos, e valida a configuração. No Pi o
    DNS é wildcard: nada a fazer.
 4. **Conferir**: `--doctor`, e uma rota de verdade:
@@ -49,7 +49,7 @@ página Rede; no moya não há UFW.
 ## 2. Remover uma app
 
 1. Apague a linha do env, commit e `git pull` no host.
-2. `sudo bash scripts/stacks/apps-sync.sh [--perfil moya] --apply --prune-containers`
+2. `sudo bash scripts/stacks/apps-sync.sh --apply --prune-containers`
    → para os containers com `docker compose down` (sem `-v`).
 3. `--prune-data` (junto com o passo 2) → move a pasta para a quarentena,
    nunca apaga. Revise e apague depois.
@@ -133,6 +133,6 @@ for n in moya-git moya-storage; do
 done
 
 # diagnóstico sem escrever
-bash scripts/stacks/apps-sync.sh --perfil moya --doctor
-sudo bash scripts/stacks/apps-sync.sh --doctor   # no Pi: valida o TLS
+bash scripts/stacks/apps-sync.sh --doctor
+sudo bash scripts/stacks/apps-sync.sh --doctor   # com sudo valida o TLS
 ```

@@ -8,14 +8,14 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 | Item | Valor |
 |---|---|
-| Versão no moya | `b35540d` (2026-11-15; env versionado, flags e doctor) |
+| Versão no moya | `b35540d` (2026-11-15; deploy pendente do commit de host genérico) |
 | Último deploy | 15/11/2026, Pi e moya (`./deploy.sh`, `b35540d`); só código/docs, agente sem mudança |
-| Testes | `483 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
+| Testes | `585 passed, 8 skipped` e `8 lab passed` na VM (`linux2024`, 2026-11-15); bancada por perfil com `scripts/vm/bench.sh` |
 | Dashboard | Resumo em blocos, página própria de Saúde, discos/backups/shares condensados e serviços no menu do topo (2026-11-13) |
 | Container | `homelab-storage-admin` |
 | Pi | `/opt/stacks/homelab-storage-admin`, `192.168.0.150:8060` |
 | moya | mesmo path, `127.0.0.1:8060` via Caddy em `moya-storage.local`; 12 apps em compose no host, sem Portainer |
-| Perfil | `/etc/homelab-storage-admin/host.env` |
+| Perfil | `hosts/<slug>/host.toml` → `/etc/homelab-storage-admin/host.env` + `sync.env` |
 | Agente | `homelab-storage-agent` (systemd, root, socket Unix) |
 | Repositório | `https://github.com/ConradoAlmeida/homelab-storage-admin.git` |
 
@@ -26,8 +26,16 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   `.lan` saíram. SSH em casa é `conrado@homelab.local`. Sem túnel e sem
   Access. `DJANGO_SECURE_COOKIES=1` no Pi desde o deploy de 2026-11-04.
   Ver [REDE](REDE.md#nomes).
-- Rotas do Caddy a partir de `deploy/<perfil>/apps.env` no repo, nos dois hosts
-  (`scripts/stacks/apps-sync.sh`, `--perfil pi|moya`): dry-run por padrão,
+- Host genérico: `hosts/<slug>/host.toml` é a fonte da verdade do que muda
+  entre hosts (caminhos, IP, overlay, rotas e features). O
+  `scripts/homelabctl.py render <slug> --write --ambos` gera o `host.env` e o
+  `sync.env` com as mesmas chaves de sempre; `detect` e `init` propõem e
+  validam o TOML de um Ubuntu novo (TUI textual, fallback por perguntas) e
+  `install-agent.sh` aceita qualquer slug. O que difere de host para host saiu
+  do `case $PERFIL`. Ver [PRESETS](PRESETS.md).
+- Rotas do Caddy a partir de `deploy/<slug>/apps.env` no repo, nos dois hosts
+  (`scripts/stacks/apps-sync.sh`, perfil pelo `HOST_PROFILE` do `host.env` e
+  `sync.env` gerados; `--perfil <slug>` continua aceito): dry-run por padrão,
   `--apply` gera `apps.caddy` + `import` nos dois hosts e o DNS, e os prunes
   param containers ou movem a pasta da app removida para a quarentena. App nova
   é uma linha no env, com `redir=` e `snippet=` para os casos especiais
@@ -37,7 +45,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
   lista; ninguém edita HTML nem INI à mão). A página **Rotas e atalhos**
   (`/sistema/rotas/`) mostra o declarado no env e o que o último `--apply`
   aplicou, sem escrever nada. `--doctor` aponta o
-  que diverge (Caddy, DNS, containers, portas, pastas) sem escrever, e
+  que diverge (Caddy, DNS, containers, portas, pastas) sem escrever; host sem
+  Caddy (`upstream = "nenhum"`) ou sem DNS (`dns_modo = "nenhum"`) pula essas
+  etapas em vez de falhar, e
   `--descobrir` sugere a linha pronta de stacks fora do env (com `atalho=`,
   upstream do perfil e a porta web entre as publicadas). O check de containers usa
   o rótulo `working_dir`, então o projeto compose pode ter outro nome que a
@@ -226,6 +236,9 @@ Histórico da sessão de 27-29/10: [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
    A árvore antiga permanece em `/mnt/backup` até esse resync terminar; não é
    uma segunda política de backup. Retenção e restic não mudaram.
 9. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+10. **Host genérico**: código pronto (TOML, render, detect/init, `--doctor`
+    sem Caddy/DNS). Falta deploy dos dois hosts com o novo `host.env` e o
+    perfil `generico` na bancada (`preparar --perfil generico`).
 
 ## Testes em VM
 
@@ -235,12 +248,13 @@ local nao substitui. Sem virt-manager neste host, declare a excecao.
 
 A bancada virou um ciclo deterministico: `bench.sh` no host reverte o snapshot
 do perfil, roda os testes e devolve a VM ao mesmo snapshot. Snapshots:
-`base-limpo` (origem, so `setup-ubuntu-2604.sh`), `homelab-pronto` e
-`moya-pronto` (2026-11-15, com o agente instalado e o perfil aplicado).
+`base-limpo` (origem, so `setup-ubuntu-2604.sh`), `homelab-pronto`,
+`moya-pronto` (2026-11-15) e `generico-pronto` (host criado pelo wizard, sem
+Caddy/Pi-hole/Samba).
 
 - host: `scripts/vm/bench.sh snapshot|preparar|testar|limpar --perfil ...`
 - perfis (convidado, root): `scripts/vm/perfil-homelab.sh`,
-  `scripts/vm/perfil-moya.sh`
+  `scripts/vm/perfil-moya.sh`, `scripts/vm/perfil-generico.sh`
 - limpeza guardada pelo marker `/etc/homelab-vm-bench`: `scripts/vm/clean.sh`
 - suites dos dois apps: `scripts/vm/run-unit-tests.sh`
 - laboratorio: `sudo bash scripts/vm/run-lab-tests.sh`

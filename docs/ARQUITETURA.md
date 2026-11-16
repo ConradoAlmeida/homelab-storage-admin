@@ -39,16 +39,21 @@ stdin e não volta na resposta; não entra em argv, log ou banco.
 
 ### Perfis de host
 
-O perfil fica em `/etc/homelab-storage-admin/host.env` e é lido pelo agente
-(`EnvironmentFile` do systemd) e pelo `deploy.sh` (variáveis do Compose). O
-`install-agent.sh` copia um exemplo **apenas se o arquivo não existir**; nunca
-sobrescreve um perfil existente.
+A fonte da verdade é `hosts/<slug>/host.toml` (versionado, sem segredo). O
+`scripts/homelabctl.py render <slug> --write --ambos` gera
+`/etc/homelab-storage-admin/host.env` (perfil, portas, caminhos, flags) e
+`sync.env` (domínio, TLS, DNS, Caddy) — lidos pelo agente (`EnvironmentFile` do
+systemd), pelo `deploy.sh` (variáveis do Compose) e pelo `apps-sync.sh`. O
+`install-agent.sh` renderiza **apenas o que falta**; nunca sobrescreve um
+`host.env`/`sync.env` existente.
 
-| Perfil | Exemplo | Overlay | Storage | Snapshots |
+| Preset | Overlay | Storage | Snapshots | Rotas |
 |---|---|---|---|---|
-| Pi (default) | `host.env.example` | `docker-compose.homelab.yml` | `/mnt/nas` | `auto` (Btrfs no Pi) |
-| moyaserver | `host.env.moya.example` | `docker-compose.moya.yml` | `/srv/samba` + `/mnt/data` | `rsync` |
-| mínimo | sem Btrfs/restic | `docker-compose.yml` | conforme `host.env` | `none`/`rsync` |
+| `pi` | `docker-compose.homelab.yml` | `/mnt/nas` | `auto` (Btrfs) | HTTPS + wildcard no Pi-hole |
+| `moya` | `docker-compose.moya.yml` | `/srv/samba` + `/mnt/data` | `rsync` | HTTP:80 + DNS por nome |
+| host novo | vazio (só `docker-compose.yml`) | conforme o `host.toml` | `none`/`rsync` | conforme `[rotas]` |
+
+Schema, `detect`/`init` e o fluxo de host novo: [Hosts e presets](PRESETS.md).
 
 Variáveis principais: `SITE_NAME`, `STORAGE_ROOT`, `SNAPSHOT_ROOT`,
 `ALLOWED_PATH_PREFIXES`, `DF_MOUNTS`, `SHARE_OWNER`, `SNAPSHOT_DENYLIST`,
