@@ -51,6 +51,8 @@ No moya, os dados vivos de shares e apps saíram do disco de sistema e estão em
 - O job local **Dados dos apps** foi atualizado para os novos caminhos; rodou
   com sucesso (208 MB). O job **Credenciais** também passou a apontar para o
   banco no RAID.
+- **Reboot validado em 16/11:** `md0` montou, o Docker esperou `/mnt/data`,
+  Samba/Gitea/Credenciais/Storage e demais apps subiram; health 200/302.
 
 ## Como funciona
 
@@ -138,25 +140,22 @@ A lista completa e os detalhes estão em `AGENTS.md`.
 
 ## Pendências / próximos jobs
 
-1. **Reboot de validação:** confirmar no moya que o Docker espera
-   `/mnt/data` e que Samba, Gitea, Credenciais, Storage e demais apps sobem
-   sozinhos depois de reiniciar.
-2. **HD externo:** organizar a cópia fora do servidor; hoje os dumps do Gitea e
+1. **HD externo:** organizar a cópia fora do servidor; hoje os dumps do Gitea e
    os backups locais ficam no `sda`.
-3. **Pi:** `host.env`/`sync.env` fora do `host.toml`; rodar `render pi --write
+2. **Pi:** `host.env`/`sync.env` fora do `host.toml`; rodar `render pi --write
    --ambos` e fazer o deploy no Pi (decisão do dono).
-4. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
+3. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
    quando ativar.
-5. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
+4. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
    foi decidida como "não".
-6. **Portal e Pi-hole:** estado gerado do Portal (`/var/lib/homelab-storage-admin`,
+5. **Portal e Pi-hole:** estado gerado do Portal (`/var/lib/homelab-storage-admin`,
    28 KB) e config/logs do Pi-hole (~565 MB) continuam no sistema. Avaliação:
    o Portal é regenerável e não compensa mover; o Pi-hole é infraestrutura e
    uma migração separada, com parada de DNS.
-7. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
-8. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
+6. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+7. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
    acesso/desconexão SMB: integrar ou descartar antes de remover.
-9. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
+8. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
 
 ## Armadilhas conhecidas
 
