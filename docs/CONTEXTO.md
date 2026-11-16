@@ -21,7 +21,7 @@ Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
   (push direto em `main`; avisa bypass do check `test`).
 - Em produção: `7bebca6` no moya, `/login/` 200 e `doctor moya` **0 erros/0
   avisos**. O Pi segue na versão anterior até um deploy próprio.
-- Testes: `618 passed, 9 skipped` na VM (`moya`); **138 do Credenciais** e
+- Testes: `621 passed, 9 skipped` na VM (`moya`); **138 do Credenciais** e
   smoke com as 9 rotas em 200. No Windows restam falhas de plataforma
   (systemd/caminhos), cobertas pela VM.
 
