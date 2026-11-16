@@ -128,6 +128,11 @@ if [[ ! -f "$REPO/.env" ]]; then
 else
   echo "    mantido"
 fi
+# O deploy recusa o DJANGO_SECRET_KEY de exemplo do .env.example.
+if grep -q '^DJANGO_SECRET_KEY=troque-por-uma-chave' "$REPO/.env"; then
+  sed -i "s|^DJANGO_SECRET_KEY=.*|DJANGO_SECRET_KEY=$(openssl rand -hex 32)|" "$REPO/.env"
+  echo "    segredo aleatorio gerado (o exemplo nao passa no deploy)"
+fi
 
 echo "==> acesso ao docker"
 if command -v docker >/dev/null 2>&1; then
