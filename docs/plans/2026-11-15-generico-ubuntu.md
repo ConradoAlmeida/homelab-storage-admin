@@ -172,9 +172,9 @@ os defaults do `settings.py`.
       `hosts/pi`/`hosts/moya` reproduzindo os valores de hoje.
 - [x] 2. `homelabctl render`: `host.toml` → `host.env` (+ `sync.env` por
       perfil); teste de equivalência com os arquivos atuais.
-- [ ] 3. `homelabctl detect`: inspeção read-only + fixtures (`lsblk`,
+- [x] 3. `homelabctl detect`: inspeção read-only + fixtures (`lsblk`,
       `findmnt`, `blkid`, `systemctl`, `ip -j`) com testes golden.
-- [ ] 4. `homelabctl init`: TUI (identidade → discos/papéis → features →
+- [x] 4. `homelabctl init`: TUI (identidade → discos/papéis → features →
       revisão/diff → escreve), `--dry-run` por padrão.
 - [x] 5. Tirar os literais `pi|moya` do `apps-sync.sh` e do
       `install-agent.sh`; perfil inválido = diretório inexistente.
@@ -215,4 +215,7 @@ Plano aprovado em 2026-11-15.
 - 5/6b: `apps-sync.sh` sem `case $PERFIL` (sync.env + `HOST_PROFILE`, ambiente
   vence) e `install-agent.sh` aceitando qualquer slug e checando dependência
   por feature (`requisitos`).
-- Resta 3 (detect), 4 (TUI), 6 (requires/dns_modo), 7 (docs), 8 (bancada).
+- 3/4: `core/homelab_detect.py` (lsblk/findmnt/ip/systemctl/docker com runner
+  injetável e fixtures) e `core/homelab_wizard.py` (TUI textual com fallback
+  por perguntas; valida o TOML antes de gravar, nunca escreve sem `--escrever`).
+- Resta 6 (requires/dns_modo no reconciler), 7 (docs), 8 (bancada).

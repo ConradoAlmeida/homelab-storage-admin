@@ -10,12 +10,14 @@ Roda com python3 puro (sem Django, sem uv):
     python3 scripts/homelabctl.py render pi --write    # grava em [caminhos] config
     python3 scripts/homelabctl.py requisitos pi        # binarios que o host precisa
     python3 scripts/homelabctl.py detect               # so le: propoe um TOML
-    python3 scripts/homelabctl.py init novo-host       # TUI para confirmar
+    python3 scripts/homelabctl.py init                 # TUI (ou perguntas) para confirmar
+    python3 scripts/homelabctl.py init --escrever      # grava hosts/<slug>/host.toml
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -23,6 +25,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from core.homelab_detect import DetectError, detectar, propor, texto_toml  # noqa: E402
+from core.homelab_wizard import (  # noqa: E402
+    CAMPOS,
+    aplicar,
+    executar,
+    salvar,
+    validar,
+)
 from core.homelab_config import (  # noqa: E402
     ConfigError,
     HostConfig,
@@ -102,6 +112,72 @@ def cmd_render(args) -> int:
     return 0
 
 
+def cmd_detect(args) -> int:
+    """So le o host e imprime a proposta de hosts/<slug>/host.toml."""
+    try:
+        sistema = detectar()
+    except DetectError as exc:
+        print(f"ERRO: {exc}", file=sys.stderr)
+        return 2
+    proposta = propor(sistema)
+    if args.json:
+        dados = dict(proposta)
+        dados["host"] = {**proposta["host"], "hostname": sistema.hostname}
+        print(json.dumps(dados, indent=2, ensure_ascii=False))
+        return 0
+    sys.stdout.write(texto_toml(proposta))
+    if not args.quieto:
+        print(
+            f"# arquivo sugerido: hosts/{proposta['host']['nome']}/host.toml",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_init(args) -> int:
+    """Wizard: detecta, confirma com o dono e (com --escrever) grava o TOML."""
+    try:
+        sistema = detectar()
+    except DetectError as exc:
+        print(f"ERRO: {exc}", file=sys.stderr)
+        return 2
+    proposta = propor(sistema)
+    if args.host:
+        proposta = aplicar(proposta, {"host.nome": args.host})
+    if not args.sim:
+        respostas = executar(proposta)
+        if respostas is None:
+            print("cancelado; nada foi escrito.", file=sys.stderr)
+            return 1
+        proposta = aplicar(proposta, respostas)
+    erros = validar(proposta)
+    if erros:
+        for erro in erros:
+            print(f"ERRO: {erro}", file=sys.stderr)
+        return 2
+    destino = Path("hosts") / proposta["host"]["nome"] / "host.toml"
+    if not args.escrever:
+        sys.stdout.write(texto_toml(proposta))
+        print(
+            f"# nada escrito. Para gravar: homelabctl init --escrever"
+            f" (destino: {destino})",
+            file=sys.stderr,
+        )
+        return 0
+    try:
+        caminho = salvar(proposta, sobrescrever=args.sobrescrever)
+    except ConfigError as exc:
+        print(f"ERRO: {exc}", file=sys.stderr)
+        return 2
+    print(f"escrito: {caminho}", file=sys.stderr)
+    print(
+        f"# agora: python3 scripts/homelabctl.py render {proposta['host']['nome']}"
+        " --write --ambos",
+        file=sys.stderr,
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="homelabctl",
@@ -113,6 +189,34 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser("check", help="valida todos os hosts (sai 1 se algum falhar)")
     check.set_defaults(func=cmd_check)
+
+    detect = sub.add_parser(
+        "detect", help="so le: propoe um host.toml a partir do host atual"
+    )
+    detect.add_argument("--json", action="store_true", help="imprime a deteccao crua")
+    detect.add_argument(
+        "--quieto", action="store_true", help="nao imprime o nome do arquivo sugerido"
+    )
+    detect.set_defaults(func=cmd_detect)
+
+    init = sub.add_parser(
+        "init", help="wizard: detecta o host e propoe hosts/<slug>/host.toml"
+    )
+    init.add_argument("host", nargs="?", help="slug a usar no lugar do hostname")
+    init.add_argument(
+        "--escrever",
+        action="store_true",
+        help="grava o TOML (padrao: so mostra e nao escreve nada)",
+    )
+    init.add_argument(
+        "--sobrescrever", action="store_true", help="com --escrever, troca um host existente"
+    )
+    init.add_argument(
+        "--sim",
+        action="store_true",
+        help="nao pergunta: usa a deteccao como esta (para script)",
+    )
+    init.set_defaults(func=cmd_init)
 
     req = sub.add_parser(
         "requisitos", help="lista os binarios que o host precisa (para o install-agent)"

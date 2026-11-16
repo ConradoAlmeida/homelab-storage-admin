@@ -1,0 +1,8 @@
+{
+  "filesystems": [
+    {"target": "/", "source": "/dev/nvme0n1p2", "fstype": "ext4"},
+    {"target": "/boot/efi", "source": "/dev/nvme0n1p1", "fstype": "vfat"},
+    {"target": "/srv/samba", "source": "/dev/sda1", "fstype": "ext4"},
+    {"target": "/run/user/1000", "source": "tmpfs", "fstype": "tmpfs"}
+  ]
+}

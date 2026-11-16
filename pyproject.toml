@@ -12,6 +12,10 @@ dependencies = [
     "whitenoise>=6.8",
 ]
 
+[project.optional-dependencies]
+# So no host, para o `homelabctl init` (nao vai para o container).
+setup = ["textual>=0.85"]
+
 [tool.uv]
 package = false
 

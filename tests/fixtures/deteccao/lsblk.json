@@ -1,0 +1,45 @@
+{
+  "blockdevices": [
+    {
+      "name": "nvme0n1",
+      "size": "931.5G",
+      "type": "disk",
+      "model": "Samsung SSD 980",
+      "tran": "nvme",
+      "rota": false,
+      "rm": false,
+      "fstype": null,
+      "mountpoint": null,
+      "children": [
+        {"name": "nvme0n1p1", "type": "part", "fstype": "vfat", "mountpoint": "/boot/efi"},
+        {"name": "nvme0n1p2", "type": "part", "fstype": "ext4", "mountpoint": "/"}
+      ]
+    },
+    {
+      "name": "sda",
+      "size": "3.6T",
+      "type": "disk",
+      "model": "WDC WD40EFRX",
+      "tran": "sata",
+      "rota": true,
+      "rm": false,
+      "fstype": null,
+      "mountpoint": null,
+      "children": [
+        {"name": "sda1", "type": "part", "fstype": "ext4", "mountpoint": "/srv/samba"}
+      ]
+    },
+    {
+      "name": "sdb",
+      "size": "1.8T",
+      "type": "disk",
+      "model": "USB 3.0",
+      "tran": "usb",
+      "rota": true,
+      "rm": true,
+      "fstype": "ext4",
+      "mountpoint": null,
+      "children": []
+    }
+  ]
+}

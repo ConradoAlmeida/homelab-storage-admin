@@ -166,12 +166,12 @@ def validar(cfg: HostConfig) -> None:
         )
     for secao, chaves in (
         ("host", ("ssh", "lan_ip", "repo")),
-        ("app", ("site_name", "bind_addr", "compose_overlay")),
+        ("app", ("site_name", "bind_addr")),
         ("caminhos", ("dados", "snapshots", "backup", "dados_app", "stacks",
                       "quarentena", "estado", "sockets", "config")),
         ("armazenamento", ("proprietario", "snapshot_backend")),
         ("rotas", ("esquema", "apps", "dns_ip", "dns_modo", "dominio",
-                   "dns_conf", "pihole_dir", "caddy", "upstream")),
+                   "dns_conf", "pihole_dir", "upstream")),
     ):
         ausentes = [c for c in chaves if dados.get(secao, {}).get(c) in (None, "")]
         if ausentes:
@@ -207,11 +207,18 @@ def validar(cfg: HostConfig) -> None:
             f"{cfg.origem}: [rotas] apps deve ser relativo ao repo e terminar em "
             f"apps.env: {apps!r}"
         )
+    upstream = cfg.valor("rotas", "upstream")
+    if upstream not in ("lan", "localhost", "nenhum"):
+        raise ConfigError(
+            f"{cfg.origem}: [rotas] upstream deve ser lan, localhost ou nenhum"
+        )
     caddy = cfg.valor("rotas", "caddy") or {}
-    if not isinstance(caddy, dict) or not caddy.get("dir") or not caddy.get("container"):
+    if upstream == "nenhum" and not caddy:
+        pass  # host sem proxy reverso: as rotas ficam so no papel
+    elif not isinstance(caddy, dict) or not caddy.get("dir") or not caddy.get("container"):
         raise ConfigError(
             f"{cfg.origem}: [rotas] caddy precisa de dir e container (ou "
-            "upstream sem proxy)"
+            'upstream = "nenhum")'
         )
 
     flags = cfg.secao("features")
@@ -302,7 +309,7 @@ def render_host_env(cfg: HostConfig) -> list[tuple[str, str]]:
         ("AGENT_SOCKET_DIR", c["sockets"]),
         ("BIND_ADDR", a["bind_addr"]),
         ("BIND_PORT", str(a["bind_port"])),
-        ("COMPOSE_OVERLAY", a["compose_overlay"]),
+        ("COMPOSE_OVERLAY", a.get("compose_overlay", "")),
         ("DATA_DIR", dados_app),
     ]
     if cfg.ligado("jellyfin"):
@@ -337,20 +344,23 @@ def render_host_env(cfg: HostConfig) -> list[tuple[str, str]]:
 def render_sync_env(cfg: HostConfig) -> list[tuple[str, str]]:
     """Pares do ``sync.env``: o que o ``apps-sync.sh`` lia do `case $PERFIL`."""
     c, r = cfg.secao("caminhos"), cfg.secao("rotas")
-    caddy = r["caddy"]
-    caddy_dir = str(caddy["dir"]).rstrip("/")
+    caddy = r.get("caddy") or {}
+    caddy_dir = str(caddy.get("dir", "")).rstrip("/")
     pihole_dir = str(r["pihole_dir"]).rstrip("/")
     upstream = r["upstream"]
-    host_upstream = r["dns_ip"] if upstream == "lan" else "localhost"
+    host_upstream = {
+        "lan": r["dns_ip"],
+        "localhost": "localhost",
+    }.get(upstream, "")
     return [
         ("SCHEME", r["esquema"]),
         ("DATA_DIR", c["dados_app"]),
         ("STACKS_ROOT", c["stacks"]),
         ("CADDY_DIR", caddy_dir),
-        ("CADDY_CONTAINER", caddy["container"]),
-        ("CADDYFILE", caddy_dir + "/Caddyfile"),
-        ("CADDY_APPS", caddy_dir + "/apps.caddy"),
-        ("CADDY_TOKEN_FILE", caddy_dir + "/cloudflare.token"),
+        ("CADDY_CONTAINER", caddy.get("container", "")),
+        ("CADDYFILE", caddy_dir + "/Caddyfile" if caddy_dir else ""),
+        ("CADDY_APPS", caddy_dir + "/apps.caddy" if caddy_dir else ""),
+        ("CADDY_TOKEN_FILE", caddy_dir + "/cloudflare.token" if caddy_dir else ""),
         ("CADDY_PORTA", caddy.get("porta", "")),
         ("CADDY_TLS", caddy.get("tls", "")),
         ("CADDY_PROXY", caddy.get("proxy", "")),
