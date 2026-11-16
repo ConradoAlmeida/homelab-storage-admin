@@ -66,17 +66,21 @@ uv run pytest
 uv run manage.py runserver 0.0.0.0:8000
 ```
 
-No Pi:
+Num host com o clone:
 
 ```bash
 git clone https://github.com/ConradoAlmeida/homelab-storage-admin.git \
   /opt/stacks/homelab-storage-admin
 cd /opt/stacks/homelab-storage-admin
-cp .env.example .env && chmod 600 .env
-# edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF
-sudo ./install-agent.sh
+python3 scripts/homelabctl.py doctor <slug>              # preflight, só lê
+sudo python3 scripts/homelabctl.py bootstrap <slug> --escrever --apt
+sudo HOST_ENV_PROFILE=<slug> ./install-agent.sh
 ./deploy.sh
 ```
+
+Host novo começa pelo `homelabctl init` (gera o `hosts/<slug>/host.toml`); o
+`bootstrap` cria o `.env` com segredo aleatório e nunca sobrescreve arquivo
+existente. Runbook completo: [Hosts e presets](docs/PRESETS.md).
 
 > Checklist, rollback, boot e variáveis: [Instalação e deploy](docs/INSTALACAO.md).
 
