@@ -123,3 +123,11 @@ def test_render_poda_backups_antigos(tmp_path):
     # Os antigos de 2020 sairam; o novo e o da execucao.
     assert not any("20200101" in b.name for b in backups)
     assert len([b for b in backups if "2020010" in b.name]) == 2
+
+
+def test_boot_grava_a_unit_no_destino(tmp_path):
+    resultado = rodar("boot", "pi", "--write", "--destino", str(tmp_path))
+    assert resultado.returncode == 0, resultado.stderr
+    unidade = tmp_path / "homelab-compose.service"
+    assert unidade.is_file()
+    assert "ExecStart=/bin/sh -c 'until ip -4 addr show" in unidade.read_text()

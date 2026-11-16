@@ -49,6 +49,8 @@ PADROES = {
 
 SECOES = ("host", "app", "caminhos", "armazenamento", "rotas", "features")
 
+BOOT_CHAVES = ("unit", "descricao")
+
 # Versao do schema. Chave nova com default em `_padroes` nao quebra TOML
 # antigo; subir a versao e so para mudanca que exige revisao do arquivo.
 SCHEMA_ATUAL = 1
@@ -295,6 +297,26 @@ def validar(cfg: HostConfig) -> None:
                     f"{cfg.origem}: feature credenciais exige [credenciais] {chave}"
                 )
 
+    boot = dados.get("boot") or {}
+    if boot:
+        faltam = [c for c in BOOT_CHAVES if not boot.get(c)]
+        if faltam:
+            raise ConfigError(
+                f"{cfg.origem}: falta em [boot]: {', '.join(faltam)}"
+            )
+        if not str(boot["unit"]).endswith(".service"):
+            raise ConfigError(
+                f"{cfg.origem}: [boot] unit deve terminar em .service: "
+                f"{boot['unit']!r}"
+            )
+        for chave in ("esperar_mounts", "antes", "depois"):
+            for caminho in boot.get(chave) or ():
+                if not str(caminho).startswith("/"):
+                    raise ConfigError(
+                        f"{cfg.origem}: [boot] {chave} deve ser caminho absoluto: "
+                        f"{caminho!r}"
+                    )
+
     discos = dados.get("discos") or []
     papeis = {"dados", "snapshot", "backup", "jellyfin"}
     for i, disco in enumerate(discos, 1):
@@ -445,6 +467,60 @@ def texto_env(pares, titulo: str) -> str:
     ]
     linhas += [f"{chave}={valor}" for chave, valor in pares]
     return "\n".join(linhas) + "\n"
+
+
+def _unit_mount(ponto: str) -> str:
+    """``/mnt/nas`` -> ``mnt-nas.mount`` (nome que o systemd usa)."""
+    return str(ponto).strip("/").replace("/", "-") + ".mount"
+
+
+def texto_unit(cfg: HostConfig) -> str:
+    """Unit de boot do host, do ``[boot]`` do TOML.
+
+    Host sem ``[boot]`` nao tem unit propria (o Compose sobe com restart); o
+    Pi tem, e a unit inclui os stacks de terceiros na ordem certa.
+    """
+    boot = cfg.secao("boot")
+    if not boot:
+        raise ConfigError(f"{cfg.origem}: host '{cfg.slug}' nao tem [boot]")
+    lan_ip = cfg.valor("host", "lan_ip")
+    repo = str(cfg.valor("host", "repo")).rstrip("/")
+    config = str(cfg.valor("caminhos", "config")).rstrip("/")
+    mounts = " ".join(_unit_mount(m) for m in boot.get("esperar_mounts") or ())
+    after = "docker.service network-online.target"
+    if mounts:
+        after += " " + mounts
+
+    passos = []
+    if boot.get("esperar_ip", True):
+        passos.append(
+            f'until ip -4 addr show | grep -q "inet {lan_ip}/"; do sleep 1; done'
+        )
+    for caminho in boot.get("antes") or ():
+        passos.append(f"cd {caminho} && docker compose up -d")
+    passos.append(
+        f"cd {repo} && set -a && . {config}/host.env && set +a && "
+        'docker compose -f docker-compose.yml -f "$COMPOSE_OVERLAY" '
+        "up -d --force-recreate"
+    )
+    for caminho in boot.get("depois") or ():
+        passos.append(f"cd {caminho} && docker compose up -d --force-recreate")
+    return (
+        "[Unit]\n"
+        f"Description={boot['descricao']}\n"
+        f"After={after}\n"
+        "Requires=docker.service\n"
+        "Wants=network-online.target\n"
+        "\n"
+        "[Service]\n"
+        "Type=oneshot\n"
+        "RemainAfterExit=yes\n"
+        "TimeoutStartSec=300\n"
+        f"ExecStart=/bin/sh -c '{'; '.join(passos)}'\n"
+        "\n"
+        "[Install]\n"
+        "WantedBy=multi-user.target\n"
+    )
 
 
 def texto_sync_env(cfg: HostConfig) -> str:

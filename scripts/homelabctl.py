@@ -41,6 +41,7 @@ from core.homelab_config import (  # noqa: E402
     slugs,
     texto_host_env,
     texto_sync_env,
+    texto_unit,
 )
 
 
@@ -124,6 +125,19 @@ def cmd_render(args) -> int:
         outro = "host.env" if nome == "sync.env" else "sync.env"
         outro_texto = texto_host_env(cfg) if outro == "host.env" else texto_sync_env(cfg)
         _grava(destino / outro, outro_texto)
+    return 0
+
+
+def cmd_boot(args) -> int:
+    """Unit de boot do host (a do Pi inclui os stacks de terceiros)."""
+    cfg = carregar(args.host)
+    texto = texto_unit(cfg)
+    if not args.write:
+        sys.stdout.write(texto)
+        return 0
+    unidade = str(cfg.valor("boot", "unit"))
+    destino = Path(args.destino or Path("deploy") / cfg.slug) / unidade
+    _grava(destino, texto)
     return 0
 
 
@@ -238,6 +252,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     req.add_argument("host")
     req.set_defaults(func=cmd_requisitos)
+
+    boot = sub.add_parser(
+        "boot", help="gera a unit de boot do [boot] do host.toml"
+    )
+    boot.add_argument("host")
+    boot.add_argument(
+        "--write", action="store_true", help="grava em deploy/<slug>/<unit>"
+    )
+    boot.add_argument(
+        "--destino", help="diretorio de saida (padrao: deploy/<slug>)"
+    )
+    boot.set_defaults(func=cmd_boot)
 
     render = sub.add_parser("render", help="gera o host.env (ou o sync.env com --sync)")
     render.add_argument("host")

@@ -58,6 +58,14 @@ porta = ""
 tls = "import cf"
 proxy = "import proxy"
 
+[boot]
+unit = "homelab-compose.service"
+descricao = "Homelab compose stacks after network and /mnt/nas"
+esperar_ip = true
+esperar_mounts = ["/mnt/nas"]
+antes = ["/opt/stacks/pihole"]
+depois = ["/opt/dockge", "/opt/stacks/caddy"]
+
 [features]
 samba = true
 discos = true

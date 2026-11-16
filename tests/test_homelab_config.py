@@ -269,3 +269,26 @@ def test_schema_mais_novo_que_a_ferramenta_recusa(tmp_path):
         carregar_arquivo(arquivo)
     assert "schema 99" in str(exc.value)
     assert "atualize o repo" in str(exc.value)
+
+
+def test_unit_de_boot_do_pi_vem_do_toml():
+    from core.homelab_config import texto_unit
+
+    gerado = texto_unit(carregar("pi"))
+    versionado = (ROOT / "deploy" / "pi" / "homelab-compose.service").read_text(
+        encoding="utf-8"
+    )
+    # A unit do Pi e dado, nao arquivo escrito a mao: IP, pasta e stacks saem
+    # do TOML e o teste garante que o versionado nao driftou.
+    assert gerado == versionado
+    assert "inet 192.168.0.150/" in gerado
+    assert "mnt-nas.mount" in gerado
+    assert "cd /opt/stacks/pihole" in gerado
+
+
+def test_host_sem_boot_nao_gera_unit():
+    from core.homelab_config import texto_unit
+
+    with pytest.raises(ConfigError) as exc:
+        texto_unit(carregar("moya"))
+    assert "[boot]" in str(exc.value)
