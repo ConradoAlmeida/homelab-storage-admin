@@ -1,7 +1,7 @@
 # Contexto — Homelab Storage Admin
 
 Documento de retomada para quem chega sem contexto. Última atualização:
-**2026-11-15**. Detalhe por área fica em `docs/` (mapa no fim); o histórico da
+**2026-11-16**. Detalhe por área fica em `docs/` (mapa no fim); o histórico da
 sessão de 27–29/10 está em [SESSAO-2026-10-29.md](SESSAO-2026-10-29.md).
 
 ## O que é
@@ -19,9 +19,38 @@ Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
 - Código local (desktop Fedora): `/home/conradoalmeida/development/homelab-storage-admin`.
 - Repositório: `https://github.com/ConradoAlmeida/homelab-storage-admin.git`
   (push direto em `main`; avisa bypass do check `test`).
-- Em produção: `ab9ea87` nos dois hosts, `/login/` 200, `doctor pi` 0/0 e
-  `doctor moya` 0 erros/1 aviso (`/srv/samba` não é mount — ver pendências).
+- Em produção: `7bebca6` no moya, `/login/` 200 e `doctor moya` **0 erros/0
+  avisos**. O Pi segue na versão anterior até um deploy próprio.
 - Testes: `619 passed, 8 skipped` local; bancada verde nos três perfis.
+
+## Dados no RAID (2026-11-16)
+
+No moya, os dados vivos de shares e apps saíram do disco de sistema e estão em
+`/mnt/data`:
+
+| O quê | Caminho |
+|---|---|
+| Shares Samba | `/mnt/data/print_files`, `cnc_files`, `kicad_lib`, `Production_Files`, `Veronte_Images` |
+| Gitea | `/mnt/data/gitea` |
+| Datasheets | `/mnt/data/apps/datasheets/data` (mídia em `data/media`) |
+| Data Logger | `/mnt/data/apps/datalogger/data` |
+| SharePoint | `/mnt/data/apps/sharepoint/data` |
+| Drawing | `/mnt/data/apps/drawing/data` |
+| Processos | `/mnt/data/apps/processos/data` |
+| Credenciais | `/mnt/data/apps/credenciais/data` |
+| Storage Admin | `/mnt/data/apps/storage/data` |
+
+- O Docker tem `RequiresMountsFor=/mnt/data`; se o RAID não montar, ele não
+  inicia em vez de subir apps com diretório vazio.
+- `STORAGE_ROOT=/mnt/data`, `SNAPSHOT_ROOT=/mnt/data/.snapshots` e
+  `ALLOWED_PATH_PREFIXES=/mnt/data/`.
+- `/srv/samba` foi removido; os antigos dados ficaram em backups verificados em
+  `/mnt/backup/apps-removidos-20261116` e `/mnt/backup/migracao-*`.
+- Dumps do Gitea continuam em `/var/backups/gitea` (sistema), por decisão:
+  separados do RAID e com espaço de sobra.
+- O job local **Dados dos apps** foi atualizado para os novos caminhos; rodou
+  com sucesso (208 MB). O job **Credenciais** também passou a apontar para o
+  banco no RAID.
 
 ## Como funciona
 
@@ -109,21 +138,25 @@ A lista completa e os detalhes estão em `AGENTS.md`.
 
 ## Pendências / próximos jobs
 
-1. **moya:** shares do Samba em `/srv/samba` (LV do sistema, 98 GB/68%) e
-   não no RAID `/mnt/data` (3,6 TB/6%). Mudança para o RAID **decidida para
-   16/11**, com o Samba parado; até lá o `doctor` avisa.
-2. **Pi:** apagar `/var/backups/moya-credenciais`, pasta órfã do install
-   antigo.
-3. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
+1. **Reboot de validação:** confirmar no moya que o Docker espera
+   `/mnt/data` e que Samba, Gitea, Credenciais, Storage e demais apps sobem
+   sozinhos depois de reiniciar.
+2. **HD externo:** organizar a cópia fora do servidor; hoje os dumps do Gitea e
+   os backups locais ficam no `sda`.
+3. **Pi:** `host.env`/`sync.env` fora do `host.toml`; rodar `render pi --write
+   --ambos` e fazer o deploy no Pi (decisão do dono).
+4. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
    quando ativar.
-4. **Gitea:** apagar dumps inválidos no pendrive; cópia USB automática foi
-   decidida como "não".
-5. **Job “Dados dos apps”:** manual por decisão; rodar + “Backup para USB”
-   quando quiser cópia fria.
-6. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
-7. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
+5. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
+   foi decidida como "não".
+6. **Portal e Pi-hole:** estado gerado do Portal (`/var/lib/homelab-storage-admin`,
+   28 KB) e config/logs do Pi-hole (~565 MB) continuam no sistema. Avaliação:
+   o Portal é regenerável e não compensa mover; o Pi-hole é infraestrutura e
+   uma migração separada, com parada de DNS.
+7. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+8. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
    acesso/desconexão SMB: integrar ou descartar antes de remover.
-8. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
+9. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
 
 ## Armadilhas conhecidas
 
@@ -135,6 +168,8 @@ A lista completa e os detalhes estão em `AGENTS.md`.
 - Senha Samba ≠ senha Linux: no Pi a conta é `nologin` e só tem credencial
   Samba; no moya a igualdade vem de push do Credenciais.
 - O overlay do Compose vem do `host.env`; sem ele o app fica fora da rede.
+- O Docker depende de `/mnt/data` (`RequiresMountsFor`): se o RAID não montar,
+  os apps não sobem. Confira `findmnt /mnt/data` antes de investigar app.
 - No Pi, `data` é symlink para `/mnt/nas/apps/homelab-storage-admin/data`:
   num clone novo, recrie o symlink antes de rodar `manage.py`.
 - Sessões do Credenciais são revalidadas a cada request.
