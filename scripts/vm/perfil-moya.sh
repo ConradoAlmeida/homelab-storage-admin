@@ -4,7 +4,7 @@
 # Uso (root, dentro da VM, no clone do repo):
 #   sudo bash scripts/vm/perfil-moya.sh
 #
-# Cria os paths que o moyaserver usa (/srv/samba, /mnt/data), a rede externa
+# Cria os paths que o moyaserver usa (/mnt/data e /mnt/data/apps), a rede externa
 # `moya` do overlay, gera /etc/homelab-storage-admin/host.env a partir do
 # host.env.moya.example com os ajustes da VM, instala o agente e sincroniza as
 # dependencias. Idempotente.
@@ -43,7 +43,7 @@ registra() {
 }
 
 echo "==> paths do moyaserver"
-for caminho in /srv/samba /mnt/data; do
+for caminho in /mnt/data; do
   if mountpoint -q "$caminho" 2>/dev/null; then
     echo "    ja montado, preservado: $caminho"
     continue
@@ -57,8 +57,10 @@ for caminho in /srv/samba /mnt/data; do
     echo "    diretorio: $caminho"
   fi
 done
-mkdir -p /mnt/data/backups /var/backups/moya-credenciais
+mkdir -p /mnt/data/backups /mnt/data/apps/storage/data/downloads /mnt/data/apps/credenciais/data /mnt/data/.snapshots /var/backups/moya-credenciais
 registra /mnt/data/backups
+registra /mnt/data/apps/storage/data
+registra /mnt/data/apps/credenciais/data
 registra /var/backups/moya-credenciais
 chown -R "$DONO:$DONO" /mnt/data
 chmod 0700 /var/backups/moya-credenciais
@@ -79,7 +81,7 @@ cat >>/etc/homelab-storage-admin/host.env <<EOF
 # ---- ajustes da bancada de VM (gerados por perfil-moya.sh) ----
 # Sem proxy local na bancada, o app escuta em todas as interfaces.
 BIND_ADDR=0.0.0.0
-DATA_DIR=$REPO/data
+# DATA_DIR/DOWNLOAD_DIR vem do host.env.moya.example, em /mnt/data/apps.
 # Sem CREDENTIALS_API_TOKEN o login e local (break-glass); nao ha stack do
 # Credenciais nesta VM. O E2E de identidade fica em moya_credenciais_app.
 EOF

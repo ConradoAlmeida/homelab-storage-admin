@@ -25,7 +25,7 @@ base-limpo ──preparar homelab──► homelab-pronto ──testar──► 
 |---|---|---|
 | `scripts/vm/bench.sh` | host | revert, start, espera guest agent, ssh, snapshot |
 | `scripts/vm/perfil-homelab.sh` | convidado (root) | `/mnt/nas`, `/mnt/backup`, `host.env`, overlay, agente |
-| `scripts/vm/perfil-moya.sh` | convidado (root) | `/srv/samba`, `/mnt/data`, rede `moya`, `host.env`, agente |
+| `scripts/vm/perfil-moya.sh` | convidado (root) | `/mnt/data` e `/mnt/data/apps`, rede `moya`, `host.env`, agente |
 | `scripts/vm/perfil-generico.sh` | convidado (root) | `/srv/dados`, `hosts/generico` pelo wizard, render, agente |
 | `scripts/vm/clean.sh` | convidado (root) | remove so o que o projeto instalou |
 
