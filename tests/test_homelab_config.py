@@ -32,7 +32,9 @@ def env_efetivo(slug: str) -> dict[str, str]:
 
 
 def test_slugs_lista_os_hosts_versionados():
-    assert slugs() == ["moya", "pi"]
+    # A bancada cria hosts/generico dentro do clone; o que importa e que os
+    # presets versionados aparecem.
+    assert {"pi", "moya"} <= set(slugs())
 
 
 @pytest.mark.parametrize("slug", ["pi", "moya"])
