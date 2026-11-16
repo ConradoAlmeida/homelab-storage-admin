@@ -33,6 +33,7 @@ from core.homelab_wizard import (  # noqa: E402
     salvar,
     validar,
 )
+from core.homelab_doctor import Achado, analisar, drift, resumo  # noqa: E402
 from core.homelab_config import (  # noqa: E402
     ConfigError,
     HostConfig,
@@ -52,7 +53,7 @@ def cmd_list(_args) -> int:
     return 0
 
 
-def cmd_check(_args) -> int:
+def cmd_check(args) -> int:
     nomes = slugs()
     if not nomes:
         print("ERRO: nenhum hosts/<slug>/host.toml", file=sys.stderr)
@@ -67,6 +68,10 @@ def cmd_check(_args) -> int:
             continue
         recursos = ", ".join(cfg.features_ligadas) or "nenhuma"
         print(f"ok {slug:12} {len(cfg.features_ligadas)} features: {recursos}")
+        # So avisa: o check roda no CI e num host sem render, onde nao ha nada
+        # instalado para comparar.
+        for achado in drift(cfg, config_dir=args.config_dir):
+            print(f"aviso {slug}: {achado.mensagem}")
     return 1 if erros else 0
 
 
@@ -126,6 +131,20 @@ def cmd_render(args) -> int:
         outro_texto = texto_host_env(cfg) if outro == "host.env" else texto_sync_env(cfg)
         _grava(destino / outro, outro_texto)
     return 0
+
+
+def cmd_doctor(args) -> int:
+    """Preflight: o host esta pronto para o deploy? So le."""
+    cfg = carregar(args.host)
+    achados = analisar(
+        cfg,
+        config_dir=Path(args.config_dir) if args.config_dir else None,
+        env_file=Path(args.env_file) if args.env_file else None,
+    )
+    for achado in achados:
+        print(f"{achado.nivel}: {achado.mensagem}")
+    print(resumo(achados))
+    return 1 if any(a.nivel == "erro" for a in achados) else 0
 
 
 def cmd_boot(args) -> int:
@@ -217,6 +236,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("list", help="lista os hosts configurados").set_defaults(func=cmd_list)
 
     check = sub.add_parser("check", help="valida todos os hosts (sai 1 se algum falhar)")
+    check.add_argument(
+        "--config-dir",
+        help="diretorio do host.env instalado (padrao: o do TOML); so avisa drift",
+    )
     check.set_defaults(func=cmd_check)
 
     detect = sub.add_parser(
@@ -252,6 +275,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     req.add_argument("host")
     req.set_defaults(func=cmd_requisitos)
+
+    doctor = sub.add_parser(
+        "doctor", help="so le: o host esta pronto para o deploy?"
+    )
+    doctor.add_argument("host")
+    doctor.add_argument(
+        "--config-dir", help="diretorio do host.env/sync.env instalado"
+    )
+    doctor.add_argument("--env-file", help="caminho do .env do container")
+    doctor.set_defaults(func=cmd_doctor)
 
     boot = sub.add_parser(
         "boot", help="gera a unit de boot do [boot] do host.toml"

@@ -131,3 +131,11 @@ def test_boot_grava_a_unit_no_destino(tmp_path):
     unidade = tmp_path / "homelab-compose.service"
     assert unidade.is_file()
     assert "ExecStart=/bin/sh -c 'until ip -4 addr show" in unidade.read_text()
+
+
+def test_doctor_aponta_o_que_falta(tmp_path):
+    resultado = rodar("doctor", "pi", "--config-dir", str(tmp_path))
+    assert resultado.returncode == 1
+    assert "erro: falta host.env" in resultado.stdout
+    assert "render pi --write" in resultado.stdout
+    assert "erros:" in resultado.stdout
