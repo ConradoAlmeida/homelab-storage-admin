@@ -46,7 +46,7 @@ def test_pi_profile_fixture_matches_defaults(profile_env):
 
 def test_moya_profile(profile_env):
     moya = profile_env["moya"]
-    assert moya["ALLOWED_PATH_PREFIXES"].split(",") == ["/srv/samba/", "/mnt/data/"]
+    assert moya["ALLOWED_PATH_PREFIXES"].split(",") == ["/mnt/data/"]
     assert moya["BIND_ADDR"] == "127.0.0.1"
     assert moya["SNAPSHOT_DENYLIST"] == "Veronte_Images"
     assert moya["SNAPSHOT_BACKEND"] == "rsync"
@@ -62,9 +62,9 @@ def test_minimal_profile_has_no_optional_backend(profile_env):
 def test_django_settings_read_environment(monkeypatch, profile_env):
     settings_module = load_settings(monkeypatch, profile_env["moya"])
     assert settings_module.SITE_NAME == "Moya Storage"
-    assert settings_module.STORAGE_ROOT == "/srv/samba"
+    assert settings_module.STORAGE_ROOT == "/mnt/data"
     assert settings_module.BACKUP_ROOT == "/mnt/data/backups"
-    assert settings_module.ALLOWED_PATH_PREFIXES == ("/srv/samba/", "/mnt/data/")
+    assert settings_module.ALLOWED_PATH_PREFIXES == ("/mnt/data/",)
     assert settings_module.BIND_ADDR == "127.0.0.1"
     assert settings_module.SNAPSHOT_DENYLIST == ("Veronte_Images",)
 
