@@ -149,6 +149,20 @@ echo "==> dependencias"
 (cd "$REPO" && runuser -u "$DONO" -- uv sync --dev --frozen >/dev/null)
 echo "    uv sync ok"
 
+echo "==> deploy/generico/apps.env"
+mkdir -p "$REPO/deploy/generico"
+if [[ ! -f "$REPO/deploy/generico/apps.env" ]]; then
+  cat >"$REPO/deploy/generico/apps.env" <<EOF
+# Apps do host generico: uma linha por app (ver docs/ROTINAS.md).
+# Este host nao tem Caddy nem DNS; o atalho e o que importa.
+painel|painel.generico.local|127.0.0.1:8060|$REPO|atalho=painel,nome=Painel
+EOF
+  chown -R "$DONO:$DONO" "$REPO/deploy/generico"
+  echo "    criado com a rota do painel"
+else
+  echo "    ja existe, mantido"
+fi
+
 echo "==> apps-sync sem Caddy nem DNS"
 (cd "$REPO" && bash scripts/stacks/apps-sync.sh --apply)
 echo "    estado e atalhos gerados; caddy/dns pulados"

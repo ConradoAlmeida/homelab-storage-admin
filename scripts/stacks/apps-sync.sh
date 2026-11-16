@@ -298,7 +298,8 @@ valida() {
   local -a campos
   local -A vistos=()
 
-  [[ -r "$APPS_ENV" ]] || erro "nao consigo ler $APPS_ENV (esperado deploy/$PERFIL/apps.env no checkout)"
+  [[ -r "$APPS_ENV" ]] ||
+  erro "nao consigo ler $APPS_ENV (esperado deploy/$PERFIL/apps.env no checkout); crie o arquivo ou rode --descobrir para sugerir linhas"
   [[ "$DOMAIN" =~ ^[a-z0-9.-]+$ ]] || erro "dominio invalido: $DOMAIN"
 
   while IFS= read -r linha || [[ -n "$linha" ]]; do
