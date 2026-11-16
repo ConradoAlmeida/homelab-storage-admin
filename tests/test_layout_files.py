@@ -135,6 +135,8 @@ def test_deploy_confere_app_viva():
     assert "==> rotas, DNS e atalhos (--doctor)" in text
     assert "apps-sync.sh --doctor" in text
     assert "set +e" in text and "DOUTOR_RC=$?" in text
+    assert "$DOUTOR_RC -ne 0" in text
+    assert "exit 1" in text.split("==> rotas, DNS e atalhos")[1]
 
 
 def test_deploy_relanca_quando_o_pull_muda_o_proprio_script():

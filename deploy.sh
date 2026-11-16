@@ -256,7 +256,10 @@ if [[ -f scripts/stacks/apps-sync.sh && -n "$APPS_ENV_LOCAL" && -f "$APPS_ENV_LO
   printf '%s\n' "$DOUTOR_SAIDA" | grep -E '^ +erro:' || true
   printf '%s\n' "$DOUTOR_SAIDA" | sed -n '/==> resumo/,$p' | grep -v '^==> resumo' || true
   if [[ $DOUTOR_RC -ne 0 ]]; then
-    echo "AVISO: rota, DNS ou atalho divergente do env (o app esta no ar)." >&2
+    # Erro de rota/DNS/atalho e deploy falho: o app esta no ar, mas o host nao
+    # esta no estado que o env declara. Aviso (ex.: token sem sudo) nao conta.
+    echo "ERRO: rota, DNS ou atalho divergente do env (o app esta no ar)." >&2
     echo "Detalhe: bash scripts/stacks/apps-sync.sh --doctor" >&2
+    exit 1
   fi
 fi
