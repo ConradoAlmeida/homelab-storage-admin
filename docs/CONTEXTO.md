@@ -110,8 +110,8 @@ A lista completa e os detalhes estão em `AGENTS.md`.
 ## Pendências / próximos jobs
 
 1. **moya:** shares do Samba em `/srv/samba` (LV do sistema, 98 GB/68%) e
-   não no RAID `/mnt/data` (3,6 TB/6%); mover exige janela com o Samba
-   parado (o `doctor` avisa).
+   não no RAID `/mnt/data` (3,6 TB/6%). Mudança para o RAID **decidida para
+   16/11**, com o Samba parado; até lá o `doctor` avisa.
 2. **Pi:** apagar `/var/backups/moya-credenciais`, pasta órfã do install
    antigo.
 3. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
