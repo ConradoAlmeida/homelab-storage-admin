@@ -131,6 +131,9 @@ A lista completa e os detalhes estão em `AGENTS.md`.
   restore de snapshot, backup local de arquivos, Gitea (dump + USB + restore) e
   cópia fria USB.
 - Discos/SMART standby-safe, RAID, métricas ao vivo; Rede com UFW editável.
+- **UFW ativo no moya:** SSH, HTTP, DNS, Samba, Gitea (HTTP/SSH), apps
+  publicados e descoberta WS-Discovery liberados; forward dos containers
+  liberado para não quebrar o Docker.
 - Sistema: host + apt, Configuração, chaves SSH, logs, serviços systemd,
   terminal no navegador e Admins locais (break-glass); Containers sem remover
   nem executar; modo demo com `STORAGE_ADMIN_DEMO=1 DEBUG=1`.
@@ -144,18 +147,16 @@ A lista completa e os detalhes estão em `AGENTS.md`.
    os backups locais ficam no `sda`.
 2. **Pi:** `host.env`/`sync.env` fora do `host.toml`; rodar `render pi --write
    --ambos` e fazer o deploy no Pi (decisão do dono).
-3. **UFW no moya:** inativo (no Pi está ativo). A UI já gerencia; decidir
-   quando ativar.
-4. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
+3. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
    foi decidida como "não".
-5. **Portal e Pi-hole:** estado gerado do Portal (`/var/lib/homelab-storage-admin`,
+4. **Portal e Pi-hole:** estado gerado do Portal (`/var/lib/homelab-storage-admin`,
    28 KB) e config/logs do Pi-hole (~565 MB) continuam no sistema. Avaliação:
    o Portal é regenerável e não compensa mover; o Pi-hole é infraestrutura e
    uma migração separada, com parada de DNS.
-6. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
-7. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
+5. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
+6. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
    acesso/desconexão SMB: integrar ou descartar antes de remover.
-8. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
+7. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
 
 ## Armadilhas conhecidas
 

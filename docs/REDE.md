@@ -15,7 +15,7 @@ O card **Saúde** do Dashboard usa `health_overview` e resume, em uma lista úni
 - alertas de disco (SMART, uso, standby) e de volume;
 - resultado dos jobs de backup (restic e arquivos) e repositórios sem check;
 - containers que deveriam estar rodando;
-- pendências de configuração (por exemplo, firewall inativo).
+- pendências de configuração (por exemplo, job de backup atrasado).
 
 Cada alerta tem nível (`info`, `warn`, `red`). O card mostra “tudo ok” quando não
 há alertas. Os dados vêm do agente; a UI não faz probe próprio nem aciona discos.
@@ -41,7 +41,10 @@ Travas de segurança:
 - `FIREWALL_MANAGE=0` deixa a página somente leitura.
 
 Docker publica portas via iptables e pode furar o UFW; o modelo recomendado é
-publicar em `127.0.0.1` e deixar o Caddy expor.
+publicar em `127.0.0.1` e deixar o Caddy expor. No moya o UFW está ativo desde
+16/11 com `DEFAULT_FORWARD_POLICY=ACCEPT` e as portas publicadas liberadas;
+`DOCKER-USER` segue vazio, então uma porta Docker nova não é filtrada
+automaticamente.
 
 ### Nomes
 
@@ -173,8 +176,7 @@ ao Django; o agente no Pi executa. Confirmações destrutivas permanecem.
 - **Nautilus / Rede no Linux:** Avahi, domínio `.local` (RFC 6762). Samba com
   `multicast dns register`.
 - **Explorador / Rede no Windows:** `wsdd` (WS-Discovery). Hostname `HOMELAB` no
-  Pi, `MOYASERVER` no moya. Portas `3702/udp` e `5357/tcp` (fora de
-  `FIREWALL_SAFE_PORTS` até o UFW ser ligado).
+  Pi, `MOYASERVER` no moya. O UFW do moya libera `3702/udp` e `5357/tcp`.
 
 ---
 

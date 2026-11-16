@@ -34,7 +34,9 @@ prefixos_permitidos = ["/mnt/data/"]
 mounts = ["/", "/mnt/data"]
 firewall_safe_ports = [
   "22/tcp", "53/tcp", "53/udp", "80/tcp", "443/tcp", "8060/tcp",
-  "137/udp", "138/udp", "139/tcp", "445/tcp",
+  "222/tcp", "3000/tcp", "8010/tcp", "8040/tcp", "8070/tcp", "8888/tcp",
+  "9090/tcp", "10000/tcp", "137/udp", "138/udp", "139/tcp", "445/tcp",
+  "3702/udp", "5357/tcp", "5353/udp", "9993/udp",
 ]
 
 [rotas]
