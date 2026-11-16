@@ -62,6 +62,9 @@ No moya, os dados vivos de shares e apps saíram do disco de sistema e estão em
   `/mnt/backup/apps-removidos-20261116` e `/mnt/backup/migracao-*`.
 - Dumps do Gitea continuam em `/var/backups/gitea` (sistema), por decisão:
   separados do RAID e com espaço de sobra.
+- **Portal e Pi-hole ficam no disco de sistema (decisão de 2026-11-16).** O
+  estado do Portal é regenerável e o Pi-hole é infraestrutura de DNS; mover
+  exigiria parada de DNS sem ganho de dados.
 - O job local **Dados dos apps** foi atualizado para os novos caminhos; rodou
   com sucesso (208 MB). O job **Credenciais** também passou a apontar para o
   banco no RAID.
@@ -149,8 +152,9 @@ A lista completa e os detalhes estão em `AGENTS.md`.
   publicados e descoberta WS-Discovery liberados; forward dos containers
   liberado para não quebrar o Docker.
 - Sistema: host + apt, Configuração, chaves SSH, logs, serviços systemd,
-  terminal no navegador e Admins locais (break-glass); Containers sem remover
-  nem executar; modo demo com `STORAGE_ADMIN_DEMO=1 DEBUG=1`.
+  terminal no navegador e Admins locais (break-glass); Containers mostra
+  stacks Compose, CPU/RAM ao vivo, sem remover nem executar; modo demo com
+  `STORAGE_ADMIN_DEMO=1 DEBUG=1`.
 - Host genérico: TOML com `schema`/defaults, `detect`/`init`, `render`,
   `doctor`, `bootstrap`, `boot`, CI (`bash -n` + `shellcheck`, arm64 só em
   push para `main`).
@@ -159,18 +163,13 @@ A lista completa e os detalhes estão em `AGENTS.md`.
 
 1. **HD externo:** organizar a cópia fora do servidor; hoje os dumps do Gitea e
    os backups locais ficam no `sda`.
-2. **Pi:** `host.env`/`sync.env` fora do `host.toml`; rodar `render pi --write
-   --ambos` e fazer o deploy no Pi (decisão do dono).
+2. **Pi:** `host.env`/`sync.env` ainda precisam ser renderizados do `host.toml`
+   e o deploy feito no Pi. Bloqueado em 16/11: o host não respondia na LAN
+   (`192.168.0.150`); religar antes de `render pi --write --ambos` e
+   `./deploy.sh`.
 3. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
    foi decidida como "não".
-4. **Portal e Pi-hole:** estado gerado do Portal (`/var/lib/homelab-storage-admin`,
-   28 KB) e config/logs do Pi-hole (~565 MB) continuam no sistema. Avaliação:
-   o Portal é regenerável e não compensa mover; o Pi-hole é infraestrutura e
-   uma migração separada, com parada de DNS.
-5. **Containers fase 2** (opcional): stacks Compose e CPU/RAM por container.
-6. **Worktree antigo no PC Windows** (detached, 46 commits atrás) com WIP de
-   acesso/desconexão SMB: integrar ou descartar antes de remover.
-7. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
+4. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
 
 ## Armadilhas conhecidas
 
