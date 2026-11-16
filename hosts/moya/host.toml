@@ -16,10 +16,10 @@ bind_port = 8060
 compose_overlay = "docker-compose.moya.yml"
 
 [caminhos]
-dados = "/srv/samba"
-snapshots = "/srv/samba/.snapshots"
+dados = "/mnt/data"
+snapshots = "/mnt/data/.snapshots"
 backup = "/mnt/data/backups"
-dados_app = "/opt/stacks/homelab-storage-admin/data"
+dados_app = "/mnt/data/apps/storage/data"
 stacks = "/opt"
 quarentena = "/home/conrado/_removidos"
 estado = "/var/lib/homelab-storage-admin"
@@ -30,8 +30,8 @@ config = "/etc/homelab-storage-admin"
 proprietario = "conrado"
 snapshot_backend = "rsync"
 snapshot_denylist = ["Veronte_Images"]
-prefixos_permitidos = ["/srv/samba/", "/mnt/data/"]
-mounts = ["/", "/srv/samba", "/mnt/data"]
+prefixos_permitidos = ["/mnt/data/"]
+mounts = ["/", "/mnt/data"]
 firewall_safe_ports = [
   "22/tcp", "53/tcp", "53/udp", "80/tcp", "443/tcp", "8060/tcp",
   "137/udp", "138/udp", "139/tcp", "445/tcp",
@@ -59,7 +59,7 @@ tls = ""
 proxy = "reverse_proxy"
 
 [credenciais]
-db = "/home/conrado/moya_credenciais_app/data/db.sqlite3"
+db = "/mnt/data/apps/credenciais/data/db.sqlite3"
 env = "/home/conrado/moya_credenciais_app/.env"
 backup_dir = "/var/backups/moya-credenciais"
 container = "moya-credenciais"
