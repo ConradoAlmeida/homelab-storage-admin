@@ -54,21 +54,21 @@ Os 15 itens levantados na revisão de 2026-11-15, em quatro lotes:
 
 ## Passos
 
-- [ ] 1. `deploy.sh` sem o literal `moya`.
-- [ ] 2. Drift TOML ↔ `/etc` no `check`; erro no `doctor`.
-- [ ] 3. `homelabctl doctor`.
-- [ ] 4. `deploy.sh` falha em erro do `--doctor`.
-- [ ] 5. `deploy.sh` valida `.env` (600 e segredo não-exemplo).
-- [ ] 6. `homelabctl bootstrap`.
-- [ ] 7. CI com `bash -n` + `shellcheck`.
-- [ ] 8. Teste anti-literal `pi|moya` nos scripts de produção.
-- [ ] 9. Teste de equivalência exemplos × render.
-- [ ] 10. Retenção de `.bak`.
-- [ ] 11. `schema` + defaults no loader.
-- [ ] 12. Runbook de instalação nos docs.
-- [ ] 13. `qbittorrent` por feature no `deploy.sh`.
-- [ ] 14. Unit de boot gerada do TOML.
-- [ ] 15. CI arm64 em push para `main`.
+- [x] 1. `deploy.sh` sem o literal `moya`.
+- [x] 2. Drift TOML ↔ `/etc` no `check`; erro no `doctor`.
+- [x] 3. `homelabctl doctor`.
+- [x] 4. `deploy.sh` falha em erro do `--doctor`.
+- [x] 5. `deploy.sh` valida `.env` (600 e segredo não-exemplo).
+- [x] 6. `homelabctl bootstrap`.
+- [x] 7. CI com `bash -n` + `shellcheck`.
+- [x] 8. Teste anti-literal `pi|moya` nos scripts de produção.
+- [x] 9. Teste de equivalência exemplos × render.
+- [x] 10. Retenção de `.bak`.
+- [x] 11. `schema` + defaults no loader.
+- [x] 12. Runbook de instalação nos docs.
+- [x] 13. `qbittorrent` por feature no `deploy.sh`.
+- [x] 14. Unit de boot gerada do TOML.
+- [x] 15. CI arm64 em push para `main`.
 
 ## Verificação
 
@@ -90,5 +90,7 @@ Os 15 itens levantados na revisão de 2026-11-15, em quatro lotes:
 
 ## Estado
 
-Em execução em 2026-11-15. Autorizado: lista completa, deploy no Pi, arm64 só
-em `main`.
+Codigo dos 15 itens concluido em 2026-11-15 (um commit por item, `pytest`
+verde). Falta a validacao: bancada `generico`/`homelab`/`moya`, deploy no Pi e
+no moya, e o registro no `CONTEXTO.md`. Autorizado: lista completa, deploy no
+Pi, arm64 so em `main`.
