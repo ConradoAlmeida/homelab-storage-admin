@@ -99,7 +99,7 @@ def test_sync_env_do_moya():
     assert dados["SCAN_ROOTS"] == "/opt /home/conrado"
     assert dados["PORTAL_INI"] == "/var/lib/homelab-storage-admin/apps-portal.ini"
     assert dados["SERVICES_INI"] == (
-        "/opt/stacks/homelab-storage-admin/data/services.ini"
+        "/mnt/data/apps/storage/data/services.ini"
     )
 
 
