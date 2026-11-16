@@ -9,8 +9,25 @@ import os
 import subprocess
 from pathlib import Path
 
+from core.homelab_config import carregar as carregar_host
+from core.homelab_config import texto_sync_env
+
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "stacks" / "apps-sync.sh"
+
+
+def sync_env_do_host(slug: str) -> str:
+    """sync.env como o `homelabctl render --sync` entrega ao script."""
+    return texto_sync_env(carregar_host(slug))
+
+
+def escreve_host_env(tmp_path: Path, slug: str) -> tuple[Path, Path]:
+    """host.env (perfil) e sync.env do host, como o render grava no /etc."""
+    host_env = tmp_path / "host.env"
+    host_env.write_text(f'HOST_PROFILE="{slug}"\n', encoding="utf-8")
+    sync_env = tmp_path / "sync.env"
+    sync_env.write_text(sync_env_do_host(slug), encoding="utf-8")
+    return host_env, sync_env
 
 CADDYFILE = """\
 (cf) {
@@ -117,7 +134,7 @@ case "$1" in
     ;;
   port)
     if [[ -n "${STUB_PORTAS:-}" ]]; then
-      tr ',' '\n' <<<"$STUB_PORTAS" | sed 's/^/x\/tcp -> 0.0.0.0:/'
+      tr ',' '\n' <<<"$STUB_PORTAS" | sed 's#^#x/tcp -> 0.0.0.0:#'
     else
       echo "8080/tcp -> 0.0.0.0:8080"
     fi
@@ -173,6 +190,7 @@ class Sandbox:
         self.dir_pihole = self.stacks / "stacks" / "pihole"
         self.services_ini = tmp_path / "data" / "services.ini"
         self.portal_ini = tmp_path / "state" / "apps-portal.ini"
+        self.host_env, self.sync_env = escreve_host_env(tmp_path, "pi")
 
         for caminho in (
             self.caddy_dir,
@@ -214,15 +232,20 @@ class Sandbox:
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "TEST_MODE": "1",
-            # Sem sync.env do host: o teste nao pode herdar o do /etc.
-            "SYNC_ENV": str(self.tmp / "sem-sync.env"),
-            "HOST_ENV": str(self.tmp / "sem-host.env"),
+            # host.env/sync.env do sandbox: o teste nao herda o /etc do host.
+            "SYNC_ENV": str(self.sync_env),
+            "HOST_ENV": str(self.host_env),
             "APPS_ENV": str(env_file or self.env_file),
             "APPS_STATE": str(self.state),
             "STACKS_ROOT": str(self.stacks),
+            "DIRS_PERMITIDOS": f"{self.stacks}/stacks {self.stacks}",
+            "SCAN_ROOTS": str(self.stacks),
+            "CADDY_DIR": str(self.caddy_dir),
             "CADDYFILE": str(self.caddyfile),
             "CADDY_APPS": str(self.apps_caddy),
+            "CADDY_TOKEN_FILE": str(self.caddy_dir / "cloudflare.token"),
             "DNS_CONF": str(self.dns_conf),
+            "PIHOLE_DIR": str(self.stacks / "stacks" / "pihole"),
             "QUARANTINE": str(self.quarantine),
             "SERVICES_INI": str(self.services_ini),
             "PORTAL_INI": "",
@@ -429,8 +452,8 @@ def test_apply_sem_root_recusa(tmp_path):
         "CADDYFILE": str(sandbox.caddyfile),
         "CADDY_APPS": str(sandbox.apps_caddy),
         "DNS_CONF": str(sandbox.dns_conf),
-        "SYNC_ENV": str(sandbox.root / "sem-sync.env"),
-        "HOST_ENV": str(sandbox.root / "sem-host.env"),
+        "SYNC_ENV": str(sandbox.sync_env),
+        "HOST_ENV": str(sandbox.host_env),
     }
     resultado = subprocess.run(
         ["bash", str(SCRIPT), "--apply"], capture_output=True, text=True, env=env, check=False
@@ -523,6 +546,7 @@ class SandboxMoya:
         self.dir_portainer = self.fake_home / "portainer"
         self.services_ini = tmp_path / "data" / "services.ini"
         self.portal_ini = tmp_path / "state" / "apps-portal.ini"
+        self.host_env, self.sync_env = escreve_host_env(tmp_path, "moya")
 
         for caminho in (
             self.caddy_dir,
@@ -562,15 +586,16 @@ class SandboxMoya:
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "TEST_MODE": "1",
-            # Sem sync.env do host: o teste nao pode herdar o do /etc.
-            "SYNC_ENV": str(self.tmp / "sem-sync.env"),
-            "HOST_ENV": str(self.tmp / "sem-host.env"),
+            # host.env/sync.env do sandbox: o teste nao herda o /etc do host.
+            "SYNC_ENV": str(self.sync_env),
+            "HOST_ENV": str(self.host_env),
             "APPS_ENV": str(env_file or self.env_file),
             "APPS_STATE": str(self.state),
             "STACKS_ROOT": str(self.root / "opt"),
             "CADDY_DIR": str(self.caddy_dir),
             "CADDYFILE": str(self.caddyfile),
             "CADDY_APPS": str(self.apps_caddy),
+            "CADDY_TOKEN_FILE": str(self.caddy_dir / "cloudflare.token"),
             "DNS_CONF": str(self.dns_conf),
             "PIHOLE_DIR": str(self.pihole_dir),
             "QUARANTINE": str(self.quarantine),
@@ -585,8 +610,6 @@ class SandboxMoya:
             "STUB_PROJETOS": str(self.projetos),
             "STUB_DIR_PROJETOS": str(self.dir_projetos),
             "STUB_DNSMASQ_D": str(self.dnsmasq_flag),
-            "SYNC_ENV": str(self.tmp / "sem-sync.env"),
-            "HOST_ENV": str(self.tmp / "sem-host.env"),
             "STUB_DIG_RESULT": "192.168.0.10",
             **(env_extra or {}),
         }
@@ -1181,17 +1204,45 @@ def test_ambiente_vence_o_sync_env(tmp_path):
 
 
 def test_perfil_vem_do_host_env_sem_preset(tmp_path):
-    # HOST_PROFILE de um host ainda sem sync.env nao cai no preset do Pi:
+    # HOST_PROFILE de um host ainda sem sync.env nao cai em preset nenhum:
     # falha dizendo como gerar o arquivo.
     sandbox = Sandbox(tmp_path)
     host_env = tmp_path / "host.env"
     host_env.write_text('HOST_PROFILE="nas2"\n', encoding="utf-8")
     resultado = sandbox.run(
-        "--descobrir", env_extra={"HOST_ENV": str(host_env)}
+        "--descobrir",
+        env_extra={
+            "HOST_ENV": str(host_env),
+            "SYNC_ENV": str(tmp_path / "sem-sync.env"),
+        },
     )
     assert resultado.returncode == 2
     assert "nas2" in resultado.stderr
     assert "homelabctl.py render nas2" in resultado.stderr
+
+
+def test_sem_perfil_nem_sync_env_falha_dizendo_o_render(tmp_path):
+    # Sem --perfil, HOST_PROFILE e host.env nao ha host: o erro ensina o comando.
+    sandbox = Sandbox(tmp_path)
+    resultado = sandbox.run(
+        env_extra={
+            "HOST_ENV": str(tmp_path / "sem-host.env"),
+            "SYNC_ENV": str(tmp_path / "sem-sync.env"),
+        }
+    )
+    assert resultado.returncode == 2
+    assert "sem perfil" in resultado.stderr
+    assert "homelabctl.py render" in resultado.stderr
+
+
+def test_sem_sync_env_falha_dizendo_o_render(tmp_path):
+    sandbox = Sandbox(tmp_path)
+    resultado = sandbox.run(
+        env_extra={"SYNC_ENV": str(tmp_path / "sem-sync.env")}
+    )
+    assert resultado.returncode == 2
+    assert "sem " in resultado.stderr and "sync.env" in resultado.stderr
+    assert "homelabctl.py render pi" in resultado.stderr
 
 
 def _sync_sem_proxy(tmp_path, sandbox) -> Path:

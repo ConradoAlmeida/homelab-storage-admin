@@ -15,9 +15,10 @@
 #   scripts/stacks/apps-sync.sh --descobrir          # so le: sugerir apps
 #
 # Perfil:
-#   O host vem do HOST_PROFILE (/etc/homelab-storage-admin/host.env) e as
-#   diferencas de dominio, TLS, DNS e caminhos vem do sync.env. Os dois sao
-#   gerados de hosts/<slug>/host.toml por `homelabctl render`.
+#   O host vem de --perfil, do HOST_PROFILE do ambiente ou do
+#   /etc/homelab-storage-admin/host.env; as diferencas de dominio, TLS, DNS e
+#   caminhos vem do sync.env. Sem os dois, o script falha dizendo o render:
+#   nao existe preset de host embutido aqui.
 #
 # `--prune-containers` roda `docker compose down` (sem -v) so para quem saiu do
 # env. `--prune-data` move a pasta para a quarentena, nunca apaga. Sem estado
@@ -43,7 +44,8 @@ Uso: scripts/stacks/apps-sync.sh [--perfil <slug>] [--apply]
        scripts/stacks/apps-sync.sh [--perfil <slug>] --descobrir
 
 Sem --apply e dry-run: mostra o plano e nao escreve nada.
-  --perfil            slug do host; sem ele vale HOST_PROFILE do host.env
+  --perfil            slug do host; sem ele vale HOST_PROFILE (ambiente ou
+                      /etc/homelab-storage-admin/host.env)
   --apply             gera as rotas, recarrega o Caddy e garante o DNS
   --prune-containers  `docker compose down` (sem -v) nas apps que sairam do env
   --prune-data        move a pasta das apps removidas para a quarentena
@@ -63,7 +65,7 @@ Caddyfile), `redir=<destino>` ou `redir=<origem>-><destino>[@codigo]` e
 Atalhos (opcionais, separados por virgula, sem virgula no texto):
   atalho=painel|portal|painel+portal|nao   (ausente = sem atalho)
   nome=, descricao=, cor=#rrggbb, icone=<slug>, grupo=<secao do portal>
-O painel do Storage Admin e o portal do moya leem a INI gerada daqui:
+O painel do Storage Admin e o portal do host leem a INI gerada daqui:
 nada de editar services.ini ou HTML do portal.
 TXT
 }
@@ -95,7 +97,7 @@ while [[ $# -gt 0 ]]; do
     --doctor) DOUTOR=1 ;;
     --descobrir) DESCOBRIR=1 ;;
     --perfil)
-      [[ $# -ge 2 ]] || erro "--perfil exige um valor: pi ou moya"
+      [[ $# -ge 2 ]] || erro "--perfil exige o slug do host (hosts/<slug>)"
       PERFIL=$2
       shift
       ;;
@@ -108,57 +110,33 @@ done
 # --- perfil do host -------------------------------------------------------
 # O script nao conhece mais host nenhum: o host.env diz quem e o host
 # (HOST_PROFILE) e o sync.env -- os dois gerados de hosts/<slug>/host.toml --
-# traz o que difere entre eles. Variavel ja no ambiente vence, para testes e
-# para um ajuste pontual no terminal.
+# traz o que difere entre eles. `--perfil` e HOST_PROFILE do ambiente vencem,
+# para testes e para um ajuste pontual no terminal.
 HOST_ENV=${HOST_ENV:-/etc/homelab-storage-admin/host.env}
-if [[ -z "${PERFIL:-}" && -r "$HOST_ENV" ]]; then
+PERFIL=${PERFIL:-${HOST_PROFILE:-}}
+if [[ -z "$PERFIL" && -r "$HOST_ENV" ]]; then
   PERFIL=$(sed -n 's/^HOST_PROFILE=//p' "$HOST_ENV" | tail -n1 | tr -d "\"'")
 fi
-PERFIL=${PERFIL:-pi}
+if [[ -z "$PERFIL" ]]; then
+  erro "sem perfil: use --perfil <slug>, HOST_PROFILE ou $HOST_ENV" \
+    "(rode: python3 scripts/homelabctl.py render <slug> --write --ambos)"
+fi
 [[ "$PERFIL" =~ ^[a-z0-9][a-z0-9-]*$ ]] || erro "--perfil invalido: $PERFIL"
 
 SYNC_ENV=${SYNC_ENV:-/etc/homelab-storage-admin/sync.env}
-if [[ -r "$SYNC_ENV" ]]; then
-  # So preenche o que nao veio do ambiente; o valor ja vem com as aspas do
-  # render (vazio e `''`, com espaco e `'a b'`).
-  while IFS='=' read -r chave valor; do
-    [[ "$chave" =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
-    [[ -z "${!chave:-}" ]] || continue
-    eval "$chave=$valor"
-  done <"$SYNC_ENV"
-else
-  # Host ainda nao migrado para hosts/<slug>/host.toml: presets historicos,
-  # que so valem como fallback para pi e moya.
-  case "$PERFIL" in
-    pi)
-      SCHEME=${SCHEME:-https}
-      DATA_DIR=${DATA_DIR:-/mnt/nas/apps/homelab-storage-admin/data}
-      ;;
-    moya)
-      SCHEME=${SCHEME:-http}
-      DATA_DIR=${DATA_DIR:-/opt/stacks/homelab-storage-admin/data}
-      CADDY_DIR=${CADDY_DIR:-/opt/stacks/caddy}
-      CADDY_CONTAINER=${CADDY_CONTAINER:-moya-caddy}
-      PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
-      DOMAIN=${DOMAIN:-local}
-      DNS_IP=${DNS_IP:-192.168.0.10}
-      DNS_MODE=${DNS_MODE:-nome}
-      CADDY_PORTA=${CADDY_PORTA-:80}
-      CADDY_TLS=${CADDY_TLS-}
-      CADDY_PROXY=${CADDY_PROXY:-reverse_proxy}
-      DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-/opt/stacks /opt /home/conrado /data/compose}
-      PIHOLE_DIR=${PIHOLE_DIR:-/home/conrado/pihole}
-      QUARANTINE=${QUARANTINE:-/home/conrado/_removidos}
-      DNS_CONF=${DNS_CONF:-/home/conrado/pihole/etc-dnsmasq.d/10-apps-local.conf}
-      SCAN_ROOTS=${SCAN_ROOTS:-/opt /home/conrado}
-      PORTAL_INI=${PORTAL_INI-/var/lib/homelab-storage-admin/apps-portal.ini}
-      UPSTREAM_HOST=${UPSTREAM_HOST:-localhost}
-      ;;
-    *)
-      erro "host '$PERFIL' sem $SYNC_ENV (rode: python3 scripts/homelabctl.py render $PERFIL --write --ambos)"
-      ;;
-  esac
+if [[ ! -r "$SYNC_ENV" ]]; then
+  # Sem o sync.env nao ha de onde tirar dominio, Caddy e DNS do host; o preset
+  # historico saiu para nao mascarar host sem render.
+  erro "sem $SYNC_ENV para o perfil '$PERFIL'" \
+    "(rode: python3 scripts/homelabctl.py render $PERFIL --write --ambos)"
 fi
+# So preenche o que nao veio do ambiente; o valor ja vem com as aspas do
+# render (vazio e `''`, com espaco e `'a b'`).
+while IFS='=' read -r chave valor; do
+  [[ "$chave" =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
+  [[ -z "${!chave:-}" ]] || continue
+  eval "$chave=$valor"
+done <"$SYNC_ENV"
 
 # --- padroes comuns -------------------------------------------------------
 # O env vive no repo, ao lado deste script: a fonte da verdade e versionada e
