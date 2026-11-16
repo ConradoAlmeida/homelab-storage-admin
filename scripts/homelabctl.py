@@ -12,6 +12,9 @@ Roda com python3 puro (sem Django, sem uv):
     python3 scripts/homelabctl.py detect               # so le: propoe um TOML
     python3 scripts/homelabctl.py init                 # TUI (ou perguntas) para confirmar
     python3 scripts/homelabctl.py init --escrever      # grava hosts/<slug>/host.toml
+    python3 scripts/homelabctl.py doctor pi            # preflight do host (so le)
+    python3 scripts/homelabctl.py bootstrap pi --escrever
+    python3 scripts/homelabctl.py boot pi              # unit de boot do [boot]
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ from core.homelab_wizard import (  # noqa: E402
     salvar,
     validar,
 )
+from core.homelab_bootstrap import preparar  # noqa: E402
 from core.homelab_doctor import Achado, analisar, drift, resumo  # noqa: E402
 from core.homelab_config import (  # noqa: E402
     ConfigError,
@@ -145,6 +149,22 @@ def cmd_doctor(args) -> int:
         print(f"{achado.nivel}: {achado.mensagem}")
     print(resumo(achados))
     return 1 if any(a.nivel == "erro" for a in achados) else 0
+
+
+def cmd_bootstrap(args) -> int:
+    """Prepara um host recem-clonado; sem --escrever so relata."""
+    cfg = carregar(args.host)
+    linhas = preparar(
+        cfg,
+        escrever=args.escrever,
+        apt=args.apt,
+        config_dir=Path(args.config_dir) if args.config_dir else None,
+        env_file=Path(args.env_file) if args.env_file else None,
+        repo=Path(args.repo) if args.repo else None,
+    )
+    for linha in linhas:
+        print(linha)
+    return 0
 
 
 def cmd_boot(args) -> int:
@@ -297,6 +317,27 @@ def build_parser() -> argparse.ArgumentParser:
         "--destino", help="diretorio de saida (padrao: deploy/<slug>)"
     )
     boot.set_defaults(func=cmd_boot)
+
+    bootstrap = sub.add_parser(
+        "bootstrap", help="prepara o host clonado: env, .env e dependencias"
+    )
+    bootstrap.add_argument("host")
+    bootstrap.add_argument(
+        "--escrever",
+        action="store_true",
+        help="grava host.env/sync.env/.env (padrao: so relata)",
+    )
+    bootstrap.add_argument(
+        "--apt", action="store_true", help="roda apt-get install (exige root)"
+    )
+    bootstrap.add_argument(
+        "--config-dir", help="diretorio do host.env/sync.env (padrao: [caminhos] config)"
+    )
+    bootstrap.add_argument("--env-file", help="caminho do .env (padrao: <repo>/.env)")
+    bootstrap.add_argument(
+        "--repo", help="raiz do clone (padrao: [host] repo, ou este repo)"
+    )
+    bootstrap.set_defaults(func=cmd_bootstrap)
 
     render = sub.add_parser("render", help="gera o host.env (ou o sync.env com --sync)")
     render.add_argument("host")

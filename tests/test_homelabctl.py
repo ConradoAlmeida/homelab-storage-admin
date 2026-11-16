@@ -139,3 +139,16 @@ def test_doctor_aponta_o_que_falta(tmp_path):
     assert "erro: falta host.env" in resultado.stdout
     assert "render pi --write" in resultado.stdout
     assert "erros:" in resultado.stdout
+
+
+def test_bootstrap_sim_nao_escreve_nada(tmp_path):
+    config = tmp_path / "etc"
+    env = tmp_path / "container.env"
+    resultado = rodar(
+        "bootstrap", "pi", "--repo", str(ROOT),
+        "--config-dir", str(config), "--env-file", str(env),
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert "(sim) geraria" in resultado.stdout
+    assert "proximos passos" in resultado.stdout
+    assert not config.exists() and not env.exists()
