@@ -19,8 +19,11 @@ Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
 - Código local (desktop Fedora): `/home/conradoalmeida/development/homelab-storage-admin`.
 - Repositório: `https://github.com/ConradoAlmeida/homelab-storage-admin.git`
   (push direto em `main`; avisa bypass do check `test`).
-- Em produção: `7bebca6` no moya, `/login/` 200 e `doctor moya` **0 erros/0
-  avisos**. O Pi segue na versão anterior até um deploy próprio.
+- Em produção: `6804e6a` no moya e no Pi. `/login/` 200 nos dois e `doctor`
+  **0 erros**; no moya, 0 avisos. No Pi resta 1 aviso esperado: validação do
+  TLS sem o token da Cloudflare, que só roda com sudo.
+- Pi atualizado em 16/11: `host.env`/`sync.env` conferem com o render do
+  `host.toml`, deploy feito e agente reinstalado com CPU/RAM dos containers.
 - Testes: `623 passed, 9 skipped` na VM (`moya`); **138 do Credenciais** e
   smoke com as 9 rotas em 200. No Windows restam falhas de plataforma
   (systemd/caminhos), cobertas pela VM.
@@ -163,13 +166,9 @@ A lista completa e os detalhes estão em `AGENTS.md`.
 
 1. **HD externo:** organizar a cópia fora do servidor; hoje os dumps do Gitea e
    os backups locais ficam no `sda`.
-2. **Pi:** `host.env`/`sync.env` ainda precisam ser renderizados do `host.toml`
-   e o deploy feito no Pi. Bloqueado em 16/11: o host não respondia na LAN
-   (`192.168.0.150`); religar antes de `render pi --write --ambos` e
-   `./deploy.sh`.
-3. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
+2. **Gitea:** dumps antigos no pendrive e cópia USB manual; a cópia automática
    foi decidida como "não".
-4. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
+3. Testes físicos de disco/USB (restic real, cópia fria) dependem de hardware.
 
 ## Armadilhas conhecidas
 
