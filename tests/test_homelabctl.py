@@ -107,3 +107,19 @@ def test_requisitos_lista_binarios_do_host():
     # Um binario por linha, sem repetir entre features.
     nomes = [linha.split("|")[1] for linha in linhas]
     assert len(nomes) == len(set(nomes))
+
+
+def test_render_poda_backups_antigos(tmp_path):
+    # /etc com um .bak por render vira lixo; so os tres mais novos ficam.
+    alvo = tmp_path / "host.env"
+    alvo.write_text("# antigo\n", encoding="utf-8")
+    for dia in range(1, 6):
+        (tmp_path / f"host.env.bak-2020010{dia}-000000").write_text("x", encoding="utf-8")
+
+    resultado = rodar("render", "pi", "--write", "--destino", str(tmp_path))
+    assert resultado.returncode == 0, resultado.stderr
+    backups = sorted(tmp_path.glob("host.env.bak-*"))
+    assert len(backups) == 3
+    # Os antigos de 2020 sairam; o novo e o da execucao.
+    assert not any("20200101" in b.name for b in backups)
+    assert len([b for b in backups if "2020010" in b.name]) == 2

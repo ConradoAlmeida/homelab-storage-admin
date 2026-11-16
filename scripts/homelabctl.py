@@ -69,6 +69,20 @@ def cmd_check(_args) -> int:
     return 1 if erros else 0
 
 
+# Quantos backups por arquivo o render mantem. O `/etc` nao pode virar
+# deposito de .bak a cada render (o moya ja tinha tres sem poda).
+BACKUPS = 3
+
+
+def _poda_backups(caminho: Path, manter: int = BACKUPS) -> None:
+    antigos = sorted(caminho.parent.glob(caminho.name + ".bak-*"))
+    for velho in antigos[:-manter]:
+        try:
+            velho.unlink()
+        except OSError:
+            pass
+
+
 def _grava(caminho: Path, texto: str) -> None:
     if caminho.exists() and caminho.read_text(encoding="utf-8") == texto:
         print(f"sem mudanca: {caminho}")
@@ -76,6 +90,7 @@ def _grava(caminho: Path, texto: str) -> None:
     if caminho.exists():
         backup = caminho.with_name(f"{caminho.name}.bak-{time.strftime('%Y%m%d-%H%M%S')}")
         backup.write_text(caminho.read_text(encoding="utf-8"), encoding="utf-8")
+        _poda_backups(caminho)
         print(f"backup: {backup}")
     caminho.parent.mkdir(parents=True, exist_ok=True)
     temporario = caminho.with_suffix(caminho.suffix + ".tmp")
