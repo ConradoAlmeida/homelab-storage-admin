@@ -173,10 +173,12 @@ def test_ci_guarda_css_compilado_e_migracoes():
 def test_install_agent_selects_profile():
     text = read("install-agent.sh")
     assert "HOST_ENV_PROFILE" in text
-    # Qualquer slug de hosts/ vale; os exemplos sao so o fallback antigo.
+    # Qualquer slug de hosts/ vale; sem TOML nao ha preset de fallback.
     assert 'hosts/$HOST_ENV_PROFILE/host.toml' in text
-    assert "host.env.moya.example" in text
-    assert "host.env.example" in text
+    assert "defina HOST_ENV_PROFILE" in text
+    assert "homelabctl.py init" in text
+    assert "host.env.moya.example" not in text
+    assert "host.env.example" not in text
 
 
 def test_templates_have_no_inline_css_or_js():
@@ -233,3 +235,18 @@ def test_vm_bench_tem_perfil_generico():
     docs = read("docs/PRESETS.md")
     assert "hosts/<slug>/host.toml" in docs
     assert "homelabctl" in docs
+
+
+PRODUCAO = ("deploy.sh", "install-agent.sh", "scripts/stacks/apps-sync.sh")
+
+
+def test_scripts_de_producao_nao_tem_host_literal():
+    # `pi`/`moya` como codigo (case, default, mensagem) voltam a mentir no dia
+    # que o host novo aparecer; comentario e exemplo de uso continuam livres.
+    for nome in PRODUCAO:
+        for numero, linha in enumerate(read(nome).splitlines(), 1):
+            if linha.lstrip().startswith("#"):
+                continue
+            assert not __import__("re").search(r"\b(pi|moya)\b", linha), (
+                f"{nome}:{numero}: host literal fora de comentario: {linha.strip()}"
+            )

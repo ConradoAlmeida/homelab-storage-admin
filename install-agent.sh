@@ -13,80 +13,58 @@ CONFIG_DIR=/etc/homelab-storage-admin
 HOST_ENV="$CONFIG_DIR/host.env"
 mkdir -p "$CONFIG_DIR"
 
-# O perfil vem de HOST_ENV_PROFILE, do host.env ja instalado (HOST_PROFILE) ou,
-# por ultimo, do caminho antigo (pi). Qualquer slug de hosts/ serve.
+# O perfil vem de HOST_ENV_PROFILE ou do host.env ja instalado (HOST_PROFILE).
+# Sem os dois nao ha host: o script nao tem preset embutido.
 HOST_ENV_PROFILE="${HOST_ENV_PROFILE:-}"
 if [[ -z "$HOST_ENV_PROFILE" && -f "$HOST_ENV" ]]; then
   HOST_ENV_PROFILE=$(sed -n 's/^HOST_PROFILE=//p' "$HOST_ENV" | tail -n1 | tr -d "\"'")
 fi
-HOST_ENV_PROFILE="${HOST_ENV_PROFILE:-pi}"
+if [[ -z "$HOST_ENV_PROFILE" ]]; then
+  echo "ERRO: defina HOST_ENV_PROFILE com o slug de hosts/<slug>/host.toml." >&2
+  echo "      Ex.: sudo HOST_ENV_PROFILE=<slug> ./install-agent.sh" >&2
+  echo "      (ou rode: python3 scripts/homelabctl.py render <slug> --write --ambos)" >&2
+  exit 1
+fi
 if [[ ! "$HOST_ENV_PROFILE" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
   echo "ERRO: HOST_ENV_PROFILE invalido: $HOST_ENV_PROFILE (use o slug de hosts/)" >&2
   exit 1
 fi
 
+# O TOML versionado e a unica fonte da configuracao: sem ele (ou sem python3)
+# nao ha o que instalar.
 TOML="$HERE/hosts/$HOST_ENV_PROFILE/host.toml"
-if [[ -f "$TOML" ]] && command -v python3 >/dev/null 2>&1; then
-  # Renderiza a partir do TOML versionado, sem sobrescrever o que ja existe:
-  # mudar a configuracao e `homelabctl render <slug> --write --ambos`.
-  for arquivo in host.env sync.env; do
-    if [[ -f "$CONFIG_DIR/$arquivo" ]]; then
-      echo "==> Mantendo $CONFIG_DIR/$arquivo existente."
-      continue
-    fi
-    flag=()
-    [[ "$arquivo" == "sync.env" ]] && flag=(--sync)
-    python3 "$HERE/scripts/homelabctl.py" render "$HOST_ENV_PROFILE" "${flag[@]}" \
-      --write --destino "$CONFIG_DIR"
-  done
-else
-  # Host ainda sem TOML (ou sem python3): exemplos historicos, so na primeira vez.
-  case "$HOST_ENV_PROFILE" in
-    pi) HOST_ENV_EXAMPLE="$HERE/host.env.example" ;;
-    moya) HOST_ENV_EXAMPLE="$HERE/host.env.moya.example" ;;
-    *) HOST_ENV_EXAMPLE="" ;;
-  esac
-  if [[ -z "$HOST_ENV_EXAMPLE" ]]; then
-    echo "ERRO: host '$HOST_ENV_PROFILE' sem hosts/$HOST_ENV_PROFILE/host.toml." >&2
-    echo "      Crie o TOML (veja docs/PRESETS.md) ou use HOST_ENV_PROFILE=pi|moya." >&2
-    exit 1
-  fi
-  if [[ ! -f "$HOST_ENV" ]]; then
-    install -m 0644 "$HOST_ENV_EXAMPLE" "$HOST_ENV"
-    echo "==> Criado $HOST_ENV a partir de $HOST_ENV_EXAMPLE (host sem TOML)."
-  else
-    echo "==> Mantendo $HOST_ENV existente."
-  fi
+if [[ ! -f "$TOML" ]] || ! command -v python3 >/dev/null 2>&1; then
+  echo "ERRO: falta $TOML (ou python3) para o perfil '$HOST_ENV_PROFILE'." >&2
+  echo "      Crie o host: python3 scripts/homelabctl.py init (veja docs/PRESETS.md)" >&2
+  exit 1
 fi
+
+# Renderiza a partir do TOML versionado, sem sobrescrever o que ja existe:
+# mudar a configuracao e `homelabctl render <slug> --write --ambos`.
+for arquivo in host.env sync.env; do
+  if [[ -f "$CONFIG_DIR/$arquivo" ]]; then
+    echo "==> Mantendo $CONFIG_DIR/$arquivo existente."
+    continue
+  fi
+  flag=()
+  [[ "$arquivo" == "sync.env" ]] && flag=(--sync)
+  python3 "$HERE/scripts/homelabctl.py" render "$HOST_ENV_PROFILE" "${flag[@]}" \
+    --write --destino "$CONFIG_DIR"
+done
 
 # Dependencia segue a feature ligada: host sem Samba nao precisa de smbd, e o
 # que falta vira aviso em vez de erro quando a feature e opcional.
 echo "==> Checando dependencias do perfil '$HOST_ENV_PROFILE'"
-if [[ -f "$TOML" ]] && command -v python3 >/dev/null 2>&1; then
-  while IFS='|' read -r tipo cmd pacotes; do
-    [[ -n "$cmd" ]] || continue
-    command -v "$cmd" >/dev/null 2>&1 && continue
-    if [[ "$tipo" == "obrig" ]]; then
-      echo "ERRO: '$cmd' nao encontrado (feature ligada em hosts/$HOST_ENV_PROFILE/host.toml)." >&2
-      echo "      Instale: sudo apt install $pacotes" >&2
-      exit 1
-    fi
-    echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
-  done < <(python3 "$HERE/scripts/homelabctl.py" requisitos "$HOST_ENV_PROFILE")
-else
-  echo "AVISO: sem hosts/$HOST_ENV_PROFILE/host.toml para derivar as dependencias." >&2
-  for cmd in pdbedit smbpasswd smbcontrol testparm parted mkfs.ext4; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin parted e2fsprogs" >&2
-      exit 1
-    fi
-  done
-  for cmd in btrfs restic smartctl hdparm mdadm; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
-    fi
-  done
-fi
+while IFS='|' read -r tipo cmd pacotes; do
+  [[ -n "$cmd" ]] || continue
+  command -v "$cmd" >/dev/null 2>&1 && continue
+  if [[ "$tipo" == "obrig" ]]; then
+    echo "ERRO: '$cmd' nao encontrado (feature ligada em hosts/$HOST_ENV_PROFILE/host.toml)." >&2
+    echo "      Instale: sudo apt install $pacotes" >&2
+    exit 1
+  fi
+  echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
+done < <(python3 "$HERE/scripts/homelabctl.py" requisitos "$HOST_ENV_PROFILE")
 
 # shellcheck disable=SC1090
 if [[ -f "$HOST_ENV" ]]; then
@@ -121,13 +99,17 @@ install -m 0644 "$HERE/agent/homelab-task@.service" /etc/systemd/system/homelab-
 
 echo "==> Configuracao"
 mkdir -p /etc/homelab-storage-agent /etc/homelab-backup/status /etc/homelab-backup/secrets /etc/homelab-backup/health /var/log/homelab-restic
-mkdir -p "${CREDENCIAIS_BACKUP_DIR:-/var/backups/moya-credenciais}"
-mkdir -p "${GITEA_BACKUP_DIR:-/var/backups/gitea}" "${GITEA_USB_ROOT:-/mnt/gitea-usb}"
 chmod 0755 /etc/homelab-storage-agent
 chmod 0700 /etc/homelab-backup /etc/homelab-backup/status /etc/homelab-backup/secrets
 chmod 0750 /var/log/homelab-restic
-chmod 0700 "${CREDENCIAIS_BACKUP_DIR:-/var/backups/moya-credenciais}"
+# Gitea tem caminho padrao no agente; Credenciais so entra se o host.env
+# rendido trouxe CREDENCIAIS_BACKUP_DIR (host com a feature ligada).
+mkdir -p "${GITEA_BACKUP_DIR:-/var/backups/gitea}" "${GITEA_USB_ROOT:-/mnt/gitea-usb}"
 chmod 0700 "${GITEA_BACKUP_DIR:-/var/backups/gitea}" "${GITEA_USB_ROOT:-/mnt/gitea-usb}"
+if [[ -n "${CREDENCIAIS_BACKUP_DIR:-}" ]]; then
+  mkdir -p "$CREDENCIAIS_BACKUP_DIR"
+  chmod 0700 "$CREDENCIAIS_BACKUP_DIR"
+fi
 
 systemctl daemon-reload
 systemctl enable homelab-storage-agent
@@ -135,7 +117,7 @@ systemctl restart homelab-storage-agent
 systemctl enable --now homelab-storage-snapshot.timer
 systemctl enable --now homelab-storage-metrics.timer
 systemctl enable --now homelab-restic-check.timer
-if [[ -f "${CREDENCIAIS_DB:-/home/conrado/moya_credenciais_app/data/db.sqlite3}" ]]; then
+if [[ -n "${CREDENCIAIS_DB:-}" && -f "$CREDENCIAIS_DB" ]]; then
   systemctl disable --now homelab-credenciais-backup.timer 2>/dev/null || true
   /usr/local/sbin/homelab-storage-agent --apply-timer || true
 fi
