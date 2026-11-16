@@ -27,11 +27,13 @@ Caddy. O mesmo código roda em dois hosts; o que muda entre eles está em
 
 ## Regra: dados de apps no RAID/SSD (2026-11-16)
 
-**Dado vivo de app nunca fica no disco de sistema.** No `moya`, apps e bancos
-ficam em `/mnt/data/apps/<slug>` e os shares em `/mnt/data/<share>`, no RAID
-(`md0`). No Pi, ficam em `/mnt/nas/apps/<slug>`, no SSD/array; nunca no
-microSD. Um caminho novo só é aceito se estiver em `hosts/<slug>/host.toml` e
-coberto pelo teste de perfil.
+**Dado vivo de app nunca fica no disco de sistema.** No `moya`, tudo fica sob
+`/mnt/data` (RAID): apps e bancos em `/mnt/data/apps/<slug>`, shares em
+`/mnt/data/<share>` e Gitea em `/mnt/data/gitea`. No Pi, apps ficam em
+`/mnt/nas/apps/<slug>` e shares em `/mnt/nas/<share>` (SSD/array), nunca no
+microSD; `/mnt/jellyfin` é o disco de mídia, também fora do sistema. Um caminho
+novo só é aceito se estiver em `hosts/<slug>/host.toml` e coberto pelo teste de
+perfil.
 
 Exceções explícitas: dumps do Gitea em `/var/backups/gitea` (moya) e estado do
 Portal em `/var/lib/homelab-storage-admin`. O Pi-hole segue no SSD do Pi, fora
