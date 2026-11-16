@@ -155,7 +155,7 @@ if [[ ! -f "$REPO/deploy/generico/apps.env" ]]; then
   cat >"$REPO/deploy/generico/apps.env" <<EOF
 # Apps do host generico: uma linha por app (ver docs/ROTINAS.md).
 # Este host nao tem Caddy nem DNS; o atalho e o que importa.
-painel|painel.generico.local|127.0.0.1:8060|$REPO|atalho=painel,nome=Painel
+painel|painel.generico.local|127.0.0.1:8060|-|atalho=painel,nome=Painel
 EOF
   chown -R "$DONO:$DONO" "$REPO/deploy/generico"
   echo "    criado com a rota do painel"
