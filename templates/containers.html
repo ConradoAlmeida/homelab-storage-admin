@@ -1,12 +1,13 @@
 {% extends "base.html" %}
+{% load l10n %}
 {% block title %}Containers - {{ product_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>Containers</h1>
     <p class="lead">
-      Docker ou Podman do host: estado, portas, iniciar, parar, reiniciar e logs.
-      Nenhum container é removido por esta tela.
+      Docker ou Podman do host: stacks Compose, estado, portas, CPU/RAM,
+      iniciar, parar, reiniciar e logs. Nenhum container é removido por esta tela.
     </p>
   </div>
   <div class="page-actions">
@@ -23,6 +24,33 @@
 {% elif overview.error %}
   <div class="alert danger"><strong>Runtime indisponível.</strong> {{ overview.error }}</div>
 {% elif overview.containers %}
+  {% if overview.stats_error %}
+    <div class="alert warn">
+      <strong>Métricas ao vivo indisponíveis.</strong> {{ overview.stats_error }}
+    </div>
+  {% endif %}
+  {% if overview.stacks %}
+  <section class="section">
+    <div class="section-head">
+      <h2>Stacks Compose</h2>
+      <span class="muted text-12">{{ overview.stacks|length }} stack{{ overview.stacks|length|pluralize }}</span>
+    </div>
+    <div class="shortcut-grid">
+      {% for stack in overview.stacks %}
+        <article class="card action-card">
+          <div class="page-actions">
+            <strong>{{ stack.name }}</strong>
+            <span class="status {% if stack.running == stack.containers %}ok{% else %}warn{% endif %}">{{ stack.running }}/{{ stack.containers }} ativos</span>
+          </div>
+          <div class="muted text-12">
+            CPU {% if stack.cpu_percent is not None %}{{ stack.cpu_percent }}%{% else %}-{% endif %}
+            · Memória {% if stack.mem_used %}{{ stack.mem_used }}{% else %}-{% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   <section class="section">
     <div class="section-head">
       <h2>Containers</h2>
@@ -52,7 +80,9 @@
           <th><button type="button" class="th-sort" data-sort="0" aria-sort="none">Container</button></th>
           <th><button type="button" class="th-sort" data-sort="1" aria-sort="none">Imagem</button></th>
           <th><button type="button" class="th-sort" data-sort="2" aria-sort="none">Estado</button></th>
-          <th><button type="button" class="th-sort" data-sort="3" aria-sort="none">Portas</button></th>
+          <th><button type="button" class="th-sort" data-sort="3" aria-sort="none">CPU</button></th>
+          <th><button type="button" class="th-sort" data-sort="4" aria-sort="none">Memória</button></th>
+          <th><button type="button" class="th-sort" data-sort="5" aria-sort="none">Portas</button></th>
           <th>Ações</th>
         </tr>
       </thead>
@@ -79,6 +109,19 @@
               {% endif %}
               {% if item.status %}<div class="muted text-11">{{ item.status }}</div>{% endif %}
               {% if item.health and item.health not in item.status %}<div class="muted text-11">health: {{ item.health }}</div>{% endif %}
+            </td>
+            <td data-sort-value="{{ item.cpu_percent|default_if_none:''|unlocalize }}">
+              {% if item.cpu_percent is not None %}{{ item.cpu_percent }}%{% else %}<span class="muted">-</span>{% endif %}
+            </td>
+            <td data-sort-value="{{ item.mem_bytes|default_if_none:'' }}">
+              {% if item.mem_used %}
+                {{ item.mem_used }}
+                {% if item.mem_percent is not None %}
+                  <div class="muted text-11">{{ item.mem_percent }}%{% if item.mem_limit %} de {{ item.mem_limit }}{% endif %}</div>
+                {% endif %}
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
             </td>
             <td data-sort-value="{{ item.ports|join:' ' }}">
               <div class="port-chips">

@@ -6287,22 +6287,159 @@ def _status_containers(runtime: str) -> dict[str, str]:
     return mapa
 
 
+_UNIDADES_BYTES = {
+    "B": 1,
+    "KB": 1000,
+    "KIB": 1024,
+    "MB": 1000**2,
+    "MIB": 1024**2,
+    "GB": 1000**3,
+    "GIB": 1024**3,
+    "TB": 1000**4,
+    "TIB": 1024**4,
+    "PB": 1000**5,
+    "PIB": 1024**5,
+}
+
+
+def _bytes_de_human(valor: str) -> int | None:
+    texto = (valor or "").strip()
+    if not texto:
+        return None
+    match = re.fullmatch(
+        r"([0-9]+(?:[.,][0-9]+)?)\s*([KMGTPE]?i?B)", texto, re.IGNORECASE
+    )
+    if not match:
+        return None
+    try:
+        numero = float(match.group(1).replace(",", "."))
+    except ValueError:
+        return None
+    fator = _UNIDADES_BYTES.get(match.group(2).upper())
+    if fator is None:
+        return None
+    return int(numero * fator)
+
+
+def _human_de_bytes(valor: int | None) -> str:
+    if valor is None:
+        return ""
+    numero = float(valor)
+    for unidade in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if numero < 1024 or unidade == "TiB":
+            if unidade == "B":
+                return f"{int(numero)} B"
+            return f"{numero:.1f} {unidade}"
+        numero /= 1024
+    return ""
+
+
+def _percentual(valor: str) -> float | None:
+    texto = (valor or "").strip().rstrip("%")
+    if not texto:
+        return None
+    try:
+        return round(float(texto.replace(",", ".")), 1)
+    except ValueError:
+        return None
+
+
+def _container_stats(
+    runtime: str, nomes: list[str]
+) -> tuple[dict[str, dict], str]:
+    """CPU/RAM ao vivo dos containers em execucao; nunca derruba a listagem."""
+    if not nomes:
+        return {}, ""
+    podman = os.path.basename(runtime).lower().startswith("podman")
+    campos = (
+        "{{.Name}}\t{{.CPU}}\t{{.MemUsage}}\t{{.MemPerc}}"
+        if podman
+        else "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}"
+    )
+    rc, saida, erro = run_optional(
+        [runtime, "stats", "--no-stream", "--format", campos, *nomes],
+        timeout=30,
+    )
+    if rc != 0:
+        return {}, (erro or saida).strip()[:200] or "falha ao ler metricas"
+    stats: dict[str, dict] = {}
+    for linha in (saida or "").splitlines():
+        partes = linha.split("\t")
+        if len(partes) < 4:
+            continue
+        nome, cpu, memoria, mem_pct = (parte.strip() for parte in partes[:4])
+        usado, _, limite = memoria.partition("/")
+        usado = usado.strip()
+        limite = limite.strip()
+        stats[nome.lstrip("/")] = {
+            "cpu_percent": _percentual(cpu),
+            "mem_used": _human_de_bytes(_bytes_de_human(usado)),
+            "mem_limit": _human_de_bytes(_bytes_de_human(limite)),
+            "mem_percent": _percentual(mem_pct),
+            "mem_bytes": _bytes_de_human(usado),
+        }
+    return stats, ""
+
+
+def _stacks_de_containers(containers: list[dict]) -> list[dict]:
+    stacks: dict[str, dict] = {}
+    for item in containers:
+        projeto = (item.get("project") or "").strip()
+        if not projeto:
+            continue
+        stack = stacks.setdefault(
+            projeto,
+            {
+                "name": projeto,
+                "containers": 0,
+                "running": 0,
+                "cpu_percent": None,
+                "mem_bytes": None,
+            },
+        )
+        stack["containers"] += 1
+        if item.get("running"):
+            stack["running"] += 1
+        cpu = item.get("cpu_percent")
+        if isinstance(cpu, (int, float)):
+            stack["cpu_percent"] = round((stack["cpu_percent"] or 0.0) + cpu, 1)
+        memoria = item.get("mem_bytes")
+        if isinstance(memoria, int):
+            stack["mem_bytes"] = (stack["mem_bytes"] or 0) + memoria
+    resultado = []
+    for stack in stacks.values():
+        stack["mem_used"] = _human_de_bytes(stack["mem_bytes"])
+        resultado.append(stack)
+    resultado.sort(key=lambda item: item["name"].lower())
+    return resultado
+
+
 def op_containers_overview(**_):
     runtime = _runtime_containers()
     if not runtime:
         return {
             "runtime": "",
             "containers": [],
+            "stacks": [],
+            "stats_error": "",
             "error": "Docker/Podman não encontrado no host.",
         }
     nomes = _nomes_containers(runtime)
     if not nomes:
-        return {"runtime": runtime, "containers": [], "error": ""}
+        return {
+            "runtime": runtime,
+            "containers": [],
+            "stacks": [],
+            "stats_error": "",
+            "error": "",
+        }
     rc, saida, erro = run_optional([runtime, "inspect", *nomes], timeout=30)
     if rc != 0:
         return {
             "runtime": runtime,
             "containers": [],
+            "stacks": [],
+            "stats_error": "",
             "error": (erro or saida).strip()[:300] or "falha ao inspecionar",
         }
     try:
@@ -6311,6 +6448,8 @@ def op_containers_overview(**_):
         return {
             "runtime": runtime,
             "containers": [],
+            "stacks": [],
+            "stats_error": "",
             "error": "resposta inválida do runtime",
         }
     status = _status_containers(runtime)
@@ -6354,7 +6493,23 @@ def op_containers_overview(**_):
             item["name"].lower(),
         )
     )
-    return {"runtime": runtime, "containers": containers, "error": ""}
+    stats, stats_error = _container_stats(
+        runtime, [item["name"] for item in containers if item["running"]]
+    )
+    for item in containers:
+        valores = stats.get(item["name"], {})
+        item["cpu_percent"] = valores.get("cpu_percent")
+        item["mem_used"] = valores.get("mem_used", "")
+        item["mem_limit"] = valores.get("mem_limit", "")
+        item["mem_percent"] = valores.get("mem_percent")
+        item["mem_bytes"] = valores.get("mem_bytes")
+    return {
+        "runtime": runtime,
+        "containers": containers,
+        "stacks": _stacks_de_containers(containers),
+        "stats_error": stats_error,
+        "error": "",
+    }
 
 
 def _validar_container(runtime: str, name: str) -> str:

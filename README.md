@@ -38,7 +38,7 @@ Server: o que muda entre hosts vive em `hosts/<slug>/host.toml`.
 | Ver status de snapshot por share | Shares/Snapshots — sim (keep N) ou não configurado |
 | Ver saúde do host | Dashboard — card Saúde com discos, backups, containers e pendências |
 | Ver e gerenciar rede/firewall | Rede (`/rede/`) - interfaces, rotas, portas, Docker e regras UFW |
-| Ver e operar containers | Containers (`/containers/`) — Docker ou Podman, iniciar/parar/reiniciar e logs |
+| Ver e operar containers | Containers (`/containers/`) — Docker ou Podman, stacks Compose com CPU/RAM, iniciar/parar/reiniciar e logs |
 | Backup local de arquivos | Backups → Backup de arquivos — jobs independentes, retenção e restore |
 | Cadastrar jobs/periodicidade | Backups → Novo job / Editar |
 | Listar snapshots restic | Backups → Snapshots restic — data, arquivos, tamanho e fontes |

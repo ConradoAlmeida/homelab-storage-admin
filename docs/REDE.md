@@ -185,8 +185,12 @@ ao Django; o agente no Pi executa. Confirmações destrutivas permanecem.
 `/containers/` mostra e opera os containers do host, com **Docker ou Podman**
 (o agente usa o runtime que encontrar).
 
-- Lista nome, ID curto, imagem, estado, saúde, portas, projeto/serviço do Compose
-  e contagem de reinícios.
+- Lista nome, ID curto, imagem, estado, saúde, CPU, memória, portas,
+  projeto/serviço do Compose e contagem de reinícios.
+- Stacks Compose aparecem agrupadas no topo, com containers ativos e o total de
+  CPU/memória da stack; containers avulsos ficam só na tabela.
+- CPU e memória vêm de `stats --no-stream`; se o runtime não responder, a
+  listagem continua e a página avisa.
 - Ações: **iniciar**, **parar** e **reiniciar**, sempre com confirmação.
 - **Logs** com seletor de 100, 200, 500 ou 1000 linhas, em modo leitura.
 - Não cria, não remove, não executa comandos e não altera stacks.

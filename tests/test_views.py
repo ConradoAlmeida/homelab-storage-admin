@@ -1871,6 +1871,11 @@ class ViewSmokeTests(TestCase):
                     "restart_count": 0,
                     "project": "gitea",
                     "service": "server",
+                    "cpu_percent": 3.4,
+                    "mem_used": "256.0 MiB",
+                    "mem_limit": "7.6 GiB",
+                    "mem_percent": 3.3,
+                    "mem_bytes": 268435456,
                     "ports": [
                         "127.0.0.1:3000->3000/tcp",
                         "0.0.0.0:222->22/tcp",
@@ -1887,9 +1892,25 @@ class ViewSmokeTests(TestCase):
                     "restart_count": 0,
                     "project": "",
                     "service": "",
+                    "cpu_percent": None,
+                    "mem_used": "",
+                    "mem_limit": "",
+                    "mem_percent": None,
+                    "mem_bytes": None,
                     "ports": [],
                 },
             ],
+            "stacks": [
+                {
+                    "name": "gitea",
+                    "containers": 1,
+                    "running": 1,
+                    "cpu_percent": 3.4,
+                    "mem_bytes": 268435456,
+                    "mem_used": "256.0 MiB",
+                }
+            ],
+            "stats_error": "",
         }
         capacidades = dict(self.fake.host_capabilities.return_value)
         capacidades["containers"] = True
@@ -1904,6 +1925,9 @@ class ViewSmokeTests(TestCase):
         self.assertContains(resposta, "containers-table")
         self.assertContains(resposta, "data-table-toolbar")
         self.assertContains(resposta, "table-search")
+        self.assertContains(resposta, "Stacks Compose")
+        self.assertContains(resposta, "256.0 MiB")
+        self.assertContains(resposta, "3,4%")
         self.assertContains(resposta, "Parar")
         self.assertContains(resposta, "Reiniciar")
         self.assertContains(resposta, "Iniciar")
