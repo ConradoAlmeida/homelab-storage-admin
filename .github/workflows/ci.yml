@@ -24,5 +24,14 @@ jobs:
         run: |
           uv run manage.py tailwind build
           git diff --exit-code -- static/css/kit.css
+      - name: Scripts de shell
+        # Os quatro scripts que rodam como root no host: sintaxe + shellcheck
+        # em nivel warning (info fica de fora para nao virar ruido).
+        run: |
+          command -v shellcheck >/dev/null ||
+            (sudo apt-get update && sudo apt-get install -y shellcheck)
+          bash -n deploy.sh entrypoint.sh install-agent.sh scripts/stacks/apps-sync.sh
+          shellcheck --severity=warning --shell=bash \
+            deploy.sh entrypoint.sh install-agent.sh scripts/stacks/apps-sync.sh
       - name: Testes
         run: uv run pytest

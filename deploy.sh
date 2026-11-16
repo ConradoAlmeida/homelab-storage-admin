@@ -52,8 +52,8 @@ if [[ ! -f "$HOST_ENV" ]]; then
   echo "ERRO: $HOST_ENV nao existe. Rode antes: sudo ./install-agent.sh" >&2
   exit 1
 fi
-# shellcheck disable=SC1090
 set -a
+# shellcheck disable=SC1090
 . "$HOST_ENV"
 set +a
 

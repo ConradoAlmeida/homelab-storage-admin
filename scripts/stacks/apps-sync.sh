@@ -654,7 +654,7 @@ conflito_no_caddyfile() {
 remove_bloco() {
   local arquivo=$1 endereco=$2 escapado
   escapado=$(printf '%s' "$endereco" | sed 's/\./[.]/g')
-  awk -v alvo="^$escapado[ \t]*[{][ \t]*$" '
+  awk -v alvo="^${escapado}[ \t]*[{][ \t]*$" '
     pula == 1 {
       if ($0 ~ /^[ \t]*[{]/) { erro = 1 }
       if ($0 ~ /^[}][ \t]*$/) { pula = 0; next }
@@ -862,7 +862,7 @@ aplica_dns() {
 }
 
 confirma_dns() {
-  local tentativa alvo valor k
+  local alvo valor k
   local -a alvos=()
   if [[ "$DNS_MODE" == "wildcard" ]]; then
     alvos=("sync-1.$DOMAIN")
@@ -871,7 +871,7 @@ confirma_dns() {
       alvos+=("${FQDN[$k]}")
     done
   fi
-  for tentativa in $(seq 1 20); do
+  for _ in $(seq 1 20); do
     local faltou=""
     for alvo in "${alvos[@]}"; do
       valor=$(dig +short +time=2 +tries=1 "$alvo" @"$DNS_QUERY_HOST" 2>/dev/null | head -1 || true)
@@ -1055,7 +1055,7 @@ relata_dns_exatos() {
 # --- Plano ----------------------------------------------------------------
 
 mostra_plano() {
-  local k removidas=0 geradas=0 manuais=0
+  local k removidas=0 aplicadas=0 manuais=0
   secao "plano (dry-run; use --apply para escrever)"
   item "env: $APPS_ENV"
   for k in "${KEYS[@]}"; do
@@ -1063,13 +1063,13 @@ mostra_plano() {
       manuais=$((manuais + 1))
       item "manual: $(endereco_site "$k") (bloco escrito a mao no Caddyfile; upstream ${UPSTREAM[$k]})"
     else
-      geradas=$((geradas + 1))
+      aplicadas=$((aplicadas + 1))
       item "rota: $(endereco_site "$k") -> ${UPSTREAM[$k]}"
     fi
     [[ "${DIR[$k]}" == "-" || -d "${DIR[$k]}" ]] ||
       item "pasta ausente: ${DIR[$k]} (a rota ainda pode ser gerada)"
   done
-  item "apps: ${#KEYS[@]} declaradas, $geradas geradas, $manuais manuais"
+  item "apps: ${#KEYS[@]} declaradas, $aplicadas geradas, $manuais manuais"
   [[ $PROXY_ATIVO -eq 1 ]] ||
     item "sem Caddy neste host: as rotas acima ficam so declaradas no env"
   [[ $DNS_ATIVO -eq 1 ]] ||

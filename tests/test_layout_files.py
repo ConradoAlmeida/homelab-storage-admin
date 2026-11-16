@@ -262,3 +262,12 @@ def test_exemplos_do_host_nao_mentem_sobre_o_render():
         gerado = dict(render_host_env(carregar(slug)))
         faltam = {k: v for k, v in gerado.items() if valores.get(k) != v}
         assert not faltam, f"{exemplo} difere do render {slug}: {faltam}"
+
+
+def test_ci_roda_bash_n_e_shellcheck_nos_scripts_do_host():
+    text = read(".github/workflows/ci.yml")
+    assert "bash -n deploy.sh entrypoint.sh install-agent.sh" in text
+    assert "shellcheck --severity=warning --shell=bash" in text
+    # warning: info (ex.: SC2086 de quoting) vira ruido e ninguem olha mais.
+    assert "--severity=info" not in text
+
