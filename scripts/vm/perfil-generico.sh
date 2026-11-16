@@ -164,11 +164,11 @@ else
 fi
 
 echo "==> apps-sync sem Caddy nem DNS"
-(cd "$REPO" && bash scripts/stacks/apps-sync.sh --apply)
-echo "    estado e atalhos gerados; caddy/dns pulados"
-
+# DATA_DIR e do host.env renderizado; ele precisa existir para a INI de atalhos.
 mkdir -p "$REPO/data"
 chown "$DONO:$DONO" "$REPO/data"
+(cd "$REPO" && bash scripts/stacks/apps-sync.sh --apply)
+echo "    estado e atalhos gerados; caddy/dns pulados"
 
 echo
 echo "==> perfil generico pronto em $REPO"
