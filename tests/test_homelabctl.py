@@ -152,3 +152,21 @@ def test_bootstrap_sim_nao_escreve_nada(tmp_path):
     assert "(sim) geraria" in resultado.stdout
     assert "proximos passos" in resultado.stdout
     assert not config.exists() and not env.exists()
+
+
+def test_check_so_compara_o_host_que_o_etc_declara(tmp_path):
+    # O repo tem hosts de varias maquinas; o check no Pi nao pode acusar o
+    # host.env do moya (e vice-versa).
+    (tmp_path / "host.env").write_text('HOST_PROFILE="pi"\nSITE_NAME="Outro"\n')
+    resultado = rodar("check", "--config-dir", str(tmp_path))
+    assert resultado.returncode == 0, resultado.stderr
+    avisos = [l for l in resultado.stdout.splitlines() if l.startswith("aviso ")]
+    assert len(avisos) == 1
+    assert avisos[0].startswith("aviso pi:")
+    assert "host.env difere" in avisos[0]
+
+
+def test_check_sem_env_instalado_nao_avisa_nada(tmp_path):
+    resultado = rodar("check", "--config-dir", str(tmp_path))
+    assert resultado.returncode == 0, resultado.stderr
+    assert "aviso " not in resultado.stdout

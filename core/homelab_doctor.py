@@ -169,6 +169,18 @@ def analisar(
     return achados
 
 
+def perfil_instalado(config_dir: Path) -> str:
+    """Slug que o `/etc` deste host diz que ele e (vazio se nao houver env).
+
+    O `check` roda no repo, que tem hosts de varias maquinas: comparar todos
+    com o `/etc` de um host so daria aviso falso para os outros.
+    """
+    host_env = Path(config_dir) / "host.env"
+    if not host_env.is_file():
+        return ""
+    return _pares(host_env.read_text(encoding="utf-8")).get("HOST_PROFILE", "")
+
+
 def drift(cfg: HostConfig, *, config_dir: Path | None = None) -> list[Achado]:
     """So o que ja esta instalado e difere do TOML (ausente nao conta).
 

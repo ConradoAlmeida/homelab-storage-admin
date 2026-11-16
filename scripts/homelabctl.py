@@ -37,7 +37,13 @@ from core.homelab_wizard import (  # noqa: E402
     validar,
 )
 from core.homelab_bootstrap import preparar  # noqa: E402
-from core.homelab_doctor import Achado, analisar, drift, resumo  # noqa: E402
+from core.homelab_doctor import (  # noqa: E402
+    Achado,
+    analisar,
+    drift,
+    perfil_instalado,
+    resumo,
+)
 from core.homelab_config import (  # noqa: E402
     ConfigError,
     HostConfig,
@@ -63,6 +69,8 @@ def cmd_check(args) -> int:
         print("ERRO: nenhum hosts/<slug>/host.toml", file=sys.stderr)
         return 1
     erros = 0
+    # Com --config-dir so o host que o /etc declara e comparado.
+    perfil = perfil_instalado(args.config_dir) if args.config_dir else ""
     for slug in nomes:
         try:
             cfg = carregar(slug)
@@ -74,6 +82,8 @@ def cmd_check(args) -> int:
         print(f"ok {slug:12} {len(cfg.features_ligadas)} features: {recursos}")
         # So avisa: o check roda no CI e num host sem render, onde nao ha nada
         # instalado para comparar.
+        if args.config_dir and slug != perfil:
+            continue
         for achado in drift(cfg, config_dir=args.config_dir):
             print(f"aviso {slug}: {achado.mensagem}")
     return 1 if erros else 0
