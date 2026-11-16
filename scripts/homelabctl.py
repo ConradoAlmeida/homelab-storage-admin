@@ -8,6 +8,7 @@ Roda com python3 puro (sem Django, sem uv):
     python3 scripts/homelabctl.py render pi            # imprime o host.env
     python3 scripts/homelabctl.py render pi --sync     # imprime o sync.env
     python3 scripts/homelabctl.py render pi --write    # grava em [caminhos] config
+    python3 scripts/homelabctl.py requisitos pi        # binarios que o host precisa
     python3 scripts/homelabctl.py detect               # so le: propoe um TOML
     python3 scripts/homelabctl.py init novo-host       # TUI para confirmar
 """
@@ -26,6 +27,7 @@ from core.homelab_config import (  # noqa: E402
     ConfigError,
     HostConfig,
     carregar,
+    requisitos,
     slugs,
     texto_host_env,
     texto_sync_env,
@@ -73,6 +75,13 @@ def _grava(caminho: Path, texto: str) -> None:
     print(f"escrito: {caminho}")
 
 
+def cmd_requisitos(args) -> int:
+    """Lista `tipo|binario|pacotes` para o install-agent checar."""
+    for tipo, nome, pacotes in requisitos(carregar(args.host)):
+        print(f"{tipo}|{nome}|{pacotes}")
+    return 0
+
+
 def cmd_render(args) -> int:
     cfg = carregar(args.host)
     if args.sync:
@@ -104,6 +113,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser("check", help="valida todos os hosts (sai 1 se algum falhar)")
     check.set_defaults(func=cmd_check)
+
+    req = sub.add_parser(
+        "requisitos", help="lista os binarios que o host precisa (para o install-agent)"
+    )
+    req.add_argument("host")
+    req.set_defaults(func=cmd_requisitos)
 
     render = sub.add_parser("render", help="gera o host.env (ou o sync.env com --sync)")
     render.add_argument("host")

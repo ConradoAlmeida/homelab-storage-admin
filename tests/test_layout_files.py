@@ -56,18 +56,16 @@ def test_metrics_timer_is_installed_and_daily():
     assert "homelab-storage-metrics.timer" in install
 
 
-def test_install_agent_makes_btrfs_and_restic_optional():
+def test_install_agent_checks_deps_from_features():
+    # A dependencia segue a feature ligada no host.toml; o hardcoded de Samba e
+    # so o fallback de host sem TOML.
     text = read("install-agent.sh")
-    required_block = text.split("Checando dependencias obrigatorias", 1)[1].split(
-        "Dependencias opcionais", 1
-    )[0]
-    assert "btrfs" not in required_block
-    assert "restic" not in required_block
-    optional_block = text.split("Dependencias opcionais", 1)[1]
-    assert "btrfs" in optional_block
-    assert "restic" in optional_block
+    assert 'homelabctl.py" requisitos' in text
+    assert "feature ligada em hosts/$HOST_ENV_PROFILE/host.toml" in text
+    assert "obrig" in text and "opc" in text
     assert "host.env" in text
-    assert "! -f \"$HOST_ENV\"" in text
+    assert '[[ -f "$CONFIG_DIR/$arquivo" ]]' in text
+    assert "python3 \"$HERE/scripts/homelabctl.py\" render" in text
 
 
 def test_unit_uses_host_env_and_preserves_socket_name():
@@ -164,6 +162,8 @@ def test_ci_guarda_css_compilado_e_migracoes():
 def test_install_agent_selects_profile():
     text = read("install-agent.sh")
     assert "HOST_ENV_PROFILE" in text
+    # Qualquer slug de hosts/ vale; os exemplos sao so o fallback antigo.
+    assert 'hosts/$HOST_ENV_PROFILE/host.toml' in text
     assert "host.env.moya.example" in text
     assert "host.env.example" in text
 

@@ -14,12 +14,10 @@
 #   scripts/stacks/apps-sync.sh --doctor             # so le: o que diverge?
 #   scripts/stacks/apps-sync.sh --descobrir          # so le: sugerir apps
 #
-# Perfis:
-#   pi (default)  *.conradhub.com com TLS (DNS-01), Caddy em arquivo separado
-#                 (apps.caddy importado pelo Caddyfile) e wildcard no Pi-hole.
-#   moya          *.local em HTTP:80, Caddy em arquivo separado (apps.caddy,
-#                 importado pelo Caddyfile) e DNS por nome: `.local` e mDNS,
-#                 entao nao ha wildcard.
+# Perfil:
+#   O host vem do HOST_PROFILE (/etc/homelab-storage-admin/host.env) e as
+#   diferencas de dominio, TLS, DNS e caminhos vem do sync.env. Os dois sao
+#   gerados de hosts/<slug>/host.toml por `homelabctl render`.
 #
 # `--prune-containers` roda `docker compose down` (sem -v) so para quem saiu do
 # env. `--prune-data` move a pasta para a quarentena, nunca apaga. Sem estado
@@ -39,13 +37,13 @@ DNS_EXATOS=0
 
 uso() {
   cat <<'TXT'
-Uso: scripts/stacks/apps-sync.sh [--perfil pi|moya] [--apply]
+Uso: scripts/stacks/apps-sync.sh [--perfil <slug>] [--apply]
                                  [--prune-containers] [--prune-data] [--yes]
-       scripts/stacks/apps-sync.sh [--perfil pi|moya] --doctor
-       scripts/stacks/apps-sync.sh [--perfil pi|moya] --descobrir
+       scripts/stacks/apps-sync.sh [--perfil <slug>] --doctor
+       scripts/stacks/apps-sync.sh [--perfil <slug>] --descobrir
 
 Sem --apply e dry-run: mostra o plano e nao escreve nada.
-  --perfil            pi (default) ou moya: muda caminhos, dominio e DNS
+  --perfil            slug do host; sem ele vale HOST_PROFILE do host.env
   --apply             gera as rotas, recarrega o Caddy e garante o DNS
   --prune-containers  `docker compose down` (sem -v) nas apps que sairam do env
   --prune-data        move a pasta das apps removidas para a quarentena
@@ -108,35 +106,59 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- perfil do host -------------------------------------------------------
-# O perfil muda so o que difere entre os hosts; variavel ja no ambiente vence.
-case "${PERFIL:-pi}" in
-  pi)
-    PERFIL=pi
-    SCHEME=${SCHEME:-https}
-    DATA_DIR=${DATA_DIR:-/mnt/nas/apps/homelab-storage-admin/data}
-    ;;
-  moya)
-    PERFIL=moya
-    SCHEME=${SCHEME:-http}
-    DATA_DIR=${DATA_DIR:-/opt/stacks/homelab-storage-admin/data}
-    CADDY_DIR=${CADDY_DIR:-/opt/stacks/caddy}
-    CADDY_CONTAINER=${CADDY_CONTAINER:-moya-caddy}
-    PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
-    DOMAIN=${DOMAIN:-local}
-    DNS_IP=${DNS_IP:-192.168.0.10}
-    DNS_MODE=${DNS_MODE:-nome}
-    CADDY_PORTA=${CADDY_PORTA-:80}
-    CADDY_TLS=${CADDY_TLS-}
-    CADDY_PROXY=${CADDY_PROXY:-reverse_proxy}
-    DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-/opt/stacks /opt /home/conrado /data/compose}
-    PIHOLE_DIR=${PIHOLE_DIR:-/home/conrado/pihole}
-    QUARANTINE=${QUARANTINE:-/home/conrado/_removidos}
-    DNS_CONF=${DNS_CONF:-/home/conrado/pihole/etc-dnsmasq.d/10-apps-local.conf}
-    SCAN_ROOTS=${SCAN_ROOTS:-/opt /home/conrado}
-    PORTAL_INI=${PORTAL_INI-/var/lib/homelab-storage-admin/apps-portal.ini}
-    ;;
-  *) erro "--perfil invalido: $PERFIL (use pi ou moya)" ;;
-esac
+# O script nao conhece mais host nenhum: o host.env diz quem e o host
+# (HOST_PROFILE) e o sync.env -- os dois gerados de hosts/<slug>/host.toml --
+# traz o que difere entre eles. Variavel ja no ambiente vence, para testes e
+# para um ajuste pontual no terminal.
+HOST_ENV=${HOST_ENV:-/etc/homelab-storage-admin/host.env}
+if [[ -z "${PERFIL:-}" && -r "$HOST_ENV" ]]; then
+  PERFIL=$(sed -n 's/^HOST_PROFILE=//p' "$HOST_ENV" | tail -n1 | tr -d "\"'")
+fi
+PERFIL=${PERFIL:-pi}
+[[ "$PERFIL" =~ ^[a-z0-9][a-z0-9-]*$ ]] || erro "--perfil invalido: $PERFIL"
+
+SYNC_ENV=${SYNC_ENV:-/etc/homelab-storage-admin/sync.env}
+if [[ -r "$SYNC_ENV" ]]; then
+  # So preenche o que nao veio do ambiente; o valor ja vem com as aspas do
+  # render (vazio e `''`, com espaco e `'a b'`).
+  while IFS='=' read -r chave valor; do
+    [[ "$chave" =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
+    [[ -z "${!chave:-}" ]] || continue
+    eval "$chave=$valor"
+  done <"$SYNC_ENV"
+else
+  # Host ainda nao migrado para hosts/<slug>/host.toml: presets historicos,
+  # que so valem como fallback para pi e moya.
+  case "$PERFIL" in
+    pi)
+      SCHEME=${SCHEME:-https}
+      DATA_DIR=${DATA_DIR:-/mnt/nas/apps/homelab-storage-admin/data}
+      ;;
+    moya)
+      SCHEME=${SCHEME:-http}
+      DATA_DIR=${DATA_DIR:-/opt/stacks/homelab-storage-admin/data}
+      CADDY_DIR=${CADDY_DIR:-/opt/stacks/caddy}
+      CADDY_CONTAINER=${CADDY_CONTAINER:-moya-caddy}
+      PIHOLE_CONTAINER=${PIHOLE_CONTAINER:-pihole}
+      DOMAIN=${DOMAIN:-local}
+      DNS_IP=${DNS_IP:-192.168.0.10}
+      DNS_MODE=${DNS_MODE:-nome}
+      CADDY_PORTA=${CADDY_PORTA-:80}
+      CADDY_TLS=${CADDY_TLS-}
+      CADDY_PROXY=${CADDY_PROXY:-reverse_proxy}
+      DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-/opt/stacks /opt /home/conrado /data/compose}
+      PIHOLE_DIR=${PIHOLE_DIR:-/home/conrado/pihole}
+      QUARANTINE=${QUARANTINE:-/home/conrado/_removidos}
+      DNS_CONF=${DNS_CONF:-/home/conrado/pihole/etc-dnsmasq.d/10-apps-local.conf}
+      SCAN_ROOTS=${SCAN_ROOTS:-/opt /home/conrado}
+      PORTAL_INI=${PORTAL_INI-/var/lib/homelab-storage-admin/apps-portal.ini}
+      UPSTREAM_HOST=${UPSTREAM_HOST:-localhost}
+      ;;
+    *)
+      erro "host '$PERFIL' sem $SYNC_ENV (rode: python3 scripts/homelabctl.py render $PERFIL --write --ambos)"
+      ;;
+  esac
+fi
 
 # --- padroes comuns -------------------------------------------------------
 # O env vive no repo, ao lado deste script: a fonte da verdade e versionada e
@@ -159,12 +181,9 @@ CADDY_PROXY=${CADDY_PROXY:-import proxy}
 DIRS_PERMITIDOS=${DIRS_PERMITIDOS:-$STACKS_ROOT/stacks $STACKS_ROOT}
 SCAN_ROOTS=${SCAN_ROOTS:-$STACKS_ROOT}
 
-# Upstream sugerido para uma app descoberta: o Caddy do Pi fala com a interface
-# da LAN; o do moya com o localhost (os compose publicam em 127.0.0.1).
-case "$PERFIL" in
-  pi) UPSTREAM_HOST=${UPSTREAM_HOST:-$DNS_IP} ;;
-  moya) UPSTREAM_HOST=${UPSTREAM_HOST:-localhost} ;;
-esac
+# Upstream sugerido para uma app descoberta: quem tem DNS proprio na LAN usa o
+# proprio IP; quem publica em 127.0.0.1 usa localhost (o sync.env decide).
+UPSTREAM_HOST=${UPSTREAM_HOST:-$DNS_IP}
 
 CADDY_DIR=${CADDY_DIR:-$STACKS_ROOT/stacks/caddy}
 CADDYFILE=${CADDYFILE:-$CADDY_DIR/Caddyfile}

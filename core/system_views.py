@@ -164,6 +164,7 @@ class SystemConfigView(AgentView):
             services_ini_host=settings.SERVICES_INI_HOST,
             credenciais_env=settings.CREDENCIAIS_ENV,
             apps_env=settings.APPS_ENV_PATH,
+            perfil=settings.HOST_PROFILE,
         )
         ctx["host_error"] = None
         return render(request, self.template_name, ctx)
@@ -192,7 +193,7 @@ class SystemRotasView(AgentView):
             "estado_lido": estado_file.is_file(),
             "estado_caminho": str(estado_file),
             "esquema": settings.APPS_SCHEME,
-            **comandos_do_env(settings.APPS_ENV_PATH),
+            **comandos_do_env(settings.APPS_ENV_PATH, settings.HOST_PROFILE),
         }
         return render(request, self.template_name, ctx)
 

@@ -62,6 +62,9 @@ CREDENCIAIS_ENV = os.environ.get("CREDENCIAIS_ENV", "").strip()
 # Configuracao; APPS_ENV_FILE e o mesmo arquivo dentro do container (./deploy
 # montado read-only), lido pela pagina Rotas e atalhos.
 APPS_ENV_PATH = os.environ.get("APPS_ENV_PATH", "").strip()
+# Perfil do host segundo hosts/<slug>/host.toml (renderizado no host.env). Sem
+# ele, o perfil so pode vir do caminho do apps.env — o que quebra com /etc.
+HOST_PROFILE = os.environ.get("HOST_PROFILE", "").strip()
 APPS_ENV_FILE = Path(
     os.environ.get("APPS_ENV_FILE", "")
     or (BASE_DIR / "deploy" / Path(APPS_ENV_PATH).parent.name / "apps.env")

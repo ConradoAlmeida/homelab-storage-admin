@@ -10,6 +10,7 @@ from core.homelab_config import (
     carregar_arquivo,
     render_host_env,
     render_sync_env,
+    requisitos,
     slugs,
     texto_host_env,
     texto_sync_env,
@@ -157,3 +158,24 @@ def test_sem_host_env_escrito_nao_ha_segredo(tmp_path):
     texto = texto_host_env(carregar("moya"))
     for proibido in ("SECRET", "PASSWORD", "API_TOKEN"):
         assert proibido not in texto
+
+
+def test_requisitos_seguem_as_features_ligadas():
+    dados = {nome: tipo for tipo, nome, _pacotes in requisitos(carregar("pi"))}
+    assert dados.get("pdbedit") == "obrig"
+    # Opcional: sem btrfs o snapshot cai no rsync, nao falha.
+    assert dados.get("btrfs") == "opc"
+    assert dados.get("smartctl") == "opc"
+
+
+def test_requisitos_sem_feature_nao_pede_o_binario(tmp_path):
+    arquivo = tmp_path / "host.toml"
+    texto = BASE.replace("samba = true", "samba = false").replace(
+        "restic = true", "restic = false"
+    )
+    arquivo.write_text(texto, encoding="utf-8")
+    nomes = {nome for _tipo, nome, _pacote in requisitos(carregar_arquivo(arquivo))}
+    assert "pdbedit" not in nomes
+    assert "restic" not in nomes
+    # As demais continuam.
+    assert "ufw" in nomes

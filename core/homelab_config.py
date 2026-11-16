@@ -21,6 +21,7 @@ SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 # Nome -> descricao. O wizard usa a descricao; `validar` recusa nome fora daqui.
 FEATURES = {
     "samba": "Shares Samba e usuários/grupos do host",
+    "discos": "Discos: montar, formatar, SMART e RAID",
     "snapshots": "Snapshots de share e navegador de versões",
     "restic": "Jobs de backup restic e cópia fria",
     "copia_fria": "Cópia para disco USB com ejeção no fim",
@@ -47,6 +48,30 @@ PADROES = {
 }
 
 SECOES = ("host", "app", "caminhos", "armazenamento", "rotas", "features")
+
+# Binarios que cada feature usa no host. O install-agent.sh checa os
+# `obrigatorios` e so avisa sobre os `opcionais` (o app esconde a acao).
+# `pacotes` e a dica de apt quando falta.
+REQUISITOS = {
+    "samba": {
+        "obrigatorios": ("pdbedit", "smbpasswd", "smbcontrol", "testparm"),
+        "pacotes": "samba samba-common-bin",
+    },
+    "discos": {
+        "obrigatorios": ("parted", "mkfs.ext4", "lsblk", "blkid"),
+        "opcionais": ("smartctl", "hdparm", "mdadm"),
+        "pacotes": "parted e2fsprogs util-linux",
+        "pacotes_opcionais": "smartmontools hdparm mdadm",
+    },
+    "snapshots": {
+        "obrigatorios": ("rsync",),
+        "opcionais": ("btrfs",),
+        "pacotes": "rsync",
+        "pacotes_opcionais": "btrfs-progs",
+    },
+    "restic": {"obrigatorios": ("restic",), "pacotes": "restic"},
+    "ufw": {"obrigatorios": ("ufw",), "pacotes": "ufw"},
+}
 
 
 class ConfigError(ValueError):
@@ -219,6 +244,25 @@ def validar(cfg: HostConfig) -> None:
             raise ConfigError(
                 f"{cfg.origem}: disco {i} com papel invalido: {', '.join(sorted(invalidos))}"
             )
+
+
+# --- requisitos -----------------------------------------------------------
+
+def requisitos(cfg: HostConfig) -> list[tuple[str, str, str]]:
+    """``(tipo, binario, pacotes)`` das features ligadas, sem repetir binario.
+
+    ``tipo`` e ``obrig`` (falta derruba a instalacao) ou ``opc`` (so aviso).
+    """
+    vistos: dict[str, tuple[str, str, str]] = {}
+    for feature in cfg.features_ligadas:
+        regra = REQUISITOS.get(feature)
+        if not regra:
+            continue
+        for nome in regra.get("obrigatorios", ()):
+            vistos.setdefault(nome, ("obrig", nome, regra.get("pacotes", "")))
+        for nome in regra.get("opcionais", ()):
+            vistos.setdefault(nome, ("opc", nome, regra.get("pacotes_opcionais", "")))
+    return list(vistos.values())
 
 
 # --- render ---------------------------------------------------------------

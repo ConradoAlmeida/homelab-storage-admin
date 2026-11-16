@@ -68,6 +68,7 @@ retention_days = 30
 
 [features]
 samba = true
+discos = true
 snapshots = true
 restic = true
 copia_fria = true

@@ -162,26 +162,26 @@ os defaults do `settings.py`.
 
 ## Passos
 
-- [ ] 0. Congelar comportamento: capturar o `host.env` efetivo dos dois hosts
+- [x] 0. Congelar comportamento: capturar o `host.env` efetivo dos dois hosts
       (sem segredo) como fixture e fixar a saída do `apps-sync` por perfil —
       a rede de segurança do render.
-- [ ] 0b. Alinhar `APPS_ENV_PATH` num único caminho (exemplos x doc) e fazer
+- [x] 0b. Alinhar `APPS_ENV_PATH` num único caminho (exemplos x doc) e fazer
       `perfil_do_env`/`APPS_ENV_FILE` lerem o perfil do TOML, não do nome da
       pasta.
-- [ ] 1. Schema `host.toml` + loader (`core/homelab_config.py`) e
+- [x] 1. Schema `host.toml` + loader (`core/homelab_config.py`) e
       `hosts/pi`/`hosts/moya` reproduzindo os valores de hoje.
-- [ ] 2. `homelabctl render`: `host.toml` → `host.env` (+ `sync.env` por
+- [x] 2. `homelabctl render`: `host.toml` → `host.env` (+ `sync.env` por
       perfil); teste de equivalência com os arquivos atuais.
 - [ ] 3. `homelabctl detect`: inspeção read-only + fixtures (`lsblk`,
       `findmnt`, `blkid`, `systemctl`, `ip -j`) com testes golden.
 - [ ] 4. `homelabctl init`: TUI (identidade → discos/papéis → features →
       revisão/diff → escreve), `--dry-run` por padrão.
-- [ ] 5. Tirar os literais `pi|moya` do `apps-sync.sh` e do
+- [x] 5. Tirar os literais `pi|moya` do `apps-sync.sh` e do
       `install-agent.sh`; perfil inválido = diretório inexistente.
 - [ ] 6. Gating por `requires` + testes Pi-safe (host sem Credenciais/Gitea/
       Pi-hole não gera alerta falso) e modo `dns = "nenhum"` / `caddy`
       opcional no reconciliador (`apps-sync.sh:711-883`).
-- [ ] 6b. `install-agent.sh` checa dependência por feature (Samba/parted só
+- [x] 6b. `install-agent.sh` checa dependência por feature (Samba/parted só
       quando `samba`/`discos` estão ligados).
 - [ ] 7. Docs: `INSTALACAO` como "Ubuntu Server genérico", `docs/PRESETS.md`
       com pi/moya; `host.env.example` vira referência gerada.
@@ -207,5 +207,12 @@ os defaults do `settings.py`.
 
 ## Estado
 
-Plano aprovado em 2026-11-15. Fase 0 (congelar comportamento) ainda não
-iniciada.
+Plano aprovado em 2026-11-15.
+
+- 0/0b/1/2 (f8a06be + este commit): fixtures do `host.env` efetivo, TOML dos
+  dois hosts, `homelabctl list|check|render|requisitos`, `HOST_PROFILE` no
+  settings/compose e `sync.env` no `apps-sync.sh`.
+- 5/6b: `apps-sync.sh` sem `case $PERFIL` (sync.env + `HOST_PROFILE`, ambiente
+  vence) e `install-agent.sh` aceitando qualquer slug e checando dependência
+  por feature (`requisitos`).
+- Resta 3 (detect), 4 (TUI), 6 (requires/dns_modo), 7 (docs), 8 (bancada).

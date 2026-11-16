@@ -96,3 +96,14 @@ def test_render_host_inexistente_erra():
     resultado = rodar("render", "naoexiste")
     assert resultado.returncode == 2
     assert "naoexiste" in resultado.stderr
+
+
+def test_requisitos_lista_binarios_do_host():
+    resultado = rodar("requisitos", "moya")
+    assert resultado.returncode == 0, resultado.stderr
+    linhas = resultado.stdout.splitlines()
+    assert "obrig|pdbedit|samba samba-common-bin" in linhas
+    assert any(linha.startswith("opc|btrfs|") for linha in linhas)
+    # Um binario por linha, sem repetir entre features.
+    nomes = [linha.split("|")[1] for linha in linhas]
+    assert len(nomes) == len(set(nomes))

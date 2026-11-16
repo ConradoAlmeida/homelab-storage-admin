@@ -46,21 +46,30 @@ def comando_ssh(
     return f"ssh {owner}"
 
 
-def perfil_do_env(apps_env: str) -> str:
-    """``.../deploy/moya/apps.env`` -> ``moya``; vazio quando nao da para saber."""
-    pai = Path((apps_env or "").strip()).parent.name
-    return pai if pai in ("pi", "moya") else ""
+def perfil_do_env(apps_env: str, perfil: str = "") -> str:
+    """Perfil do host: ``HOST_PROFILE`` ou, na falta dele, o diretorio.
+
+    ``.../deploy/moya/apps.env`` -> ``moya``. Nao ha lista fixa: qualquer slug
+    serve, desde que seja um nome simples (o render grava HOST_PROFILE, entao
+    o caminho e so o fallback para host ainda nao migrado).
+    """
+    explicito = (perfil or "").strip()
+    if explicito:
+        return explicito
+    caminho = Path((apps_env or "").strip())
+    if caminho.name == "apps.env" and caminho.parent.parent.name == "deploy":
+        return caminho.parent.name
+    return ""
 
 
-def comandos_do_env(apps_env: str) -> dict[str, str]:
+def comandos_do_env(apps_env: str, perfil: str = "") -> dict[str, str]:
     """Comandos reais do host, com `--perfil` so quando o script exige.
 
-    O `apps-sync` assume o perfil `pi`; no moya o flag e obrigatorio, e a tela
-    mostra exatamente o que deve ser colado no terminal.
+    O `apps-sync` assume o perfil `pi`; qualquer outro precisa do flag, e a
+    tela mostra exatamente o que deve ser colado no terminal.
     """
-    # O script assume `pi`; so o moya precisa do flag.
-    perfil = perfil_do_env(apps_env)
-    flag = " --perfil moya" if perfil == "moya" else ""
+    nome = perfil_do_env(apps_env, perfil)
+    flag = f" --perfil {nome}" if nome and nome != "pi" else ""
     base = "sudo bash scripts/stacks/apps-sync.sh"
     return {
         "comando_apply": f"{base}{flag} --apply",
@@ -75,6 +84,7 @@ def arquivos_config(
     services_ini_host: str,
     credenciais_env: str,
     apps_env: str = "",
+    perfil: str = "",
 ) -> dict:
     """``apps_env`` (editavel), ``arquivos`` (raros) e ``gerados`` (artefatos)."""
     apps = (apps_env or "").strip()
@@ -125,7 +135,8 @@ def arquivos_config(
         "apps_env": principal,
         "arquivos": raros,
         "gerados": gerados,
-        **comandos_do_env(apps),
+        "perfil": perfil_do_env(apps, perfil),
+        **comandos_do_env(apps, perfil),
     }
 
 
@@ -139,6 +150,7 @@ def contexto_config_locais(
     services_ini_host: str,
     credenciais_env: str,
     apps_env: str = "",
+    perfil: str = "",
 ) -> dict:
     caminhos = arquivos_config(
         host_env_path=host_env_path,
@@ -146,6 +158,7 @@ def contexto_config_locais(
         services_ini_host=services_ini_host,
         credenciais_env=credenciais_env,
         apps_env=apps_env,
+        perfil=perfil,
     )
     return {
         "ssh_comando": comando_ssh(

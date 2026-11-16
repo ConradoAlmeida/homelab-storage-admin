@@ -23,6 +23,28 @@ class ComandosDoEnvTests(TestCase):
         self.assertEqual(perfil_do_env(""), "")
         self.assertEqual(perfil_do_env("/etc/homelab-storage-admin/apps.env"), "")
 
+    def test_perfil_explicito_vence_o_caminho(self):
+        # HOST_PROFILE e a fonte; o caminho so serve de fallback.
+        self.assertEqual(
+            perfil_do_env("/etc/homelab-storage-admin/apps.env", "nas2"), "nas2"
+        )
+        self.assertEqual(perfil_do_env("/etc/homelab-storage-admin/apps.env"), "")
+
+    def test_qualquer_slug_ganha_o_flag(self):
+        # Nada de lista fixa pi|moya: o que nao e o default precisa do flag.
+        self.assertEqual(
+            comandos_do_env("/etc/homelab-storage-admin/apps.env", "nas2")[
+                "comando_apply"
+            ],
+            "sudo bash scripts/stacks/apps-sync.sh --perfil nas2 --apply",
+        )
+        self.assertEqual(
+            comandos_do_env("/etc/homelab-storage-admin/apps.env", "pi")[
+                "comando_apply"
+            ],
+            "sudo bash scripts/stacks/apps-sync.sh --apply",
+        )
+
     def test_flag_perfil_so_onde_o_script_precisa(self):
         # apps-sync assume `pi`: no moya o flag e obrigatorio.
         self.assertEqual(
@@ -185,8 +207,22 @@ class SystemConfigViewTests(TestCase):
         self.assertContains(resp, "Gerados")
 
     @override_settings(
+        SSH_LOGIN="conrado@nas2.local",
+        CREDENCIAIS_ENV="",
+        HOST_PROFILE="nas2",
+        APPS_ENV_PATH="/etc/homelab-storage-admin/apps.env",
+    )
+    def test_pagina_de_host_novo_mostra_o_flag_certo(self):
+        # O caso que quebrava: APPS_ENV_PATH em /etc mostrava o comando do Pi.
+        resp = self.client.get("/sistema/config/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "apps-sync.sh --perfil nas2 --apply")
+        self.assertNotContains(resp, "apps-sync.sh --perfil pi")
+
+    @override_settings(
         SSH_LOGIN="conrado@10.72.60.181",
         CREDENCIAIS_ENV="",
+        HOST_PROFILE="moya",
         SERVICES_INI_HOST="/opt/stacks/homelab-storage-admin/data/services.ini",
         STACK_ENV_PATH="/opt/stacks/homelab-storage-admin/.env",
         APPS_ENV_PATH="/opt/stacks/homelab-storage-admin/deploy/moya/apps.env",

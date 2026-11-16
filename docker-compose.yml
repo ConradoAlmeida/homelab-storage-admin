@@ -33,6 +33,7 @@ services:
       - SERVICES_INI_HOST=${SERVICES_INI_HOST:-${DATA_DIR:-./data}/services.ini}
       - CREDENCIAIS_ENV=${CREDENCIAIS_ENV:-}
       - APPS_ENV_PATH=${APPS_ENV_PATH:-}
+      - HOST_PROFILE=${HOST_PROFILE:-}
     volumes:
       - "${DATA_DIR:-./data}:/app/data"
       - "${STORAGE_ROOT:-/mnt/nas}:${STORAGE_ROOT:-/mnt/nas}:ro"

@@ -9,39 +9,84 @@ fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-HOST_ENV=/etc/homelab-storage-admin/host.env
+CONFIG_DIR=/etc/homelab-storage-admin
+HOST_ENV="$CONFIG_DIR/host.env"
+mkdir -p "$CONFIG_DIR"
+
+# O perfil vem de HOST_ENV_PROFILE, do host.env ja instalado (HOST_PROFILE) ou,
+# por ultimo, do caminho antigo (pi). Qualquer slug de hosts/ serve.
+HOST_ENV_PROFILE="${HOST_ENV_PROFILE:-}"
+if [[ -z "$HOST_ENV_PROFILE" && -f "$HOST_ENV" ]]; then
+  HOST_ENV_PROFILE=$(sed -n 's/^HOST_PROFILE=//p' "$HOST_ENV" | tail -n1 | tr -d "\"'")
+fi
 HOST_ENV_PROFILE="${HOST_ENV_PROFILE:-pi}"
-case "$HOST_ENV_PROFILE" in
-  pi) HOST_ENV_EXAMPLE="$HERE/host.env.example" ;;
-  moya) HOST_ENV_EXAMPLE="$HERE/host.env.moya.example" ;;
-  *)
-    echo "ERRO: HOST_ENV_PROFILE invalido: $HOST_ENV_PROFILE (use pi ou moya)" >&2
-    exit 1
-    ;;
-esac
-mkdir -p /etc/homelab-storage-admin
-if [[ ! -f "$HOST_ENV" ]]; then
-  install -m 0644 "$HOST_ENV_EXAMPLE" "$HOST_ENV"
-  echo "==> Criado $HOST_ENV a partir do perfil '$HOST_ENV_PROFILE'."
-else
-  echo "==> Mantendo $HOST_ENV existente (perfil '$HOST_ENV_PROFILE' nao sobrescrito)."
+if [[ ! "$HOST_ENV_PROFILE" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  echo "ERRO: HOST_ENV_PROFILE invalido: $HOST_ENV_PROFILE (use o slug de hosts/)" >&2
+  exit 1
 fi
 
-# Samba e ferramentas de disco sao obrigatorios; o resto e detectado pelo app.
-echo "==> Checando dependencias obrigatorias"
-for cmd in pdbedit smbpasswd smbcontrol testparm parted mkfs.ext4; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin parted e2fsprogs" >&2
+TOML="$HERE/hosts/$HOST_ENV_PROFILE/host.toml"
+if [[ -f "$TOML" ]] && command -v python3 >/dev/null 2>&1; then
+  # Renderiza a partir do TOML versionado, sem sobrescrever o que ja existe:
+  # mudar a configuracao e `homelabctl render <slug> --write --ambos`.
+  for arquivo in host.env sync.env; do
+    if [[ -f "$CONFIG_DIR/$arquivo" ]]; then
+      echo "==> Mantendo $CONFIG_DIR/$arquivo existente."
+      continue
+    fi
+    flag=()
+    [[ "$arquivo" == "sync.env" ]] && flag=(--sync)
+    python3 "$HERE/scripts/homelabctl.py" render "$HOST_ENV_PROFILE" "${flag[@]}" \
+      --write --destino "$CONFIG_DIR"
+  done
+else
+  # Host ainda sem TOML (ou sem python3): exemplos historicos, so na primeira vez.
+  case "$HOST_ENV_PROFILE" in
+    pi) HOST_ENV_EXAMPLE="$HERE/host.env.example" ;;
+    moya) HOST_ENV_EXAMPLE="$HERE/host.env.moya.example" ;;
+    *) HOST_ENV_EXAMPLE="" ;;
+  esac
+  if [[ -z "$HOST_ENV_EXAMPLE" ]]; then
+    echo "ERRO: host '$HOST_ENV_PROFILE' sem hosts/$HOST_ENV_PROFILE/host.toml." >&2
+    echo "      Crie o TOML (veja docs/PRESETS.md) ou use HOST_ENV_PROFILE=pi|moya." >&2
     exit 1
   fi
-done
-
-echo "==> Dependencias opcionais"
-for cmd in btrfs restic smartctl hdparm mdadm; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
+  if [[ ! -f "$HOST_ENV" ]]; then
+    install -m 0644 "$HOST_ENV_EXAMPLE" "$HOST_ENV"
+    echo "==> Criado $HOST_ENV a partir de $HOST_ENV_EXAMPLE (host sem TOML)."
+  else
+    echo "==> Mantendo $HOST_ENV existente."
   fi
-done
+fi
+
+# Dependencia segue a feature ligada: host sem Samba nao precisa de smbd, e o
+# que falta vira aviso em vez de erro quando a feature e opcional.
+echo "==> Checando dependencias do perfil '$HOST_ENV_PROFILE'"
+if [[ -f "$TOML" ]] && command -v python3 >/dev/null 2>&1; then
+  while IFS='|' read -r tipo cmd pacotes; do
+    [[ -n "$cmd" ]] || continue
+    command -v "$cmd" >/dev/null 2>&1 && continue
+    if [[ "$tipo" == "obrig" ]]; then
+      echo "ERRO: '$cmd' nao encontrado (feature ligada em hosts/$HOST_ENV_PROFILE/host.toml)." >&2
+      echo "      Instale: sudo apt install $pacotes" >&2
+      exit 1
+    fi
+    echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
+  done < <(python3 "$HERE/scripts/homelabctl.py" requisitos "$HOST_ENV_PROFILE")
+else
+  echo "AVISO: sem hosts/$HOST_ENV_PROFILE/host.toml para derivar as dependencias." >&2
+  for cmd in pdbedit smbpasswd smbcontrol testparm parted mkfs.ext4; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "ERRO: '$cmd' nao encontrado. Instale: sudo apt install samba samba-common-bin parted e2fsprogs" >&2
+      exit 1
+    fi
+  done
+  for cmd in btrfs restic smartctl hdparm mdadm; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "AVISO: '$cmd' ausente; o recurso correspondente sera escondido no app." >&2
+    fi
+  done
+fi
 
 # shellcheck disable=SC1090
 if [[ -f "$HOST_ENV" ]]; then

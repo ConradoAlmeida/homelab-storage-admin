@@ -214,6 +214,9 @@ class Sandbox:
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "TEST_MODE": "1",
+            # Sem sync.env do host: o teste nao pode herdar o do /etc.
+            "SYNC_ENV": str(self.tmp / "sem-sync.env"),
+            "HOST_ENV": str(self.tmp / "sem-host.env"),
             "APPS_ENV": str(env_file or self.env_file),
             "APPS_STATE": str(self.state),
             "STACKS_ROOT": str(self.stacks),
@@ -426,6 +429,8 @@ def test_apply_sem_root_recusa(tmp_path):
         "CADDYFILE": str(sandbox.caddyfile),
         "CADDY_APPS": str(sandbox.apps_caddy),
         "DNS_CONF": str(sandbox.dns_conf),
+        "SYNC_ENV": str(sandbox.root / "sem-sync.env"),
+        "HOST_ENV": str(sandbox.root / "sem-host.env"),
     }
     resultado = subprocess.run(
         ["bash", str(SCRIPT), "--apply"], capture_output=True, text=True, env=env, check=False
@@ -557,6 +562,9 @@ class SandboxMoya:
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "TEST_MODE": "1",
+            # Sem sync.env do host: o teste nao pode herdar o do /etc.
+            "SYNC_ENV": str(self.tmp / "sem-sync.env"),
+            "HOST_ENV": str(self.tmp / "sem-host.env"),
             "APPS_ENV": str(env_file or self.env_file),
             "APPS_STATE": str(self.state),
             "STACKS_ROOT": str(self.root / "opt"),
@@ -577,6 +585,8 @@ class SandboxMoya:
             "STUB_PROJETOS": str(self.projetos),
             "STUB_DIR_PROJETOS": str(self.dir_projetos),
             "STUB_DNSMASQ_D": str(self.dnsmasq_flag),
+            "SYNC_ENV": str(self.tmp / "sem-sync.env"),
+            "HOST_ENV": str(self.tmp / "sem-host.env"),
             "STUB_DIG_RESULT": "192.168.0.10",
             **(env_extra or {}),
         }
@@ -1115,3 +1125,70 @@ def test_descobrir_nao_duplica_app_ja_exposta(tmp_path):
     assert f"pihole: ja exposta como moya-pihole; troque o `-` por {pasta}" in resultado.stdout
     # Nao sugere criar `pihole|pihole.local|...` por cima da app existente.
     assert "pihole|pihole.local" not in resultado.stdout
+
+
+def test_sync_env_do_host_novo_define_o_dominio(tmp_path):
+    # Host sem preset no script: o sync.env (render do host.toml) manda.
+    sandbox = Sandbox(tmp_path)
+    novo = sandbox.stacks / "stacks" / "portainer"
+    novo.mkdir()
+    sandbox.dir_projetos.write_text(f"{novo}|portainer\n", encoding="utf-8")
+    sandbox.projetos.write_text(
+        sandbox.projetos.read_text(encoding="utf-8") + "portainer\n", encoding="utf-8"
+    )
+    sync = tmp_path / "sync.env"
+    sync.write_text(
+        "# gerado pelo homelabctl\n"
+        "SCHEME='http'\nDOMAIN='lan'\nDNS_IP='10.0.0.5'\nDNS_MODE='nome'\n"
+        "UPSTREAM_HOST='localhost'\n",
+        encoding="utf-8",
+    )
+    env = tmp_path / "lan.env"
+    env.write_text(
+        f"homelab|homelab.lan|192.168.0.150:8060|{sandbox.dir_homelab}|\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run(
+        "--descobrir", env_file=env, env_extra={"SYNC_ENV": str(sync)}
+    )
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert f"portainer|portainer.lan|localhost:8080|{novo}|" in resultado.stdout
+
+
+def test_ambiente_vence_o_sync_env(tmp_path):
+    # Ajuste pontual no terminal (e o sandbox dos testes) nao pode ser sobrescrito.
+    sandbox = Sandbox(tmp_path)
+    novo = sandbox.stacks / "stacks" / "portainer"
+    novo.mkdir()
+    sandbox.dir_projetos.write_text(f"{novo}|portainer\n", encoding="utf-8")
+    sandbox.projetos.write_text(
+        sandbox.projetos.read_text(encoding="utf-8") + "portainer\n", encoding="utf-8"
+    )
+    sync = tmp_path / "sync.env"
+    sync.write_text("DOMAIN='lan'\n", encoding="utf-8")
+    env = tmp_path / "outro.env"
+    env.write_text(
+        f"homelab|homelab.outro.test|192.168.0.150:8060|{sandbox.dir_homelab}|\n",
+        encoding="utf-8",
+    )
+    resultado = sandbox.run(
+        "--descobrir",
+        env_file=env,
+        env_extra={"SYNC_ENV": str(sync), "DOMAIN": "outro.test"},
+    )
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+    assert "portainer.outro.test" in resultado.stdout
+
+
+def test_perfil_vem_do_host_env_sem_preset(tmp_path):
+    # HOST_PROFILE de um host ainda sem sync.env nao cai no preset do Pi:
+    # falha dizendo como gerar o arquivo.
+    sandbox = Sandbox(tmp_path)
+    host_env = tmp_path / "host.env"
+    host_env.write_text('HOST_PROFILE="nas2"\n', encoding="utf-8")
+    resultado = sandbox.run(
+        "--descobrir", env_extra={"HOST_ENV": str(host_env)}
+    )
+    assert resultado.returncode == 2
+    assert "nas2" in resultado.stderr
+    assert "homelabctl.py render nas2" in resultado.stderr
