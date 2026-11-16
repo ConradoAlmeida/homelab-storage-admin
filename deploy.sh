@@ -17,6 +17,19 @@ if [[ ! -f .env ]]; then
   echo "ERRO: .env ausente. Copie de .env.example e ajuste o SECRET_KEY e o ALLOWED_HOSTS antes do deploy." >&2
   exit 1
 fi
+# Segredo com modo largo ou chave de exemplo vaza/invalida a sessao: barra
+# antes do build, nao depois do app no ar.
+ENV_MODO="$(stat -c '%a' .env)"
+if [[ "$ENV_MODO" != "600" ]]; then
+  echo "ERRO: .env com modo $ENV_MODO (tem segredo). Ajuste: chmod 600 .env" >&2
+  exit 1
+fi
+if ! grep -qE '^DJANGO_SECRET_KEY=.+' .env ||
+  grep -qE '^DJANGO_SECRET_KEY=(troque-por-uma-chave-aleatoria-longa|changeme|secret)$' .env; then
+  echo "ERRO: DJANGO_SECRET_KEY ausente ou de exemplo no .env." >&2
+  echo "Gere uma: openssl rand -hex 32" >&2
+  exit 1
+fi
 
 if ! docker info >/dev/null 2>&1; then
   echo "ERRO: Docker indisponivel para este usuario (daemon parado ou fora do grupo docker)." >&2

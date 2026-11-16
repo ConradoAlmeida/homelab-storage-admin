@@ -116,6 +116,15 @@ def test_deploy_loads_host_env_and_selected_overlay():
     assert '"upnp": True' in text
 
 
+def test_deploy_recusa_env_fraco():
+    text = read("deploy.sh")
+    # Segredo em arquivo 644 e chave de exemplo param o deploy antes do build.
+    assert "stat -c '%a' .env" in text
+    assert '"$ENV_MODO" != "600"' in text
+    assert "troque-por-uma-chave-aleatoria-longa" in text
+    assert "openssl rand -hex 32" in text
+
+
 def test_deploy_confere_app_viva():
     text = read("deploy.sh")
     # Deploy verde = /login/ respondendo no endereco em que o host publica.
