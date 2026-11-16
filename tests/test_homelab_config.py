@@ -208,3 +208,64 @@ def test_host_sem_feature_grava_zero_explicito(tmp_path):
     # Nada de credenciais no host sem a feature.
     assert "CREDENCIAIS_DB" not in render
     assert "FIREWALL_SAFE_PORTS" not in render
+
+
+MINIMO = """\
+[host]
+schema = 1
+nome = "mini"
+ssh = "conrado@mini"
+lan_ip = "10.0.0.2"
+repo = "/opt/stacks/homelab-storage-admin"
+
+[app]
+site_name = "Mini Storage"
+bind_addr = "10.0.0.2"
+
+[caminhos]
+dados = "/srv/dados"
+backup = "/mnt/backup"
+
+[armazenamento]
+proprietario = "conrado"
+
+[rotas]
+apps = "deploy/mini/apps.env"
+
+[features]
+samba = false
+"""
+
+
+def test_defaults_nao_quebram_toml_minimo(tmp_path):
+    # Chave nova com default nao obriga reescrever o host.toml de quem ja tem.
+    arquivo = tmp_path / "host.toml"
+    arquivo.write_text(MINIMO, encoding="utf-8")
+    cfg = carregar_arquivo(arquivo)
+    assert cfg.valor("app", "bind_port") == 8060
+    assert cfg.valor("app", "compose_overlay") == ""
+    assert cfg.valor("caminhos", "dados_app") == (
+        "/srv/dados/apps/homelab-storage-admin/data"
+    )
+    assert cfg.valor("caminhos", "snapshots") == "/srv/dados/.snapshots"
+    assert cfg.valor("caminhos", "quarentena") == "/opt/stacks/_removidos"
+    assert cfg.valor("rotas", "dns_ip") == "10.0.0.2"
+    assert cfg.valor("rotas", "dns_modo") == "nenhum"
+    assert cfg.valor("rotas", "upstream") == "nenhum"
+
+    host_env = texto_host_env(cfg)
+    assert "COMPOSE_OVERLAY=\n" in host_env
+    assert "FIREWALL_MANAGE=0" in host_env
+    # Sem DNS gerenciado: nenhum caminho de Pi-hole no sync.env.
+    sync_env = texto_sync_env(cfg)
+    assert "DNS_MODE=nenhum" in sync_env
+    assert "CADDY_CONTAINER=''" in sync_env
+
+
+def test_schema_mais_novo_que_a_ferramenta_recusa(tmp_path):
+    arquivo = tmp_path / "host.toml"
+    arquivo.write_text(MINIMO.replace("schema = 1", "schema = 99"), encoding="utf-8")
+    with pytest.raises(ConfigError) as exc:
+        carregar_arquivo(arquivo)
+    assert "schema 99" in str(exc.value)
+    assert "atualize o repo" in str(exc.value)

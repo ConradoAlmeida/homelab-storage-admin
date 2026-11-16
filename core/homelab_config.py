@@ -49,6 +49,10 @@ PADROES = {
 
 SECOES = ("host", "app", "caminhos", "armazenamento", "rotas", "features")
 
+# Versao do schema. Chave nova com default em `_padroes` nao quebra TOML
+# antigo; subir a versao e so para mudanca que exige revisao do arquivo.
+SCHEMA_ATUAL = 1
+
 # Binarios que cada feature usa no host. O install-agent.sh checa os
 # `obrigatorios` e so avisa sobre os `opcionais` (o app esconde a acao).
 # `pacotes` e a dica de apt quando falta.
@@ -127,6 +131,48 @@ def carregar(slug: str) -> HostConfig:
     return carregar_arquivo(arquivo)
 
 
+def _padroes(dados: dict) -> None:
+    """Preenche o que tem valor obvio; o resto continua obrigatorio.
+
+    Existe para o TOML crescer sem quebrar hosts existentes: chave nova entra
+    aqui com o valor que o host ja teria, e o `homelabctl check` continua
+    verde. Caminho que depende de decisao (``backup``, ``proprietario``,
+    ``dns_conf`` com DNS ativo) fica de fora de proposito.
+    """
+    host = dados.setdefault("host", {})
+    app = dados.setdefault("app", {})
+    cam = dados.setdefault("caminhos", {})
+    arm = dados.setdefault("armazenamento", {})
+    rotas = dados.setdefault("rotas", {})
+
+    app.setdefault("bind_port", 8060)
+    app.setdefault("compose_overlay", "")
+    arm.setdefault("snapshot_backend", PADROES["SNAPSHOT_BACKEND"])
+    arm.setdefault("snapshot_denylist", "")
+    arm.setdefault("mounts", ["/"])
+    rotas.setdefault("esquema", "http")
+    rotas.setdefault("dominio", "local")
+    rotas.setdefault("dns_modo", "nenhum")
+    rotas.setdefault("upstream", "nenhum")
+    if not rotas.get("dns_ip"):
+        rotas["dns_ip"] = host.get("lan_ip", "")
+
+    cam.setdefault("stacks", "/opt")
+    cam.setdefault("config", "/etc/homelab-storage-admin")
+    cam.setdefault("estado", "/var/lib/homelab-storage-admin")
+    cam.setdefault("sockets", "/run/homelab-storage-admin")
+    dados_ = str(cam.get("dados") or "").rstrip("/")
+    if dados_:
+        cam.setdefault("snapshots", dados_ + "/.snapshots")
+        cam.setdefault("dados_app", dados_ + "/apps/homelab-storage-admin/data")
+        if not arm.get("prefixos_permitidos"):
+            arm["prefixos_permitidos"] = [dados_]
+    if not cam.get("quarentena"):
+        cam["quarentena"] = str(cam["stacks"]).rstrip("/") + "/stacks/_removidos"
+    if not rotas.get("pihole_dir"):
+        rotas["pihole_dir"] = str(cam["stacks"]).rstrip("/") + "/stacks/pihole"
+
+
 def carregar_arquivo(arquivo: Path) -> HostConfig:
     arquivo = Path(arquivo)
     try:
@@ -135,6 +181,7 @@ def carregar_arquivo(arquivo: Path) -> HostConfig:
         raise ConfigError(f"arquivo ausente: {arquivo}") from exc
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{arquivo}: TOML invalido: {exc}") from exc
+    _padroes(dados)
     slug = dados.get("host", {}).get("nome") or arquivo.parent.name
     cfg = HostConfig(slug=slug, origem=arquivo, dados=dados)
     validar(cfg)
@@ -164,30 +211,37 @@ def validar(cfg: HostConfig) -> None:
         raise ConfigError(
             f"{cfg.origem}: nome do host deve ser slug (a-z, 0-9, -): {cfg.slug!r}"
         )
-    for secao, chaves in (
+    schema = dados.get("host", {}).get("schema", 1)
+    if not isinstance(schema, int) or schema < 1:
+        raise ConfigError(f"{cfg.origem}: [host] schema invalido: {schema!r}")
+    if schema > SCHEMA_ATUAL:
+        raise ConfigError(
+            f"{cfg.origem}: schema {schema} e mais novo que este homelabctl "
+            f"({SCHEMA_ATUAL}); atualize o repo antes de usar o host"
+        )
+    obrigatorias = [
         ("host", ("ssh", "lan_ip", "repo")),
         ("app", ("site_name", "bind_addr")),
-        ("caminhos", ("dados", "snapshots", "backup", "dados_app", "stacks",
-                      "quarentena", "estado", "sockets", "config")),
-        ("armazenamento", ("proprietario", "snapshot_backend")),
-        ("rotas", ("esquema", "apps", "dns_ip", "dns_modo", "dominio",
-                   "dns_conf", "pihole_dir", "upstream")),
-    ):
+        ("caminhos", ("dados", "backup")),
+        ("armazenamento", ("proprietario",)),
+        ("rotas", ("apps",)),
+    ]
+    if cfg.valor("rotas", "dns_modo") != "nenhum":
+        obrigatorias.append(("rotas", ("dns_conf",)))
+    for secao, chaves in obrigatorias:
         ausentes = [c for c in chaves if dados.get(secao, {}).get(c) in (None, "")]
         if ausentes:
             raise ConfigError(
                 f"{cfg.origem}: falta em [{secao}]: {', '.join(ausentes)}"
             )
 
-    for secao, chaves in (
-        ("host", ("repo",)),
-        ("caminhos", ("dados", "snapshots", "backup", "dados_app", "stacks",
-                      "quarentena", "estado", "sockets", "config")),
-    ):
-        for chave in chaves:
-            _absoluto(cfg, secao, chave)
-    _absoluto(cfg, "rotas", "dns_conf")
-    _absoluto(cfg, "rotas", "pihole_dir")
+    for chave in ("dados", "snapshots", "backup", "dados_app", "stacks",
+                  "quarentena", "estado", "sockets", "config"):
+        _absoluto(cfg, "caminhos", chave)
+    _absoluto(cfg, "host", "repo")
+    if cfg.valor("rotas", "dns_modo") != "nenhum":
+        _absoluto(cfg, "rotas", "dns_conf")
+        _absoluto(cfg, "rotas", "pihole_dir")
 
     port = cfg.valor("app", "bind_port")
     if not isinstance(port, int) or not 1 <= port <= 65535:
@@ -369,7 +423,7 @@ def render_sync_env(cfg: HostConfig) -> list[tuple[str, str]]:
         ("CADDY_PROXY", caddy.get("proxy", "")),
         ("PIHOLE_CONTAINER", r.get("pihole_container", "pihole")),
         ("PIHOLE_DIR", pihole_dir),
-        ("DNS_CONF", r["dns_conf"]),
+        ("DNS_CONF", r.get("dns_conf", "")),
         ("DNS_IP", r["dns_ip"]),
         ("DNS_MODE", r["dns_modo"]),
         ("DOMAIN", r["dominio"]),
