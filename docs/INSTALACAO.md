@@ -49,17 +49,20 @@ git remote set-url --push origin git@github.com:ConradoAlmeida/homelab-storage-a
 git clone https://github.com/ConradoAlmeida/homelab-storage-admin.git \
   /opt/stacks/homelab-storage-admin
 cd /opt/stacks/homelab-storage-admin
-cp .env.example .env
-chmod 600 .env
-# edite .env: SECRET_KEY, senha do admin, ALLOWED_HOSTS e CSRF
-sudo python3 scripts/homelabctl.py render <slug> --write --ambos  # se o host.toml ja existe
-sudo ./install-agent.sh   # gera o que faltar; nunca sobrescreve host.env
-./deploy.sh               # usa host.env + COMPOSE_OVERLAY
+python3 scripts/homelabctl.py bootstrap <slug>          # dry-run: o que falta
+sudo python3 scripts/homelabctl.py bootstrap <slug> --escrever --apt
+sudo HOST_ENV_PROFILE=<slug> ./install-agent.sh          # gera o que faltar
+python3 scripts/homelabctl.py doctor <slug>              # 0 erros antes do deploy
+./deploy.sh                                              # usa host.env + COMPOSE_OVERLAY
 ```
 
-O `install-agent.sh` descobre o perfil pelo `HOST_ENV_PROFILE`, pelo
-`HOST_PROFILE` do `host.env` existente ou (na primeira vez) pelo slug `pi`.
-Host novo: crie o TOML com `homelabctl init` ([PRESETS](PRESETS.md)).
+O `bootstrap` grava `host.env` e `sync.env`, cria o `.env` a partir do
+`.env.example` com segredo aleatório em modo `600` e instala os pacotes das
+features obrigatórias; ele nunca sobrescreve arquivo existente — para aplicar
+mudança de TOML num host já instalado é `render <slug> --write --ambos`. O
+`.env` gerado traz `ALLOWED_HOSTS`/`CSRF` do `lan_ip` e um segredo aleatório;
+revise o usuário admin no primeiro acesso. Host sem TOML: `homelabctl init`
+([PRESETS](PRESETS.md)).
 
 ### Apps e rotas (Caddy + DNS)
 
@@ -108,9 +111,12 @@ fica só o que vale para todos: `APPS_ENV_PATH` aponta para
 
 Atualizações seguem sempre o mesmo fluxo: `git pull` + `./deploy.sh` no host.
 O `deploy.sh` exige `/etc/homelab-storage-admin/host.env`; se ele não existir,
-rode antes `sudo ./install-agent.sh`. Ele também exige o `.env` do clone
-(copiar de `.env.example`) e acesso ao Docker pelo usuário (`docker info`); sem
-um dos dois, aborta com mensagem própria antes de mexer em qualquer coisa.
+rode antes `sudo ./install-agent.sh`. Ele também exige o `.env` do clone com
+modo `600` e `DJANGO_SECRET_KEY` que não seja a de exemplo, e acesso ao Docker
+pelo usuário (`docker info`); sem isso, aborta com o comando de correção antes
+de mexer em qualquer coisa. Depois de mudar o `host.toml`, rode
+`sudo python3 scripts/homelabctl.py render <slug> --write --ambos` — o
+`doctor` acusa o env fora de sync e o deploy falha até corrigir.
 
 ```bash
 cd /opt/stacks/homelab-storage-admin
@@ -138,11 +144,14 @@ Vale para qualquer host. A ordem importa:
    ```
 2. **Perfil e agente**:
    ```bash
-   sudo ./install-agent.sh
+   sudo HOST_ENV_PROFILE=<slug> ./install-agent.sh
+   python3 scripts/homelabctl.py doctor <slug>
    ```
-   O perfil vem do `host.env` (`HOST_PROFILE`) ou de
-   `HOST_ENV_PROFILE=<slug>`; o script cria `host.env`/`sync.env` só se não
-   existirem e nunca sobrescreve.
+   O perfil vem de `HOST_ENV_PROFILE` ou do `HOST_PROFILE` do `host.env`; sem
+   `hosts/<slug>/host.toml` o script para. Ele cria `host.env`/`sync.env` só
+   se não existirem e nunca sobrescreve. O `doctor` lista, sem escrever, env
+   fora de sync, dependências, `.env`, mounts, `apps.env` e unit de boot
+   (`erros: 0` antes de seguir).
 3. **App**:
    ```bash
    ./deploy.sh
@@ -152,8 +161,9 @@ Vale para qualquer host. A ordem importa:
    termina conferindo `/login/` no endereço de `BIND_ADDR`:
    sem resposta em 90 s, sai 1 com o comando de `logs`. Se o `apps.env` for
    mais novo que o estado do `--apply`, avisa e mostra o comando do perfil. No
-   fim roda o `--doctor` (sem sudo) e imprime erros e resumo; divergência de
-   rota/DNS não muda o exit code do deploy.
+   fim roda o `--doctor` (sem sudo): erro de rota/DNS/atalho **derruba o
+   deploy** (o app está no ar, mas o host não está no estado do env); aviso,
+   como o token da Cloudflare sem sudo, só informa.
 4. **Atalhos** (opcional, sem restart): saem do `deploy/<slug>/apps.env`
    (`atalho=painel`), não de um arquivo copiado à mão.
    ```bash
