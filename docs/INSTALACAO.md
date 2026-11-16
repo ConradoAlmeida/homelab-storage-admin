@@ -203,18 +203,18 @@ sudo systemctl restart homelab-storage-agent smbd
 
 O rollback não mexe em `/mnt/nas`, snapshots, banco ou dados de share.
 
-### Boot do preset `pi` (`homelab-compose.service`)
+### Boot do host (`[boot]` no `host.toml`)
 
-A unidade de boot do Pi é específica daquele host e fica versionada em
-`deploy/pi/homelab-compose.service`. Ela espera o IP do preset em **qualquer
-interface** (Wi-Fi ou Ethernet) e sobe Pi-hole, o storage-admin, Dockge e
-Caddy. A linha do storage-admin carrega
-`/etc/homelab-storage-admin/host.env` e usa `COMPOSE_OVERLAY`. Host novo sem
-stacks de terceiros não precisa dela.
+A unidade de boot é dado do host: `[boot]` declara `unit`, `descricao`,
+`esperar_ip`, `esperar_mounts` e a ordem dos stacks (`antes`/`depois`). O Pi
+usa `deploy/pi/homelab-compose.service` (espera o IP em **qualquer** interface,
+Pi-hole antes, storage-admin/Dockge/Caddy depois); host sem `[boot]` — como o
+moya — não gera unidade. O `doctor` compara a unidade instalada com o render.
 
-Instalação/atualização:
+Gerar e instalar:
 
 ```bash
+python3 scripts/homelabctl.py boot pi --write     # deploy/pi/<unit>
 sudo install -m 0644 deploy/pi/homelab-compose.service \
   /etc/systemd/system/homelab-compose.service
 sudo systemctl daemon-reload
